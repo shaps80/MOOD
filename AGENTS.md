@@ -185,10 +185,13 @@ Serve the repository root locally, then open `/App/index.html`. The page imports
 Useful checks:
 
 * `swiftly run swift --version`
-* `swiftly run swift build --target GameCore`
+* `swiftly run swift build --scratch-path .build/host --target GameCore`
+* `swiftly run swift test --scratch-path .build/host`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
+
+Prefer the `.build/host` scratch path for host checks. Reusing the default `.build` for both host tests and Wasm PackageToJS builds can leave SwiftPM with stale cross-target build graph entries.
 
 Explicit Non-Goals
 
@@ -241,6 +244,27 @@ If gameplay code requires browser APIs, rendering APIs, or platform frameworks, 
 
 This is the single most important architectural constraint in the project.
 
+GameCore also owns game-facing render state and decisions.
+
+Examples that belong in GameCore:
+
+* Which color should be shown
+* Which sprite or animation frame is active
+* Entity positions
+* Camera state
+* World/tile state
+* Collision and gameplay timing decisions
+
+Examples that do not belong in GameCore:
+
+* WebGL calls
+* Canvas lookup and sizing
+* Browser time APIs
+* DOM events
+* JavaScriptKit interop
+
+Platform layers may provide external facts such as elapsed time, input state, asset bytes, or viewport size. GameCore decides what the game state becomes from those facts.
+
 ⸻
 
 PlatformWeb
@@ -258,6 +282,15 @@ Its job is to run GameCore.
 
 Nothing more.
 
+PlatformWeb must not own game rules, demo behavior, visual selection logic, or gameplay state just because the first visible output is rendered in a browser.
+
+If PlatformWeb needs to render something, prefer this flow:
+
+* PlatformWeb reads browser/platform facts.
+* PlatformWeb passes those facts into GameCore.
+* GameCore updates and exposes platform-neutral state.
+* PlatformWeb translates that state into WebGL/DOM/audio calls.
+
 PlatformWeb is specifically the browser/Wasm adapter.
 
 It is allowed to depend on Wasm/browser-only packages such as JavaScriptKit.
@@ -266,7 +299,8 @@ Do not require PlatformWeb, MOOD, or the whole package to build in Xcode or with
 
 The required validation split is:
 
-* GameCore must build on host: `swiftly run swift build --target GameCore`
+* GameCore must build on host: `swiftly run swift build --scratch-path .build/host --target GameCore`
+* GameCore tests must pass on host: `swiftly run swift test --scratch-path .build/host`
 * Browser app must build/package through Wasm: `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
 
 Avoid adding `#if os(WASI)` fallbacks to PlatformWeb solely to make Xcode or default host builds happy. Add conditionals only when they serve a real platform adapter need.
