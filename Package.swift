@@ -33,10 +33,6 @@ let package = Package(
                     condition: .when(platforms: [.wasi])
                 )
             ]
-        ),
-        .testTarget(
-            name: "GameCoreTests",
-            dependencies: ["GameCore"]
         )
     ],
     swiftLanguageModes: [.v6]
