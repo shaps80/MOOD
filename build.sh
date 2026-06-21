@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PORT=9999
-URL="http://127.0.0.1:${PORT}/App/index.html"
+URL="http://127.0.0.1:${PORT}/"
 CONFIGURATION="debug"
 ARGS=()
 
@@ -28,9 +28,9 @@ while (($#)); do
 done
 
 if ((${#ARGS[@]})); then
-  swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn -c "${CONFIGURATION}" "${ARGS[@]}"
+  ./deploy-wasm.sh -c "${CONFIGURATION}" "${ARGS[@]}"
 else
-  swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn -c "${CONFIGURATION}"
+  ./deploy-wasm.sh -c "${CONFIGURATION}"
 fi
 
 echo
@@ -40,4 +40,5 @@ echo "Configuration: ${CONFIGURATION}"
 echo
 echo "Press Ctrl-C to stop."
 
+cd dist
 python3 -m http.server "${PORT}"

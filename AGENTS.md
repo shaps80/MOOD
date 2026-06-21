@@ -149,14 +149,21 @@ Toolchain Notes
 
 This project uses Swiftly-managed Swift toolchains.
 
+Install the browser packaging tools:
+
+* `brew install binaryen`
+
+`binaryen` provides `wasm-opt`. PackageToJS uses it automatically for release packaging when it is available on `PATH`. Without it the build still works, but the `.wasm` output is larger.
+
 Use:
 
 * `swiftly use 6.3.2`
 * `./build.sh`
 * `./build.sh -c release`
+* `./deploy-wasm.sh`
+* `./deploy-wasm.sh -c release`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
-* `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
 
 Do not assume plain `swift` is the right compiler in agent shells.
 
@@ -173,35 +180,33 @@ For local browser runs, prefer the repo script:
 * `./build.sh`
 * `./build.sh -c release`
 
-Agents and humans should use this same script so changes to build flags, port, PackageToJS options, and printed URL stay in one place. The script serves on port `9999` and prints:
+Agents and humans should use this same script so changes to build flags, port, PackageToJS options, and printed URL stay in one place. The script builds the same `dist/` folder used for itch.io, serves it on port `9999`, and prints:
 
-* `http://127.0.0.1:9999/App/index.html`
+* `http://127.0.0.1:9999/`
 * the selected configuration
 
-For browser packaging, use JavaScriptKit's PackageToJS SwiftPM plugin:
+For itch.io packaging, prefer:
 
-* `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
+* `./deploy-wasm.sh -c release`
 
-This generates the JS/Wasm browser package under:
+This creates:
 
-* `.build/plugins/PackageToJS/outputs/Package/`
+* `dist/index.html`
+* `dist/mood.js`
+* `dist/MOOD.wasm`
+* `MOOD.zip`
 
-The development browser page is:
+Upload `MOOD.zip` to itch.io. The zip has `index.html` at the root and contains the JS/Wasm files locally, without CDN imports.
 
-* `App/index.html`
-
-Serve the repository root locally, then open `/App/index.html`. The page imports:
-
-* `../.build/plugins/PackageToJS/outputs/Package/index.js`
+`deploy-wasm.sh` intentionally does the boring packaging path first: PackageToJS without `--use-cdn`, npm install for the generated package dependencies, bundle to one browser module, copy the Wasm file, then zip `dist/`.
 
 Useful checks:
 
 * `swiftly run swift --version`
 * `swiftly run swift build --scratch-path .build/host --target GameCore`
-* `swiftly run swift test --scratch-path .build/host`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
-* `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
+* `./deploy-wasm.sh -c release`
 
 Prefer the `.build/host` scratch path for host checks. Reusing the default `.build` for both host tests and Wasm PackageToJS builds can leave SwiftPM with stale cross-target build graph entries.
 

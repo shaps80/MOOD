@@ -1,5 +1,8 @@
 .DS_Store
 /.build
+/dist
+/MOOD.zip
+/MOOD-itch.zip
 /Packages
 xcuserdata/
 DerivedData/
