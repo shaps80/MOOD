@@ -9,6 +9,7 @@ public enum PlatformWeb {
 }
 
 private final class BrowserRuntime {
+    private let fixedTimeStep = 1.0 / 60.0
     private var game: Game
     private var animationFrameCallback: JSClosure?
     private var canvas: JSObject?
@@ -20,6 +21,7 @@ private final class BrowserRuntime {
     private var rectUniform: JSValue = .undefined
     private var colorUniform: JSValue = .undefined
     private var lastFrameMilliseconds: Double?
+    private var accumulatedTime = 0.0
 
     init(game: Game) {
         self.game = game
@@ -40,13 +42,19 @@ private final class BrowserRuntime {
     }
 
     private func renderFrame(timestampMilliseconds: Double) {
-        let deltaSeconds = lastFrameMilliseconds.map {
+        let rawDeltaSeconds = lastFrameMilliseconds.map {
             (timestampMilliseconds - $0) / 1000
-        } ?? (1.0 / 60.0)
+        } ?? fixedTimeStep
         lastFrameMilliseconds = timestampMilliseconds
 
-        game.update(delta: deltaSeconds)
-        resizeCanvasToDisplaySize()
+        accumulatedTime += max(rawDeltaSeconds, 0)
+
+        while accumulatedTime >= fixedTimeStep {
+            game.update(delta: fixedTimeStep)
+            accumulatedTime -= fixedTimeStep
+        }
+
+        syncCanvasSize()
         clearScreen()
         drawQuad(game.player)
 
@@ -149,7 +157,7 @@ private final class BrowserRuntime {
         return shader
     }
 
-    private func resizeCanvasToDisplaySize() {
+    private func syncCanvasSize() {
         guard let canvas, let gl else { return }
 
         if canvas.width.number != game.size.x {
@@ -160,7 +168,19 @@ private final class BrowserRuntime {
             canvas.height = .number(game.size.y)
         }
 
+        fitCanvasToViewport(canvas)
         _ = gl.viewport!(0, 0, game.size.x, game.size.y)
+    }
+
+    private func fitCanvasToViewport(_ canvas: JSObject) {
+        let viewportWidth = JSObject.global.innerWidth.number ?? game.size.x
+        let viewportHeight = JSObject.global.innerHeight.number ?? game.size.y
+        let scale = min(viewportWidth / game.size.x, viewportHeight / game.size.y)
+        let displayWidth = game.size.x * scale
+        let displayHeight = game.size.y * scale
+
+        canvas.style.width = .string("\(displayWidth)px")
+        canvas.style.height = .string("\(displayHeight)px")
     }
 
     private func clearScreen() {
