@@ -14,13 +14,13 @@ Can it run MOOD?
 
 ## Milestone 1 - Rendering
 
-Status: In Progress
+Status: Done
 
 - [x] WebGL2 context
 - [x] Clear screen
 - [x] Draw rectangle
 - [x] Rectangle moves
-- [ ] Deploy to itch.io
+- [x] Deploy to itch.io
 
 Question answered:
 
