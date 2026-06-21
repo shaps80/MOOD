@@ -46,11 +46,28 @@ public struct Game {
         let rightBound = size.x - entity.size.x
         let topBound = 0.0
         let bottomBound = size.y - entity.size.y
-        let velocity = Vec2(x: input.horizontal * controlledEntitySpeed, y: input.vertical * controlledEntitySpeed)
-        let nextX = clamp(entity.position.x + (velocity.x * step), min: leftBound, max: rightBound)
-        let nextY = clamp(entity.position.y + (velocity.y * step), min: topBound, max: bottomBound)
 
-        entities[controlledEntityIndex].move(to: Vec2(x: nextX, y: nextY), velocity: velocity)
+        let velocity = Vec2(
+            x: input.horizontal * controlledEntitySpeed,
+            y: input.vertical * controlledEntitySpeed
+        )
+
+        let nextX = clamp(
+            entity.position.x + (velocity.x * step),
+            min: leftBound,
+            max: rightBound
+        )
+
+        let nextY = clamp(
+            entity.position.y + (velocity.y * step),
+            min: topBound,
+            max: bottomBound
+        )
+
+        entities[controlledEntityIndex].move(
+            to: Vec2(x: nextX, y: nextY),
+            velocity: velocity
+        )
     }
 
     private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
