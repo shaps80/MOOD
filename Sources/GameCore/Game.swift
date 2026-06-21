@@ -5,8 +5,8 @@ public struct Game {
     public let interpolationMode: InterpolationMode
     public private(set) var clearColor = Color(red: 0, green: 0, blue: 0, alpha: 1)
     public private(set) var entities: [Entity]
-    private let controlledEntitySpeed: Double = 200
-    private let controlledEntityIndex = 0
+    private let playerSpeed: Double = 200
+    private let playerIndex = 0
 
     public var sprites: [Sprite2D] {
         entities.map(\.sprite)
@@ -21,7 +21,7 @@ public struct Game {
     }
 
     public init(width: Double = 640, height: Double = 320, interpolationMode: InterpolationMode = .nearest) {
-        size = Vec2(x: width, y: height)
+        self.size = Vec2(x: width, y: height)
         self.interpolationMode = interpolationMode
 
         let playerSize = Vec2(x: 16, y: 16)
@@ -34,13 +34,13 @@ public struct Game {
             asset: .player
         )
 
-        entities = [player]
+        self.entities = [player]
     }
 
     public mutating func update(delta: Double, input: InputState) {
-        guard entities.indices.contains(controlledEntityIndex) else { return }
+        guard entities.indices.contains(playerIndex) else { return }
 
-        let entity = entities[controlledEntityIndex]
+        let entity = entities[playerIndex]
         let step = max(delta, 0)
         let leftBound = 0.0
         let rightBound = size.x - entity.size.x
@@ -48,8 +48,8 @@ public struct Game {
         let bottomBound = size.y - entity.size.y
 
         let velocity = Vec2(
-            x: input.horizontal * controlledEntitySpeed,
-            y: input.vertical * controlledEntitySpeed
+            x: input.horizontal * playerSpeed,
+            y: input.vertical * playerSpeed
         )
 
         let nextX = clamp(
@@ -64,7 +64,7 @@ public struct Game {
             max: bottomBound
         )
 
-        entities[controlledEntityIndex].move(
+        entities[playerIndex].move(
             to: Vec2(x: nextX, y: nextY),
             velocity: velocity
         )
