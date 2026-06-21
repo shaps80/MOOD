@@ -5,6 +5,7 @@ import Swift
 final class BrowserRuntime {
     let fixedTimeStep = 1.0 / 60.0
     var game: Game
+    let keyboardInput = KeyboardInput()
     var animationFrameCallback: JSClosure?
     var canvas: JSObject?
     var gl: JSObject?
@@ -25,6 +26,7 @@ final class BrowserRuntime {
         configureCanvas()
         configureWebGL()
         configureQuadPipeline()
+        keyboardInput.startListening()
 
         animationFrameCallback = JSClosure { arguments in
             let timestampMilliseconds = arguments.first?.number ?? 0
@@ -44,7 +46,7 @@ final class BrowserRuntime {
         accumulatedTime += max(rawDeltaSeconds, 0)
 
         while accumulatedTime >= fixedTimeStep {
-            game.update(delta: fixedTimeStep)
+            game.update(delta: fixedTimeStep, input: keyboardInput.state)
             accumulatedTime -= fixedTimeStep
         }
 

@@ -28,9 +28,9 @@ Can MOOD render and be distributed?
 
 ## Milestone 2 - Input
 
-Status: Not Started
+Status: In Progress
 
-- [ ] Keyboard support
+- [x] Keyboard support
 - [ ] Mouse support
 - [ ] Touch support
 - [ ] Controller support
