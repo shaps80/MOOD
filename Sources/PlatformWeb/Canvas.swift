@@ -29,11 +29,34 @@ extension BrowserRuntime {
     func fitCanvasElementToViewport(_ canvas: JSObject) {
         let viewportWidth = JSObject.global.innerWidth.number ?? game.size.x
         let viewportHeight = JSObject.global.innerHeight.number ?? game.size.y
-        let scale = min(viewportWidth / game.size.x, viewportHeight / game.size.y)
+        let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight)
         let displayWidth = game.size.x * scale
         let displayHeight = game.size.y * scale
 
+        canvas.style.imageRendering = .string(imageRendering)
         canvas.style.width = .string("\(displayWidth)px")
         canvas.style.height = .string("\(displayHeight)px")
+    }
+
+    private func displayScale(viewportWidth: Double, viewportHeight: Double) -> Double {
+        let fitScale = min(viewportWidth / game.size.x, viewportHeight / game.size.y)
+
+        switch game.interpolationMode {
+        case .linear:
+            return fitScale
+        case .nearest:
+            guard fitScale >= 1 else { return fitScale }
+
+            return max(1, fitScale.rounded(.down))
+        }
+    }
+
+    private var imageRendering: String {
+        switch game.interpolationMode {
+        case .linear:
+            return "auto"
+        case .nearest:
+            return "pixelated"
+        }
     }
 }

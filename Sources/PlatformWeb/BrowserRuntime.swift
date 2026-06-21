@@ -6,6 +6,7 @@ final class BrowserRuntime {
     let fixedTimeStep = 1.0 / 60.0
     var game: Game
     let keyboardInput = KeyboardInput()
+    let gamepadInput = GamepadInput()
     var animationFrameCallback: JSClosure?
     var canvas: JSObject?
     var gl: JSObject?
@@ -46,7 +47,7 @@ final class BrowserRuntime {
         accumulatedTime += max(rawDeltaSeconds, 0)
 
         while accumulatedTime >= fixedTimeStep {
-            game.update(delta: fixedTimeStep, input: keyboardInput.state)
+            game.update(delta: fixedTimeStep, input: inputState)
             accumulatedTime -= fixedTimeStep
         }
 
@@ -55,6 +56,10 @@ final class BrowserRuntime {
         drawQuad(game.player)
 
         requestNextFrame()
+    }
+
+    var inputState: InputState {
+        keyboardInput.state.combined(with: gamepadInput.state)
     }
 
     func requestNextFrame() {

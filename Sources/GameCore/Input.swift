@@ -10,4 +10,16 @@ public struct InputState: Equatable, Sendable {
         self.vertical = vertical
         self.jump = jump
     }
+
+    public func combined(with other: InputState) -> InputState {
+        InputState(
+            horizontal: clamp(horizontal + other.horizontal, min: -1, max: 1),
+            vertical: clamp(vertical + other.vertical, min: -1, max: 1),
+            jump: jump || other.jump
+        )
+    }
+
+    private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
+        min(max(value, minValue), maxValue)
+    }
 }

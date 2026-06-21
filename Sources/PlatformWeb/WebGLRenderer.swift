@@ -102,14 +102,41 @@ extension BrowserRuntime {
         guard let gl else { return }
 
         let color = quad.color
+        let rect = renderRect(for: quad)
 
         _ = gl.useProgram!(shaderProgram)
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
         _ = gl.enableVertexAttribArray!(positionAttributeLocation)
         _ = gl.vertexAttribPointer!(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0)
         _ = gl.uniform2f!(resolutionUniform, game.size.x, game.size.y)
-        _ = gl.uniform4f!(rectUniform, quad.position.x, quad.position.y, quad.size.x, quad.size.y)
+        _ = gl.uniform4f!(rectUniform, rect.x, rect.y, rect.width, rect.height)
         _ = gl.uniform4f!(colorUniform, color.red, color.green, color.blue, color.alpha)
         _ = gl.drawArrays!(gl.TRIANGLES, 0, 6)
     }
+
+    private func renderRect(for quad: Quad) -> RenderRect {
+        switch game.interpolationMode {
+        case .linear:
+            return RenderRect(
+                x: quad.position.x,
+                y: quad.position.y,
+                width: quad.size.x,
+                height: quad.size.y
+            )
+        case .nearest:
+            return RenderRect(
+                x: quad.position.x.rounded(),
+                y: quad.position.y.rounded(),
+                width: quad.size.x.rounded(),
+                height: quad.size.y.rounded()
+            )
+        }
+    }
+}
+
+private struct RenderRect {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
 }
