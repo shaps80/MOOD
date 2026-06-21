@@ -340,110 +340,19 @@ MOOD/
 ├── App/
 ├── GameCore/
 └── PlatformWeb/
+└── MOOD/
 
 This structure exists to reinforce separation between gameplay and platform concerns.
 
 ⸻
 
-Milestones
+Roadmap
 
-Milestone 0 — Runtime
+Roadmap goals, milestone status, and progress live in:
 
-Outcome:
+* `ROADMAP.md`
 
-* Swift compiles to Wasm
-* Runs in browser
-* Basic game loop executes
-
-Question answered:
-
-Can it run MOOD?
-
-⸻
-
-Milestone 1 — Rendering
-
-Outcome:
-
-* WebGL2 context
-* Clear screen
-* Draw rectangle
-* Rectangle moves
-* Deploy to itch.io
-
-Question answered:
-
-Can MOOD render and be distributed?
-
-⸻
-
-Milestone 2 — Input
-
-Outcome:
-
-* Keyboard support
-* Mouse support
-* Touch support
-* Controller support
-
-Question answered:
-
-Can MOOD interact?
-
-⸻
-
-Milestone 3 — Assets
-
-Outcome:
-
-* Load PNG assets
-* Load audio assets
-* Package assets correctly
-
-Question answered:
-
-Can MOOD load content?
-
-⸻
-
-Milestone 4 — Sprites
-
-Outcome:
-
-* Textured quads
-* Sprite sheets
-* Sprite animation
-
-Question answered:
-
-Can MOOD display game art?
-
-⸻
-
-Milestone 5 — World
-
-Outcome:
-
-* Camera
-* Collision
-* Tile maps
-
-Question answered:
-
-Can MOOD support a playable environment?
-
-⸻
-
-Milestone 6 — Playable Game
-
-Outcome:
-
-* Complete playable game
-* Published on itch.io
-
-This is the most important milestone.
-
-Everything before this is technology validation.
+AGENTS.md should contain durable operating rules only. Do not duplicate roadmap progress here.
 
 ⸻
 
