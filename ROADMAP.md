@@ -55,7 +55,7 @@ Can MOOD load content?
 Status: In Progress
 
 - [x] Textured quads
-- [ ] Sprite sheets
+- [x] Sprite sheets
 - [ ] Sprite animation
 
 Question answered:

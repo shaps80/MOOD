@@ -2,10 +2,7 @@ import Swift
 
 struct Player {
     private let size: Vec2 = .init(x: 64, y: 64)
-    private let spriteSourceRect = Rect(
-        origin: .zero,
-        size: .init(x: 48, y: 48)
-    )
+    private var walkTimeline: SpriteAnimation.Timeline
     var entity: Entity
     var speed: Double = 400
     var acceleration: Double = 1200
@@ -19,13 +16,19 @@ struct Player {
             position: .zero,
             size: size
         )
+        self.walkTimeline = .init(animation: Self.walkAnimation)
     }
 
     var sprite: Sprite {
-        Sprite(
+        let animation = walkTimeline.animation
+
+        return Sprite(
             position: entity.position,
             size: entity.size,
-            material: .sprite(.player, sourceRect: spriteSourceRect)
+            material: .sprite(
+                animation.textureID,
+                sourceRect: walkTimeline.frame
+            )
         )
     }
 
@@ -39,6 +42,8 @@ struct Player {
     public mutating func update(delta: Double, context: inout Game.Context) {
         let input = context.input
         let worldSize = context.worldSize
+
+        walkTimeline.update(delta: delta)
 
         defer {
             wasJumpPressed = input.jump
@@ -131,4 +136,17 @@ struct Player {
     private func isReversing(current: Double, target: Double) -> Bool {
         (current < 0 && target > 0) || (current > 0 && target < 0)
     }
+}
+
+extension Player {
+    private static let walkAnimation = SpriteAnimation(
+        textureID: .player,
+        frames: [
+            Rect(x: 0, y: 0, width: 48, height: 48),
+            Rect(x: 48, y: 0, width: 48, height: 48),
+            Rect(x: 96, y: 0, width: 48, height: 48),
+            Rect(x: 144, y: 0, width: 48, height: 48)
+        ],
+        frameDuration: 0.12
+    )
 }

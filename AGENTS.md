@@ -114,6 +114,20 @@ Abstractions should be justified by demonstrated repetition, not anticipated fut
 
 ⸻
 
+5. Performance Is A Design Constraint
+
+This is game development.
+
+Performance at every level is priority.
+
+Do not bake avoidable O(n), allocation churn, redundant work, or hidden per-frame cost into the game's models, APIs, update loops, rendering paths, asset paths, or future engine-like code.
+
+Prefer simple data shapes that make hot paths O(1), cacheable, precomputed, or directly indexable.
+
+Keep the code game-first and simple, but treat performance problems in core loops as design problems, not cleanup tasks for later.
+
+⸻
+
 Target Platforms
 
 Initial Target

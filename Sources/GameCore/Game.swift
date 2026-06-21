@@ -4,7 +4,7 @@ public struct Game {
     public let size: Vec2
     public let interpolationMode: InterpolationMode
     public let preferredFps: Double
-    public private(set) var clearColor = Color(red: 0, green: 0, blue: 0, alpha: 1)
+    public private(set) var clearColor: Color = .white
 
     private var players: [Player]
 
