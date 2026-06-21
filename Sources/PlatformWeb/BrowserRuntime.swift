@@ -7,6 +7,7 @@ final class BrowserRuntime {
     var game: Game
     let keyboardInput = KeyboardInput()
     let gamepadInput = GamepadInput()
+    let touchInput = TouchInput()
     var animationFrameCallback: JSClosure?
     var canvas: JSObject?
     var gl: JSObject?
@@ -28,6 +29,7 @@ final class BrowserRuntime {
         configureWebGL()
         configureQuadPipeline()
         keyboardInput.startListening()
+        touchInput.startListening(on: canvas)
 
         animationFrameCallback = JSClosure { arguments in
             let timestampMilliseconds = arguments.first?.number ?? 0
@@ -59,7 +61,9 @@ final class BrowserRuntime {
     }
 
     var inputState: InputState {
-        keyboardInput.state.combined(with: gamepadInput.state)
+        keyboardInput.state
+            .combined(with: gamepadInput.state)
+            .combined(with: touchInput.state)
     }
 
     func requestNextFrame() {

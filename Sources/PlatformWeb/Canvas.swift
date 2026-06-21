@@ -9,6 +9,10 @@ extension BrowserRuntime {
         }
 
         self.canvas = canvas
+        canvas.style.touchAction = .string("none")
+        canvas.style.userSelect = .string("none")
+        canvas.style.webkitUserSelect = .string("none")
+        canvas.style.webkitTapHighlightColor = .string("transparent")
     }
 
     func syncCanvasWithGameResolution() {

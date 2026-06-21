@@ -31,6 +31,7 @@ Can MOOD render and be distributed?
 Status: Done
 
 - [x] Keyboard support
+- [x] Touch support
 - [x] Controller support
 
 Question answered:
