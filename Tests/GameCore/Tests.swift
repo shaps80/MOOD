@@ -1,9 +1,8 @@
 import Testing
 @testable import GameCore
 
-@Suite("Game Core Tests")
-struct GameCoreTests {
-    func gameCoreAvailable() {
-        _ = Game()
-    }
+@Test func gameCoreAvailable() {
+    var game = Game()
+    game.tick()
+    #expect(game.tickCount == 1)
 }

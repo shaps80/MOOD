@@ -3,11 +3,8 @@ import PackageDescription
 
 let package = Package(
     name: "MOOD",
-    products: [
-        .library(
-            name: "GameCore",
-            targets: ["GameCore"]
-        )
+    platforms: [
+        .macOS(.v13)
     ],
     dependencies: [
         .package(
@@ -23,14 +20,18 @@ let package = Package(
                 "GameCore",
                 .product(
                     name: "JavaScriptKit",
-                    package: "JavaScriptKit"
+                    package: "JavaScriptKit",
+                    condition: .when(platforms: [.wasi])
                 )
             ]
         ),
         .executableTarget(
             name: "MOOD",
             dependencies: [
-                "PlatformWeb"
+                .target(
+                    name: "PlatformWeb",
+                    condition: .when(platforms: [.wasi])
+                )
             ]
         ),
         .testTarget(
