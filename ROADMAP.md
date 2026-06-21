@@ -85,3 +85,15 @@ Status: Not Started
 This is the most important milestone.
 
 Everything before this is technology validation.
+
+## Milestone 7 - Swift Tooling Review
+
+Status: Not Started
+
+- [ ] Review build, packaging, and deployment scripts
+- [ ] Identify which workflows should move into Swift
+- [ ] Consolidate useful tooling behind Swift entry points
+
+Question answered:
+
+Can MOOD's project tooling grow toward editor workflows?
