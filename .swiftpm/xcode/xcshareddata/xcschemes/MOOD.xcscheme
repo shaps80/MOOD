@@ -65,8 +65,8 @@
       enableGPUValidationMode = "1"
       allowLocationSimulation = "NO"
       queueDebuggingEnableBacktraceRecording = "Yes"
-      consoleMode = "1"
-      structuredConsoleMode = "3">
+      consoleMode = "0"
+      structuredConsoleMode = "2">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference

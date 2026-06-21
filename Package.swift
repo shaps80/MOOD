@@ -10,7 +10,10 @@ let package = Package(
             dependencies: ["GameCore"]
         ),
         .executableTarget(
-            name: "MOOD"
+            name: "MOOD",
+            dependencies: [
+                "PlatformWeb"
+            ]
         ),
         .testTarget(
             name: "GameCoreTests",

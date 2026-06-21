@@ -1,10 +1,8 @@
+import PlatformWeb
+
 @main
-struct wasi_test {
+struct MOOD {
     static func main() {
-#if os(WASI)
-        print("Hello from WASI!")
-#else
-        print("Hello from the host system!")
-#endif
+        PlatformWeb.run()
     }
 }
