@@ -1,26 +1,49 @@
 import Swift
 import GameCore
+import JavaScriptKit
 
 public enum PlatformWeb {
-    public static func run(tickLimit: Int = 3) {
-        var runtime = Runtime(game: Game())
-        runtime.run(tickLimit: tickLimit)
+    public static func run() {
+        BrowserRuntime(game: Game()).start()
     }
 }
 
-private struct Runtime {
+private final class BrowserRuntime {
     private var game: Game
+    private var animationFrameCallback: JSClosure?
 
     init(game: Game) {
         self.game = game
     }
 
-    mutating func run(tickLimit: Int) {
-        print("MOOD PlatformWeb starting")
+    func start() {
+        log("MOOD PlatformWeb starting")
 
-        for _ in 0..<tickLimit {
-            game.tick()
-            print("MOOD tick \(game.tickCount)")
+        animationFrameCallback = JSClosure { _ in
+            self.tick()
+            return .undefined
         }
+
+        requestNextFrame()
+    }
+
+    private func tick() {
+        game.tick()
+
+        if game.tickCount == 1 || game.tickCount.isMultiple(of: 60) {
+            log("MOOD tick \(game.tickCount)")
+        }
+
+        requestNextFrame()
+    }
+
+    private func requestNextFrame() {
+        guard let animationFrameCallback else { return }
+
+        _ = JSObject.global.requestAnimationFrame!(animationFrameCallback)
+    }
+
+    private func log(_ message: String) {
+        _ = JSObject.global.console.log(message)
     }
 }

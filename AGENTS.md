@@ -154,6 +154,7 @@ Use:
 * `swiftly use 6.3.2`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
+* `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
 
 Do not assume plain `swift` is the right compiler in agent shells.
 
@@ -163,12 +164,31 @@ On this machine, plain `swift` may resolve to `/usr/bin/swift` and use Xcode's A
 
 For browser/Wasm builds, always invoke Swift through `swiftly run`.
 
+`swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm` is useful as a Wasm build smoke check. Once `PlatformWeb` imports JavaScriptKit, browser execution should go through PackageToJS and `App/index.html`, because the app needs JavaScriptKit's browser runtime imports.
+
+For browser packaging, use JavaScriptKit's PackageToJS SwiftPM plugin:
+
+* `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
+
+This generates the JS/Wasm browser package under:
+
+* `.build/plugins/PackageToJS/outputs/Package/`
+
+The development browser page is:
+
+* `App/index.html`
+
+Serve the repository root locally, then open `/App/index.html`. The page imports:
+
+* `../.build/plugins/PackageToJS/outputs/Package/index.js`
+
 Useful checks:
 
 * `swiftly run swift --version`
 * `swiftly run swift build --target GameCore`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
+* `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
 
 Explicit Non-Goals
 
@@ -237,6 +257,19 @@ Responsible for:
 Its job is to run GameCore.
 
 Nothing more.
+
+PlatformWeb is specifically the browser/Wasm adapter.
+
+It is allowed to depend on Wasm/browser-only packages such as JavaScriptKit.
+
+Do not require PlatformWeb, MOOD, or the whole package to build in Xcode or with the default macOS host toolchain.
+
+The required validation split is:
+
+* GameCore must build on host: `swiftly run swift build --target GameCore`
+* Browser app must build/package through Wasm: `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
+
+Avoid adding `#if os(WASI)` fallbacks to PlatformWeb solely to make Xcode or default host builds happy. Add conditionals only when they serve a real platform adapter need.
 
 ⸻
 
