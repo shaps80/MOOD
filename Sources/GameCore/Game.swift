@@ -24,7 +24,7 @@ public struct Game {
     public private(set) var clearColor = Color(red: 0, green: 0, blue: 0, alpha: 1)
     public private(set) var player: Quad
     public private(set) var playerVelocity: Vec2
-    private let playerSpeed = 80.0
+    private let playerSpeed: Double = 200
 
     public init(width: Double = 640, height: Double = 320, interpolationMode: InterpolationMode = .nearest) {
         let playerSize = Vec2(x: 16, y: 16)
