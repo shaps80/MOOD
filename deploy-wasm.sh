@@ -9,6 +9,28 @@ DIST_DIR="dist"
 ZIP_PATH="MOOD.zip"
 ARGS=()
 
+write_index_html() {
+  local output_path="$1"
+
+  cat > "${output_path}" <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOOD</title>
+</head>
+<body>
+  <script type="module">
+    import { init } from "./mood.js";
+
+    init();
+  </script>
+</body>
+</html>
+HTML
+}
+
 while (($#)); do
   case "$1" in
     -c|--configuration)
@@ -62,7 +84,7 @@ npx --yes esbuild "${PACKAGE_DIR}/index.js" \
   --outfile="${DIST_DIR}/mood.js"
 
 cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
-cp "App/index.html" "${DIST_DIR}/index.html"
+write_index_html "${DIST_DIR}/index.html"
 
 (
   cd "${DIST_DIR}"

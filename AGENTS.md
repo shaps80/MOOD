@@ -149,6 +149,14 @@ Toolchain Notes
 
 This project uses Swiftly-managed Swift toolchains.
 
+Agent verification preference:
+
+* Default to build checks only.
+* When verifying that agent changes build, run `./build.sh` so compiler/package errors are visible.
+* Do not run `./deploy-wasm.sh` for routine verification; reserve it for explicit deploy/itch packaging requests or when the user says they are running that flow themselves.
+* Do not launch browsers, start local browser testing flows, use browser automation, or run test suites unless explicitly requested.
+* The user handles gameplay, browser, and test-suite verification.
+
 Install the browser packaging tools:
 
 * `brew install binaryen`
@@ -173,7 +181,7 @@ On this machine, plain `swift` may resolve to `/usr/bin/swift` and use Xcode's A
 
 For browser/Wasm builds, always invoke Swift through `swiftly run`.
 
-`swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm` is useful as a Wasm build smoke check. Once `PlatformWeb` imports JavaScriptKit, browser execution should go through PackageToJS and `App/index.html`, because the app needs JavaScriptKit's browser runtime imports.
+`swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm` is useful as a Wasm build smoke check. Once `PlatformWeb` imports JavaScriptKit, browser execution should go through PackageToJS and the generated `dist/index.html`, because the app needs JavaScriptKit's browser runtime imports.
 
 For local browser runs, prefer the repo script:
 
@@ -198,15 +206,14 @@ This creates:
 
 Upload `MOOD.zip` to itch.io. The zip has `index.html` at the root and contains the JS/Wasm files locally, without CDN imports.
 
-`deploy-wasm.sh` intentionally does the boring packaging path first: PackageToJS without `--use-cdn`, npm install for the generated package dependencies, bundle to one browser module, copy the Wasm file, then zip `dist/`.
+`deploy-wasm.sh` intentionally does the boring packaging path first: PackageToJS without `--use-cdn`, npm install for the generated package dependencies, bundle to one browser module, copy the Wasm file, generate `index.html`, then zip `dist/`.
 
 Useful checks:
 
 * `swiftly run swift --version`
 * `swiftly run swift build --scratch-path .build/host --target GameCore`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
-* `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
-* `./deploy-wasm.sh -c release`
+* `./build.sh`
 
 Prefer the `.build/host` scratch path for host checks. Reusing the default `.build` for both host tests and Wasm PackageToJS builds can leave SwiftPM with stale cross-target build graph entries.
 
@@ -317,8 +324,8 @@ Do not require PlatformWeb, MOOD, or the whole package to build in Xcode or with
 The required validation split is:
 
 * GameCore must build on host: `swiftly run swift build --scratch-path .build/host --target GameCore`
-* GameCore tests must pass on host: `swiftly run swift test --scratch-path .build/host`
-* Browser app must build/package through Wasm: `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
+* Test suites are user-run unless explicitly requested.
+* Browser app must build through Wasm: `./build.sh`
 
 Avoid adding `#if os(WASI)` fallbacks to PlatformWeb solely to make Xcode or default host builds happy. Add conditionals only when they serve a real platform adapter need.
 
@@ -342,10 +349,10 @@ Repository Structure
 Initial structure:
 
 MOOD/
-├── App/
-├── GameCore/
-└── PlatformWeb/
-└── MOOD/
+├── Game/
+├── Sources/GameCore/
+├── Sources/PlatformWeb/
+└── Sources/MOOD/
 
 This structure exists to reinforce separation between gameplay and platform concerns.
 

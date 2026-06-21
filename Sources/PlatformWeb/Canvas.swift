@@ -4,11 +4,62 @@ import Swift
 extension BrowserRuntime {
     func configureCanvas() {
         let document = JSObject.global.document
-        guard let canvas = document.getElementById("game").object else {
-            fatalError("Missing canvas element with id 'game'")
+        installDocumentStyles(in: document)
+
+        let canvas = document.getElementById("game").object ?? createCanvas(in: document)
+        self.canvas = canvas
+        configureCanvasElement(canvas)
+    }
+
+    private func installDocumentStyles(in document: JSValue) {
+        guard document.getElementById("mood-runtime-style").object == nil else { return }
+        guard let style = document.createElement("style").object else {
+            fatalError("Unable to create runtime style element")
+        }
+        guard let head = document.head.object else {
+            fatalError("Missing document head")
         }
 
-        self.canvas = canvas
+        style.id = "mood-runtime-style"
+        style.textContent = (
+            """
+            html,
+            body {
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                display: grid;
+                place-items: center;
+                background: #000;
+            }
+
+            #game {
+                display: block;
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            """
+        )
+        _ = head.appendChild!(style)
+    }
+
+    private func createCanvas(in document: JSValue) -> JSObject {
+        guard let canvas = document.createElement("canvas").object else {
+            fatalError("Unable to create canvas element")
+        }
+        guard let body = document.body.object else {
+            fatalError("Missing document body")
+        }
+
+        canvas.id = "game"
+        _ = body.appendChild!(canvas)
+
+        return canvas
+    }
+
+    private func configureCanvasElement(_ canvas: JSObject) {
         canvas.style.touchAction = .string("none")
         canvas.style.userSelect = .string("none")
         canvas.style.webkitUserSelect = .string("none")
