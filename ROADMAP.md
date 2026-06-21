@@ -40,11 +40,11 @@ Can MOOD interact?
 
 ## Milestone 3 - Assets
 
-Status: Not Started
+Status: In Progress
 
-- [ ] Load PNG assets
+- [x] Load PNG assets
 - [ ] Load audio assets
-- [ ] Package assets correctly
+- [x] Package assets correctly
 
 Question answered:
 
@@ -52,9 +52,9 @@ Can MOOD load content?
 
 ## Milestone 4 - Sprites
 
-Status: Not Started
+Status: In Progress
 
-- [ ] Textured quads
+- [x] Textured quads
 - [ ] Sprite sheets
 - [ ] Sprite animation
 
