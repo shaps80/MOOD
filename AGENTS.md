@@ -145,6 +145,31 @@ Current Direction
 * JavaScriptKit (or successor browser interop layer)
 * WebGL2
 
+Toolchain Notes
+
+This project uses Swiftly-managed Swift toolchains.
+
+Use:
+
+* `swiftly use 6.3.2`
+* `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
+* `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
+
+Do not assume plain `swift` is the right compiler in agent shells.
+
+On this machine, plain `swift` may resolve to `/usr/bin/swift` and use Xcode's Apple Swift frontend. That can fail or crash for the Wasm SDK with errors like:
+
+* `No available targets are compatible with triple "wasm32-unknown-wasip1"`
+
+For browser/Wasm builds, always invoke Swift through `swiftly run`.
+
+Useful checks:
+
+* `swiftly run swift --version`
+* `swiftly run swift build --target GameCore`
+* `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
+* `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
+
 Explicit Non-Goals
 
 At this stage:
