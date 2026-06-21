@@ -3,7 +3,7 @@ import JavaScriptKit
 import Swift
 
 final class GamepadInput {
-    private let axisDeadZone = 0.35
+    private let axisDeadZone = 0.12
     private var wasJumpPressed = false
 
     var state: InputState {
