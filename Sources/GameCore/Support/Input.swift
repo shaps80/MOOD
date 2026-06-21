@@ -1,6 +1,6 @@
 import Swift
 
-public struct InputState: Equatable, Sendable {
+public struct Input: Equatable, Sendable {
     public let horizontal: Double
     public let vertical: Double
     public let jump: Bool
@@ -11,15 +11,11 @@ public struct InputState: Equatable, Sendable {
         self.jump = jump
     }
 
-    public func combined(with other: InputState) -> InputState {
-        InputState(
+    public func combined(with other: Input) -> Input {
+        Input(
             horizontal: clamp(horizontal + other.horizontal, min: -1, max: 1),
             vertical: clamp(vertical + other.vertical, min: -1, max: 1),
             jump: jump || other.jump
         )
-    }
-
-    private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
-        min(max(value, minValue), maxValue)
     }
 }

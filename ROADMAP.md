@@ -40,10 +40,10 @@ Can MOOD interact?
 
 ## Milestone 3 - Assets
 
-Status: In Progress
+Status: Done
 
 - [x] Load PNG assets
-- [ ] Load audio assets
+- [x] Load audio assets
 - [x] Package assets correctly
 
 Question answered:
@@ -99,17 +99,18 @@ Can MOOD's project tooling grow toward editor workflows?
 
 ## Notes To Revisit
 
-### `Game.requiredSpriteAssets`
+### `Game.spriteAssets` and `Game.soundAssets`
 
 Current purpose:
 
-* `GameCore` states which sprite assets the current game state may need, including stable sprite IDs and game-owned asset paths.
-* Platform layers load those paths and cache platform-specific texture objects by sprite ID.
-* This keeps image loading and WebGL texture objects out of `GameCore`, while keeping game content paths out of `PlatformWeb`.
+* `GameCore` states which sprite and sound assets the current game may need, including stable IDs and game-owned asset paths.
+* Platform layers load those paths and cache platform-specific texture/audio objects by asset ID.
+* `Game.spriteAssets` is currently derived from live entities; `Game.soundAssets` is currently a tiny preload list.
+* This keeps image/audio loading, WebGL texture objects, and Web Audio buffers out of `GameCore`, while keeping game content paths out of `PlatformWeb`.
 
-This is intentionally simple right now. With one player, it mostly duplicates the current `sprites` list.
+This is intentionally simple right now. With one player and one sound, it mostly duplicates obvious current game state.
 
-Before growing it, discuss whether asset requirements should come from:
+Before growing this, discuss whether asset requirements should come from:
 
 * loaded scene or level data
 * current camera or viewport visibility
@@ -117,4 +118,4 @@ Before growing it, discuss whether asset requirements should come from:
 * preload/cache rules
 * a future asset manifest
 
-Do not let `requiredSpriteAssets` become accidental long-term asset architecture without revisiting this tradeoff.
+Do not let these asset lists become accidental long-term asset architecture without revisiting this tradeoff.

@@ -1,7 +1,7 @@
 import JavaScriptKit
 import Swift
 
-extension BrowserRuntime {
+extension Runtime {
     func configureCanvas() {
         let document = JSObject.global.document
         installDocumentStyles(in: document)

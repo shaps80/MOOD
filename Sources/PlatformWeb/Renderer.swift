@@ -2,7 +2,7 @@ import GameCore
 import JavaScriptKit
 import Swift
 
-extension BrowserRuntime {
+extension Runtime {
     func configureWebGL() {
         guard let canvas else {
             fatalError("Canvas must be configured before WebGL")
@@ -107,7 +107,7 @@ extension BrowserRuntime {
         _ = gl.clear!(gl.COLOR_BUFFER_BIT)
     }
 
-    func drawSprite(_ sprite: Sprite2D) {
+    func drawSprite(_ sprite: Sprite) {
         switch sprite.material {
         case .color(let color):
             drawSprite(sprite, material: .color(color))
@@ -121,7 +121,7 @@ extension BrowserRuntime {
         }
     }
 
-    private func drawSprite(_ sprite: Sprite2D, material: RenderMaterial) {
+    private func drawSprite(_ sprite: Sprite, material: RenderMaterial) {
         guard let gl else { return }
 
         let rect = renderRect(for: sprite)
@@ -150,7 +150,7 @@ extension BrowserRuntime {
         }
     }
 
-    private func renderRect(for sprite: Sprite2D) -> RenderRect {
+    private func renderRect(for sprite: Sprite) -> RenderRect {
         switch game.interpolationMode {
         case .linear:
             return RenderRect(

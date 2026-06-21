@@ -2,27 +2,43 @@ import GameCore
 import JavaScriptKit
 import Swift
 
-final class BrowserRuntime {
-    let fixedTimeStep = 1.0 / 60.0
+final class Runtime {
     var game: Game
+
+    // Input
     let keyboardInput = KeyboardInput()
     let gamepadInput = GamepadInput()
     let touchInput = TouchInput()
-    var animationFrameCallback: JSClosure?
+
+    // Renderer
     var canvas: JSObject?
     var gl: JSObject?
     var shaderProgram: JSValue = .undefined
+
+    // Positions
     var positionBuffer: JSValue = .undefined
     var positionAttributeLocation: Int = 0
+
+    // Uniforms
     var resolutionUniform: JSValue = .undefined
     var rectUniform: JSValue = .undefined
     var colorUniform: JSValue = .undefined
     var useTextureUniform: JSValue = .undefined
     var textureUniform: JSValue = .undefined
+
+    // Sprites
     var spriteTextures: [SpriteID: JSValue] = [:]
     var spriteImages: [SpriteID: JSObject] = [:]
     var spriteLoadClosures: [SpriteID: JSClosure] = [:]
     var spriteErrorClosures: [SpriteID: JSClosure] = [:]
+
+    // Audio
+    var audioContext: JSObject?
+    var soundBuffers: [SoundID: JSValue] = [:]
+    var soundLoadClosures: [JSClosure] = []
+
+    // Animation
+    var animationFrameCallback: JSClosure?
     var lastFrameMilliseconds: Double?
     var accumulatedTime = 0.0
 
@@ -30,11 +46,21 @@ final class BrowserRuntime {
         self.game = game
     }
 
+    var fixedTimeStep: Double {
+        guard game.preferredFps > 0 else {
+            return 1.0 / 60.0
+        }
+
+        return 1.0 / game.preferredFps
+    }
+
     func start() {
         configureCanvas()
         configureWebGL()
         configureSpritePipeline()
+        configureAudio()
         loadSpriteTextures()
+        loadSoundBuffers()
         keyboardInput.startListening()
         touchInput.startListening(on: canvas)
 
@@ -60,6 +86,7 @@ final class BrowserRuntime {
             accumulatedTime -= fixedTimeStep
         }
 
+        playSounds(game.drainSounds())
         syncCanvasWithGameResolution()
         clearScreen()
         for sprite in game.sprites {
@@ -69,7 +96,7 @@ final class BrowserRuntime {
         requestNextFrame()
     }
 
-    var inputState: InputState {
+    var inputState: Input {
         keyboardInput.state
             .combined(with: gamepadInput.state)
             .combined(with: touchInput.state)

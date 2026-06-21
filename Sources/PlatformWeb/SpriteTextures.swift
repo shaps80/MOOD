@@ -2,7 +2,7 @@ import GameCore
 import JavaScriptKit
 import Swift
 
-extension BrowserRuntime {
+extension Runtime {
     func loadSpriteTextures() {
         for spriteAsset in Set(game.spriteAssets) {
             loadSpriteTexture(spriteAsset)

@@ -13,8 +13,8 @@ final class TouchInput {
     private var touchEndClosure: JSClosure?
     private var touchCancelClosure: JSClosure?
 
-    var state: InputState {
-        InputState(horizontal: horizontalAxis)
+    var state: Input {
+        Input(horizontal: horizontalAxis)
     }
 
     func startListening(on canvas: JSObject?) {

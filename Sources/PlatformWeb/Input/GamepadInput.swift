@@ -5,12 +5,12 @@ import Swift
 final class GamepadInput {
     private let axisDeadZone = 0.12
 
-    var state: InputState {
+    var state: Input {
         guard let gamepads = JSObject.global.navigator.getGamepads().array else {
-            return InputState()
+            return Input()
         }
 
-        var state = InputState()
+        var state = Input()
 
         for gamepadValue in gamepads {
             guard let gamepad = gamepadValue.object else { continue }
@@ -21,7 +21,7 @@ final class GamepadInput {
         return state
     }
 
-    private func stateForGamepad(_ gamepad: JSObject) -> InputState {
+    private func stateForGamepad(_ gamepad: JSObject) -> Input {
         let horizontal = axisValue(
             negative: isDPadPressed(.left, gamepad: gamepad),
             positive: isDPadPressed(.right, gamepad: gamepad),
@@ -33,7 +33,7 @@ final class GamepadInput {
             analog: axis(1, gamepad: gamepad)
         )
 
-        return InputState(
+        return Input(
             horizontal: horizontal,
             vertical: vertical,
             jump: isButtonPressed(0, gamepad: gamepad)

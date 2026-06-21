@@ -8,8 +8,8 @@ final class KeyboardInput {
     private var keyUpClosure: JSClosure?
     private var blurClosure: JSClosure?
 
-    var state: InputState {
-        InputState(
+    var state: Input {
+        Input(
             horizontal: horizontalAxis,
             vertical: verticalAxis,
             jump: isPressed("Space")
