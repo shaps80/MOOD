@@ -152,6 +152,8 @@ This project uses Swiftly-managed Swift toolchains.
 Use:
 
 * `swiftly use 6.3.2`
+* `./build.sh`
+* `./build.sh -c release`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `swiftly run swift package --swift-sdk swift-6.3.2-RELEASE_wasm js --product MOOD --use-cdn`
@@ -165,6 +167,16 @@ On this machine, plain `swift` may resolve to `/usr/bin/swift` and use Xcode's A
 For browser/Wasm builds, always invoke Swift through `swiftly run`.
 
 `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm` is useful as a Wasm build smoke check. Once `PlatformWeb` imports JavaScriptKit, browser execution should go through PackageToJS and `App/index.html`, because the app needs JavaScriptKit's browser runtime imports.
+
+For local browser runs, prefer the repo script:
+
+* `./build.sh`
+* `./build.sh -c release`
+
+Agents and humans should use this same script so changes to build flags, port, PackageToJS options, and printed URL stay in one place. The script serves on port `9999` and prints:
+
+* `http://127.0.0.1:9999/App/index.html`
+* the selected configuration
 
 For browser packaging, use JavaScriptKit's PackageToJS SwiftPM plugin:
 
