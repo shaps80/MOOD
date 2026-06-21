@@ -8,4 +8,6 @@ public struct Vec2: Equatable, Sendable {
         self.x = x
         self.y = y
     }
+
+    public static let zero = Vec2(x: 0, y: 0)
 }

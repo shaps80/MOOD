@@ -1,15 +1,15 @@
 import Swift
 
 public struct Entity: Equatable, Sendable {
-    public let size: Vec2
-    public private(set) var position: Vec2
-    public private(set) var velocity: Vec2
-    public let asset: SpriteAsset
+    internal var size: Vec2
+    internal var position: Vec2
+    internal var velocity: Vec2
+    internal let asset: SpriteAsset
 
     public init(position: Vec2, size: Vec2, asset: SpriteAsset) {
         self.position = position
         self.size = size
-        self.velocity = Vec2(x: 0, y: 0)
+        self.velocity = .zero
         self.asset = asset
     }
 

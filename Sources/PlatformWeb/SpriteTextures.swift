@@ -4,7 +4,7 @@ import Swift
 
 extension BrowserRuntime {
     func loadSpriteTextures() {
-        for spriteAsset in Set(game.requiredSpriteAssets) {
+        for spriteAsset in Set(game.spriteAssets) {
             loadSpriteTexture(spriteAsset)
         }
     }
