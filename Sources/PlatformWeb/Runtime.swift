@@ -25,12 +25,14 @@ final class Runtime {
     var colorUniform: JSValue = .undefined
     var useTextureUniform: JSValue = .undefined
     var textureUniform: JSValue = .undefined
+    var textureRectUniform: JSValue = .undefined
 
     // Sprites
-    var spriteTextures: [SpriteID: JSValue] = [:]
-    var spriteImages: [SpriteID: JSObject] = [:]
-    var spriteLoadClosures: [SpriteID: JSClosure] = [:]
-    var spriteErrorClosures: [SpriteID: JSClosure] = [:]
+    var spriteTextures: [TextureID: JSValue] = [:]
+    var spriteTextureSizes: [TextureID: Vec2] = [:]
+    var spriteImages: [TextureID: JSObject] = [:]
+    var spriteLoadClosures: [TextureID: JSClosure] = [:]
+    var spriteErrorClosures: [TextureID: JSClosure] = [:]
 
     // Audio
     var audioContext: JSObject?

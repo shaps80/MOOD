@@ -1,7 +1,11 @@
 import Swift
 
 struct Player {
-    private let size: Vec2 = .init(x: 32, y: 32)
+    private let size: Vec2 = .init(x: 64, y: 64)
+    private let spriteSourceRect = Rect(
+        origin: .zero,
+        size: .init(x: 48, y: 48)
+    )
     var entity: Entity
     var speed: Double = 400
     var acceleration: Double = 1200
@@ -13,8 +17,15 @@ struct Player {
     private init() {
         self.entity = .init(
             position: .zero,
-            size: size,
-            asset: .player
+            size: size
+        )
+    }
+
+    var sprite: Sprite {
+        Sprite(
+            position: entity.position,
+            size: entity.size,
+            material: .sprite(.player, sourceRect: spriteSourceRect)
         )
     }
 

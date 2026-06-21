@@ -22,6 +22,10 @@ extension Runtime {
             self.configureTextureParameters(gl)
             _ = gl.texImage2D!(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
             self.spriteTextures[spriteAsset.id] = texture
+            self.spriteTextureSizes[spriteAsset.id] = Vec2(
+                x: image.width.number ?? 0,
+                y: image.height.number ?? 0
+            )
 
             return .undefined
         }

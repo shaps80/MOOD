@@ -7,23 +7,16 @@ public struct Game {
     public private(set) var clearColor = Color(red: 0, green: 0, blue: 0, alpha: 1)
 
     private var players: [Player]
-    private var entities: [Entity] { players.map { $0.entity } }
 
     private var sounds: [Sound] = []
     public let soundAssets: [SoundAsset] = [.jump]
 
-    public var sprites: [Sprite] { players.map(\.entity.sprite) }
-    public var spriteAssets: [SpriteAsset] {
-        entities.reduce(into: []) { assets, entity in
-            if !assets.contains(entity.asset) {
-                assets.append(entity.asset)
-            }
-        }
-    }
+    public var sprites: [Sprite] { players.map(\.sprite) }
+    public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
-        width: Double = 800,
-        height: Double = 600,
+        width: Double = 1280,
+        height: Double = 720,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 120
     ) {

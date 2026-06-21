@@ -26,13 +26,14 @@ extension Runtime {
             attribute vec2 a_position;
             uniform vec2 u_resolution;
             uniform vec4 u_rect;
+            uniform vec4 u_textureRect;
             varying vec2 v_texCoord;
 
             void main() {
                 vec2 pixelPosition = u_rect.xy + (a_position * u_rect.zw);
                 vec2 zeroToOne = pixelPosition / u_resolution;
                 vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
-                v_texCoord = a_position;
+                v_texCoord = u_textureRect.xy + (a_position * u_textureRect.zw);
                 gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
             }
             """
@@ -68,6 +69,7 @@ extension Runtime {
         colorUniform = gl.getUniformLocation!(program, "u_color")
         useTextureUniform = gl.getUniformLocation!(program, "u_useTexture")
         textureUniform = gl.getUniformLocation!(program, "u_texture")
+        textureRectUniform = gl.getUniformLocation!(program, "u_textureRect")
         positionBuffer = gl.createBuffer!()
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
@@ -111,13 +113,14 @@ extension Runtime {
         switch sprite.material {
         case .color(let color):
             drawSprite(sprite, material: .color(color))
-        case .sprite(let spriteID):
-            guard let texture = spriteTextures[spriteID] else {
+        case .sprite(let textureID, let sourceRect):
+            guard let texture = spriteTextures[textureID],
+                  let textureRect = textureRect(for: sourceRect, textureID: textureID) else {
                 drawSprite(sprite, material: .color(missingTextureColor))
                 return
             }
 
-            drawSprite(sprite, material: .texture(texture))
+            drawSprite(sprite, material: .texture(texture, textureRect))
         }
     }
 
@@ -141,13 +144,40 @@ extension Runtime {
         case .color(let color):
             _ = gl.uniform4f!(colorUniform, color.red, color.green, color.blue, color.alpha)
             _ = gl.uniform1i!(useTextureUniform, 0)
-        case .texture(let texture):
+            _ = gl.uniform4f!(textureRectUniform, 0, 0, 1, 1)
+        case .texture(let texture, let textureRect):
             _ = gl.uniform4f!(colorUniform, 1, 1, 1, 1)
             _ = gl.uniform1i!(useTextureUniform, 1)
+            _ = gl.uniform4f!(
+                textureRectUniform,
+                textureRect.x,
+                textureRect.y,
+                textureRect.width,
+                textureRect.height
+            )
             _ = gl.activeTexture!(gl.TEXTURE0)
             _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
             _ = gl.uniform1i!(textureUniform, 0)
         }
+    }
+
+    private func textureRect(for sourceRect: Rect?, textureID: TextureID) -> TextureRect? {
+        guard let sourceRect else {
+            return .full
+        }
+
+        guard let textureSize = spriteTextureSizes[textureID],
+              textureSize.x > 0,
+              textureSize.y > 0 else {
+            return nil
+        }
+
+        return TextureRect(
+            x: sourceRect.origin.x / textureSize.x,
+            y: sourceRect.origin.y / textureSize.y,
+            width: sourceRect.size.x / textureSize.x,
+            height: sourceRect.size.y / textureSize.y
+        )
     }
 
     private func renderRect(for sprite: Sprite) -> RenderRect {
@@ -174,7 +204,7 @@ private let missingTextureColor = Color(red: 1, green: 0, blue: 1, alpha: 1)
 
 private enum RenderMaterial {
     case color(Color)
-    case texture(JSValue)
+    case texture(JSValue, TextureRect)
 }
 
 private struct RenderRect {
@@ -182,4 +212,13 @@ private struct RenderRect {
     let y: Double
     let width: Double
     let height: Double
+}
+
+private struct TextureRect {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+
+    static let full = TextureRect(x: 0, y: 0, width: 1, height: 1)
 }

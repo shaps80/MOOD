@@ -3,7 +3,7 @@ import Swift
 public struct Sprite: Equatable, Sendable {
     public enum Material: Equatable, Sendable {
         case color(Color)
-        case sprite(SpriteID)
+        case sprite(TextureID, sourceRect: Rect?)
     }
 
     public let position: Vec2
