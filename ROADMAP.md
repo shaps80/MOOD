@@ -96,3 +96,25 @@ Status: Not Started
 Question answered:
 
 Can MOOD's project tooling grow toward editor workflows?
+
+## Notes To Revisit
+
+### `Game.requiredSpriteAssets`
+
+Current purpose:
+
+* `GameCore` states which sprite assets the current game state may need, including stable sprite IDs and game-owned asset paths.
+* Platform layers load those paths and cache platform-specific texture objects by sprite ID.
+* This keeps image loading and WebGL texture objects out of `GameCore`, while keeping game content paths out of `PlatformWeb`.
+
+This is intentionally simple right now. With one player, it mostly duplicates the current `sprites` list.
+
+Before growing it, discuss whether asset requirements should come from:
+
+* loaded scene or level data
+* current camera or viewport visibility
+* animation state
+* preload/cache rules
+* a future asset manifest
+
+Do not let `requiredSpriteAssets` become accidental long-term asset architecture without revisiting this tradeoff.

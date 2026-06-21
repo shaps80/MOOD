@@ -17,6 +17,12 @@ final class BrowserRuntime {
     var resolutionUniform: JSValue = .undefined
     var rectUniform: JSValue = .undefined
     var colorUniform: JSValue = .undefined
+    var useTextureUniform: JSValue = .undefined
+    var textureUniform: JSValue = .undefined
+    var spriteTextures: [SpriteID: JSValue] = [:]
+    var spriteImages: [SpriteID: JSObject] = [:]
+    var spriteLoadClosures: [SpriteID: JSClosure] = [:]
+    var spriteErrorClosures: [SpriteID: JSClosure] = [:]
     var lastFrameMilliseconds: Double?
     var accumulatedTime = 0.0
 
@@ -27,7 +33,8 @@ final class BrowserRuntime {
     func start() {
         configureCanvas()
         configureWebGL()
-        configureQuadPipeline()
+        configureSpritePipeline()
+        loadSpriteTextures()
         keyboardInput.startListening()
         touchInput.startListening(on: canvas)
 
@@ -55,7 +62,9 @@ final class BrowserRuntime {
 
         syncCanvasWithGameResolution()
         clearScreen()
-        drawQuad(game.player)
+        for sprite in game.sprites {
+            drawSprite(sprite)
+        }
 
         requestNextFrame()
     }

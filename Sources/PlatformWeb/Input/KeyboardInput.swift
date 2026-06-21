@@ -78,16 +78,9 @@ final class KeyboardInput {
         _ = event.preventDefault!()
 
         if isPressed {
-            logJumpPressIfNeeded(code)
             pressedKeys.insert(code)
         } else {
             pressedKeys.remove(code)
-        }
-    }
-
-    private func logJumpPressIfNeeded(_ code: String) {
-        if code == "Space" && !pressedKeys.contains(code) {
-            _ = JSObject.global.console.log("Keyboard jump pressed")
         }
     }
 

@@ -4,7 +4,6 @@ import Swift
 
 final class GamepadInput {
     private let axisDeadZone = 0.12
-    private var wasJumpPressed = false
 
     var state: InputState {
         guard let gamepads = JSObject.global.navigator.getGamepads().array else {
@@ -18,8 +17,6 @@ final class GamepadInput {
 
             state = state.combined(with: stateForGamepad(gamepad))
         }
-
-        logJumpPressIfNeeded(state.jump)
 
         return state
     }
@@ -65,14 +62,6 @@ final class GamepadInput {
 
     private func isDPadPressed(_ direction: DPadDirection, gamepad: JSObject) -> Bool {
         isButtonPressed(direction.buttonIndex, gamepad: gamepad)
-    }
-
-    private func logJumpPressIfNeeded(_ isJumpPressed: Bool) {
-        if isJumpPressed && !wasJumpPressed {
-            _ = JSObject.global.console.log("Gamepad jump pressed")
-        }
-
-        wasJumpPressed = isJumpPressed
     }
 
     private func axisValue(negative: Bool, positive: Bool, analog: Double) -> Double {

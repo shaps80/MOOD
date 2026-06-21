@@ -6,6 +6,7 @@ PRODUCT="MOOD"
 SDK="swift-6.3.2-RELEASE_wasm"
 PACKAGE_DIR=".build/deploy-wasm/package"
 DIST_DIR="dist"
+ASSETS_DIR="Game/assets"
 ZIP_PATH="MOOD.zip"
 ARGS=()
 
@@ -29,6 +30,15 @@ write_index_html() {
 </body>
 </html>
 HTML
+}
+
+copy_assets() {
+  if [[ ! -d "${ASSETS_DIR}" ]]; then
+    return
+  fi
+
+  mkdir -p "${DIST_DIR}/assets"
+  cp -R "${ASSETS_DIR}/." "${DIST_DIR}/assets/"
 }
 
 while (($#)); do
@@ -84,6 +94,7 @@ npx --yes esbuild "${PACKAGE_DIR}/index.js" \
   --outfile="${DIST_DIR}/mood.js"
 
 cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
+copy_assets
 write_index_html "${DIST_DIR}/index.html"
 
 (
