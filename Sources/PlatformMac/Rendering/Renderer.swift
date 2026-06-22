@@ -80,7 +80,7 @@ final class Renderer {
 
         let viewport = GameViewport(
             drawableSize: view.drawableSize,
-            gameSize: game.size,
+            gameSize: game.logicalResolution,
             interpolationMode: game.interpolationMode
         )
 
@@ -96,8 +96,8 @@ final class Renderer {
             RenderRect(
                 x: 0,
                 y: 0,
-                width: game.size.x,
-                height: game.size.y
+                width: game.logicalResolution.x,
+                height: game.logicalResolution.y
             ),
             material: .color(game.clearColor),
             game: game,
@@ -186,8 +186,8 @@ final class Renderer {
         renderEncoder: MTLRenderCommandEncoder
     ) {
         var resolution = SIMD2<Float>(
-            Float(game.size.x),
-            Float(game.size.y)
+            Float(game.logicalResolution.x),
+            Float(game.logicalResolution.y)
         )
         var rectUniform = SIMD4<Float>(
             Float(rect.x),

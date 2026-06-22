@@ -15,6 +15,13 @@ public struct Color: Equatable, Sendable {
 }
 
 public extension Color {
+    static let clear: Self = .init(
+        red: 0,
+        green: 0,
+        blue: 0,
+        alpha: 0
+    )
+
     static let white: Self = .init(
         red: 1,
         green: 1,
@@ -37,9 +44,9 @@ public extension Color {
     )
 
     static let red: Self = .init(
-        red: 1,
-        green: 0,
-        blue: 0,
+        red: 0.75,
+        green: 0.16,
+        blue: 0.21,
         alpha: 1
     )
 

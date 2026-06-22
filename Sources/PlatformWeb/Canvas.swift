@@ -94,7 +94,7 @@ extension Runtime {
     }
 
     private func displayScale(viewportWidth: Double, viewportHeight: Double) -> Double {
-        let fitScale = min(viewportWidth / game.size.x, viewportHeight / game.size.y)
+        let fitScale = min(viewportWidth / game.logicalResolution.x, viewportHeight / game.logicalResolution.y)
 
         switch game.interpolationMode {
         case .linear:

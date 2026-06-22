@@ -1,7 +1,7 @@
 import Swift
 
 extension Tilemap {
-    public struct Tile: Sendable {
+    public struct Tile: Equatable, Sendable {
         public let kind: Kind
         public let material: Material
 
@@ -10,4 +10,13 @@ extension Tilemap {
             self.material = material
         }
     }
+}
+
+extension Tilemap.Tile {
+    public static let empty: Self = .init(
+        kind: .empty,
+        material: .color(
+            .clear
+        )
+    )
 }

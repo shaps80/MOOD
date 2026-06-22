@@ -61,8 +61,8 @@ final class Runtime: NSObject {
 
     private func configureWindow() {
         let contentSize = NSSize(
-            width: CGFloat(game.size.x),
-            height: CGFloat(game.size.y)
+            width: CGFloat(game.logicalResolution.x),
+            height: CGFloat(game.logicalResolution.y)
         )
         let contentRect = NSRect(origin: .zero, size: contentSize)
         let view = GameView(
