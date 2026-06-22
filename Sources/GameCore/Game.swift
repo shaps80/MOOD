@@ -16,8 +16,8 @@ public struct Game {
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
-        width: Double = 1280,
-        height: Double = 720,
+        width: Double = 480,
+        height: Double = 320,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60
     ) {
