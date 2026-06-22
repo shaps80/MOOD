@@ -6,7 +6,7 @@ struct Player {
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
-    private var entity: Entity
+    var entity: Entity
 
     static let `default` = Player()
 

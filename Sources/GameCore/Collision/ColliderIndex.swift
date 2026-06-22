@@ -92,5 +92,28 @@ extension Tilemap {
                 }
             }
         }
+
+        func forEach(_ body: (Collider) -> Void) {
+            for y in 0..<tilemap.rows {
+                for x in 0..<tilemap.columns {
+                    guard let tile = tilemap.tile(x: x, y: y),
+                          let collider = tile.collider
+                    else {
+                        continue
+                    }
+
+                    body(
+                        Collider(
+                            bounds: collider.worldBounds(
+                                at: Vec2(
+                                    x: Double(x) * tilemap.tileSize.x,
+                                    y: Double(y) * tilemap.tileSize.y
+                                )
+                            )
+                        )
+                    )
+                }
+            }
+        }
     }
 }

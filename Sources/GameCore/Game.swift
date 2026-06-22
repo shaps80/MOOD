@@ -9,6 +9,8 @@ public struct Game {
     private let level: Level
     private var players: [Player]
     private var wasResetPressed = false
+    private var wasDebugTogglePressed = false
+    private var debugOptions: DebugOptions = []
 
     private var sounds: [Sound] = []
     public let soundAssets: [SoundAsset] = [.jump]
@@ -41,10 +43,15 @@ public struct Game {
     public mutating func update(delta: Double, input: Input) {
         defer {
             wasResetPressed = input.reset
+            wasDebugTogglePressed = input.jump
         }
 
         if input.reset && !wasResetPressed {
             resetPlayers()
+        }
+
+        if input.jump && !wasDebugTogglePressed {
+            debugOptions.toggle(.colliders)
         }
 
         var context = Context(
@@ -74,6 +81,10 @@ public struct Game {
 
         appendTileSprites()
         appendPlayerSprites()
+
+        if debugOptions.contains(.colliders) {
+            appendColliderDebugSprites()
+        }
     }
 
     private mutating func appendTileSprites() {
@@ -103,6 +114,32 @@ public struct Game {
         for player in players {
             spriteBuffer.append(player.sprite)
         }
+    }
+
+    private mutating func appendColliderDebugSprites() {
+        let color = Color.green.opacity(0.35)
+
+        level.tilemap.colliderIndex.forEach { collider in
+            appendDebugSprite(bounds: collider.bounds, color: color)
+        }
+
+        for player in players {
+            guard let bounds = player.entity.colliderWorldBounds else {
+                continue
+            }
+
+            appendDebugSprite(bounds: bounds, color: color)
+        }
+    }
+
+    private mutating func appendDebugSprite(bounds: Rect, color: Color) {
+        spriteBuffer.append(
+            Sprite(
+                position: bounds.origin,
+                size: bounds.size,
+                material: .color(color)
+            )
+        )
     }
 
     private mutating func resetPlayers() {

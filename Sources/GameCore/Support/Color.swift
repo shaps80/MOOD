@@ -1,16 +1,22 @@
 import Swift
 
 public struct Color: Equatable, Sendable {
-    public let red: Double
-    public let green: Double
-    public let blue: Double
-    public let alpha: Double
+    public private(set) var red: Double
+    public private(set) var green: Double
+    public private(set) var blue: Double
+    public private(set) var alpha: Double
 
     public init(red: Double, green: Double, blue: Double, alpha: Double) {
         self.red = red
         self.green = green
         self.blue = blue
         self.alpha = alpha
+    }
+
+    public func opacity(_ alpha: Double) -> Color {
+        var copy = self
+        copy.alpha = alpha
+        return copy
     }
 }
 
@@ -53,7 +59,7 @@ public extension Color {
     static let green: Self = .init(
         red: 0,
         green: 1,
-        blue: 0,
+        blue: 0.2,
         alpha: 1
     )
 
