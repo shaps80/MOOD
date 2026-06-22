@@ -2,13 +2,13 @@ import Swift
 
 struct Player {
     private let size: Vec2 = .init(x: 64, y: 64)
+    private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
     private var entity: Entity
     private var speed: Double = 400
     private var acceleration: Double = 1200
     private var deceleration: Double = 1000
-    private var walkTimeline: SpriteAnimation.Timeline
 
 
     static let `default` = Player()
@@ -18,18 +18,15 @@ struct Player {
             position: .zero,
             size: size
         )
-        self.walkTimeline = .init(animation: Self.walk)
     }
 
     var sprite: Sprite {
-        let animation = walkTimeline.animation
-
-        return Sprite(
+        Sprite(
             position: entity.position,
             size: entity.size,
             material: .sprite(
-                animation.textureID,
-                sourceRect: walkTimeline.frame
+                timeline.animation.textureID,
+                sourceRect: timeline.frame
             )
         )
     }
@@ -45,7 +42,8 @@ struct Player {
         let input = context.input
         let worldSize = context.worldSize
 
-        walkTimeline.update(delta: delta)
+        timeline.speed = 0.5
+        timeline.update(delta: delta)
 
         defer {
             wasJumpPressed = input.jump
@@ -140,8 +138,8 @@ struct Player {
     }
 }
 
-extension Player {
-    private static let walk = SpriteAnimation(
+private extension SpriteAnimation {
+    static let walk: SpriteAnimation = .init(
         textureID: .player,
         frames: [
             Rect(x: 0, y: 0, width: 48, height: 48),

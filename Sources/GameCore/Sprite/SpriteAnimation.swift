@@ -37,17 +37,17 @@ public struct SpriteAnimation: Equatable, Sendable {
 extension SpriteAnimation {
     public struct Timeline: Equatable, Sendable {
         public let animation: SpriteAnimation
-        public var timeScale: Double
+        public var speed: Double
         public private(set) var elapsedTime: Double
 
         public init(animation: SpriteAnimation, timeScale: Double = 1, elapsedTime: Double = 0) {
             self.animation = animation
-            self.timeScale = timeScale
+            self.speed = timeScale
             self.elapsedTime = elapsedTime
         }
 
         public mutating func update(delta: Double) {
-            elapsedTime += max(delta, 0) * max(timeScale, 0)
+            elapsedTime += max(delta, 0) * max(speed, 0)
         }
 
         public mutating func reset() {
