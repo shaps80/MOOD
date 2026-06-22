@@ -2,12 +2,14 @@ import Swift
 
 struct Player {
     private let size: Vec2 = .init(x: 64, y: 64)
-    private var walkTimeline: SpriteAnimation.Timeline
-    var entity: Entity
-    var speed: Double = 400
-    var acceleration: Double = 1200
-    var deceleration: Double = 1000
     private var wasJumpPressed = false
+
+    private var entity: Entity
+    private var speed: Double = 400
+    private var acceleration: Double = 1200
+    private var deceleration: Double = 1000
+    private var walkTimeline: SpriteAnimation.Timeline
+
 
     static let `default` = Player()
 
@@ -16,7 +18,7 @@ struct Player {
             position: .zero,
             size: size
         )
-        self.walkTimeline = .init(animation: Self.walkAnimation)
+        self.walkTimeline = .init(animation: Self.walk)
     }
 
     var sprite: Sprite {
@@ -139,7 +141,7 @@ struct Player {
 }
 
 extension Player {
-    private static let walkAnimation = SpriteAnimation(
+    private static let walk = SpriteAnimation(
         textureID: .player,
         frames: [
             Rect(x: 0, y: 0, width: 48, height: 48),
