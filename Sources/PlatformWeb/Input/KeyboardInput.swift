@@ -12,7 +12,8 @@ final class KeyboardInput {
         Input(
             horizontal: horizontalAxis,
             vertical: verticalAxis,
-            jump: isPressed("Space")
+            jump: isPressed("Space"),
+            reset: isPressed("Escape")
         )
     }
 
@@ -92,7 +93,8 @@ final class KeyboardInput {
         switch code {
         case "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
              "KeyW", "KeyA", "KeyS", "KeyD",
-             "Space":
+             "Space",
+             "Escape":
             return true
         default:
             return false

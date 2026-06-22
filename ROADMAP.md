@@ -84,8 +84,10 @@ Status: In Progress
 - [x] Basic tile map model
 - [x] Render screen-sized boundary wall map
 - [x] Basic player/tile AABB collision tested against boundary walls
-- [ ] Cross-wall collision test map
-- [ ] Spawn points and checkpoint respawn
+- [x] Cross-wall collision test map
+- [x] Level owns tilemap and spawn point
+- [x] Reset player to level spawn
+- [ ] Checkpoint respawn
 - [ ] Camera
 
 World support includes simple GameCore-controlled relocation for cases like falling, death, respawn, and checkpoint reset. This is not a generalized teleport or portal system unless the game needs one.

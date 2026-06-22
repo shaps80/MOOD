@@ -38,9 +38,12 @@ struct Player {
     }
 
     public mutating func place(at position: Vec2) {
-        entity.position = .init(
-            x: position.x - (size.x / 2),
-            y: position.y - (size.y / 2)
+        entity.move(
+            to: Vec2(
+                x: position.x - (size.x / 2),
+                y: position.y - (size.y / 2)
+            ),
+            velocity: .zero
         )
     }
 
