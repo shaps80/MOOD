@@ -87,16 +87,68 @@ Status: In Progress
 - [x] Cross-wall collision test map
 - [x] Level owns tilemap and spawn point
 - [x] Reset player to level spawn
-- [ ] Checkpoint respawn
-- [ ] Camera
+- [ ] Player controller
 
-World support includes simple GameCore-controlled relocation for cases like falling, death, respawn, and checkpoint reset. This is not a generalized teleport or portal system unless the game needs one.
+World support establishes tile maps, collision, spawn placement, and player movement control. Respawn/checkpoint and camera behavior are tracked separately because they need their own design passes.
 
 Question answered:
 
 Can MOOD support a playable environment?
 
-## Milestone 6 - Playable Game
+## Milestone 6 - Respawn
+
+Status: Not Started
+
+- [ ] Define failure/death condition
+- [ ] Track active respawn point
+- [ ] Add checkpoint trigger
+- [ ] Respawn player at active checkpoint after failure
+
+Question answered:
+
+Can MOOD recover the player after failure?
+
+## Milestone 7 - Camera
+
+Status: Not Started
+
+- [ ] Define camera state in GameCore
+- [ ] Follow player within level bounds
+- [ ] Apply camera transform in platform renderers
+
+Question answered:
+
+Can MOOD present worlds larger than the viewport?
+
+## Milestone 8 - Visibility & Render Ordering
+
+Status: Not Started
+
+- [ ] Render only visible tile range
+- [ ] Render only visible sprites/entities
+- [ ] Add render layer / z-index ordering
+- [ ] Keep deterministic draw order within each layer
+
+Question answered:
+
+Can MOOD keep rendering work bounded by what the player can see?
+
+## Milestone 9 - Collision Filtering & Interactions
+
+Status: Not Started
+
+- [ ] Add enemy entity
+- [ ] Add pickup entity
+- [ ] Define collision layers and masks
+- [ ] Keep player-vs-world collision blocking movement
+- [ ] Support pickup overlap without blocking movement
+- [ ] Support player/enemy interaction
+
+Question answered:
+
+Can MOOD distinguish blocking collisions from gameplay overlaps?
+
+## Milestone 10 - Playable Game
 
 Status: Not Started
 
@@ -107,7 +159,7 @@ This is the most important milestone.
 
 Everything before this is technology validation.
 
-## Milestone 7 - Swift Tooling Review
+## Milestone 11 - Swift Tooling Review
 
 Status: Not Started
 
