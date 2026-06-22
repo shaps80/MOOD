@@ -133,7 +133,7 @@ extension Runtime {
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
         _ = gl.enableVertexAttribArray!(positionAttributeLocation)
         _ = gl.vertexAttribPointer!(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0)
-        _ = gl.uniform2f!(resolutionUniform, game.size.x, game.size.y)
+        _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
         _ = gl.uniform4f!(rectUniform, rect.x, rect.y, rect.width, rect.height)
         applyMaterial(material, gl: gl)
         _ = gl.drawArrays!(gl.TRIANGLES, 0, 6)

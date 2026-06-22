@@ -69,24 +69,24 @@ extension Runtime {
     func syncCanvasWithGameResolution() {
         guard let canvas, let gl else { return }
 
-        if canvas.width.number != game.size.x {
-            canvas.width = .number(game.size.x)
+        if canvas.width.number != game.logicalResolution.x {
+            canvas.width = .number(game.logicalResolution.x)
         }
 
-        if canvas.height.number != game.size.y {
-            canvas.height = .number(game.size.y)
+        if canvas.height.number != game.logicalResolution.y {
+            canvas.height = .number(game.logicalResolution.y)
         }
 
         fitCanvasElementToViewport(canvas)
-        _ = gl.viewport!(0, 0, game.size.x, game.size.y)
+        _ = gl.viewport!(0, 0, game.logicalResolution.x, game.logicalResolution.y)
     }
 
     func fitCanvasElementToViewport(_ canvas: JSObject) {
-        let viewportWidth = JSObject.global.innerWidth.number ?? game.size.x
-        let viewportHeight = JSObject.global.innerHeight.number ?? game.size.y
+        let viewportWidth = JSObject.global.innerWidth.number ?? game.logicalResolution.x
+        let viewportHeight = JSObject.global.innerHeight.number ?? game.logicalResolution.y
         let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight)
-        let displayWidth = game.size.x * scale
-        let displayHeight = game.size.y * scale
+        let displayWidth = game.logicalResolution.x * scale
+        let displayHeight = game.logicalResolution.y * scale
 
         canvas.style.imageRendering = .string(imageRendering)
         canvas.style.width = .string("\(displayWidth)px")
