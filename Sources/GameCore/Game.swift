@@ -11,23 +11,28 @@ public struct Game {
     private var sounds: [Sound] = []
     public let soundAssets: [SoundAsset] = [.jump]
 
-    public var sprites: [Sprite] { players.map(\.sprite) }
+    private var spriteBuffer: [Sprite]
+    public var sprites: [Sprite] { spriteBuffer }
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
         width: Double = 1280,
         height: Double = 720,
         interpolationMode: InterpolationMode = .nearest,
-        preferredFPS: Double = 120
+        preferredFPS: Double = 60
     ) {
         self.size = Vec2(x: width, y: height)
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
         self.players = [.default]
+        self.spriteBuffer = []
+        self.spriteBuffer.reserveCapacity(players.count)
 
         for index in players.indices {
             players[index].place(in: size)
         }
+
+        rebuildSpriteBuffer()
     }
 
     public mutating func update(delta: Double, input: Input) {
@@ -41,6 +46,7 @@ public struct Game {
         }
 
         sounds.append(contentsOf: context.sounds)
+        rebuildSpriteBuffer()
     }
 
     public mutating func drainSounds() -> [Sound] {
@@ -49,6 +55,14 @@ public struct Game {
         }
 
         return sounds
+    }
+
+    private mutating func rebuildSpriteBuffer() {
+        spriteBuffer.removeAll(keepingCapacity: true)
+
+        for player in players {
+            spriteBuffer.append(player.sprite)
+        }
     }
 }
 

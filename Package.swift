@@ -25,12 +25,25 @@ let package = Package(
                 )
             ]
         ),
+        .target(
+            name: "PlatformMac",
+            dependencies: [
+                "GameCore"
+            ],
+            resources: [
+                .copy("../../Game/assets")
+            ]
+        ),
         .executableTarget(
             name: "MOOD",
             dependencies: [
                 .target(
                     name: "PlatformWeb",
                     condition: .when(platforms: [.wasi])
+                ),
+                .target(
+                    name: "PlatformMac",
+                    condition: .when(platforms: [.macOS])
                 )
             ]
         )
