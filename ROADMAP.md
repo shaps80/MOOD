@@ -62,6 +62,21 @@ Question answered:
 
 Can MOOD display game art?
 
+## Milestone 4.5 - Native Debug Platform
+
+Status: Done
+
+- [x] PlatformMac target
+- [x] MetalKit renderer
+- [x] Native keyboard input
+- [x] Native controller input
+- [x] Native audio
+- [x] Packaged game assets
+
+Question answered:
+
+Can another platform run MOOD without a GameCore rewrite?
+
 ## Milestone 5 - World
 
 Status: Not Started
@@ -99,26 +114,3 @@ Status: Not Started
 Question answered:
 
 Can MOOD's project tooling grow toward editor workflows?
-
-## Notes To Revisit
-
-### `Game.spriteAssets` and `Game.soundAssets`
-
-Current purpose:
-
-* `GameCore` states which sprite and sound assets the current game may need, including stable IDs and game-owned asset paths.
-* Platform layers load those paths and cache platform-specific texture/audio objects by asset ID.
-* `Game.spriteAssets` is currently derived from live entities; `Game.soundAssets` is currently a tiny preload list.
-* This keeps image/audio loading, WebGL texture objects, and Web Audio buffers out of `GameCore`, while keeping game content paths out of `PlatformWeb`.
-
-This is intentionally simple right now. With one player and one sound, it mostly duplicates obvious current game state.
-
-Before growing this, discuss whether asset requirements should come from:
-
-* loaded scene or level data
-* current camera or viewport visibility
-* animation state
-* preload/cache rules
-* a future asset manifest
-
-Do not let these asset lists become accidental long-term asset architecture without revisiting this tradeoff.
