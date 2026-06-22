@@ -79,9 +79,10 @@ Can another platform run MOOD without a GameCore rewrite?
 
 ## Milestone 5 - World
 
-Status: Not Started
+Status: In Progress
 
-- [ ] Tile maps
+- [x] Basic tile map model
+- [x] Render screen-sized boundary wall map
 - [ ] Collision
 - [ ] Spawn points and checkpoint respawn
 - [ ] Camera

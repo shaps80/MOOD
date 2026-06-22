@@ -68,29 +68,37 @@ extension Runtime {
 
     func syncCanvasWithGameResolution() {
         guard let canvas, let gl else { return }
+        let displaySize = fitCanvasElementToViewport(canvas)
 
-        if canvas.width.number != game.logicalResolution.x {
-            canvas.width = .number(game.logicalResolution.x)
+        if canvas.width.number != displaySize.backingWidth {
+            canvas.width = .number(displaySize.backingWidth)
         }
 
-        if canvas.height.number != game.logicalResolution.y {
-            canvas.height = .number(game.logicalResolution.y)
+        if canvas.height.number != displaySize.backingHeight {
+            canvas.height = .number(displaySize.backingHeight)
         }
 
-        fitCanvasElementToViewport(canvas)
-        _ = gl.viewport!(0, 0, game.logicalResolution.x, game.logicalResolution.y)
+        _ = gl.viewport!(0, 0, displaySize.backingWidth, displaySize.backingHeight)
     }
 
-    func fitCanvasElementToViewport(_ canvas: JSObject) {
+    func fitCanvasElementToViewport(_ canvas: JSObject) -> CanvasDisplaySize {
         let viewportWidth = JSObject.global.innerWidth.number ?? game.logicalResolution.x
         let viewportHeight = JSObject.global.innerHeight.number ?? game.logicalResolution.y
+        let devicePixelRatio = max(1, JSObject.global.devicePixelRatio.number ?? 1)
         let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight)
         let displayWidth = game.logicalResolution.x * scale
         let displayHeight = game.logicalResolution.y * scale
+        let backingWidth = max(1, (displayWidth * devicePixelRatio).rounded())
+        let backingHeight = max(1, (displayHeight * devicePixelRatio).rounded())
 
         canvas.style.imageRendering = .string(imageRendering)
         canvas.style.width = .string("\(displayWidth)px")
         canvas.style.height = .string("\(displayHeight)px")
+
+        return CanvasDisplaySize(
+            backingWidth: backingWidth,
+            backingHeight: backingHeight
+        )
     }
 
     private func displayScale(viewportWidth: Double, viewportHeight: Double) -> Double {
@@ -114,4 +122,9 @@ extension Runtime {
             return "pixelated"
         }
     }
+}
+
+struct CanvasDisplaySize {
+    let backingWidth: Double
+    let backingHeight: Double
 }
