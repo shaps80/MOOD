@@ -87,7 +87,7 @@ Status: In Progress
 - [x] Cross-wall collision test map
 - [x] Level owns tilemap and spawn point
 - [x] Reset player to level spawn
-- [ ] Player controller
+- [x] Player controller
 
 World support establishes tile maps, collision, spawn placement, and player movement control. Respawn/checkpoint and camera behavior are tracked separately because they need their own design passes.
 

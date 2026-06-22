@@ -2,14 +2,11 @@ import Swift
 
 struct Player {
     private let size: Vec2 = .init(x: 48, y: 48)
+    private var controller: TopPlayerController = .default
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
     private var entity: Entity
-    private var speed: Double = 300
-    private var acceleration: Double = 800
-    private var deceleration: Double = 500
-
 
     static let `default` = Player()
 
@@ -22,6 +19,8 @@ struct Player {
                     origin: .zero,
                     size: size
                 )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
             )
         )
     }
@@ -50,24 +49,16 @@ struct Player {
     public mutating func update(context: inout Game.Context) {
         let input = context.input
 
-        timeline.speed = 0.5
         timeline.update(delta: context.delta)
 
         defer {
             wasJumpPressed = input.jump
         }
 
-        let velocity = Vec2(
-            x: velocity(
-                current: entity.velocity.x,
-                input: input.horizontal,
-                delta: context.delta
-            ),
-            y: velocity(
-                current: entity.velocity.y,
-                input: input.vertical,
-                delta: context.delta
-            )
+        let velocity = controller.velocity(
+            for: input,
+            current: entity.velocity,
+            delta: context.delta
         )
 
         context.move(entity: &entity, velocity: velocity)
@@ -75,43 +66,6 @@ struct Player {
         if input.jump && !wasJumpPressed {
             context.play(sound: .jump)
         }
-    }
-
-    private func velocity(current: Double, input: Double, delta: Double) -> Double {
-        guard input != 0 else {
-            return decelerate(current, delta: delta)
-        }
-
-        let target = input * speed
-        if isReversing(current: current, target: target) {
-            return decelerate(current, delta: delta)
-        }
-
-        return accelerate(current, toward: target, delta: delta)
-    }
-
-    private func accelerate(_ current: Double, toward target: Double, delta: Double) -> Double {
-        let step = acceleration * delta
-
-        if current < target {
-            return min(current + step, target)
-        }
-
-        return max(current - step, target)
-    }
-
-    private func decelerate(_ current: Double, delta: Double) -> Double {
-        let step = deceleration * delta
-
-        if abs(current) <= step {
-            return 0
-        }
-
-        return current > 0 ? current - step : current + step
-    }
-
-    private func isReversing(current: Double, target: Double) -> Bool {
-        (current < 0 && target > 0) || (current > 0 && target < 0)
     }
 }
 
