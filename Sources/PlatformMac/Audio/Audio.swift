@@ -5,8 +5,8 @@ import Swift
 @MainActor
 final class Audio {
     private let assetResolver: AssetResolver
-    private var soundData: [SoundID: Data] = [:]
-    private var activePlayers: [AVAudioPlayer] = []
+    private let engine = AVAudioEngine()
+    private var soundPlayers: [SoundID: SoundPlayer] = [:]
 
     init(assetResolver: AssetResolver) {
         self.assetResolver = assetResolver
@@ -16,12 +16,14 @@ final class Audio {
         for soundAsset in Set(soundAssets) {
             loadSoundBuffer(soundAsset)
         }
+
+        prepareEngine()
     }
 
     func playSounds(_ sounds: [Sound]) {
         guard !sounds.isEmpty else { return }
 
-        activePlayers.removeAll { !$0.isPlaying }
+        startEngineIfNeeded()
 
         for sound in sounds {
             playSound(sound)
@@ -35,24 +37,66 @@ final class Audio {
         }
 
         do {
-            soundData[soundAsset.id] = try Data(contentsOf: url)
+            let file = try AVAudioFile(forReading: url)
+            guard let buffer = AVAudioPCMBuffer(
+                pcmFormat: file.processingFormat,
+                frameCapacity: AVAudioFrameCount(file.length)
+            ) else {
+                print("Unable to create sound buffer for '\(soundAsset.path)'")
+                return
+            }
+
+            try file.read(into: buffer)
+
+            let playerNode = AVAudioPlayerNode()
+            engine.attach(playerNode)
+            engine.connect(
+                playerNode,
+                to: engine.mainMixerNode,
+                format: buffer.format
+            )
+            playerNode.prepare(withFrameCount: buffer.frameLength)
+
+            soundPlayers[soundAsset.id] = SoundPlayer(
+                buffer: buffer,
+                playerNode: playerNode
+            )
         } catch {
             print("Unable to load sound asset '\(soundAsset.path)': \(error)")
         }
     }
 
     private func playSound(_ sound: Sound) {
-        guard let data = soundData[sound.id] else {
+        guard let soundPlayer = soundPlayers[sound.id] else {
             return
         }
 
+        if soundPlayer.playerNode.isPlaying {
+            soundPlayer.playerNode.stop()
+        }
+
+        soundPlayer.playerNode.scheduleBuffer(soundPlayer.buffer)
+        soundPlayer.playerNode.play()
+    }
+
+    private func prepareEngine() {
+        _ = engine.outputNode
+        engine.prepare()
+        startEngineIfNeeded()
+    }
+
+    private func startEngineIfNeeded() {
+        guard !engine.isRunning else { return }
+
         do {
-            let player = try AVAudioPlayer(data: data)
-            player.prepareToPlay()
-            player.play()
-            activePlayers.append(player)
+            try engine.start()
         } catch {
-            print("Unable to play sound '\(sound.id.rawValue)': \(error)")
+            print("Unable to start audio engine: \(error)")
         }
     }
+}
+
+private struct SoundPlayer {
+    let buffer: AVAudioPCMBuffer
+    let playerNode: AVAudioPlayerNode
 }
