@@ -52,11 +52,11 @@ Can MOOD load content?
 
 ## Milestone 4 - Sprites
 
-Status: In Progress
+Status: Done
 
 - [x] Textured quads
 - [x] Sprite sheets
-- [ ] Sprite animation
+- [x] Sprite animation
 
 Question answered:
 
@@ -66,9 +66,12 @@ Can MOOD display game art?
 
 Status: Not Started
 
-- [ ] Camera
-- [ ] Collision
 - [ ] Tile maps
+- [ ] Collision
+- [ ] Spawn points and checkpoint respawn
+- [ ] Camera
+
+World support includes simple GameCore-controlled relocation for cases like falling, death, respawn, and checkpoint reset. This is not a generalized teleport or portal system unless the game needs one.
 
 Question answered:
 
