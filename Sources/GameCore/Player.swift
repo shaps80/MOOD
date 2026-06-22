@@ -16,7 +16,13 @@ struct Player {
     private init() {
         self.entity = .init(
             position: .zero,
-            size: size
+            size: size,
+            collider: Collider(
+                bounds: Rect(
+                    origin: .zero,
+                    size: size
+                )
+            )
         )
     }
 
@@ -38,62 +44,30 @@ struct Player {
         )
     }
 
-    public mutating func update(delta: Double, context: inout Game.Context) {
+    public mutating func update(context: inout Game.Context) {
         let input = context.input
-        let worldSize = context.worldSize
 
         timeline.speed = 0.5
-        timeline.update(delta: delta)
+        timeline.update(delta: context.delta)
 
         defer {
             wasJumpPressed = input.jump
         }
 
-        let step = max(delta, 0)
-        let leftBound = 0.0
-        let rightBound = worldSize.x - entity.size.x
-        let topBound = 0.0
-        let bottomBound = worldSize.y - entity.size.y
-
-        var velocity = Vec2(
+        let velocity = Vec2(
             x: velocity(
                 current: entity.velocity.x,
                 input: input.horizontal,
-                delta: step
+                delta: context.delta
             ),
             y: velocity(
                 current: entity.velocity.y,
                 input: input.vertical,
-                delta: step
+                delta: context.delta
             )
         )
 
-        let proposedX = entity.position.x + (velocity.x * step)
-        let proposedY = entity.position.y + (velocity.y * step)
-        let nextX = clamp(
-            proposedX,
-            min: leftBound,
-            max: rightBound
-        )
-
-        let nextY = clamp(
-            proposedY,
-            min: topBound,
-            max: bottomBound
-        )
-
-        if nextX != proposedX {
-            velocity = Vec2(x: 0, y: velocity.y)
-        }
-
-        if nextY != proposedY {
-            velocity = Vec2(x: velocity.x, y: 0)
-        }
-
-        entity.move(
-            to: Vec2(x: nextX, y: nextY),
-            velocity: velocity
-        )
+        context.move(entity: &entity, velocity: velocity)
 
         if input.jump && !wasJumpPressed {
             context.play(sound: .jump)

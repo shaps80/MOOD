@@ -83,7 +83,8 @@ Status: In Progress
 
 - [x] Basic tile map model
 - [x] Render screen-sized boundary wall map
-- [ ] Collision
+- [x] Basic player/tile AABB collision tested against boundary walls
+- [ ] Cross-wall collision test map
 - [ ] Spawn points and checkpoint respawn
 - [ ] Camera
 
@@ -115,3 +116,10 @@ Status: Not Started
 Question answered:
 
 Can MOOD's project tooling grow toward editor workflows?
+
+## Backlog
+
+Potential future improvements. These are not committed milestone work.
+
+- Collision shapes beyond rectangles, such as ellipses or polygons, once gameplay needs them.
+- Convenience APIs for adjusting rectangles in code, such as edge-specific padding/insetting.

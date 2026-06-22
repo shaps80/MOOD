@@ -39,13 +39,14 @@ public struct Game {
     }
 
     public mutating func update(delta: Double, input: Input) {
-        var context = Context(input: input, worldSize: logicalResolution)
+        var context = Context(
+            delta: delta,
+            input: input,
+            tilemap: tilemap
+        )
 
         for index in players.indices {
-            players[index].update(
-                delta: delta,
-                context: &context
-            )
+            players[index].update(context: &context)
         }
 
         sounds.append(contentsOf: context.sounds)
@@ -103,7 +104,13 @@ private extension Tilemap {
         let rows = Int(worldSize.y / tileSize.y)
         let wall = Tilemap.Tile(
             kind: .wall,
-            material: .color(.red)
+            material: .color(.red),
+            collider: Collider(
+                bounds: Rect(
+                    origin: .zero,
+                    size: tileSize
+                )
+            )
         )
 
         var tilemap = Tilemap(
@@ -129,17 +136,26 @@ private extension Tilemap {
 
 extension Game {
     struct Context {
+        let delta: Double
         let input: Input
-        let worldSize: Vec2
-        fileprivate private(set) var sounds = [Sound]()
+        private let collisionWorld: CollisionWorld
+        fileprivate private(set) var sounds: [Sound] = []
 
-        init(input: Input, worldSize: Vec2) {
+        init(delta: Double, input: Input, tilemap: Tilemap) {
+            self.delta = max(delta, 0)
             self.input = input
-            self.worldSize = worldSize
+            self.collisionWorld = CollisionWorld(
+                tilemap: tilemap,
+                delta: delta
+            )
         }
 
         mutating func play(sound: Sound) {
             sounds.append(sound)
+        }
+
+        func move(entity: inout Entity, velocity: Vec2) {
+            collisionWorld.move(entity: &entity, velocity: velocity)
         }
     }
 }

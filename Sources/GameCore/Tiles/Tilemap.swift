@@ -81,4 +81,32 @@ public struct Tilemap: Equatable, Sendable {
     private func index(x: Int, y: Int) -> Int {
         (y * columns) + x
     }
+
+    public func tileRange(intersecting bounds: Rect) -> Tilemap.Range? {
+        let minX = max(bounds.minX, 0)
+        let minY = max(bounds.minY, 0)
+        let maxX = min(bounds.maxX, Double(columns) * tileSize.x)
+        let maxY = min(bounds.maxY, Double(rows) * tileSize.y)
+
+        guard minX < maxX && minY < maxY else {
+            return nil
+        }
+
+        let minColumn = Int((minX / tileSize.x).rounded(.down))
+        let maxColumn = Int((maxX.nextDown / tileSize.x).rounded(.down))
+        let minRow = Int((minY / tileSize.y).rounded(.down))
+        let maxRow = Int((maxY.nextDown / tileSize.y).rounded(.down))
+
+        return Tilemap.Range(
+            columns: minColumn...maxColumn,
+            rows: minRow...maxRow
+        )
+    }
+}
+
+extension Tilemap {
+    public struct Range {
+        public let columns: ClosedRange<Int>
+        public let rows: ClosedRange<Int>
+    }
 }
