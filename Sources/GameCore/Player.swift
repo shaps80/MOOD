@@ -37,10 +37,10 @@ struct Player {
         )
     }
 
-    public mutating func place(in worldSize: Vec2) {
+    public mutating func place(at position: Vec2) {
         entity.position = .init(
-            x: (worldSize.x - size.x) / 2,
-            y: (worldSize.y - size.y) / 2
+            x: position.x - (size.x / 2),
+            y: position.y - (size.y / 2)
         )
     }
 

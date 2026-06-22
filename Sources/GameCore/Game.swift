@@ -32,7 +32,7 @@ public struct Game {
         )
 
         for index in players.indices {
-            players[index].place(in: logicalResolution)
+            players[index].place(at: topLeftQuadrantSpawn)
         }
 
         rebuildSpriteBuffer()
@@ -96,6 +96,16 @@ public struct Game {
             spriteBuffer.append(player.sprite)
         }
     }
+
+    private var topLeftQuadrantSpawn: Vec2 {
+        let boundaryThickness = tilemap.tileSize.x
+        let quadrantCenter = Vec2(
+            x: (boundaryThickness + (logicalResolution.x / 2)) / 2,
+            y: (boundaryThickness + (logicalResolution.y / 2)) / 2
+        )
+
+        return quadrantCenter
+    }
 }
 
 private extension Tilemap {
@@ -128,6 +138,23 @@ private extension Tilemap {
         for y in 0..<rows {
             tilemap[0, y] = wall
             tilemap[columns - 1, y] = wall
+        }
+
+        let centerColumn = columns / 2
+        let centerRow = rows / 2
+        let horizontalLength = columns / 2
+        let verticalLength = rows / 2
+        let horizontalStart = centerColumn - (horizontalLength / 2)
+        let horizontalEnd = horizontalStart + horizontalLength - 1
+        let verticalStart = centerRow - (verticalLength / 2)
+        let verticalEnd = verticalStart + verticalLength - 1
+
+        for x in horizontalStart...horizontalEnd {
+            tilemap[x, centerRow] = wall
+        }
+
+        for y in verticalStart...verticalEnd {
+            tilemap[centerColumn, y] = wall
         }
 
         return tilemap
