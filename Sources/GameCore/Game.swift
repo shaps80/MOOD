@@ -17,7 +17,7 @@ public struct Game {
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
-        logicalResolution: Vec2 = .init(x: 480, y: 320),
+        logicalResolution: Vec2 = .init(x: 1280, y: 720),
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60
     ) {

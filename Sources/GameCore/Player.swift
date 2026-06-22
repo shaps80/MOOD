@@ -1,14 +1,14 @@
 import Swift
 
 struct Player {
-    private let size: Vec2 = .init(x: 32, y: 32)
+    private let size: Vec2 = .init(x: 48, y: 48)
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
     private var entity: Entity
-    private var speed: Double = 200
-    private var acceleration: Double = 1200
-    private var deceleration: Double = 1000
+    private var speed: Double = 300
+    private var acceleration: Double = 800
+    private var deceleration: Double = 500
 
 
     static let `default` = Player()
