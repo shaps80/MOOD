@@ -27,13 +27,13 @@ public struct TopPlayerController: Equatable, Sendable {
     public static let `default` = TopPlayerController(
         horizontal: AxisController(
             maxSpeed: 300,
-            acceleration: 800,
-            deceleration: 500
+            acceleration: 2000,
+            deceleration: 2000
         ),
         vertical: AxisController(
             maxSpeed: 300,
-            acceleration: 800,
-            deceleration: 500
+            acceleration: 2000,
+            deceleration: 2000
         )
     )
 }
