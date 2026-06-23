@@ -165,8 +165,10 @@ This project uses Swiftly-managed Swift toolchains.
 
 Agent verification preference:
 
-* Default to build checks only.
-* When verifying that agent changes build, run `./build.sh` so compiler/package errors are visible.
+* Default to direct SwiftPM build checks through `swiftly run`.
+* When starting or verifying agent work, do not run `./build.sh` by default because it also starts the browser-serving flow.
+* For GameCore/gameplay changes, run `swiftly run swift build --scratch-path .build/host --target GameCore`.
+* For browser/Wasm compile checks, run `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`.
 * Do not run `./deploy-wasm.sh` for routine verification; reserve it for explicit deploy/itch packaging requests or when the user says they are running that flow themselves.
 * Do not launch browsers, start local browser testing flows, use browser automation, or run test suites unless explicitly requested.
 * The user handles gameplay, browser, and test-suite verification.
@@ -197,12 +199,12 @@ For browser/Wasm builds, always invoke Swift through `swiftly run`.
 
 `swiftly run swift run --swift-sdk swift-6.3.2-RELEASE_wasm` is useful as a Wasm build smoke check. Once `PlatformWeb` imports JavaScriptKit, browser execution should go through PackageToJS and the generated `dist/index.html`, because the app needs JavaScriptKit's browser runtime imports.
 
-For local browser runs, prefer the repo script:
+For explicit local browser runs, prefer the repo script:
 
 * `./build.sh`
 * `./build.sh -c release`
 
-Agents and humans should use this same script so changes to build flags, port, PackageToJS options, and printed URL stay in one place. The script builds the same `dist/` folder used for itch.io, serves it on port `9999`, and prints:
+Humans and explicitly browser-running agents should use this same script so changes to build flags, port, PackageToJS options, and printed URL stay in one place. The script builds the same `dist/` folder used for itch.io, serves it on port `9999`, and prints:
 
 * `http://127.0.0.1:9999/`
 * the selected configuration
@@ -227,7 +229,7 @@ Useful checks:
 * `swiftly run swift --version`
 * `swiftly run swift build --scratch-path .build/host --target GameCore`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
-* `./build.sh`
+* `./build.sh` only for explicit browser-serving checks
 
 Prefer the `.build/host` scratch path for host checks. Reusing the default `.build` for both host tests and Wasm PackageToJS builds can leave SwiftPM with stale cross-target build graph entries.
 
