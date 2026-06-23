@@ -6,10 +6,14 @@ struct Player {
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
-    var entity: Entity
+    let entityID: Entity.ID
 
     init(entityID: Entity.ID) {
-        self.entity = .init(
+        self.entityID = entityID
+    }
+
+    func makeEntity() -> Entity {
+        Entity(
             id: entityID,
             position: .zero,
             size: size,
@@ -24,7 +28,7 @@ struct Player {
         )
     }
 
-    var sprite: Sprite {
+    func sprite(for entity: Entity) -> Sprite {
         Sprite(
             position: entity.position,
             size: entity.size,
@@ -35,7 +39,7 @@ struct Player {
         )
     }
 
-    public mutating func place(at position: Vec2) {
+    func place(entity: inout Entity, at position: Vec2) {
         entity.move(
             to: Vec2(
                 x: position.x - (size.x / 2),
@@ -45,7 +49,7 @@ struct Player {
         )
     }
 
-    public mutating func update(context: inout Game.Context) {
+    public mutating func update(context: inout Game.Context, entity: inout Entity) {
         let input = context.input
 
         timeline.update(delta: context.delta)

@@ -9,6 +9,7 @@ public struct Game {
 
     private let level: Level
     private var players: [Player]
+    private var entities: EntityStore
     private var cameraRig: CameraRig
     private var wasResetPressed = false
     private var wasDebugTogglePressed = false
@@ -30,6 +31,7 @@ public struct Game {
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
         self.players = [Player(entityID: .player)]
+        self.entities = EntityStore()
 
         let level = Level.level2(
             worldSize: Vec2(
@@ -45,8 +47,11 @@ public struct Game {
             constraints: CameraConstraints(bounds: level.bounds)
         )
 
-        for index in players.indices {
-            players[index].place(at: level.spawnPoint)
+        for player in players {
+            var entity = player.makeEntity()
+
+            player.place(entity: &entity, at: level.spawnPoint)
+            entities.insert(entity)
         }
 
         updateCamera()
@@ -74,7 +79,9 @@ public struct Game {
         )
 
         for index in players.indices {
-            players[index].update(context: &context)
+            entities.modify(players[index].entityID) { entity in
+                players[index].update(context: &context, entity: &entity)
+            }
         }
 
         updateCamera()
@@ -126,7 +133,11 @@ public struct Game {
 
     private mutating func appendPlayerSprites() {
         for player in players {
-            spriteBuffer.append(player.sprite)
+            guard let entity = entities[player.entityID] else {
+                continue
+            }
+
+            spriteBuffer.append(player.sprite(for: entity))
         }
     }
 
@@ -138,7 +149,8 @@ public struct Game {
         }
 
         for player in players {
-            guard let bounds = player.entity.colliderWorldBounds else {
+            guard let entity = entities[player.entityID],
+                  let bounds = entity.colliderWorldBounds else {
                 continue
             }
 
@@ -157,8 +169,13 @@ public struct Game {
     }
 
     private mutating func resetPlayers() {
-        for index in players.indices {
-            players[index].place(at: level.spawnPoint)
+        for player in players {
+            guard var entity = entities[player.entityID] else {
+                continue
+            }
+
+            player.place(entity: &entity, at: level.spawnPoint)
+            entities.insert(entity)
         }
     }
 
@@ -167,11 +184,7 @@ public struct Game {
     }
 
     private func entityBounds(for id: Entity.ID) -> Rect? {
-        for player in players where player.entity.id == id {
-            return player.entity.bounds
-        }
-
-        return nil
+        entities.bounds(for: id)
     }
 }
 
