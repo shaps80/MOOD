@@ -29,6 +29,15 @@ public struct TopPlayerController: Equatable, Sendable {
             maxSpeed: 300,
             acceleration: 2000,
             deceleration: 2000
+        )
+    )
+
+    public static let ice = TopPlayerController(
+        horizontal: AxisController(
+            maxSpeed: 600,
+            acceleration: 1000,
+            deceleration: 1500,
+            reverseDeceleration: 200
         ),
         vertical: AxisController(
             maxSpeed: 300,

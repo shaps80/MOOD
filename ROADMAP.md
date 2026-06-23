@@ -79,7 +79,7 @@ Can another platform run MOOD without a GameCore rewrite?
 
 ## Milestone 5 - World
 
-Status: In Progress
+Status: Done
 
 - [x] Basic tile map model
 - [x] Render screen-sized boundary wall map
@@ -97,7 +97,7 @@ Can MOOD support a playable environment?
 
 ## Milestone 6 - Respawn
 
-Status: Not Started
+Status: In Progress
 
 - [ ] Define failure/death condition
 - [ ] Track active respawn point
