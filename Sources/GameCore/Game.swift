@@ -5,9 +5,11 @@ public struct Game {
     public let interpolationMode: InterpolationMode
     public let preferredFps: Double
     public private(set) var clearColor: Color = .white
+    public var camera: Camera { cameraRig.camera }
 
     private let level: Level
     private var players: [Player]
+    private var cameraRig: CameraRig
     private var wasResetPressed = false
     private var wasDebugTogglePressed = false
     private var debugOptions: DebugOptions = []
@@ -27,16 +29,27 @@ public struct Game {
         self.logicalResolution = logicalResolution
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
-        self.players = [.default]
-        self.level = .level2(
-            logicalResolution: logicalResolution,
+        self.players = [Player(entityID: .player)]
+
+        let level = Level.level2(
+            worldSize: Vec2(
+                x: logicalResolution.x * 2,
+                y: logicalResolution.y
+            ),
             tileSize: Vec2(x: 16, y: 16)
+        )
+        self.level = level
+        self.cameraRig = CameraRig(
+            camera: Camera(viewportSize: logicalResolution),
+            anchor: .entities([.player]),
+            constraints: CameraConstraints(bounds: level.bounds)
         )
 
         for index in players.indices {
             players[index].place(at: level.spawnPoint)
         }
 
+        updateCamera()
         rebuildSpriteBuffer()
     }
 
@@ -64,6 +77,7 @@ public struct Game {
             players[index].update(context: &context)
         }
 
+        updateCamera()
         sounds.append(contentsOf: context.sounds)
         rebuildSpriteBuffer()
     }
@@ -146,6 +160,18 @@ public struct Game {
         for index in players.indices {
             players[index].place(at: level.spawnPoint)
         }
+    }
+
+    private mutating func updateCamera() {
+        cameraRig.update(anchorBounds: entityBounds)
+    }
+
+    private func entityBounds(for id: Entity.ID) -> Rect? {
+        for player in players where player.entity.id == id {
+            return player.entity.bounds
+        }
+
+        return nil
     }
 }
 

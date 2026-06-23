@@ -181,18 +181,23 @@ extension Runtime {
     }
 
     private func renderRect(for sprite: Sprite) -> RenderRect {
+        let position = Vec2(
+            x: sprite.position.x - game.camera.origin.x,
+            y: sprite.position.y - game.camera.origin.y
+        )
+
         switch game.interpolationMode {
         case .linear:
             return RenderRect(
-                x: sprite.position.x,
-                y: sprite.position.y,
+                x: position.x,
+                y: position.y,
                 width: sprite.size.x,
                 height: sprite.size.y
             )
         case .nearest:
             return RenderRect(
-                x: sprite.position.x.rounded(),
-                y: sprite.position.y.rounded(),
+                x: position.x.rounded(),
+                y: position.y.rounded(),
                 width: sprite.size.x.rounded(),
                 height: sprite.size.y.rounded()
             )

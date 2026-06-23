@@ -39,6 +39,13 @@ public extension Rect {
         origin.y + size.y
     }
 
+    var center: Vec2 {
+        Vec2(
+            x: origin.x + (size.x / 2),
+            y: origin.y + (size.y / 2)
+        )
+    }
+
     func translated(by offset: Vec2) -> Rect {
         Rect(
             origin: Vec2(

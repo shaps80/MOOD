@@ -61,6 +61,16 @@ public struct Tilemap: Equatable, Sendable {
         return tiles[(y * columns) + x]
     }
 
+    public var bounds: Rect {
+        Rect(
+            origin: .zero,
+            size: Vec2(
+                x: Double(columns) * tileSize.x,
+                y: Double(rows) * tileSize.y
+            )
+        )
+    }
+
     public subscript(x: Int, y: Int) -> Tile {
         get {
             precondition(contains(x: x, y: y), "Tile coordinate is outside tilemap.")

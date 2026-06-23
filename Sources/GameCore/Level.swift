@@ -8,18 +8,22 @@ struct Level: Equatable, Sendable {
         self.tilemap = tilemap
         self.spawnPoint = spawnPoint
     }
+
+    var bounds: Rect {
+        tilemap.bounds
+    }
 }
 
 extension Level {
-    static func level1(logicalResolution: Vec2, tileSize: Vec2) -> Level {
+    static func level1(worldSize: Vec2, tileSize: Vec2) -> Level {
         let tilemap = Tilemap.level1(
-            worldSize: logicalResolution,
+            worldSize: worldSize,
             tileSize: tileSize
         )
         let boundaryThickness = tilemap.tileSize.x
         let topLeftQuadrantCenter = Vec2(
-            x: (boundaryThickness + (logicalResolution.x / 2)) / 2,
-            y: (boundaryThickness + (logicalResolution.y / 2)) / 2
+            x: (boundaryThickness + (worldSize.x / 2)) / 2,
+            y: (boundaryThickness + (worldSize.y / 2)) / 2
         )
 
         return Level(
@@ -28,9 +32,9 @@ extension Level {
         )
     }
 
-    static func level2(logicalResolution: Vec2, tileSize: Vec2) -> Level {
+    static func level2(worldSize: Vec2, tileSize: Vec2) -> Level {
         let tilemap = Tilemap.level2(
-            worldSize: logicalResolution,
+            worldSize: worldSize,
             tileSize: tileSize
         )
 
@@ -38,7 +42,7 @@ extension Level {
             tilemap: tilemap,
             spawnPoint: Vec2(
                 x: tileSize.x * 4.5,
-                y: logicalResolution.y / 2
+                y: worldSize.y / 2
             )
         )
     }

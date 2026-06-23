@@ -8,10 +8,9 @@ struct Player {
 
     var entity: Entity
 
-    static let `default` = Player()
-
-    private init() {
+    init(entityID: Entity.ID) {
         self.entity = .init(
+            id: entityID,
             position: .zero,
             size: size,
             collider: Collider(

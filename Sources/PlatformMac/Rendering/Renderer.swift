@@ -146,7 +146,11 @@ final class Renderer {
         switch sprite.material {
         case .color(let color):
             drawRect(
-                renderRect(for: sprite, interpolationMode: game.interpolationMode),
+                renderRect(
+                    for: sprite,
+                    game: game,
+                    interpolationMode: game.interpolationMode
+                ),
                 material: .color(color),
                 game: game,
                 renderEncoder: renderEncoder
@@ -161,6 +165,7 @@ final class Renderer {
                 drawRect(
                     renderRect(
                         for: sprite,
+                        game: game,
                         interpolationMode: game.interpolationMode
                     ),
                     material: .color(missingTextureColor),
@@ -171,7 +176,11 @@ final class Renderer {
             }
 
             drawRect(
-                renderRect(for: sprite, interpolationMode: game.interpolationMode),
+                renderRect(
+                    for: sprite,
+                    game: game,
+                    interpolationMode: game.interpolationMode
+                ),
                 material: .texture(texture, textureRect),
                 game: game,
                 renderEncoder: renderEncoder
@@ -237,20 +246,26 @@ final class Renderer {
 
     private func renderRect(
         for sprite: Sprite,
+        game: Game,
         interpolationMode: InterpolationMode
     ) -> RenderRect {
+        let position = Vec2(
+            x: sprite.position.x - game.camera.origin.x,
+            y: sprite.position.y - game.camera.origin.y
+        )
+
         switch interpolationMode {
         case .linear:
             return RenderRect(
-                x: sprite.position.x,
-                y: sprite.position.y,
+                x: position.x,
+                y: position.y,
                 width: sprite.size.x,
                 height: sprite.size.y
             )
         case .nearest:
             return RenderRect(
-                x: sprite.position.x.rounded(),
-                y: sprite.position.y.rounded(),
+                x: position.x.rounded(),
+                y: position.y.rounded(),
                 width: sprite.size.x.rounded(),
                 height: sprite.size.y.rounded()
             )
