@@ -29,6 +29,11 @@ public struct TopPlayerController: Equatable, Sendable {
             maxSpeed: 300,
             acceleration: 2000,
             deceleration: 2000
+        ),
+        vertical: AxisController(
+            maxSpeed: 300,
+            acceleration: 2000,
+            deceleration: 2000
         )
     )
 

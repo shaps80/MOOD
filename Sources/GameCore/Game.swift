@@ -28,7 +28,7 @@ public struct Game {
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
         self.players = [.default]
-        self.level = .level1(
+        self.level = .level2(
             logicalResolution: logicalResolution,
             tileSize: Vec2(x: 16, y: 16)
         )
