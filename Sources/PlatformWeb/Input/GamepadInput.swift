@@ -4,6 +4,8 @@ import Swift
 
 final class GamepadInput {
     private let axisDeadZone = 0.12
+    private let primaryButtonIndex = 0
+    private let menuButtonIndex = 9
 
     var state: Input {
         guard let gamepads = JSObject.global.navigator.getGamepads().array else {
@@ -36,7 +38,8 @@ final class GamepadInput {
         return Input(
             horizontal: horizontal,
             vertical: vertical,
-            jump: isButtonPressed(0, gamepad: gamepad)
+            jump: isButtonPressed(primaryButtonIndex, gamepad: gamepad),
+            reset: isButtonPressed(menuButtonIndex, gamepad: gamepad)
         )
     }
 

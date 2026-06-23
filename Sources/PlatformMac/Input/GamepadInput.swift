@@ -51,7 +51,8 @@ final class GamepadInput {
         return Input(
             horizontal: horizontal,
             vertical: vertical,
-            jump: gamepad.buttonA.isPressed
+            jump: gamepad.buttonA.isPressed,
+            reset: gamepad.buttonMenu.isPressed
         )
     }
 
@@ -70,7 +71,8 @@ final class GamepadInput {
         return Input(
             horizontal: horizontal,
             vertical: vertical,
-            jump: gamepad.buttonA.isPressed
+            jump: gamepad.buttonA.isPressed,
+            reset: gamepad.buttonMenu.isPressed
         )
     }
 

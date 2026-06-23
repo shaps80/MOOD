@@ -89,26 +89,13 @@ Status: Done
 - [x] Reset player to level spawn
 - [x] Player controller
 
-World support establishes tile maps, collision, spawn placement, and player movement control. Respawn/checkpoint and camera behavior are tracked separately because they need their own design passes.
+World support establishes tile maps, collision, spawn placement, and player movement control. Camera behavior is tracked separately because it needs its own design pass.
 
 Question answered:
 
 Can MOOD support a playable environment?
 
-## Milestone 6 - Respawn
-
-Status: In Progress
-
-- [ ] Define failure/death condition
-- [ ] Track active respawn point
-- [ ] Add checkpoint trigger
-- [ ] Respawn player at active checkpoint after failure
-
-Question answered:
-
-Can MOOD recover the player after failure?
-
-## Milestone 7 - Camera
+## Milestone 6 - Camera
 
 Status: Not Started
 
@@ -120,7 +107,7 @@ Question answered:
 
 Can MOOD present worlds larger than the viewport?
 
-## Milestone 8 - Visibility & Render Ordering
+## Milestone 7 - Visibility & Render Ordering
 
 Status: Not Started
 
@@ -133,7 +120,7 @@ Question answered:
 
 Can MOOD keep rendering work bounded by what the player can see?
 
-## Milestone 9 - Collision Filtering & Interactions
+## Milestone 8 - Collision Filtering & Interactions
 
 Status: Not Started
 
@@ -148,7 +135,7 @@ Question answered:
 
 Can MOOD distinguish blocking collisions from gameplay overlaps?
 
-## Milestone 10 - Playable Game
+## Milestone 9 - Playable Game
 
 Status: Not Started
 
@@ -159,7 +146,7 @@ This is the most important milestone.
 
 Everything before this is technology validation.
 
-## Milestone 11 - Swift Tooling Review
+## Milestone 10 - Swift Tooling Review
 
 Status: Not Started
 
@@ -177,3 +164,7 @@ Potential future improvements. These are not committed milestone work.
 
 - Collision shapes beyond rectangles, such as ellipses or polygons, once gameplay needs them.
 - Convenience APIs for adjusting rectangles in code, such as edge-specific padding/insetting.
+- Define failure/death condition.
+- Track active respawn point.
+- Add checkpoint trigger.
+- Respawn player at active checkpoint after failure.

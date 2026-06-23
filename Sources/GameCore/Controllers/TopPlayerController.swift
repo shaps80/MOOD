@@ -37,7 +37,7 @@ public struct TopPlayerController: Equatable, Sendable {
         )
     )
 
-    public static let ice = TopPlayerController(
+    public static let slippery = TopPlayerController(
         horizontal: AxisController(
             maxSpeed: 600,
             acceleration: 1000,
