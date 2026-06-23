@@ -97,11 +97,11 @@ Can MOOD support a playable environment?
 
 ## Milestone 6 - Camera
 
-Status: Not Started
+Status: Done
 
-- [ ] Define camera state in GameCore
-- [ ] Follow player within level bounds
-- [ ] Apply camera transform in platform renderers
+- [x] Define camera state in GameCore
+- [x] Follow player within level bounds
+- [x] Apply camera transform in platform renderers
 
 Question answered:
 
