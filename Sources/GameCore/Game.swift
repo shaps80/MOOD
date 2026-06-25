@@ -23,7 +23,7 @@ public struct Game {
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
-        logicalResolution: Vec2 = .init(x: 1280, y: 720),
+        logicalResolution: Vec2 = .init(x: 480, y: 320),
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60
     ) {
@@ -33,14 +33,14 @@ public struct Game {
         self.players = [Player(entityID: .player)]
         self.entities = EntityStore()
 
-        let level = Level.level2(
+        self.level = .level2(
             worldSize: Vec2(
                 x: logicalResolution.x * 2,
                 y: logicalResolution.y
             ),
             tileSize: Vec2(x: 16, y: 16)
         )
-        self.level = level
+
         self.cameraRig = CameraRig(
             camera: Camera(viewportSize: logicalResolution),
             anchor: .entities([.player]),

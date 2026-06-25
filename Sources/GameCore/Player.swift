@@ -1,7 +1,7 @@
 import Swift
 
 struct Player {
-    private let size: Vec2 = .init(x: 36, y: 36)
+    private let size: Vec2 = .init(x: 32, y: 32)
     private var controller: TopPlayerController = .slippery
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
