@@ -209,10 +209,11 @@ final class Runtime: NSObject {
                 .event,
                 log: Self.performanceLog,
                 name: "Render Stats",
-                "updates %d commands %d primitives %d drawCalls %d visibleTiles %d visibleEntities %d",
+                "updates %d commands %d primitives %d batches %d drawCalls %d visibleTiles %d visibleEntities %d",
                 updateCount,
                 renderStats.commandCount,
                 renderStats.primitiveCount,
+                renderStats.batchCount,
                 rendererStats.drawCallCount,
                 renderStats.visibleTileCount,
                 renderStats.visibleEntityCount

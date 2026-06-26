@@ -137,13 +137,13 @@ Can MOOD keep render work bounded by what the player can see while preserving dr
 
 ## Milestone 9 - Render Batching
 
-Status: In Progress
+Status: Done
 
 - [x] Measure command, primitive, and draw-call counts after visibility culling
-- [ ] Define batching rules that preserve layer ordering
-- [ ] Batch compatible consecutive rect primitives
-- [ ] Batch compatible consecutive sprite primitives by texture
-- [ ] Keep platform-specific batching optimizations behind the same GameCore render command semantics
+- [x] Define batching rules that preserve layer ordering
+- [x] Batch compatible consecutive rect primitives
+- [x] Batch compatible consecutive sprite primitives by texture
+- [x] Keep platform-specific batching optimizations behind the same GameCore render command semantics
 
 Question answered:
 

@@ -7,13 +7,15 @@ final class Renderer {
     var gl: JSObject?
     private var shaderProgram: JSValue = .undefined
     private var positionBuffer: JSValue = .undefined
+    private var instanceBuffer: JSValue = .undefined
     private var positionAttributeLocation: Int = 0
+    private var rectAttributeLocation: Int = 0
+    private var textureRectAttributeLocation: Int = 0
     private var resolutionUniform: JSValue = .undefined
-    private var rectUniform: JSValue = .undefined
     private var colorUniform: JSValue = .undefined
     private var useTextureUniform: JSValue = .undefined
     private var textureUniform: JSValue = .undefined
-    private var textureRectUniform: JSValue = .undefined
+    private var batchData: [Float] = []
 
     var spriteTextures: [TextureID: JSValue] = [:]
     var spriteTextureSizes: [TextureID: Vec2] = [:]
@@ -36,8 +38,8 @@ final class Renderer {
         syncCanvasWithGameResolution(game: game)
         clearScreen(color: game.clearColor)
 
-        for command in game.renderCommands {
-            drawCommand(command, game: game)
+        for batch in game.renderBatches {
+            drawBatch(batch, game: game)
         }
     }
 
@@ -62,16 +64,16 @@ final class Renderer {
             type: gl.VERTEX_SHADER,
             source: """
             attribute vec2 a_position;
+            attribute vec4 a_rect;
+            attribute vec4 a_textureRect;
             uniform vec2 u_resolution;
-            uniform vec4 u_rect;
-            uniform vec4 u_textureRect;
             varying vec2 v_texCoord;
 
             void main() {
-                vec2 pixelPosition = u_rect.xy + (a_position * u_rect.zw);
+                vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
                 vec2 zeroToOne = pixelPosition / u_resolution;
                 vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
-                v_texCoord = u_textureRect.xy + (a_position * u_textureRect.zw);
+                v_texCoord = a_textureRect.xy + (a_position * a_textureRect.zw);
                 gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
             }
             """
@@ -102,13 +104,16 @@ final class Renderer {
 
         shaderProgram = program
         positionAttributeLocation = Int(gl.getAttribLocation!(program, "a_position").number ?? 0)
+        rectAttributeLocation = Int(gl.getAttribLocation!(program, "a_rect").number ?? 0)
+        textureRectAttributeLocation = Int(
+            gl.getAttribLocation!(program, "a_textureRect").number ?? 0
+        )
         resolutionUniform = gl.getUniformLocation!(program, "u_resolution")
-        rectUniform = gl.getUniformLocation!(program, "u_rect")
         colorUniform = gl.getUniformLocation!(program, "u_color")
         useTextureUniform = gl.getUniformLocation!(program, "u_useTexture")
         textureUniform = gl.getUniformLocation!(program, "u_texture")
-        textureRectUniform = gl.getUniformLocation!(program, "u_textureRect")
         positionBuffer = gl.createBuffer!()
+        instanceBuffer = gl.createBuffer!()
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
 
@@ -146,56 +151,109 @@ final class Renderer {
         _ = gl.clear!(gl.COLOR_BUFFER_BIT)
     }
 
-    private func drawCommand(_ command: RenderCommand, game: Game) {
-        command.forEachPrimitive { primitive in
-            drawPrimitive(primitive, game: game)
+    private func drawBatch(_ batch: RenderBatch, game: Game) {
+        switch batch {
+        case .rects(let color, let rects):
+            drawRectBatch(rects, color: color, game: game)
+        case .sprites(let textureID, let sprites):
+            drawSpriteBatch(sprites, textureID: textureID, game: game)
         }
     }
 
-    private func drawPrimitive(_ primitive: RenderPrimitive, game: Game) {
-        switch primitive {
-        case .sprite(let sprite):
-            drawSprite(sprite, game: game)
-        case .rect(let rect, let color):
-            drawRect(rect, color: color, game: game)
-        }
-    }
+    private func drawRectBatch(_ rects: [Rect], color: Color, game: Game) {
+        batchData.removeAll(keepingCapacity: true)
+        batchData.reserveCapacity(rects.count * 8)
 
-    private func drawRect(_ rect: Rect, color: Color, game: Game) {
-        drawSprite(
-            Sprite(position: rect.origin, size: rect.size, material: .color(color)),
+        for rect in rects {
+            appendInstance(
+                rect: renderRect(for: rect, game: game),
+                textureRect: .full
+            )
+        }
+
+        drawInstances(
+            material: .color(color),
+            instanceCount: rects.count,
             game: game
         )
     }
 
-    private func drawSprite(_ sprite: Sprite, game: Game) {
-        switch sprite.material {
-        case .color(let color):
-            drawSprite(sprite, material: .color(color), game: game)
-        case .sprite(let textureID, let sourceRect):
-            guard let texture = spriteTextures[textureID],
-                  let textureRect = textureRect(for: sourceRect, textureID: textureID) else {
-                drawSprite(sprite, material: .color(.missingTexture), game: game)
-                return
+    private func drawSpriteBatch(
+        _ sprites: [Sprite],
+        textureID: TextureID,
+        game: Game
+    ) {
+        guard let texture = spriteTextures[textureID] else {
+            drawRectBatch(
+                sprites.map { Rect(origin: $0.position, size: $0.size) },
+                color: .missingTexture,
+                game: game
+            )
+            return
+        }
+
+        batchData.removeAll(keepingCapacity: true)
+        batchData.reserveCapacity(sprites.count * 8)
+
+        for sprite in sprites {
+            guard case .sprite(_, let sourceRect) = sprite.material,
+                  let textureRect = textureRect(for: sourceRect, textureID: textureID)
+            else {
+                continue
             }
 
-            drawSprite(sprite, material: .texture(texture, textureRect), game: game)
+            appendInstance(
+                rect: renderRect(for: sprite, game: game),
+                textureRect: textureRect
+            )
         }
+
+        drawInstances(
+            material: .texture(texture),
+            instanceCount: batchData.count / 8,
+            game: game
+        )
     }
 
-    private func drawSprite(_ sprite: Sprite, material: RenderMaterial, game: Game) {
-        guard let gl else { return }
+    private func appendInstance(rect: RenderRect, textureRect: TextureRect) {
+        batchData.append(contentsOf: [
+            Float(rect.x),
+            Float(rect.y),
+            Float(rect.width),
+            Float(rect.height),
+            Float(textureRect.x),
+            Float(textureRect.y),
+            Float(textureRect.width),
+            Float(textureRect.height)
+        ])
+    }
 
-        let rect = renderRect(for: sprite, game: game)
+    private func drawInstances(
+        material: RenderMaterial,
+        instanceCount: Int,
+        game: Game
+    ) {
+        guard let gl else { return }
+        guard instanceCount > 0 else { return }
 
         _ = gl.useProgram!(shaderProgram)
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
         _ = gl.enableVertexAttribArray!(positionAttributeLocation)
         _ = gl.vertexAttribPointer!(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0)
+        _ = gl.vertexAttribDivisor!(positionAttributeLocation, 0)
+
+        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
+        _ = gl.bufferData!(gl.ARRAY_BUFFER, JSFloat32Array(batchData), gl.DYNAMIC_DRAW)
+        _ = gl.enableVertexAttribArray!(rectAttributeLocation)
+        _ = gl.vertexAttribPointer!(rectAttributeLocation, 4, gl.FLOAT, false, 32, 0)
+        _ = gl.vertexAttribDivisor!(rectAttributeLocation, 1)
+        _ = gl.enableVertexAttribArray!(textureRectAttributeLocation)
+        _ = gl.vertexAttribPointer!(textureRectAttributeLocation, 4, gl.FLOAT, false, 32, 16)
+        _ = gl.vertexAttribDivisor!(textureRectAttributeLocation, 1)
+
         _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
-        _ = gl.uniform4f!(rectUniform, rect.x, rect.y, rect.width, rect.height)
         applyMaterial(material, gl: gl)
-        _ = gl.drawArrays!(gl.TRIANGLES, 0, 6)
+        _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
     }
 
     private func applyMaterial(_ material: RenderMaterial, gl: JSObject) {
@@ -203,20 +261,36 @@ final class Renderer {
         case .color(let color):
             _ = gl.uniform4f!(colorUniform, color.red, color.green, color.blue, color.alpha)
             _ = gl.uniform1i!(useTextureUniform, 0)
-            _ = gl.uniform4f!(textureRectUniform, 0, 0, 1, 1)
-        case .texture(let texture, let textureRect):
+        case .texture(let texture):
             _ = gl.uniform4f!(colorUniform, 1, 1, 1, 1)
             _ = gl.uniform1i!(useTextureUniform, 1)
-            _ = gl.uniform4f!(
-                textureRectUniform,
-                textureRect.x,
-                textureRect.y,
-                textureRect.width,
-                textureRect.height
-            )
             _ = gl.activeTexture!(gl.TEXTURE0)
             _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
             _ = gl.uniform1i!(textureUniform, 0)
+        }
+    }
+
+    private func renderRect(for rect: Rect, game: Game) -> RenderRect {
+        let position = Vec2(
+            x: rect.origin.x - game.camera.origin.x,
+            y: rect.origin.y - game.camera.origin.y
+        )
+
+        switch game.interpolationMode {
+        case .linear:
+            return RenderRect(
+                x: position.x,
+                y: position.y,
+                width: rect.size.x,
+                height: rect.size.y
+            )
+        case .nearest:
+            return RenderRect(
+                x: position.x.rounded(),
+                y: position.y.rounded(),
+                width: rect.size.x.rounded(),
+                height: rect.size.y.rounded()
+            )
         }
     }
 
@@ -266,7 +340,7 @@ final class Renderer {
 
 private enum RenderMaterial {
     case color(Color)
-    case texture(JSValue, TextureRect)
+    case texture(JSValue)
 }
 
 private struct RenderRect {

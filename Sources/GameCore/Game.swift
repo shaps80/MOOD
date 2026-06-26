@@ -30,13 +30,14 @@ public struct Game {
 
     private var renderContext = RenderContext()
     public var renderCommands: [RenderCommand] { renderContext.commands }
+    public private(set) var renderBatches: [RenderBatch] = []
     public private(set) var renderStats = RenderStats()
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
         logicalResolution: Vec2 = .init(x: 800, y: 400),
         interpolationMode: InterpolationMode = .nearest,
-        preferredFPS: Double = 60
+        preferredFPS: Double = 120
     ) {
         self.logicalResolution = logicalResolution
         self.interpolationMode = interpolationMode
@@ -144,11 +145,13 @@ public struct Game {
         }
 
         renderContext.sortCommands()
+        renderBatches = RenderBatch.make(from: renderContext.commands)
         renderStats = RenderStats(
             commandCount: renderContext.commands.count,
             primitiveCount: renderContext.commands.reduce(into: 0) { count, command in
                 count += command.primitiveCount
             },
+            batchCount: renderBatches.count,
             visibleTileCount: visibleTileCount,
             visibleEntityCount: visibleEntityCount
         )

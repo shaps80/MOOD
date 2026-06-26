@@ -18,6 +18,10 @@ final class Renderer {
 
     private var spriteTextures: [TextureID: MTLTexture] = [:]
     private var spriteTextureSizes: [TextureID: Vec2] = [:]
+    private var batchInstances: [BatchInstance] = []
+    private var preparedBatches: [PreparedBatch] = []
+    private var instanceBuffer: MTLBuffer?
+    private var instanceBufferCapacity = 0
 
     init(
         device: MTLDevice,
@@ -92,12 +96,25 @@ final class Renderer {
             index: 0
         )
 
-        for command in game.renderCommands {
-            stats.drawCallCount += drawCommand(
-                command,
-                game: game,
-                renderEncoder: renderEncoder
-            )
+        var resolution = SIMD2<Float>(
+            Float(game.logicalResolution.x),
+            Float(game.logicalResolution.y)
+        )
+        renderEncoder.setVertexBytes(
+            &resolution,
+            length: MemoryLayout<SIMD2<Float>>.stride,
+            index: 1
+        )
+
+        prepareBatches(game: game)
+        if let instanceBuffer = uploadBatchInstances() {
+            for batch in preparedBatches {
+                stats.drawCallCount += drawBatch(
+                    batch,
+                    instanceBuffer: instanceBuffer,
+                    renderEncoder: renderEncoder
+                )
+            }
         }
 
         renderEncoder.endEncoding()
@@ -132,138 +149,149 @@ final class Renderer {
         }
     }
 
-    private func drawCommand(
-        _ command: RenderCommand,
-        game: Game,
-        renderEncoder: MTLRenderCommandEncoder
-    ) -> Int {
-        var drawCallCount = 0
+    private func prepareBatches(game: Game) {
+        batchInstances.removeAll(keepingCapacity: true)
+        preparedBatches.removeAll(keepingCapacity: true)
+        batchInstances.reserveCapacity(game.renderStats.primitiveCount)
+        preparedBatches.reserveCapacity(game.renderStats.batchCount)
 
-        command.forEachPrimitive { primitive in
-            drawCallCount += drawPrimitive(
-                primitive,
-                game: game,
-                renderEncoder: renderEncoder
-            )
-        }
-
-        return drawCallCount
-    }
-
-    private func drawPrimitive(
-        _ primitive: RenderPrimitive,
-        game: Game,
-        renderEncoder: MTLRenderCommandEncoder
-    ) -> Int {
-        switch primitive {
-        case .sprite(let sprite):
-            return drawSprite(sprite, game: game, renderEncoder: renderEncoder)
-        case .rect(let rect, let color):
-            return drawRect(
-                rect,
-                color: color,
-                game: game,
-                renderEncoder: renderEncoder
-            )
+        for batch in game.renderBatches {
+            switch batch {
+            case .rects(let color, let rects):
+                appendRectBatch(rects, color: color, game: game)
+            case .sprites(let textureID, let sprites):
+                appendSpriteBatch(sprites, textureID: textureID, game: game)
+            }
         }
     }
 
-    private func drawRect(
-        _ rect: Rect,
+    private func appendRectBatch(
+        _ rects: [Rect],
         color: Color,
-        game: Game,
-        renderEncoder: MTLRenderCommandEncoder
-    ) -> Int {
-        drawSprite(
-            Sprite(position: rect.origin, size: rect.size, material: .color(color)),
-            game: game,
-            renderEncoder: renderEncoder
+        game: Game
+    ) {
+        let startIndex = batchInstances.count
+
+        for rect in rects {
+            batchInstances.append(
+                BatchInstance(
+                    rect: renderRect(
+                        for: rect,
+                        game: game,
+                        interpolationMode: game.interpolationMode
+                    ).uniform,
+                    textureRect: TextureRect.full.uniform
+                )
+            )
+        }
+
+        appendPreparedBatch(
+            material: .color(color),
+            startIndex: startIndex
         )
     }
 
-    private func drawSprite(
-        _ sprite: Sprite,
-        game: Game,
-        renderEncoder: MTLRenderCommandEncoder
-    ) -> Int {
-        switch sprite.material {
-        case .color(let color):
-            return drawRect(
-                renderRect(
-                    for: sprite,
-                    game: game,
-                    interpolationMode: game.interpolationMode
-                ),
-                material: .color(color),
-                game: game,
-                renderEncoder: renderEncoder
+    private func appendSpriteBatch(
+        _ sprites: [Sprite],
+        textureID: TextureID,
+        game: Game
+    ) {
+        guard let texture = spriteTextures[textureID] else {
+            appendRectBatch(
+                sprites.map { Rect(origin: $0.position, size: $0.size) },
+                color: .missingTexture,
+                game: game
             )
-        case .sprite(let textureID, let sourceRect):
-            guard let texture = spriteTextures[textureID],
+            return
+        }
+
+        let startIndex = batchInstances.count
+
+        for sprite in sprites {
+            guard case .sprite(_, let sourceRect) = sprite.material,
                   let textureRect = textureRect(
                     for: sourceRect,
                     textureID: textureID
                   )
             else {
-                return drawRect(
-                    renderRect(
+                continue
+            }
+
+            batchInstances.append(
+                BatchInstance(
+                    rect: renderRect(
                         for: sprite,
                         game: game,
                         interpolationMode: game.interpolationMode
-                    ),
-                    material: .color(.missingTexture),
-                    game: game,
-                    renderEncoder: renderEncoder
+                    ).uniform,
+                    textureRect: textureRect.uniform
                 )
-            }
-
-            return drawRect(
-                renderRect(
-                    for: sprite,
-                    game: game,
-                    interpolationMode: game.interpolationMode
-                ),
-                material: .texture(texture, textureRect),
-                game: game,
-                renderEncoder: renderEncoder
             )
         }
+
+        appendPreparedBatch(
+            material: .texture(texture),
+            startIndex: startIndex
+        )
     }
 
-    private func drawRect(
-        _ rect: RenderRect,
+    private func appendPreparedBatch(
         material: RenderMaterial,
-        game: Game,
+        startIndex: Int
+    ) {
+        let instanceCount = batchInstances.count - startIndex
+
+        guard instanceCount > 0 else { return }
+
+        preparedBatches.append(
+            PreparedBatch(
+                material: material,
+                startIndex: startIndex,
+                instanceCount: instanceCount
+            )
+        )
+    }
+
+    private func uploadBatchInstances() -> MTLBuffer? {
+        guard !batchInstances.isEmpty else { return nil }
+
+        let length = batchInstances.count * MemoryLayout<BatchInstance>.stride
+
+        if instanceBufferCapacity < length {
+            guard let buffer = device.makeBuffer(length: length) else {
+                return nil
+            }
+
+            instanceBuffer = buffer
+            instanceBufferCapacity = length
+        }
+
+        guard let instanceBuffer else { return nil }
+
+        batchInstances.withUnsafeBytes { bytes in
+            guard let source = bytes.baseAddress else { return }
+
+            instanceBuffer.contents().copyMemory(
+                from: source,
+                byteCount: bytes.count
+            )
+        }
+
+        return instanceBuffer
+    }
+
+    private func drawBatch(
+        _ batch: PreparedBatch,
+        instanceBuffer: MTLBuffer,
         renderEncoder: MTLRenderCommandEncoder
     ) -> Int {
-        var resolution = SIMD2<Float>(
-            Float(game.logicalResolution.x),
-            Float(game.logicalResolution.y)
-        )
-        var rectUniform = SIMD4<Float>(
-            Float(rect.x),
-            Float(rect.y),
-            Float(rect.width),
-            Float(rect.height)
-        )
-        var textureRectUniform = material.textureRectUniform
-        var colorUniform = material.colorUniform
-        var useTexture = material.useTexture
+        var colorUniform = batch.material.colorUniform
+        var useTexture = batch.material.useTexture
 
-        renderEncoder.setVertexBytes(
-            &resolution,
-            length: MemoryLayout<SIMD2<Float>>.stride,
-            index: 1
-        )
-        renderEncoder.setVertexBytes(
-            &rectUniform,
-            length: MemoryLayout<SIMD4<Float>>.stride,
+        renderEncoder.setVertexBuffer(
+            instanceBuffer,
+            offset: batch.startIndex * MemoryLayout<BatchInstance>.stride,
             index: 2
-        )
-        renderEncoder.setVertexBytes(
-            &textureRectUniform,
-            length: MemoryLayout<SIMD4<Float>>.stride,
-            index: 3
         )
         renderEncoder.setFragmentBytes(
             &colorUniform,
@@ -276,16 +304,45 @@ final class Renderer {
             index: 1
         )
         renderEncoder.setFragmentTexture(
-            material.texture ?? whiteTexture,
+            batch.material.texture ?? whiteTexture,
             index: 0
         )
         renderEncoder.drawPrimitives(
             type: .triangle,
             vertexStart: 0,
-            vertexCount: 6
+            vertexCount: 6,
+            instanceCount: batch.instanceCount
         )
 
         return 1
+    }
+
+    private func renderRect(
+        for rect: Rect,
+        game: Game,
+        interpolationMode: InterpolationMode
+    ) -> RenderRect {
+        let position = Vec2(
+            x: rect.origin.x - game.camera.origin.x,
+            y: rect.origin.y - game.camera.origin.y
+        )
+
+        switch interpolationMode {
+        case .linear:
+            return RenderRect(
+                x: position.x,
+                y: position.y,
+                width: rect.size.x,
+                height: rect.size.y
+            )
+        case .nearest:
+            return RenderRect(
+                x: position.x.rounded(),
+                y: position.y.rounded(),
+                width: rect.size.x.rounded(),
+                height: rect.size.y.rounded()
+            )
+        }
     }
 
     private func renderRect(
@@ -458,28 +515,14 @@ struct RendererStats {
 
 private enum RenderMaterial {
     case color(Color)
-    case texture(MTLTexture, TextureRect)
+    case texture(MTLTexture)
 
     var texture: MTLTexture? {
         switch self {
         case .color:
             return nil
-        case .texture(let texture, _):
+        case .texture(let texture):
             return texture
-        }
-    }
-
-    var textureRectUniform: SIMD4<Float> {
-        switch self {
-        case .color:
-            return SIMD4(0, 0, 1, 1)
-        case .texture(_, let textureRect):
-            return SIMD4(
-                Float(textureRect.x),
-                Float(textureRect.y),
-                Float(textureRect.width),
-                Float(textureRect.height)
-            )
         }
     }
 
@@ -507,11 +550,31 @@ private enum RenderMaterial {
     }
 }
 
+private struct PreparedBatch {
+    let material: RenderMaterial
+    let startIndex: Int
+    let instanceCount: Int
+}
+
+private struct BatchInstance {
+    let rect: SIMD4<Float>
+    let textureRect: SIMD4<Float>
+}
+
 private struct RenderRect {
     let x: Double
     let y: Double
     let width: Double
     let height: Double
+
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(x),
+            Float(y),
+            Float(width),
+            Float(height)
+        )
+    }
 }
 
 private struct TextureRect {
@@ -521,6 +584,15 @@ private struct TextureRect {
     let height: Double
 
     static let full = TextureRect(x: 0, y: 0, width: 1, height: 1)
+
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(x),
+            Float(y),
+            Float(width),
+            Float(height)
+        )
+    }
 }
 
 private let metalShaderSource = """
@@ -532,21 +604,27 @@ struct VertexOut {
     float2 texCoord;
 };
 
+struct BatchInstance {
+    float4 rect;
+    float4 textureRect;
+};
+
 vertex VertexOut spriteVertex(
     uint vertexID [[vertex_id]],
+    uint instanceID [[instance_id]],
     constant float2 *positions [[buffer(0)]],
     constant float2 &resolution [[buffer(1)]],
-    constant float4 &rect [[buffer(2)]],
-    constant float4 &textureRect [[buffer(3)]]
+    constant BatchInstance *instances [[buffer(2)]]
 ) {
+    BatchInstance instance = instances[instanceID];
     float2 unitPosition = positions[vertexID];
-    float2 pixelPosition = rect.xy + (unitPosition * rect.zw);
+    float2 pixelPosition = instance.rect.xy + (unitPosition * instance.rect.zw);
     float2 zeroToOne = pixelPosition / resolution;
     float2 clipSpace = (zeroToOne * 2.0) - 1.0;
 
     VertexOut out;
     out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
-    out.texCoord = textureRect.xy + (unitPosition * textureRect.zw);
+    out.texCoord = instance.textureRect.xy + (unitPosition * instance.textureRect.zw);
     return out;
 }
 
