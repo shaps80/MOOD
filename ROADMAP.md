@@ -123,7 +123,7 @@ Can MOOD describe what to draw before each platform decides how to draw it?
 
 ## Milestone 8 - Visibility & Render Ordering
 
-Status: In Progress
+Status: Done
 
 - [x] Render only visible tile range
 - [x] Render only visible sprites/entities
@@ -137,10 +137,10 @@ Can MOOD keep render work bounded by what the player can see while preserving dr
 
 ## Milestone 9 - Render Batching
 
-Status: Not Started
+Status: In Progress
 
-- [ ] Measure command, primitive, and draw-call counts after visibility culling
-- [ ] Define batching rules that preserve layer and z-index ordering
+- [x] Measure command, primitive, and draw-call counts after visibility culling
+- [ ] Define batching rules that preserve layer ordering
 - [ ] Batch compatible consecutive rect primitives
 - [ ] Batch compatible consecutive sprite primitives by texture
 - [ ] Keep platform-specific batching optimizations behind the same GameCore render command semantics

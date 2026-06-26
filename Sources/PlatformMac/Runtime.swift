@@ -1,11 +1,17 @@
 @preconcurrency import AppKit
 @preconcurrency import MetalKit
 import GameCore
+import os.signpost
 import QuartzCore
 import Swift
 
 @MainActor
 final class Runtime: NSObject {
+    private static let performanceLog = OSLog(
+        subsystem: "MOOD",
+        category: .pointsOfInterest
+    )
+
     private var game: Game
 
     private let assetResolver = AssetResolver()
@@ -14,6 +20,7 @@ final class Runtime: NSObject {
     private let device: MTLDevice
     private let renderer: Renderer
     private let audio: Audio
+    private let profilingEnabled = CommandLine.arguments.contains("--profiling")
 
     private var window: NSWindow?
     private var gameView: GameView?
@@ -119,6 +126,27 @@ final class Runtime: NSObject {
     }
 
     private func renderFrame() {
+        let frameSignpostID = OSSignpostID(log: Self.performanceLog)
+
+        if profilingEnabled {
+            os_signpost(
+                .begin,
+                log: Self.performanceLog,
+                name: "MOOD Frame",
+                signpostID: frameSignpostID
+            )
+        }
+        defer {
+            if profilingEnabled {
+                os_signpost(
+                    .end,
+                    log: Self.performanceLog,
+                    name: "MOOD Frame",
+                    signpostID: frameSignpostID
+                )
+            }
+        }
+
         let now = CACurrentMediaTime()
         let rawDeltaSeconds = lastFrameTime.map {
             now - $0
@@ -126,16 +154,70 @@ final class Runtime: NSObject {
         lastFrameTime = now
 
         accumulatedTime += max(rawDeltaSeconds, 0)
+        var updateCount = 0
 
         while accumulatedTime >= fixedTimeStep {
+            let updateSignpostID = OSSignpostID(log: Self.performanceLog)
+
+            if profilingEnabled {
+                os_signpost(
+                    .begin,
+                    log: Self.performanceLog,
+                    name: "Game Update",
+                    signpostID: updateSignpostID
+                )
+            }
             game.update(delta: fixedTimeStep, input: inputState)
+            if profilingEnabled {
+                os_signpost(
+                    .end,
+                    log: Self.performanceLog,
+                    name: "Game Update",
+                    signpostID: updateSignpostID
+                )
+            }
+
             accumulatedTime -= fixedTimeStep
+            updateCount += 1
         }
 
         audio.playSounds(game.drainSounds())
 
         guard let gameView else { return }
-        renderer.draw(game: game, in: gameView)
+
+        let drawSignpostID = OSSignpostID(log: Self.performanceLog)
+
+        if profilingEnabled {
+            os_signpost(
+                .begin,
+                log: Self.performanceLog,
+                name: "Renderer Draw",
+                signpostID: drawSignpostID
+            )
+        }
+        let rendererStats = renderer.draw(game: game, in: gameView)
+        if profilingEnabled {
+            os_signpost(
+                .end,
+                log: Self.performanceLog,
+                name: "Renderer Draw",
+                signpostID: drawSignpostID
+            )
+
+            let renderStats = game.renderStats
+            os_signpost(
+                .event,
+                log: Self.performanceLog,
+                name: "Render Stats",
+                "updates %d commands %d primitives %d drawCalls %d visibleTiles %d visibleEntities %d",
+                updateCount,
+                renderStats.commandCount,
+                renderStats.primitiveCount,
+                rendererStats.drawCallCount,
+                renderStats.visibleTileCount,
+                renderStats.visibleEntityCount
+            )
+        }
     }
 }
 

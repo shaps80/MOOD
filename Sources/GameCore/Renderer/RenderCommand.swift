@@ -18,6 +18,16 @@ public extension RenderCommand {
         }
     }
 
+    var primitiveCount: Int {
+        var count = 0
+
+        forEachPrimitive { _ in
+            count += 1
+        }
+
+        return count
+    }
+
     func forEachPrimitive(_ body: (RenderPrimitive) -> Void) {
         switch self {
         case .sprite(let sprite, _):

@@ -30,6 +30,7 @@ public struct Game {
 
     private var renderContext = RenderContext()
     public var renderCommands: [RenderCommand] { renderContext.commands }
+    public private(set) var renderStats = RenderStats()
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
@@ -122,10 +123,12 @@ public struct Game {
     private mutating func rebuildSpriteBuffer() {
         renderContext.removeAll(keepingCapacity: true)
         let visibleBounds = renderView.visibleBounds
+        var visibleTileCount = 0
+        var visibleEntityCount = 0
 
-        appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
-        appendPlayerSprites(visibleWithin: visibleBounds, to: &renderContext)
-        appendPickupSprites(visibleWithin: visibleBounds, to: &renderContext)
+        visibleTileCount += appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
+        visibleEntityCount += appendPlayerSprites(visibleWithin: visibleBounds, to: &renderContext)
+        visibleEntityCount += appendPickupSprites(visibleWithin: visibleBounds, to: &renderContext)
 
         if debugOptions.contains(.colliders) {
             appendColliderDebug(visibleWithin: visibleBounds, to: &renderContext)
@@ -141,15 +144,25 @@ public struct Game {
         }
 
         renderContext.sortCommands()
+        renderStats = RenderStats(
+            commandCount: renderContext.commands.count,
+            primitiveCount: renderContext.commands.reduce(into: 0) { count, command in
+                count += command.primitiveCount
+            },
+            visibleTileCount: visibleTileCount,
+            visibleEntityCount: visibleEntityCount
+        )
     }
 
     private func appendTileSprites(
         visibleWithin bounds: Rect,
         to context: inout RenderContext
-    ) {
+    ) -> Int {
         guard let range = level.tilemap.tileRange(intersecting: bounds) else {
-            return
+            return 0
         }
+
+        var visibleTileCount = 0
 
         for y in range.rows {
             for x in range.columns {
@@ -170,38 +183,55 @@ public struct Game {
                     ),
                     layer: tile.layer
                 )
+                visibleTileCount += 1
             }
         }
+
+        return visibleTileCount
     }
 
     private func appendPlayerSprites(
         visibleWithin bounds: Rect,
         to context: inout RenderContext
-    ) {
+    ) -> Int {
+        var visibleEntityCount = 0
+
         for player in players {
-            appendEntitySprite(
+            if appendEntitySprite(
                 player.entityID,
                 visibleWithin: bounds,
-                to: &context
-            ) { entity in
-                player.sprite(for: entity)
+                to: &context,
+                sprite: { entity in
+                    player.sprite(for: entity)
+                }
+            ) {
+                visibleEntityCount += 1
             }
         }
+
+        return visibleEntityCount
     }
 
     private func appendPickupSprites(
         visibleWithin bounds: Rect,
         to context: inout RenderContext
-    ) {
+    ) -> Int {
+        var visibleEntityCount = 0
+
         for pickup in pickups {
-            appendEntitySprite(
+            if appendEntitySprite(
                 pickup.entityID,
                 visibleWithin: bounds,
-                to: &context
-            ) { entity in
-                pickup.sprite(for: entity)
+                to: &context,
+                sprite: { entity in
+                    pickup.sprite(for: entity)
+                }
+            ) {
+                visibleEntityCount += 1
             }
         }
+
+        return visibleEntityCount
     }
 
     private func appendEntitySprite(
@@ -209,13 +239,14 @@ public struct Game {
         visibleWithin bounds: Rect,
         to context: inout RenderContext,
         sprite: (Entity) -> Sprite
-    ) {
+    ) -> Bool {
         guard let entity = entities[entityID],
               entity.bounds.intersects(bounds) else {
-            return
+            return false
         }
 
         context.sprite(sprite(entity), layer: .entity)
+        return true
     }
 
     private func appendColliderDebug(

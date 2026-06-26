@@ -54,14 +54,14 @@ final class Renderer {
         }
     }
 
-    func draw(game: Game, in view: MTKView) {
+    func draw(game: Game, in view: MTKView) -> RendererStats {
         guard view.drawableSize.width > 0,
               view.drawableSize.height > 0,
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer()
         else {
-            return
+            return RendererStats()
         }
 
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(
@@ -75,9 +75,10 @@ final class Renderer {
         guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: renderPassDescriptor
         ) else {
-            return
+            return RendererStats()
         }
 
+        var stats = RendererStats()
         let viewport = GameViewport(
             drawableSize: view.drawableSize,
             gameSize: game.logicalResolution
@@ -91,7 +92,7 @@ final class Renderer {
             index: 0
         )
 
-        drawRect(
+        stats.drawCallCount += drawRect(
             RenderRect(
                 x: 0,
                 y: 0,
@@ -104,12 +105,18 @@ final class Renderer {
         )
 
         for command in game.renderCommands {
-            drawCommand(command, game: game, renderEncoder: renderEncoder)
+            stats.drawCallCount += drawCommand(
+                command,
+                game: game,
+                renderEncoder: renderEncoder
+            )
         }
 
         renderEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+
+        return stats
     }
 
     private func loadSpriteTexture(_ spriteAsset: SpriteAsset) {
@@ -141,22 +148,30 @@ final class Renderer {
         _ command: RenderCommand,
         game: Game,
         renderEncoder: MTLRenderCommandEncoder
-    ) {
+    ) -> Int {
+        var drawCallCount = 0
+
         command.forEachPrimitive { primitive in
-            drawPrimitive(primitive, game: game, renderEncoder: renderEncoder)
+            drawCallCount += drawPrimitive(
+                primitive,
+                game: game,
+                renderEncoder: renderEncoder
+            )
         }
+
+        return drawCallCount
     }
 
     private func drawPrimitive(
         _ primitive: RenderPrimitive,
         game: Game,
         renderEncoder: MTLRenderCommandEncoder
-    ) {
+    ) -> Int {
         switch primitive {
         case .sprite(let sprite):
-            drawSprite(sprite, game: game, renderEncoder: renderEncoder)
+            return drawSprite(sprite, game: game, renderEncoder: renderEncoder)
         case .rect(let rect, let color):
-            drawRect(
+            return drawRect(
                 rect,
                 color: color,
                 game: game,
@@ -170,7 +185,7 @@ final class Renderer {
         color: Color,
         game: Game,
         renderEncoder: MTLRenderCommandEncoder
-    ) {
+    ) -> Int {
         drawSprite(
             Sprite(position: rect.origin, size: rect.size, material: .color(color)),
             game: game,
@@ -182,10 +197,10 @@ final class Renderer {
         _ sprite: Sprite,
         game: Game,
         renderEncoder: MTLRenderCommandEncoder
-    ) {
+    ) -> Int {
         switch sprite.material {
         case .color(let color):
-            drawRect(
+            return drawRect(
                 renderRect(
                     for: sprite,
                     game: game,
@@ -202,7 +217,7 @@ final class Renderer {
                     textureID: textureID
                   )
             else {
-                drawRect(
+                return drawRect(
                     renderRect(
                         for: sprite,
                         game: game,
@@ -212,10 +227,9 @@ final class Renderer {
                     game: game,
                     renderEncoder: renderEncoder
                 )
-                return
             }
 
-            drawRect(
+            return drawRect(
                 renderRect(
                     for: sprite,
                     game: game,
@@ -233,7 +247,7 @@ final class Renderer {
         material: RenderMaterial,
         game: Game,
         renderEncoder: MTLRenderCommandEncoder
-    ) {
+    ) -> Int {
         var resolution = SIMD2<Float>(
             Float(game.logicalResolution.x),
             Float(game.logicalResolution.y)
@@ -282,6 +296,8 @@ final class Renderer {
             vertexStart: 0,
             vertexCount: 6
         )
+
+        return 1
     }
 
     private func renderRect(
@@ -446,6 +462,10 @@ final class Renderer {
 
         return texture
     }
+}
+
+struct RendererStats {
+    var drawCallCount = 0
 }
 
 private enum RenderMaterial {
