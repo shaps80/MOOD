@@ -1,4 +1,4 @@
-import Swift
+import Pixl
 
 struct Player: Entity {
     let size: Vec2 = .init(x: 32, y: 32)

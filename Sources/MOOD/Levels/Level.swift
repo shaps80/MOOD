@@ -1,18 +1,4 @@
-import Swift
-
-struct Level: Equatable, Sendable {
-    let tilemap: Tilemap
-    let spawnPoint: Vec2
-
-    init(tilemap: Tilemap, spawnPoint: Vec2) {
-        self.tilemap = tilemap
-        self.spawnPoint = spawnPoint
-    }
-
-    var bounds: Rect {
-        tilemap.bounds
-    }
-}
+import Pixl
 
 extension Level {
     static func level1(worldSize: Vec2, tileSize: Vec2) -> Level {
@@ -247,3 +233,4 @@ private extension Tilemap {
         }
     }
 }
+

@@ -1,6 +1,6 @@
 @preconcurrency import AppKit
 @preconcurrency import MetalKit
-import GameCore
+import Pixl
 import QuartzCore
 import Swift
 

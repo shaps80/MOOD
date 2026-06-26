@@ -1,5 +1,5 @@
 @preconcurrency import Metal
-import GameCore
+import Pixl
 import Swift
 
 struct GameViewport {

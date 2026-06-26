@@ -13,11 +13,11 @@ let package = Package(
         )
     ],
     targets: [
-        .target(name: "GameCore"),
+        .target(name: "Pixl"),
         .target(
             name: "PlatformWeb",
             dependencies: [
-                "GameCore",
+                "Pixl",
                 .product(
                     name: "JavaScriptKit",
                     package: "JavaScriptKit",
@@ -28,7 +28,7 @@ let package = Package(
         .target(
             name: "PlatformMac",
             dependencies: [
-                "GameCore"
+                "Pixl"
             ],
             resources: [
                 .copy("../../Game/assets")

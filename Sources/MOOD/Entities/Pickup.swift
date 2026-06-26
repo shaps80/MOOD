@@ -1,4 +1,4 @@
-import Swift
+import Pixl
 
 struct Pickup: Entity {
     let size: Vec2 = .init(x: 16, y: 16)

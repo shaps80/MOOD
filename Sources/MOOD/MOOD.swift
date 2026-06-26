@@ -5,17 +5,73 @@ import PlatformWeb
 import PlatformMac
 #endif
 
+import Pixl
+
 @main
 struct MOOD {
+    private static let size: Vec2 = .init(
+        x: 800,
+        y: 400
+    )
+
+    private static var level: Level {
+        .level2(
+            worldSize: Vec2(
+                x: size.x * 2,
+                y: size.y
+            ),
+            tileSize: Vec2(x: 16, y: 16)
+        )
+    }
+
+    private static var game: Game {
+        let level = level
+
+        return .init(
+            size: size,
+            interpolationMode: .nearest,
+            preferredFPS: 60,
+            level: level,
+            camera: .init(
+                camera: Camera(viewportSize: size),
+                anchor: .entities([.player]),
+                constraints: CameraConstraints(bounds: level.bounds)
+            ),
+            entities: [
+                .init(
+                    id: .pickup,
+                    entity: Pickup(),
+                    position: .init(
+                        x: 64,
+                        y: 64
+                    )
+                ),
+                .init(
+                    id: .enemy,
+                    entity: Enemy(),
+                    position: .init(
+                        x: 64,
+                        y: 64
+                    )
+                ),
+                .init(
+                    id: .player,
+                    entity: Player(),
+                    position: level.spawnPoint
+                ),
+            ]
+        )
+    }
+
 #if os(macOS)
     @MainActor
     static func main() {
-        PlatformMac.run()
+        PlatformMac.run(game: game)
     }
 #else
     static func main() {
 #if os(WASI)
-        PlatformWeb.run()
+        PlatformWeb.run(game: game)
 #else
         print("This platform is not currently supported!")
 #endif

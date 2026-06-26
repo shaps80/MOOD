@@ -35,86 +35,40 @@ public struct Game {
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
-        logicalResolution: Vec2 = .init(x: 800, y: 400),
+        size: Vec2 = .init(x: 800, y: 400),
         interpolationMode: InterpolationMode = .nearest,
-        preferredFPS: Double = 60
+        preferredFPS: Double = 60,
+        level: Level,
+        camera: CameraRig,
+        entities: [EntitySpawn]
     ) {
-        self.logicalResolution = logicalResolution
+        self.logicalResolution = size
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
+        self.level = level
+        self.cameraRig = camera
 
-        self.level = .level2(
-            worldSize: Vec2(
-                x: logicalResolution.x * 2,
-                y: logicalResolution.y
-            ),
-            tileSize: Vec2(x: 16, y: 16)
-        )
+        for spawn in entities {
+            entityRecords.append(EntityRecord(id: spawn.id, entity: spawn.entity))
 
-        self.cameraRig = CameraRig(
-            camera: Camera(viewportSize: logicalResolution),
-            anchor: .entities([.player]),
-            constraints: CameraConstraints(bounds: level.bounds)
-        )
+            var state = EntityState(
+                id: spawn.id,
+                size: spawn.entity.size,
+                colliders: spawn.entity.colliders
+            )
 
-        self.entityRecords = [
-            EntityRecord(id: .enemy, entity: Enemy()),
-            EntityRecord(id: .player, entity: Player()),
-            EntityRecord(id: .pickup, entity: Pickup()),
-        ]
-
-        insertInitialEntityStates()
+            state.move(to: spawn.position, velocity: .zero)
+            entityStates.insert(state)
+        }
 
         updateCamera()
         rebuildSpriteBuffer()
-    }
-
-    private mutating func insertInitialEntityStates() {
-        for record in entityRecords {
-            var state = EntityState(
-                id: record.id,
-                size: record.entity.size,
-                colliders: record.entity.colliders
-            )
-
-            placeInitialState(&state, for: record.id)
-            entityStates.insert(state)
-        }
-    }
-
-    private func placeInitialState(_ state: inout EntityState, for id: EntityID) {
-        let center: Vec2
-
-        if id == .player {
-            center = level.spawnPoint
-        } else if id == .pickup {
-            center = Vec2(
-                x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
-                y: level.spawnPoint.y
-            )
-        } else if id == .enemy {
-            center = .init(x: 64, y: 64)
-        } else {
-            center = .zero
-        }
-
-        state.move(
-            to: Vec2(
-                x: center.x - (state.size.x / 2),
-                y: center.y - (state.size.y / 2)
-            ),
-            velocity: .zero
-        )
     }
 
     public mutating func update(delta: Double, input: Input) {
         defer {
             wasResetPressed = input.reset
             wasDebugTogglePressed = input.jump
-        }
-
-        if input.reset && !wasResetPressed {
-            resetPlayers()
         }
 
         if input.jump && !wasDebugTogglePressed {
@@ -300,12 +254,6 @@ public struct Game {
         }
     }
 
-    private mutating func resetPlayers() {
-        entityStates.update(.player) { state in
-            placeInitialState(&state, for: .player)
-        }
-    }
-
     private mutating func updateCamera() {
         cameraRig.update(anchorBounds: entityBounds)
     }
@@ -316,10 +264,10 @@ public struct Game {
 }
 
 extension Game {
-    struct Context {
-        let delta: Double
-        let input: Input
-        let level: Level
+    public struct Context {
+        public let delta: Double
+        public let input: Input
+        public let level: Level
         let contacts: ContactState
         private let collisionSystem: CollisionSystem
         fileprivate private(set) var sounds: [Sound] = []
@@ -342,11 +290,11 @@ extension Game {
             )
         }
 
-        mutating func play(sound: Sound) {
+        public mutating func play(sound: Sound) {
             sounds.append(sound)
         }
 
-        func move(state: inout EntityState, velocity: Vec2) {
+        public func move(state: inout EntityState, velocity: Vec2) {
             collisionSystem.move(state: &state, velocity: velocity)
         }
 

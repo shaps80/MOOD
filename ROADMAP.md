@@ -75,7 +75,7 @@ Status: Done
 
 Question answered:
 
-Can another platform run MOOD without a GameCore rewrite?
+Can another platform run MOOD without a Pixl rewrite?
 
 ## Milestone 5 - World
 
@@ -99,7 +99,7 @@ Can MOOD support a playable environment?
 
 Status: Done
 
-- [x] Define camera state in GameCore
+- [x] Define camera state in Pixl
 - [x] Follow player within level bounds
 - [x] Apply camera transform in platform renderers
 
@@ -111,11 +111,11 @@ Can MOOD present worlds larger than the viewport?
 
 Status: Done
 
-- [x] Add platform-neutral render commands in GameCore
+- [x] Add platform-neutral render commands in Pixl
 - [x] Add a RenderContext draw API for sprites, rect fills, and rect strokes
 - [x] Keep stroke expansion platform-neutral
 - [x] Make platform renderers consume render primitives
-- [x] Share missing-texture color through GameCore
+- [x] Share missing-texture color through Pixl
 
 Question answered:
 
@@ -143,7 +143,7 @@ Status: Done
 - [x] Define batching rules that preserve layer ordering
 - [x] Batch compatible consecutive rect primitives
 - [x] Batch compatible consecutive sprite primitives by texture
-- [x] Keep platform-specific batching optimizations behind the same GameCore render command semantics
+- [x] Keep platform-specific batching optimizations behind the same Pixl render command semantics
 
 Question answered:
 

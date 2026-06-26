@@ -1,5 +1,5 @@
 @preconcurrency import AVFoundation
-import GameCore
+import Pixl
 import Swift
 
 @MainActor

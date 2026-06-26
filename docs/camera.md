@@ -8,7 +8,7 @@ camera control.
 
 ## Core Decisions
 
-- `GameCore` owns camera state and camera behavior.
+- `Pixl` owns camera state and camera behavior.
 - Sprites remain in world coordinates.
 - Platform renderers convert world-space sprites into screen-space draw calls by
   subtracting the final camera origin.

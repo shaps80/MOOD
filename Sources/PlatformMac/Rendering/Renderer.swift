@@ -1,6 +1,6 @@
 @preconcurrency import Metal
 @preconcurrency import MetalKit
-import GameCore
+import Pixl
 import simd
 import Swift
 

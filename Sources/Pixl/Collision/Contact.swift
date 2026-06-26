@@ -1,15 +1,15 @@
 import Swift
 
-struct Contact: CustomStringConvertible, Sendable {
-    enum Phase: Sendable {
+public struct Contact: CustomStringConvertible, Sendable {
+    public enum Phase: Sendable {
         case began
         case changed
         case ended
     }
 
-    struct Endpoint: Hashable, Sendable {
-        let id: EntityID
-        let collider: Int
+    public struct Endpoint: Hashable, Sendable {
+        public let id: EntityID
+        public let collider: Int
     }
 
     struct Key: Hashable, Sendable {
@@ -27,15 +27,15 @@ struct Contact: CustomStringConvertible, Sendable {
         }
     }
 
-    let source: Endpoint
-    let target: Endpoint
-    let phase: Phase
+    public let source: Endpoint
+    public let target: Endpoint
+    public let phase: Phase
 
     var key: Key {
         Key(source: source, target: target)
     }
 
-    var description: String {
+    public var description: String {
         "Contact(phase: \(phase), source: (\(source.id.rawValue), \(source.collider)), target: (\(target.id.rawValue), \(target.collider)))"
     }
 }

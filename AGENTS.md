@@ -61,7 +61,7 @@ A new platform should require a new adapter, not a new game.
 
 The preferred approach is:
 
-GameCore
+Pixl
 +
 Platform Layer
 =
@@ -69,11 +69,11 @@ Playable Game
 
 Examples:
 
-GameCore + PlatformWeb      → Browser / itch.io
-GameCore + PlatformIOS      → iPhone / iPad
-GameCore + PlatformMacOS    → macOS
-GameCore + PlatformWindows  → Windows
-GameCore + PlatformLinux    → Linux / Steam Deck
+Pixl + PlatformWeb      → Browser / itch.io
+Pixl + PlatformIOS      → iPhone / iPad
+Pixl + PlatformMacOS    → macOS
+Pixl + PlatformWindows  → Windows
+Pixl + PlatformLinux    → Linux / Steam Deck
 
 Future ports should primarily involve implementing platform services:
 
@@ -85,7 +85,7 @@ Future ports should primarily involve implementing platform services:
 
 The game itself should remain largely unchanged.
 
-When behavior can live in GameCore without depending on platform APIs, prefer doing it there so every platform has less to decide, duplicate, or port.
+When behavior can live in Pixl without depending on platform APIs, prefer doing it there so every platform has less to decide, duplicate, or port.
 
 Examples include game-facing render command expansion, visibility decisions, ordering rules, and other platform-neutral semantics.
 
@@ -181,7 +181,7 @@ Agent verification preference:
 
 * Default to direct SwiftPM build checks through `swiftly run`.
 * When starting or verifying agent work, do not run `./build.sh` by default because it also starts the browser-serving flow.
-* For GameCore/gameplay changes, run `swiftly run swift build --scratch-path .build/host --target GameCore`.
+* For Pixl/gameplay changes, run `swiftly run swift build --scratch-path .build/host --target Pixl`.
 * For browser/Wasm compile checks, run `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`.
 * Do not run `./deploy-wasm.sh` for routine verification; reserve it for explicit deploy/itch packaging requests or when the user says they are running that flow themselves.
 * Do not launch browsers, start local browser testing flows, use browser automation, or run test suites unless explicitly requested.
@@ -240,7 +240,7 @@ Upload `MOOD.zip` to itch.io. The zip has `index.html` at the root and contains 
 Useful checks:
 
 * `swiftly run swift --version`
-* `swiftly run swift build --scratch-path .build/host --target GameCore`
+* `swiftly run swift build --scratch-path .build/host --target Pixl`
 * `swiftly run swift build --swift-sdk swift-6.3.2-RELEASE_wasm`
 * `./build.sh` only for explicit browser-serving checks
 
@@ -263,9 +263,9 @@ Those may be explored later if justified by the game.
 
 Architectural Structure
 
-GameCore
+Pixl
 
-GameCore contains:
+Pixl contains:
 
 * Game rules
 * World state
@@ -276,11 +276,11 @@ GameCore contains:
 * Save data
 * Gameplay systems
 
-GameCore must remain platform-independent.
+Pixl must remain platform-independent.
 
 Critical Rules
 
-GameCore must compile without importing:
+Pixl must compile without importing:
 
 * JavaScriptKit
 * DOM APIs
@@ -291,15 +291,15 @@ GameCore must compile without importing:
 * WinUI
 * Platform-specific frameworks
 
-GameCore must compile on macOS using a normal Swift toolchain without SwiftWasm installed.
+Pixl must compile on macOS using a normal Swift toolchain without SwiftWasm installed.
 
 If gameplay code requires browser APIs, rendering APIs, or platform frameworks, it probably belongs somewhere else.
 
 This is the single most important architectural constraint in the project.
 
-GameCore also owns game-facing render state and decisions.
+Pixl also owns game-facing render state and decisions.
 
-Examples that belong in GameCore:
+Examples that belong in Pixl:
 
 * Which color should be shown
 * Which sprite or animation frame is active
@@ -308,7 +308,7 @@ Examples that belong in GameCore:
 * World/tile state
 * Collision and gameplay timing decisions
 
-Examples that do not belong in GameCore:
+Examples that do not belong in Pixl:
 
 * WebGL calls
 * Canvas lookup and sizing
@@ -316,7 +316,7 @@ Examples that do not belong in GameCore:
 * DOM events
 * JavaScriptKit interop
 
-Platform layers may provide external facts such as elapsed time, input state, asset bytes, or viewport size. GameCore decides what the game state becomes from those facts.
+Platform layers may provide external facts such as elapsed time, input state, asset bytes, or viewport size. Pixl decides what the game state becomes from those facts.
 
 ⸻
 
@@ -331,7 +331,7 @@ Responsible for:
 * Asset loading
 * Browser-specific services
 
-Its job is to run GameCore.
+Its job is to run Pixl.
 
 Nothing more.
 
@@ -340,8 +340,8 @@ PlatformWeb must not own game rules, demo behavior, visual selection logic, or g
 If PlatformWeb needs to render something, prefer this flow:
 
 * PlatformWeb reads browser/platform facts.
-* PlatformWeb passes those facts into GameCore.
-* GameCore updates and exposes platform-neutral state.
+* PlatformWeb passes those facts into Pixl.
+* Pixl updates and exposes platform-neutral state.
 * PlatformWeb translates that state into WebGL/DOM/audio calls.
 
 PlatformWeb is specifically the browser/Wasm adapter.
@@ -352,7 +352,7 @@ Do not require PlatformWeb, MOOD, or the whole package to build in Xcode or with
 
 The required validation split is:
 
-* GameCore must build on host: `swiftly run swift build --scratch-path .build/host --target GameCore`
+* Pixl must build on host: `swiftly run swift build --scratch-path .build/host --target Pixl`
 * Test suites are user-run unless explicitly requested.
 * Browser app must build through Wasm: `./build.sh`
 
@@ -369,7 +369,7 @@ Potential future implementations:
 * PlatformWindows
 * PlatformLinux
 
-All should be capable of running the same GameCore.
+All should be capable of running the same Pixl.
 
 ⸻
 
@@ -379,7 +379,7 @@ Initial structure:
 
 MOOD/
 ├── Game/
-├── Sources/GameCore/
+├── Sources/Pixl/
 ├── Sources/PlatformWeb/
 └── Sources/MOOD/
 
@@ -499,7 +499,7 @@ A future platform should only need to provide:
 * Asset loading
 * Lifecycle services
 
-and then be able to run the existing GameCore.
+and then be able to run the existing Pixl.
 
 The question should always be:
 

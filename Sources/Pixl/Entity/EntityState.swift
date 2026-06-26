@@ -10,9 +10,9 @@ public struct EntityID: Hashable, Sendable {
 
 public struct EntityState: Equatable, Identifiable, Sendable {
     public let id: EntityID
-    internal var size: Vec2
-    internal var position: Vec2
-    internal var velocity: Vec2
+    public internal(set) var size: Vec2
+    public internal(set) var position: Vec2
+    public internal(set) var velocity: Vec2
     internal var colliders: [Collider]
 
     public init(id: EntityID, size: Vec2, collider: Collider? = nil) {
@@ -43,10 +43,4 @@ public struct EntityState: Equatable, Identifiable, Sendable {
     public var bounds: Rect {
         Rect(origin: position, size: size)
     }
-}
-
-extension EntityID {
-    static let player = EntityID(rawValue: 0)
-    static let pickup = EntityID(rawValue: 1)
-    static let enemy = EntityID(rawValue: 2)
 }

@@ -1,12 +1,12 @@
 @preconcurrency import AppKit
-import GameCore
+import Pixl
 import Swift
 
 public enum PlatformMac {
     @MainActor
-    public static func run() {
+    public static func run(game: Game) {
         let application = NSApplication.shared
-        let runtime = Runtime(game: Game())
+        let runtime = Runtime(game: game)
 
         runtime.start()
 
