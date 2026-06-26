@@ -65,10 +65,10 @@ final class Renderer {
         }
 
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(
-            red: 0,
-            green: 0,
-            blue: 0,
-            alpha: 1
+            red: game.clearColor.red,
+            green: game.clearColor.green,
+            blue: game.clearColor.blue,
+            alpha: game.clearColor.alpha
         )
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
 
@@ -90,18 +90,6 @@ final class Renderer {
         renderEncoder.setFragmentSamplerState(
             samplerState(for: game.interpolationMode),
             index: 0
-        )
-
-        stats.drawCallCount += drawRect(
-            RenderRect(
-                x: 0,
-                y: 0,
-                width: game.logicalResolution.x,
-                height: game.logicalResolution.y
-            ),
-            material: .color(game.clearColor),
-            game: game,
-            renderEncoder: renderEncoder
         )
 
         for command in game.renderCommands {
