@@ -2,9 +2,9 @@ import Swift
 
 /// Resolves movement and detects contacts against collidable game geometry.
 ///
-/// `CollisionSystem` is intentionally separate from `Entity`.
+/// `CollisionSystem` is intentionally separate from `EntityState`.
 ///
-/// - `Entity` stores state: position, size, velocity, colliders.
+/// - `EntityState` stores state: position, size, velocity, colliders.
 /// - `CollisionSystem` knows how to query colliders and resolve movement.
 ///
 /// Movement is resolved one axis at a time:
@@ -28,7 +28,7 @@ import Swift
 /// ```
 ///
 /// Current broad phase is tile-grid based: only tile cells touched by the
-/// proposed bounds are checked. Entity colliders are currently checked as a
+/// proposed bounds are checked. EntityState colliders are currently checked as a
 /// flat list because the active entity count is still small.
 struct CollisionSystem {
     /// Collision-facing view of a tilemap.
@@ -42,16 +42,16 @@ struct CollisionSystem {
         self.delta = max(delta, 0)
     }
 
-    /// Moves an entity by velocity for this world's delta.
+    /// Moves entity state by velocity for this world's delta.
     ///
     /// Entities without colliders move freely. Entities with colliders use
     /// axis-separated collision resolution against the tilemap collider index.
-    func move(entity: inout Entity, velocity proposedVelocity: Vec2) {
-        guard !entity.colliders.isEmpty else {
-            entity.move(
+    func move(state: inout EntityState, velocity proposedVelocity: Vec2) {
+        guard !state.colliders.isEmpty else {
+            state.move(
                 to: Vec2(
-                    x: entity.position.x + (proposedVelocity.x * delta),
-                    y: entity.position.y + (proposedVelocity.y * delta)
+                    x: state.position.x + (proposedVelocity.x * delta),
+                    y: state.position.y + (proposedVelocity.y * delta)
                 ),
                 velocity: proposedVelocity
             )
@@ -59,21 +59,21 @@ struct CollisionSystem {
         }
 
         var velocity = proposedVelocity
-        var position = entity.position
+        var position = state.position
 
         let horizontal = resolveHorizontalMovement(
-            entityID: entity.id,
+            entityID: state.id,
             from: position,
             distance: velocity.x * delta,
-            colliders: entity.colliders
+            colliders: state.colliders
         )
         position = Vec2(x: horizontal.value, y: position.y)
 
         let vertical = resolveVerticalMovement(
-            entityID: entity.id,
+            entityID: state.id,
             from: position,
             distance: velocity.y * delta,
-            colliders: entity.colliders
+            colliders: state.colliders
         )
         position = Vec2(x: position.x, y: vertical.value)
 
@@ -85,7 +85,7 @@ struct CollisionSystem {
             velocity = Vec2(x: velocity.x, y: 0)
         }
 
-        entity.move(to: position, velocity: velocity)
+        state.move(to: position, velocity: velocity)
     }
 
     func detectContacts(into contacts: ContactState) {
@@ -117,7 +117,7 @@ struct CollisionSystem {
     /// Resolves X movement against any tile colliders touched by the proposed
     /// horizontal bounds.
     private func resolveHorizontalMovement(
-        entityID: Entity.ID,
+        entityID: EntityID,
         from position: Vec2,
         distance: Double,
         colliders: [Collider]
@@ -175,7 +175,7 @@ struct CollisionSystem {
 
     /// Resolves Y movement after X has already been resolved.
     private func resolveVerticalMovement(
-        entityID: Entity.ID,
+        entityID: EntityID,
         from position: Vec2,
         distance: Double,
         colliders: [Collider]
@@ -233,7 +233,7 @@ struct CollisionSystem {
 
     private func forEachCollider(
         intersecting bounds: Rect,
-        _ body: (Entity.ID?, Int?, Collider) -> Void
+        _ body: (EntityID?, Int?, Collider) -> Void
     ) {
         colliderIndex.forEach(intersecting: bounds) { collider in
             body(nil, nil, collider)

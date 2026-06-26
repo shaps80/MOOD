@@ -2,9 +2,9 @@ import Swift
 
 public enum CameraAnchor: Equatable, Sendable {
     case point(Vec2)
-    case entities([Entity.ID])
+    case entities([EntityID])
 
-    func center(anchorBounds: (Entity.ID) -> Rect?) -> Vec2? {
+    func center(anchorBounds: (EntityID) -> Rect?) -> Vec2? {
         switch self {
         case .point(let point):
             return point

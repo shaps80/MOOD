@@ -24,7 +24,7 @@ public struct CameraRig: Equatable, Sendable {
         self.effects = effects
     }
 
-    public mutating func update(anchorBounds: (Entity.ID) -> Rect?) {
+    public mutating func update(anchorBounds: (EntityID) -> Rect?) {
         guard let anchorCenter = anchor.center(anchorBounds: anchorBounds) else {
             return
         }

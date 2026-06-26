@@ -1,9 +1,9 @@
 import Swift
 
 final class EntityStore {
-    private var entitiesByID: [Entity.ID: Entity] = [:]
+    private var entitiesByID: [EntityID: EntityState] = [:]
 
-    private(set) subscript(id: Entity.ID) -> Entity? {
+    private(set) subscript(id: EntityID) -> EntityState? {
         get {
             entitiesByID[id]
         }
@@ -12,13 +12,13 @@ final class EntityStore {
         }
     }
 
-    func insert(_ entity: Entity) {
+    func insert(_ entity: EntityState) {
         entitiesByID[entity.id] = entity
     }
 
     func update(
-        _ id: Entity.ID,
-        _ body: (inout Entity) -> Void
+        _ id: EntityID,
+        _ body: (inout EntityState) -> Void
     ) {
         guard var entity = entitiesByID[id] else {
             return
@@ -28,11 +28,11 @@ final class EntityStore {
         entitiesByID[id] = entity
     }
 
-    func bounds(for id: Entity.ID) -> Rect? {
+    func bounds(for id: EntityID) -> Rect? {
         entitiesByID[id]?.bounds
     }
 
-    func forEachCollider(_ body: (Entity.ID, Int, Collider) -> Void) {
+    func forEachCollider(_ body: (EntityID, Int, Collider) -> Void) {
         for entity in entitiesByID.values {
             for index in entity.colliders.indices {
                 body(

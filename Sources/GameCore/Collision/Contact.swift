@@ -8,7 +8,7 @@ struct Contact: CustomStringConvertible, Sendable {
     }
 
     struct Endpoint: Hashable, Sendable {
-        let id: Entity.ID
+        let id: EntityID
         let collider: Int
     }
 

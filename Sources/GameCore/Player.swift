@@ -1,41 +1,27 @@
 import Swift
 
-struct Player {
-    private let size: Vec2 = .init(x: 32, y: 32)
+struct Player: Entity {
+    let size: Vec2 = .init(x: 32, y: 32)
     private var controller: TopPlayerController = .slippery
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
-    let entityID: Entity.ID
-
-    init(entityID: Entity.ID) {
-        self.entityID = entityID
-    }
-
-    func makeEntity() -> Entity {
-        Entity(
-            id: entityID,
-            position: .zero,
-            size: size,
-            collider: .init(
-                bounds: .init(
-                    origin: .zero,
-                    size: size
-                )
+    var colliders: [Collider] {
+        [.init(
+            bounds: Rect(origin: .zero, size: size)
                 .padding(.left, 8)
                 .padding(.right, 9)
                 .padding(.vertical, 3),
-                layer: .player,
-                mask: [.playerMovement, .pickup],
-                behaviour: .blocking
-            )
-        )
+            layer: .player,
+            mask: [.playerMovement, .pickup],
+            behaviour: .blocking
+        )]
     }
 
-    func sprite(for entity: Entity) -> Sprite {
+    func sprite(for state: EntityState) -> Sprite? {
         Sprite(
-            position: entity.position,
-            size: entity.size,
+            position: state.position,
+            size: state.size,
             material: .sprite(
                 timeline.animation.textureID,
                 sourceRect: timeline.frame
@@ -43,17 +29,7 @@ struct Player {
         )
     }
 
-    func place(entity: inout Entity, at position: Vec2) {
-        entity.move(
-            to: Vec2(
-                x: position.x - (size.x / 2),
-                y: position.y - (size.y / 2)
-            ),
-            velocity: .zero
-        )
-    }
-
-    public mutating func update(context: inout Game.Context, entity: inout Entity) {
+    mutating func onUpdate(context: inout Game.Context, state: inout EntityState) {
         let input = context.input
 
         timeline.update(delta: context.delta)
@@ -64,20 +40,16 @@ struct Player {
 
         let velocity = controller.velocity(
             for: input,
-            current: entity.velocity,
+            current: state.velocity,
             delta: context.delta
         )
 
-        context.move(entity: &entity, velocity: velocity)
-
-//        if input.jump && !wasJumpPressed {
-//            context.play(sound: .jump)
-//        }
+        context.move(state: &state, velocity: velocity)
     }
 
     mutating func onCollision(
         context: inout Game.Context,
-        entity: inout Entity,
+        state: inout EntityState,
         contact: Contact
     ) { }
 }

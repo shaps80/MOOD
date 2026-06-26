@@ -3,9 +3,9 @@ import Swift
 final class ContactState {
     private var previousKeys: Set<Contact.Key> = []
     private var currentKeys: Set<Contact.Key> = []
-    private var contactsByEntity: [Entity.ID: [Contact]] = [:]
+    private var contactsByEntity: [EntityID: [Contact]] = [:]
 
-    subscript(entityID: Entity.ID) -> [Contact] {
+    subscript(entityID: EntityID) -> [Contact] {
         contactsByEntity[entityID] ?? []
     }
 

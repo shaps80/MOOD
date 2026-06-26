@@ -56,6 +56,13 @@ public extension Color {
         alpha: 1
     )
 
+    static let yellow: Self = .init(
+        red: 1,
+        green: 0.77,
+        blue: 0,
+        alpha: 1
+    )
+
     static let green: Self = .init(
         red: 0,
         green: 1,

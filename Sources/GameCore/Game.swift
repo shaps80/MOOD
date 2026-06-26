@@ -17,9 +17,8 @@ public struct Game {
     }
 
     private let level: Level
-    private var players: [Player] = [.init(entityID: .player)]
-    private var pickups: [Pickup] = []
-    private var entities: EntityStore = .init()
+    private var entityRecords: [EntityRecord] = []
+    private var entityStates: EntityStore = .init()
     private let contacts = ContactState()
     private var cameraRig: CameraRig
     private var wasResetPressed = false
@@ -51,15 +50,6 @@ public struct Game {
             ),
             tileSize: Vec2(x: 16, y: 16)
         )
-        self.pickups = [
-            Pickup(
-                entityID: .pickup,
-                center: Vec2(
-                    x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
-                    y: level.spawnPoint.y
-                )
-            )
-        ]
 
         self.cameraRig = CameraRig(
             camera: Camera(viewportSize: logicalResolution),
@@ -67,19 +57,52 @@ public struct Game {
             constraints: CameraConstraints(bounds: level.bounds)
         )
 
-        for player in players {
-            var entity = player.makeEntity()
+        self.entityRecords = [
+            EntityRecord(id: .enemy, entity: Enemy()),
+            EntityRecord(id: .player, entity: Player()),
+            EntityRecord(id: .pickup, entity: Pickup()),
+        ]
 
-            player.place(entity: &entity, at: level.spawnPoint)
-            entities.insert(entity)
-        }
-
-        for pickup in pickups {
-            entities.insert(pickup.makeEntity())
-        }
+        insertInitialEntityStates()
 
         updateCamera()
         rebuildSpriteBuffer()
+    }
+
+    private mutating func insertInitialEntityStates() {
+        for record in entityRecords {
+            var state = EntityState(
+                id: record.id,
+                size: record.entity.size,
+                colliders: record.entity.colliders
+            )
+
+            placeInitialState(&state, for: record.id)
+            entityStates.insert(state)
+        }
+    }
+
+    private func placeInitialState(_ state: inout EntityState, for id: EntityID) {
+        let center: Vec2
+
+        if id == .player {
+            center = level.spawnPoint
+        } else if id == .pickup {
+            center = Vec2(
+                x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
+                y: level.spawnPoint.y
+            )
+        } else {
+            center = .init(x: 64, y: 64)
+        }
+
+        state.move(
+            to: Vec2(
+                x: center.x - (state.size.x / 2),
+                y: center.y - (state.size.y / 2)
+            ),
+            velocity: .zero
+        )
     }
 
     public mutating func update(delta: Double, input: Input) {
@@ -104,35 +127,26 @@ public struct Game {
             delta: delta,
             input: input,
             level: level,
-            entities: entities,
+            entities: entityStates,
             contacts: contacts
         )
 
-        for index in players.indices {
-            let entityID = players[index].entityID
-            var playerContext = context
+        for index in entityRecords.indices {
+            let entityID = entityRecords[index].id
+            var entityContext = context
+            var entity = entityRecords[index].entity
 
-            entities.update(entityID) { entity in
-                players[index].update(context: &playerContext, entity: &entity)
+            entityStates.update(entityID) { state in
+                entity.onUpdate(context: &entityContext, state: &state)
             }
 
-            frameSounds.append(contentsOf: playerContext.sounds)
+            entityRecords[index].entity = entity
+            frameSounds.append(contentsOf: entityContext.sounds)
         }
 
         context.detectContacts()
         contacts.endFrame()
         dispatchCollisions(context: context, sounds: &frameSounds)
-
-        for index in pickups.indices {
-            let entityID = pickups[index].entityID
-            var pickupContext = context
-
-            entities.update(entityID) { entity in
-                pickups[index].update(context: &pickupContext, entity: &entity)
-            }
-
-            frameSounds.append(contentsOf: pickupContext.sounds)
-        }
 
         updateCamera()
         sounds.append(contentsOf: frameSounds)
@@ -143,38 +157,23 @@ public struct Game {
         context: Context,
         sounds: inout [Sound]
     ) {
-        for index in players.indices {
-            let entityID = players[index].entityID
-            var playerContext = context
+        for index in entityRecords.indices {
+            let entityID = entityRecords[index].id
+            var entityContext = context
+            var entity = entityRecords[index].entity
 
             for contact in contacts[entityID] {
-                entities.update(entityID) { entity in
-                    players[index].onCollision(
-                        context: &playerContext,
-                        entity: &entity,
+                entityStates.update(entityID) { state in
+                    entity.onCollision(
+                        context: &entityContext,
+                        state: &state,
                         contact: contact
                     )
                 }
             }
 
-            sounds.append(contentsOf: playerContext.sounds)
-        }
-
-        for index in pickups.indices {
-            let entityID = pickups[index].entityID
-            var pickupContext = context
-
-            for contact in contacts[entityID] {
-                entities.update(entityID) { entity in
-                    pickups[index].onCollision(
-                        context: &pickupContext,
-                        entity: &entity,
-                        contact: contact
-                    )
-                }
-            }
-
-            sounds.append(contentsOf: pickupContext.sounds)
+            entityRecords[index].entity = entity
+            sounds.append(contentsOf: entityContext.sounds)
         }
     }
 
@@ -193,8 +192,7 @@ public struct Game {
         var visibleEntityCount = 0
 
         visibleTileCount += appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
-        visibleEntityCount += appendPlayerSprites(visibleWithin: visibleBounds, to: &renderContext)
-        visibleEntityCount += appendPickupSprites(visibleWithin: visibleBounds, to: &renderContext)
+        visibleEntityCount += appendEntitySprites(visibleWithin: visibleBounds, to: &renderContext)
 
         if debugOptions.contains(.colliders) {
             appendColliderDebug(visibleWithin: visibleBounds, to: &renderContext)
@@ -258,63 +256,25 @@ public struct Game {
         return visibleTileCount
     }
 
-    private func appendPlayerSprites(
+    private func appendEntitySprites(
         visibleWithin bounds: Rect,
         to context: inout RenderContext
     ) -> Int {
         var visibleEntityCount = 0
 
-        for player in players {
-            if appendEntitySprite(
-                player.entityID,
-                visibleWithin: bounds,
-                to: &context,
-                sprite: { entity in
-                    player.sprite(for: entity)
-                }
-            ) {
-                visibleEntityCount += 1
+        for record in entityRecords {
+            guard let state = entityStates[record.id],
+                  state.bounds.intersects(bounds),
+                  let sprite = record.entity.sprite(for: state)
+            else {
+                continue
             }
+
+            context.sprite(sprite, layer: .entity)
+            visibleEntityCount += 1
         }
 
         return visibleEntityCount
-    }
-
-    private func appendPickupSprites(
-        visibleWithin bounds: Rect,
-        to context: inout RenderContext
-    ) -> Int {
-        var visibleEntityCount = 0
-
-        for pickup in pickups {
-            if appendEntitySprite(
-                pickup.entityID,
-                visibleWithin: bounds,
-                to: &context,
-                sprite: { entity in
-                    pickup.sprite(for: entity)
-                }
-            ) {
-                visibleEntityCount += 1
-            }
-        }
-
-        return visibleEntityCount
-    }
-
-    private func appendEntitySprite(
-        _ entityID: Entity.ID,
-        visibleWithin bounds: Rect,
-        to context: inout RenderContext,
-        sprite: (Entity) -> Sprite
-    ) -> Bool {
-        guard let entity = entities[entityID],
-              entity.bounds.intersects(bounds) else {
-            return false
-        }
-
-        context.sprite(sprite(entity), layer: .entity)
-        return true
     }
 
     private func appendColliderDebug(
@@ -327,35 +287,20 @@ public struct Game {
             context.fill(collider.bounds, color: color, layer: .debug)
         }
 
-        for player in players {
-            guard let entity = entities[player.entityID] else {
+        for record in entityRecords {
+            guard let state = entityStates[record.id] else {
                 continue
             }
 
-            for frame in entity.colliderFrames where frame.intersects(bounds) {
-                context.fill(frame, color: color, layer: .debug)
-            }
-        }
-
-        for pickup in pickups {
-            guard let entity = entities[pickup.entityID] else {
-                continue
-            }
-
-            for frame in entity.colliderFrames where frame.intersects(bounds) {
+            for frame in state.colliderFrames where frame.intersects(bounds) {
                 context.fill(frame, color: color, layer: .debug)
             }
         }
     }
 
     private mutating func resetPlayers() {
-        for player in players {
-            guard var entity = entities[player.entityID] else {
-                continue
-            }
-
-            player.place(entity: &entity, at: level.spawnPoint)
-            entities.insert(entity)
+        entityStates.update(.player) { state in
+            placeInitialState(&state, for: .player)
         }
     }
 
@@ -363,8 +308,8 @@ public struct Game {
         cameraRig.update(anchorBounds: entityBounds)
     }
 
-    private func entityBounds(for id: Entity.ID) -> Rect? {
-        entities.bounds(for: id)
+    private func entityBounds(for id: EntityID) -> Rect? {
+        entityStates.bounds(for: id)
     }
 }
 
@@ -399,8 +344,8 @@ extension Game {
             sounds.append(sound)
         }
 
-        func move(entity: inout Entity, velocity: Vec2) {
-            collisionSystem.move(entity: &entity, velocity: velocity)
+        func move(state: inout EntityState, velocity: Vec2) {
+            collisionSystem.move(state: &state, velocity: velocity)
         }
 
         func detectContacts() {
