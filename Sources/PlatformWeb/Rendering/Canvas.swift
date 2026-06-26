@@ -69,7 +69,11 @@ extension Renderer {
 
     func syncCanvasWithGameResolution(game: Game) {
         guard let canvas, let gl else { return }
-        let displaySize = fitCanvasElementToViewport(canvas, game: game)
+        let displaySize = canvasDisplaySize(game: game)
+
+        guard displaySize != lastCanvasDisplaySize else {
+            return
+        }
 
         if canvas.width.number != displaySize.backingWidth {
             canvas.width = .number(displaySize.backingWidth)
@@ -79,26 +83,28 @@ extension Renderer {
             canvas.height = .number(displaySize.backingHeight)
         }
 
+        canvas.style.imageRendering = .string(displaySize.imageRendering)
+        canvas.style.width = .string("\(displaySize.displayWidth)px")
+        canvas.style.height = .string("\(displaySize.displayHeight)px")
         _ = gl.viewport!(0, 0, displaySize.backingWidth, displaySize.backingHeight)
+        lastCanvasDisplaySize = displaySize
     }
 
-    func fitCanvasElementToViewport(_ canvas: JSObject, game: Game) -> CanvasDisplaySize {
+    func canvasDisplaySize(game: Game) -> CanvasDisplaySize {
         let viewportWidth = JSObject.global.innerWidth.number ?? game.logicalResolution.x
         let viewportHeight = JSObject.global.innerHeight.number ?? game.logicalResolution.y
-        let devicePixelRatio = max(1, JSObject.global.devicePixelRatio.number ?? 1)
         let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight, game: game)
         let displayWidth = game.logicalResolution.x * scale
         let displayHeight = game.logicalResolution.y * scale
-        let backingWidth = max(1, (displayWidth * devicePixelRatio).rounded())
-        let backingHeight = max(1, (displayHeight * devicePixelRatio).rounded())
-
-        canvas.style.imageRendering = .string(imageRendering)
-        canvas.style.width = .string("\(displayWidth)px")
-        canvas.style.height = .string("\(displayHeight)px")
+        let backingWidth = max(1, game.logicalResolution.x.rounded())
+        let backingHeight = max(1, game.logicalResolution.y.rounded())
 
         return CanvasDisplaySize(
+            displayWidth: displayWidth,
+            displayHeight: displayHeight,
             backingWidth: backingWidth,
-            backingHeight: backingHeight
+            backingHeight: backingHeight,
+            imageRendering: imageRendering
         )
     }
 
@@ -120,7 +126,10 @@ extension Renderer {
     }
 }
 
-struct CanvasDisplaySize {
+struct CanvasDisplaySize: Equatable {
+    let displayWidth: Double
+    let displayHeight: Double
     let backingWidth: Double
     let backingHeight: Double
+    let imageRendering: String
 }

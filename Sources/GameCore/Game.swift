@@ -37,7 +37,7 @@ public struct Game {
     public init(
         logicalResolution: Vec2 = .init(x: 800, y: 400),
         interpolationMode: InterpolationMode = .nearest,
-        preferredFPS: Double = 120
+        preferredFPS: Double = 60
     ) {
         self.logicalResolution = logicalResolution
         self.interpolationMode = interpolationMode

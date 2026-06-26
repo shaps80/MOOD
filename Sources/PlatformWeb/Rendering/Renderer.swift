@@ -16,6 +16,8 @@ final class Renderer {
     private var useTextureUniform: JSValue = .undefined
     private var textureUniform: JSValue = .undefined
     private var batchData: [Float] = []
+    private var preparedBatches: [PreparedBatch] = []
+    var lastCanvasDisplaySize: CanvasDisplaySize?
 
     var spriteTextures: [TextureID: JSValue] = [:]
     var spriteTextureSizes: [TextureID: Vec2] = [:]
@@ -38,7 +40,10 @@ final class Renderer {
         syncCanvasWithGameResolution(game: game)
         clearScreen(color: game.clearColor)
 
-        for batch in game.renderBatches {
+        prepareBatches(game: game)
+        uploadBatchInstances()
+
+        for batch in preparedBatches {
             drawBatch(batch, game: game)
         }
     }
@@ -151,18 +156,24 @@ final class Renderer {
         _ = gl.clear!(gl.COLOR_BUFFER_BIT)
     }
 
-    private func drawBatch(_ batch: RenderBatch, game: Game) {
-        switch batch {
-        case .rects(let color, let rects):
-            drawRectBatch(rects, color: color, game: game)
-        case .sprites(let textureID, let sprites):
-            drawSpriteBatch(sprites, textureID: textureID, game: game)
+    private func prepareBatches(game: Game) {
+        batchData.removeAll(keepingCapacity: true)
+        preparedBatches.removeAll(keepingCapacity: true)
+        batchData.reserveCapacity(game.renderStats.primitiveCount * 8)
+        preparedBatches.reserveCapacity(game.renderStats.batchCount)
+
+        for batch in game.renderBatches {
+            switch batch {
+            case .rects(let color, let rects):
+                appendRectBatch(rects, color: color, game: game)
+            case .sprites(let textureID, let sprites):
+                appendSpriteBatch(sprites, textureID: textureID, game: game)
+            }
         }
     }
 
-    private func drawRectBatch(_ rects: [Rect], color: Color, game: Game) {
-        batchData.removeAll(keepingCapacity: true)
-        batchData.reserveCapacity(rects.count * 8)
+    private func appendRectBatch(_ rects: [Rect], color: Color, game: Game) {
+        let startIndex = batchData.count / 8
 
         for rect in rects {
             appendInstance(
@@ -171,29 +182,35 @@ final class Renderer {
             )
         }
 
-        drawInstances(
+        appendPreparedBatch(
             material: .color(color),
-            instanceCount: rects.count,
-            game: game
+            startIndex: startIndex
         )
     }
 
-    private func drawSpriteBatch(
+    private func appendSpriteBatch(
         _ sprites: [Sprite],
         textureID: TextureID,
         game: Game
     ) {
         guard let texture = spriteTextures[textureID] else {
-            drawRectBatch(
-                sprites.map { Rect(origin: $0.position, size: $0.size) },
-                color: .missingTexture,
-                game: game
+            let startIndex = batchData.count / 8
+
+            for sprite in sprites {
+                appendInstance(
+                    rect: renderRect(for: sprite, game: game),
+                    textureRect: .full
+                )
+            }
+
+            appendPreparedBatch(
+                material: .color(.missingTexture),
+                startIndex: startIndex
             )
             return
         }
 
-        batchData.removeAll(keepingCapacity: true)
-        batchData.reserveCapacity(sprites.count * 8)
+        let startIndex = batchData.count / 8
 
         for sprite in sprites {
             guard case .sprite(_, let sourceRect) = sprite.material,
@@ -208,10 +225,23 @@ final class Renderer {
             )
         }
 
-        drawInstances(
+        appendPreparedBatch(
             material: .texture(texture),
-            instanceCount: batchData.count / 8,
-            game: game
+            startIndex: startIndex
+        )
+    }
+
+    private func appendPreparedBatch(material: RenderMaterial, startIndex: Int) {
+        let instanceCount = (batchData.count / 8) - startIndex
+
+        guard instanceCount > 0 else { return }
+
+        preparedBatches.append(
+            PreparedBatch(
+                material: material,
+                startIndex: startIndex,
+                instanceCount: instanceCount
+            )
         )
     }
 
@@ -228,13 +258,16 @@ final class Renderer {
         ])
     }
 
-    private func drawInstances(
-        material: RenderMaterial,
-        instanceCount: Int,
-        game: Game
-    ) {
+    private func uploadBatchInstances() {
         guard let gl else { return }
-        guard instanceCount > 0 else { return }
+        guard !batchData.isEmpty else { return }
+
+        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
+        _ = gl.bufferData!(gl.ARRAY_BUFFER, JSFloat32Array(batchData), gl.DYNAMIC_DRAW)
+    }
+
+    private func drawBatch(_ batch: PreparedBatch, game: Game) {
+        guard let gl else { return }
 
         _ = gl.useProgram!(shaderProgram)
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
@@ -243,17 +276,30 @@ final class Renderer {
         _ = gl.vertexAttribDivisor!(positionAttributeLocation, 0)
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
-        _ = gl.bufferData!(gl.ARRAY_BUFFER, JSFloat32Array(batchData), gl.DYNAMIC_DRAW)
         _ = gl.enableVertexAttribArray!(rectAttributeLocation)
-        _ = gl.vertexAttribPointer!(rectAttributeLocation, 4, gl.FLOAT, false, 32, 0)
+        _ = gl.vertexAttribPointer!(
+            rectAttributeLocation,
+            4,
+            gl.FLOAT,
+            false,
+            32,
+            batch.startIndex * 32
+        )
         _ = gl.vertexAttribDivisor!(rectAttributeLocation, 1)
         _ = gl.enableVertexAttribArray!(textureRectAttributeLocation)
-        _ = gl.vertexAttribPointer!(textureRectAttributeLocation, 4, gl.FLOAT, false, 32, 16)
+        _ = gl.vertexAttribPointer!(
+            textureRectAttributeLocation,
+            4,
+            gl.FLOAT,
+            false,
+            32,
+            (batch.startIndex * 32) + 16
+        )
         _ = gl.vertexAttribDivisor!(textureRectAttributeLocation, 1)
 
         _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
-        applyMaterial(material, gl: gl)
-        _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
+        applyMaterial(batch.material, gl: gl)
+        _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, batch.instanceCount)
     }
 
     private func applyMaterial(_ material: RenderMaterial, gl: JSObject) {
@@ -341,6 +387,12 @@ final class Renderer {
 private enum RenderMaterial {
     case color(Color)
     case texture(JSValue)
+}
+
+private struct PreparedBatch {
+    let material: RenderMaterial
+    let startIndex: Int
+    let instanceCount: Int
 }
 
 private struct RenderRect {

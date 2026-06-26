@@ -18,6 +18,11 @@ struct Player: Entity {
         )]
     }
 
+    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
+        guard contact.phase == .began else { return }
+        print(contact)
+    }
+
     func sprite(for state: EntityState) -> Sprite? {
         Sprite(
             position: state.position,
