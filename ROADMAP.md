@@ -160,18 +160,7 @@ Question answered:
 
 Can MOOD distinguish blocking collisions from gameplay overlaps?
 
-## Milestone 11 - Playable Game
-
-Status: Not Started
-
-- [ ] Complete playable game
-- [ ] Published on itch.io
-
-This is the most important milestone.
-
-Everything before this is technology validation.
-
-## Milestone 12 - Swift Tooling Review
+## Milestone 11 - Swift Tooling Review
 
 Status: Not Started
 
@@ -188,9 +177,4 @@ Can MOOD's project tooling grow toward editor workflows?
 Potential future improvements. These are not committed milestone work.
 
 - Collision shapes beyond rectangles, such as ellipses or polygons, once gameplay needs them.
-- Convenience APIs for adjusting rectangles in code, such as edge-specific padding/insetting.
 - Rounded rectangles or arbitrary path drawing support, once UI or gameplay needs them.
-- Define failure/death condition.
-- Track active respawn point.
-- Add checkpoint trigger.
-- Respawn player at active checkpoint after failure.
