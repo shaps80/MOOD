@@ -39,4 +39,5 @@ public struct Entity: Equatable, Identifiable, Sendable {
 
 extension Entity.ID {
     static let player = Entity.ID(rawValue: 0)
+    static let pickup = Entity.ID(rawValue: 1)
 }

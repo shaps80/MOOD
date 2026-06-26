@@ -134,6 +134,14 @@ Keep the code game-first and simple, but treat performance problems in core loop
 
 ⸻
 
+6. Discuss Before Editing
+
+Unless the user explicitly says to implement it, fix it, make the change, or otherwise clearly asks for code edits, treat milestone, design, architecture, and gameplay requests as discussion first.
+
+Propose the approach, wait for alignment, then edit.
+
+⸻
+
 Target Platforms
 
 Initial Target

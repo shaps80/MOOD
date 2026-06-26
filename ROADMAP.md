@@ -129,7 +129,7 @@ Status: In Progress
 - [x] Render only visible sprites/entities
 - [x] Add render layer ordering
 - [x] Keep deterministic draw order within each layer
-- [ ] Generalize entity render visibility so future enemies and pickups inherit culling without player-specific paths
+- [x] Generalize entity render visibility so future enemies and pickups inherit culling without player-specific paths
 
 Question answered:
 
@@ -154,7 +154,6 @@ Can MOOD reduce draw calls without changing visual ordering or increasing platfo
 Status: Not Started
 
 - [ ] Add enemy entity
-- [ ] Add pickup entity
 - [ ] Define collision layers and masks
 - [ ] Keep player-vs-world collision blocking movement
 - [ ] Support pickup overlap without blocking movement

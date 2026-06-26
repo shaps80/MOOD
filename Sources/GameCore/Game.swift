@@ -17,8 +17,9 @@ public struct Game {
     }
 
     private let level: Level
-    private var players: [Player]
-    private var entities: EntityStore
+    private var players: [Player] = [.init(entityID: .player)]
+    private var pickups: [Pickup] = []
+    private var entities: EntityStore = .init()
     private var cameraRig: CameraRig
     private var wasResetPressed = false
     private var wasDebugTogglePressed = false
@@ -39,8 +40,6 @@ public struct Game {
         self.logicalResolution = logicalResolution
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
-        self.players = [Player(entityID: .player)]
-        self.entities = EntityStore()
 
         self.level = .level2(
             worldSize: Vec2(
@@ -49,6 +48,15 @@ public struct Game {
             ),
             tileSize: Vec2(x: 16, y: 16)
         )
+        self.pickups = [
+            Pickup(
+                entityID: .pickup,
+                center: Vec2(
+                    x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
+                    y: level.spawnPoint.y
+                )
+            )
+        ]
 
         self.cameraRig = CameraRig(
             camera: Camera(viewportSize: logicalResolution),
@@ -61,6 +69,10 @@ public struct Game {
 
             player.place(entity: &entity, at: level.spawnPoint)
             entities.insert(entity)
+        }
+
+        for pickup in pickups {
+            entities.insert(pickup.makeEntity())
         }
 
         updateCamera()
@@ -113,6 +125,7 @@ public struct Game {
 
         appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
         appendPlayerSprites(visibleWithin: visibleBounds, to: &renderContext)
+        appendPickupSprites(visibleWithin: visibleBounds, to: &renderContext)
 
         if debugOptions.contains(.colliders) {
             appendColliderDebug(visibleWithin: visibleBounds, to: &renderContext)
@@ -166,16 +179,43 @@ public struct Game {
         to context: inout RenderContext
     ) {
         for player in players {
-            guard let entity = entities[player.entityID] else {
-                continue
+            appendEntitySprite(
+                player.entityID,
+                visibleWithin: bounds,
+                to: &context
+            ) { entity in
+                player.sprite(for: entity)
             }
-
-            guard entity.bounds.intersects(bounds) else {
-                continue
-            }
-
-            context.sprite(player.sprite(for: entity), layer: .entity)
         }
+    }
+
+    private func appendPickupSprites(
+        visibleWithin bounds: Rect,
+        to context: inout RenderContext
+    ) {
+        for pickup in pickups {
+            appendEntitySprite(
+                pickup.entityID,
+                visibleWithin: bounds,
+                to: &context
+            ) { entity in
+                pickup.sprite(for: entity)
+            }
+        }
+    }
+
+    private func appendEntitySprite(
+        _ entityID: Entity.ID,
+        visibleWithin bounds: Rect,
+        to context: inout RenderContext,
+        sprite: (Entity) -> Sprite
+    ) {
+        guard let entity = entities[entityID],
+              entity.bounds.intersects(bounds) else {
+            return
+        }
+
+        context.sprite(sprite(entity), layer: .entity)
     }
 
     private func appendColliderDebug(
