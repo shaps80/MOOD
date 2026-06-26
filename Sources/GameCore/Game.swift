@@ -34,7 +34,7 @@ public struct Game {
     public init(
         logicalResolution: Vec2 = .init(x: 800, y: 400),
         interpolationMode: InterpolationMode = .nearest,
-        preferredFPS: Double = 120
+        preferredFPS: Double = 60
     ) {
         self.logicalResolution = logicalResolution
         self.interpolationMode = interpolationMode
@@ -109,26 +109,37 @@ public struct Game {
 
     private mutating func rebuildSpriteBuffer() {
         renderContext.removeAll(keepingCapacity: true)
+        let visibleBounds = renderView.visibleBounds
 
-        appendTileSprites(to: &renderContext)
-        appendPlayerSprites(to: &renderContext)
+        appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
+        appendPlayerSprites(visibleWithin: visibleBounds, to: &renderContext)
 
         if debugOptions.contains(.colliders) {
-            appendColliderDebug(to: &renderContext)
+            appendColliderDebug(visibleWithin: visibleBounds, to: &renderContext)
         }
 
         if debugOptions.contains(.visibility) {
             renderContext.stroke(
-                renderView.visibleBounds,
+                visibleBounds,
                 color: Color(red: 0, green: 0.8, blue: 1, alpha: 0.5),
-                width: 2
+                width: 2,
+                layer: .debug
             )
         }
+
+        renderContext.sortCommands()
     }
 
-    private func appendTileSprites(to context: inout RenderContext) {
-        for y in 0..<level.tilemap.rows {
-            for x in 0..<level.tilemap.columns {
+    private func appendTileSprites(
+        visibleWithin bounds: Rect,
+        to context: inout RenderContext
+    ) {
+        guard let range = level.tilemap.tileRange(intersecting: bounds) else {
+            return
+        }
+
+        for y in range.rows {
+            for x in range.columns {
                 guard let tile = level.tilemap.tile(x: x, y: y),
                       tile.kind != .empty
                 else {
@@ -143,36 +154,48 @@ public struct Game {
                         ),
                         size: level.tilemap.tileSize,
                         material: tile.material
-                    )
+                    ),
+                    layer: tile.layer
                 )
             }
         }
     }
 
-    private func appendPlayerSprites(to context: inout RenderContext) {
+    private func appendPlayerSprites(
+        visibleWithin bounds: Rect,
+        to context: inout RenderContext
+    ) {
         for player in players {
             guard let entity = entities[player.entityID] else {
                 continue
             }
 
-            context.sprite(player.sprite(for: entity))
+            guard entity.bounds.intersects(bounds) else {
+                continue
+            }
+
+            context.sprite(player.sprite(for: entity), layer: .entity)
         }
     }
 
-    private func appendColliderDebug(to context: inout RenderContext) {
+    private func appendColliderDebug(
+        visibleWithin bounds: Rect,
+        to context: inout RenderContext
+    ) {
         let color = Color.green.opacity(0.35)
 
-        level.tilemap.colliderIndex.forEach { collider in
-            context.fill(collider.bounds, color: color)
+        level.tilemap.colliderIndex.forEach(intersecting: bounds) { collider in
+            context.fill(collider.bounds, color: color, layer: .debug)
         }
 
         for player in players {
             guard let entity = entities[player.entityID],
-                  let bounds = entity.colliderWorldBounds else {
+                  let colliderBounds = entity.colliderWorldBounds,
+                  colliderBounds.intersects(bounds) else {
                 continue
             }
 
-            context.fill(bounds, color: color)
+            context.fill(colliderBounds, color: color, layer: .debug)
         }
     }
 

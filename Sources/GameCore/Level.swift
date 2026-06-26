@@ -49,16 +49,22 @@ extension Level {
 }
 
 private extension Tilemap {
-    static func wall(tileSize: Vec2, color: Color) -> Tilemap.Tile {
+    static func wall(
+        tileSize: Vec2,
+        color: Color,
+        layer: Layer = .world,
+        isCollidable: Bool = true
+    ) -> Tilemap.Tile {
         Tilemap.Tile(
             kind: .wall,
             material: .color(color),
-            collider: Collider(
+            layer: layer,
+            collider: isCollidable ? Collider(
                 bounds: Rect(
                     origin: .zero,
                     size: tileSize
                 )
-            )
+            ) : nil
         )
     }
 
@@ -115,6 +121,12 @@ private extension Tilemap {
             tileSize: tileSize,
             color: Color(red: 0.08, green: 0.55, blue: 0.22, alpha: 1)
         )
+        let foregroundPipe = Tilemap.wall(
+            tileSize: tileSize,
+            color: Color(red: 0.08, green: 0.55, blue: 0.22, alpha: 1),
+            layer: .foreground,
+            isCollidable: false
+        )
         let block = Tilemap.wall(
             tileSize: tileSize,
             color: Color(red: 0.94, green: 0.72, blue: 0.18, alpha: 1)
@@ -136,10 +148,10 @@ private extension Tilemap {
         tilemap.fillRect(x: 8, y: 6, width: 5, height: 2, with: block)
         tilemap.fillRect(x: 8, y: rows - 8, width: 5, height: 2, with: block)
 
-        tilemap.fillRect(x: 17, y: upperLane - 3, width: 3, height: 7, with: pipe)
-        tilemap.fillRect(x: 16, y: upperLane - 4, width: 5, height: 2, with: pipe)
-        tilemap.fillRect(x: 17, y: lowerLane - 3, width: 3, height: 7, with: pipe)
-        tilemap.fillRect(x: 16, y: lowerLane + 2, width: 5, height: 2, with: pipe)
+        tilemap.fillRect(x: 17, y: upperLane - 3, width: 3, height: 7, with: foregroundPipe)
+        tilemap.fillRect(x: 16, y: upperLane - 4, width: 5, height: 2, with: foregroundPipe)
+        tilemap.fillRect(x: 17, y: lowerLane - 3, width: 3, height: 7, with: foregroundPipe)
+        tilemap.fillRect(x: 16, y: lowerLane + 2, width: 5, height: 2, with: foregroundPipe)
 
         tilemap.fillRect(x: 27, y: centerY - 8, width: 2, height: 16, with: brick)
         tilemap.fillRect(x: 29, y: centerY - 8, width: 8, height: 2, with: brick)

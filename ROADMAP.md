@@ -123,12 +123,13 @@ Can MOOD describe what to draw before each platform decides how to draw it?
 
 ## Milestone 8 - Visibility & Render Ordering
 
-Status: Not Started
+Status: In Progress
 
-- [ ] Render only visible tile range
-- [ ] Render only visible sprites/entities
-- [ ] Add render layer / z-index ordering
-- [ ] Keep deterministic draw order within each layer
+- [x] Render only visible tile range
+- [x] Render only visible sprites/entities
+- [x] Add render layer ordering
+- [x] Keep deterministic draw order within each layer
+- [ ] Generalize entity render visibility so future enemies and pickups inherit culling without player-specific paths
 
 Question answered:
 

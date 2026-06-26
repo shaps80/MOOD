@@ -1,19 +1,30 @@
 import Swift
 
 public enum RenderCommand: Equatable, Sendable {
-    case sprite(Sprite)
-    case rect(Rect, Color)
-    case strokeRect(Rect, Stroke)
+    case sprite(Sprite, Layer)
+    case rect(Rect, Color, Layer)
+    case strokeRect(Rect, Stroke, Layer)
 }
 
 public extension RenderCommand {
+    var layer: Layer {
+        switch self {
+        case .sprite(_, let layer):
+            layer
+        case .rect(_, _, let layer):
+            layer
+        case .strokeRect(_, _, let layer):
+            layer
+        }
+    }
+
     func forEachPrimitive(_ body: (RenderPrimitive) -> Void) {
         switch self {
-        case .sprite(let sprite):
+        case .sprite(let sprite, _):
             body(.sprite(sprite))
-        case .rect(let rect, let color):
+        case .rect(let rect, let color, _):
             body(.rect(rect, color))
-        case .strokeRect(let rect, let stroke):
+        case .strokeRect(let rect, let stroke, _):
             forEachStrokePrimitive(rect: rect, stroke: stroke, body)
         }
     }
