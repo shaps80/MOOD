@@ -153,11 +153,8 @@ Can MOOD reduce draw calls without changing visual ordering or increasing platfo
 
 Status: Not Started
 
-- [ ] Add enemy entity
 - [ ] Define collision layers and masks
-- [ ] Keep player-vs-world collision blocking movement
 - [ ] Support pickup overlap without blocking movement
-- [ ] Support player/enemy interaction
 
 Question answered:
 
