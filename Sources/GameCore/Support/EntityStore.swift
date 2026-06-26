@@ -1,6 +1,6 @@
 import Swift
 
-struct EntityStore: Equatable, Sendable {
+final class EntityStore {
     private var entitiesByID: [Entity.ID: Entity] = [:]
 
     private(set) subscript(id: Entity.ID) -> Entity? {
@@ -12,11 +12,11 @@ struct EntityStore: Equatable, Sendable {
         }
     }
 
-    mutating func insert(_ entity: Entity) {
+    func insert(_ entity: Entity) {
         entitiesByID[entity.id] = entity
     }
 
-    mutating func modify(
+    func update(
         _ id: Entity.ID,
         _ body: (inout Entity) -> Void
     ) {
@@ -32,17 +32,15 @@ struct EntityStore: Equatable, Sendable {
         entitiesByID[id]?.bounds
     }
 
-    func worldColliders(excluding excludedID: Entity.ID) -> [Collider] {
-        entitiesByID.values.reduce(into: []) { colliders, entity in
-            guard entity.id != excludedID else {
-                return
+    func forEachCollider(_ body: (Entity.ID, Int, Collider) -> Void) {
+        for entity in entitiesByID.values {
+            for index in entity.colliders.indices {
+                body(
+                    entity.id,
+                    index,
+                    entity.colliders[index].placed(at: entity.position)
+                )
             }
-
-            colliders.append(
-                contentsOf: entity.colliders.map { collider in
-                    collider.placed(at: entity.position)
-                }
-            )
         }
     }
 }

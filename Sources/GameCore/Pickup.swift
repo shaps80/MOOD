@@ -25,7 +25,7 @@ struct Pickup {
                     size: size
                 ),
                 layer: .pickup,
-                mask: [],
+                mask: .player,
                 behaviour: .trigger
             )
         )
@@ -37,5 +37,11 @@ struct Pickup {
             size: entity.size,
             material: .color(.red)
         )
+    }
+
+    mutating func update(context: inout Game.Context, entity: inout Entity) {
+        for contact in context.contacts[entity.id] where contact.phase == .began {
+            print(contact)
+        }
     }
 }

@@ -20,6 +20,7 @@ public struct Game {
     private var players: [Player] = [.init(entityID: .player)]
     private var pickups: [Pickup] = []
     private var entities: EntityStore = .init()
+    private let contacts = ContactState()
     private var cameraRig: CameraRig
     private var wasResetPressed = false
     private var wasDebugTogglePressed = false
@@ -97,21 +98,39 @@ public struct Game {
         }
 
         var frameSounds: [Sound] = []
+        contacts.beginFrame()
+
+        let context = Context(
+            delta: delta,
+            input: input,
+            level: level,
+            entities: entities,
+            contacts: contacts
+        )
 
         for index in players.indices {
             let entityID = players[index].entityID
-            var context = Context(
-                delta: delta,
-                input: input,
-                level: level,
-                entityColliders: entities.worldColliders(excluding: entityID)
-            )
+            var playerContext = context
 
-            entities.modify(entityID) { entity in
-                players[index].update(context: &context, entity: &entity)
+            entities.update(entityID) { entity in
+                players[index].update(context: &playerContext, entity: &entity)
             }
 
-            frameSounds.append(contentsOf: context.sounds)
+            frameSounds.append(contentsOf: playerContext.sounds)
+        }
+
+        context.detectContacts()
+        contacts.endFrame()
+
+        for index in pickups.indices {
+            let entityID = pickups[index].entityID
+            var pickupContext = context
+
+            entities.update(entityID) { entity in
+                pickups[index].update(context: &pickupContext, entity: &entity)
+            }
+
+            frameSounds.append(contentsOf: pickupContext.sounds)
         }
 
         updateCamera()
@@ -273,8 +292,18 @@ public struct Game {
                 continue
             }
 
-            for colliderBounds in entity.colliderWorldBoundsList where colliderBounds.intersects(bounds) {
-                context.fill(colliderBounds, color: color, layer: .debug)
+            for frame in entity.colliderFrames where frame.intersects(bounds) {
+                context.fill(frame, color: color, layer: .debug)
+            }
+        }
+
+        for pickup in pickups {
+            guard let entity = entities[pickup.entityID] else {
+                continue
+            }
+
+            for frame in entity.colliderFrames where frame.intersects(bounds) {
+                context.fill(frame, color: color, layer: .debug)
             }
         }
     }
@@ -304,21 +333,24 @@ extension Game {
         let delta: Double
         let input: Input
         let level: Level
-        private let collisionWorld: CollisionWorld
+        let contacts: ContactState
+        private let collisionSystem: CollisionSystem
         fileprivate private(set) var sounds: [Sound] = []
 
         init(
             delta: Double,
             input: Input,
             level: Level,
-            entityColliders: [Collider] = []
+            entities: EntityStore,
+            contacts: ContactState
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
-            self.collisionWorld = CollisionWorld(
+            self.contacts = contacts
+            self.collisionSystem = CollisionSystem(
                 tilemap: level.tilemap,
-                entityColliders: entityColliders,
+                entities: entities,
                 delta: delta
             )
         }
@@ -328,7 +360,11 @@ extension Game {
         }
 
         func move(entity: inout Entity, velocity: Vec2) {
-            collisionWorld.move(entity: &entity, velocity: velocity)
+            collisionSystem.move(entity: &entity, velocity: velocity)
+        }
+
+        func detectContacts() {
+            collisionSystem.detectContacts(into: contacts)
         }
     }
 }

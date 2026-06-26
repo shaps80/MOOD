@@ -26,7 +26,7 @@ struct Player {
                 .padding(.right, 9)
                 .padding(.vertical, 3),
                 layer: .player,
-                mask: [.playerMovement, .pickup]
+                mask: .playerMovement
             )
         )
     }
@@ -69,9 +69,9 @@ struct Player {
 
         context.move(entity: &entity, velocity: velocity)
 
-        if input.jump && !wasJumpPressed {
-            context.play(sound: .jump)
-        }
+//        if input.jump && !wasJumpPressed {
+//            context.play(sound: .jump)
+//        }
     }
 }
 

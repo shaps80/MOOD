@@ -37,11 +37,7 @@ public struct Entity: Equatable, Identifiable, Sendable {
         self.velocity = velocity
     }
 
-    var colliderWorldBounds: Rect? {
-        colliders.first?.worldBounds(at: position)
-    }
-
-    var colliderWorldBoundsList: [Rect] {
+    var colliderFrames: [Rect] {
         colliders.map { $0.worldBounds(at: position) }
     }
 
