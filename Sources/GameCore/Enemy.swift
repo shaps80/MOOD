@@ -25,4 +25,9 @@ struct Enemy: Entity {
             material: .color(.red)
         )
     }
+
+    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
+        guard contact.phase == .began else { return }
+        print(contact)
+    }
 }
