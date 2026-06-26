@@ -39,9 +39,14 @@ struct Pickup {
         )
     }
 
-    mutating func update(context: inout Game.Context, entity: inout Entity) {
-        for contact in context.contacts[entity.id] where contact.phase == .began {
-            print(contact)
-        }
+    mutating func update(context: inout Game.Context, entity: inout Entity) {}
+
+    mutating func onCollision(
+        context: inout Game.Context,
+        entity: inout Entity,
+        contact: Contact
+    ) {
+        guard contact.phase == .began else { return }
+        print(contact)
     }
 }

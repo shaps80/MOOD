@@ -7,45 +7,35 @@ struct Contact: CustomStringConvertible, Sendable {
         case ended
     }
 
-    struct Key: Hashable, Sendable {
-        let entity: (a: Entity.ID, b: Entity.ID)
-        let collider: (a: Int, b: Int)
+    struct Endpoint: Hashable, Sendable {
+        let id: Entity.ID
+        let collider: Int
+    }
 
-        init(entity: (a: Entity.ID, b: Entity.ID), collider: (a: Int, b: Int)) {
-            if entity.a.rawValue < entity.b.rawValue
-                || (entity.a.rawValue == entity.b.rawValue && collider.a <= collider.b) {
-                self.entity = entity
-                self.collider = collider
-            } else {
-                self.entity = (a: entity.b, b: entity.a)
-                self.collider = (a: collider.b, b: collider.a)
-            }
-        }
+    struct Key: Hashable, Sendable {
+        let source: Endpoint
+        let target: Endpoint
 
         func hash(into hasher: inout Hasher) {
-            hasher.combine(entity.a)
-            hasher.combine(entity.b)
-            hasher.combine(collider.a)
-            hasher.combine(collider.b)
+            hasher.combine(source)
+            hasher.combine(target)
         }
 
         static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.entity.a == rhs.entity.a
-                && lhs.entity.b == rhs.entity.b
-                && lhs.collider.a == rhs.collider.a
-                && lhs.collider.b == rhs.collider.b
+            lhs.source == rhs.source
+                && lhs.target == rhs.target
         }
     }
 
-    let entity: (a: Entity.ID, b: Entity.ID)
-    let collider: (a: Int, b: Int)
+    let source: Endpoint
+    let target: Endpoint
     let phase: Phase
 
     var key: Key {
-        Key(entity: entity, collider: collider)
+        Key(source: source, target: target)
     }
 
     var description: String {
-        "Contact(phase: \(phase), entity: (\(entity.a.rawValue), \(entity.b.rawValue)), collider: (\(collider.a), \(collider.b)))"
+        "Contact(phase: \(phase), source: (\(source.id.rawValue), \(source.collider)), target: (\(target.id.rawValue), \(target.collider)))"
     }
 }

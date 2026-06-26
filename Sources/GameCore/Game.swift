@@ -121,6 +121,7 @@ public struct Game {
 
         context.detectContacts()
         contacts.endFrame()
+        dispatchCollisions(context: context, sounds: &frameSounds)
 
         for index in pickups.indices {
             let entityID = pickups[index].entityID
@@ -136,6 +137,45 @@ public struct Game {
         updateCamera()
         sounds.append(contentsOf: frameSounds)
         rebuildSpriteBuffer()
+    }
+
+    private mutating func dispatchCollisions(
+        context: Context,
+        sounds: inout [Sound]
+    ) {
+        for index in players.indices {
+            let entityID = players[index].entityID
+            var playerContext = context
+
+            for contact in contacts[entityID] {
+                entities.update(entityID) { entity in
+                    players[index].onCollision(
+                        context: &playerContext,
+                        entity: &entity,
+                        contact: contact
+                    )
+                }
+            }
+
+            sounds.append(contentsOf: playerContext.sounds)
+        }
+
+        for index in pickups.indices {
+            let entityID = pickups[index].entityID
+            var pickupContext = context
+
+            for contact in contacts[entityID] {
+                entities.update(entityID) { entity in
+                    pickups[index].onCollision(
+                        context: &pickupContext,
+                        entity: &entity,
+                        contact: contact
+                    )
+                }
+            }
+
+            sounds.append(contentsOf: pickupContext.sounds)
+        }
     }
 
     public mutating func drainSounds() -> [Sound] {

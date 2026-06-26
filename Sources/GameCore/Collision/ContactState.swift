@@ -14,29 +14,27 @@ final class ContactState {
         contactsByEntity.removeAll(keepingCapacity: true)
     }
 
-    func record(entity: (a: Entity.ID, b: Entity.ID), collider: (a: Int, b: Int)) {
-        let key = Contact.Key(entity: entity, collider: collider)
+    func record(source: Contact.Endpoint, target: Contact.Endpoint) {
+        let key = Contact.Key(source: source, target: target)
         guard currentKeys.insert(key).inserted else {
             return
         }
 
         let phase: Contact.Phase = previousKeys.contains(key) ? .changed : .began
-        let contact = Contact(entity: entity, collider: collider, phase: phase)
+        let contact = Contact(source: source, target: target, phase: phase)
 
-        contactsByEntity[entity.a, default: []].append(contact)
-        contactsByEntity[entity.b, default: []].append(contact)
+        contactsByEntity[source.id, default: []].append(contact)
     }
 
     func endFrame() {
         for key in previousKeys where !currentKeys.contains(key) {
             let contact = Contact(
-                entity: key.entity,
-                collider: key.collider,
+                source: key.source,
+                target: key.target,
                 phase: .ended
             )
 
-            contactsByEntity[key.entity.a, default: []].append(contact)
-            contactsByEntity[key.entity.b, default: []].append(contact)
+            contactsByEntity[key.source.id, default: []].append(contact)
         }
 
         previousKeys = currentKeys

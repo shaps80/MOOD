@@ -90,10 +90,6 @@ struct CollisionSystem {
 
     func detectContacts(into contacts: ContactState) {
         entities.forEachCollider { entityID, colliderIndex, collider in
-            guard collider.behaviour == .trigger else {
-                return
-            }
-
             forEachCollider(intersecting: collider.bounds) { otherEntityID, otherColliderIndex, other in
                 guard let otherEntityID,
                       let otherColliderIndex,
@@ -105,8 +101,14 @@ struct CollisionSystem {
                 }
 
                 contacts.record(
-                    entity: (a: entityID, b: otherEntityID),
-                    collider: (a: colliderIndex, b: otherColliderIndex)
+                    source: Contact.Endpoint(
+                        id: entityID,
+                        collider: colliderIndex
+                    ),
+                    target: Contact.Endpoint(
+                        id: otherEntityID,
+                        collider: otherColliderIndex
+                    )
                 )
             }
         }

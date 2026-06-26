@@ -26,7 +26,8 @@ struct Player {
                 .padding(.right, 9)
                 .padding(.vertical, 3),
                 layer: .player,
-                mask: .playerMovement
+                mask: [.playerMovement, .pickup],
+                behaviour: .blocking
             )
         )
     }
@@ -72,6 +73,15 @@ struct Player {
 //        if input.jump && !wasJumpPressed {
 //            context.play(sound: .jump)
 //        }
+    }
+
+    mutating func onCollision(
+        context: inout Game.Context,
+        entity: inout Entity,
+        contact: Contact
+    ) {
+        guard contact.phase == .began else { return }
+        print(contact)
     }
 }
 
