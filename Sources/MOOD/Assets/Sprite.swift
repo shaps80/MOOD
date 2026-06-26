@@ -1,7 +1,7 @@
 import Pixl
 
 extension TextureID {
-    public static let player: TextureID = "player"
+    public static let player: Self = "player"
 }
 
 extension SpriteAsset {

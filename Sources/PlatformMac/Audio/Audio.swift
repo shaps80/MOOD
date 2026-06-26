@@ -20,7 +20,7 @@ final class Audio {
         prepareEngine()
     }
 
-    func playSounds(_ sounds: [Sound]) {
+    func playSounds(_ sounds: [SoundID]) {
         guard !sounds.isEmpty else { return }
 
         startEngineIfNeeded()
@@ -66,8 +66,8 @@ final class Audio {
         }
     }
 
-    private func playSound(_ sound: Sound) {
-        guard let soundPlayer = soundPlayers[sound.id] else {
+    private func playSound(_ sound: SoundID) {
+        guard let soundPlayer = soundPlayers[sound] else {
             return
         }
 

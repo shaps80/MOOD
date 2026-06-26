@@ -1,11 +1,11 @@
 import Pixl
 
-extension Sound {
-    public static let jump = Sound(id: .jump)
+extension SoundID {
+    public static let jump: Self = "jump"
 }
 
 extension SoundAsset {
-    public static let jump: SoundAsset = .init(
+    public static let jump: Self = .init(
         id: .jump,
         path: "assets/audio/jump.wav"
     )

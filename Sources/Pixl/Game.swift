@@ -25,7 +25,7 @@ public struct Game {
     private var wasDebugTogglePressed = false
     private var debugOptions: DebugOptions = []
 
-    private var sounds: [Sound] = []
+    private var sounds: [SoundID] = []
     public let soundAssets: [SoundAsset]
     public let spriteAssets: [SpriteAsset]
 
@@ -80,7 +80,7 @@ public struct Game {
             debugOptions.toggle(.colliders)
         }
 
-        var frameSounds: [Sound] = []
+        var frameSounds: [SoundID] = []
         contacts.beginFrame()
 
         let context = Context(
@@ -115,7 +115,7 @@ public struct Game {
 
     private mutating func dispatchCollisions(
         context: Context,
-        sounds: inout [Sound]
+        sounds: inout [SoundID]
     ) {
         for index in entityRecords.indices {
             let entityID = entityRecords[index].id
@@ -137,7 +137,7 @@ public struct Game {
         }
     }
 
-    public mutating func drainSounds() -> [Sound] {
+    public mutating func drainSounds() -> [SoundID] {
         defer {
             sounds.removeAll(keepingCapacity: true)
         }
@@ -274,7 +274,7 @@ extension Game {
         public let level: Level
         let contacts: ContactState
         private let collisionSystem: CollisionSystem
-        fileprivate private(set) var sounds: [Sound] = []
+        fileprivate private(set) var sounds: [SoundID] = []
 
         init(
             delta: Double,
@@ -294,7 +294,7 @@ extension Game {
             )
         }
 
-        public mutating func play(sound: Sound) {
+        public mutating func play(sound: SoundID) {
             sounds.append(sound)
         }
 

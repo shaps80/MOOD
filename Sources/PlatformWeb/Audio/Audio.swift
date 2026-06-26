@@ -25,7 +25,7 @@ final class Audio {
         }
     }
 
-    func playSounds(_ sounds: [Sound]) {
+    func playSounds(_ sounds: [SoundID]) {
         guard !sounds.isEmpty else { return }
 
         resumeAudioContext()
@@ -81,9 +81,9 @@ final class Audio {
         _ = JSObject.global.fetch!(soundAsset.path).then(responseClosure).catch(errorClosure)
     }
 
-    private func playSound(_ sound: Sound) {
+    private func playSound(_ sound: SoundID) {
         guard let audioContext,
-              let buffer = soundBuffers[sound.id],
+              let buffer = soundBuffers[sound],
               let source = audioContext.createBufferSource!().object
         else {
             return
