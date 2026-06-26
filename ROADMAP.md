@@ -170,6 +170,9 @@ Status: In Progress
 - [x] Split runtime entity state from entity behavior
 - [x] Route update, collision, and sprite rendering through unified entity records
 - [x] Keep level/tile geometry separate from entity lifecycle
+- [x] Rename GameCore to Pixl
+- [x] Move MOOD-specific entities, levels, IDs, and layers into the MOOD target
+- [x] Let MOOD construct Pixl.Game from level, camera, and entity spawn data
 - [ ] Camera anchor animates between 2 entities
 
 Question answered:
