@@ -85,6 +85,12 @@ Future ports should primarily involve implementing platform services:
 
 The game itself should remain largely unchanged.
 
+When behavior can live in GameCore without depending on platform APIs, prefer doing it there so every platform has less to decide, duplicate, or port.
+
+Examples include game-facing render command expansion, visibility decisions, ordering rules, and other platform-neutral semantics.
+
+Platforms may still diverge when a backend can provide a meaningfully better implementation for performance or platform capability reasons.
+
 ⸻
 
 3. Architecture Is a Constraint, Not a Goal

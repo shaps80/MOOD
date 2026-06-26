@@ -104,8 +104,8 @@ final class Renderer {
             renderEncoder: renderEncoder
         )
 
-        for sprite in game.sprites {
-            drawSprite(sprite, game: game, renderEncoder: renderEncoder)
+        for command in game.renderCommands {
+            drawCommand(command, game: game, renderEncoder: renderEncoder)
         }
 
         renderEncoder.endEncoding()
@@ -136,6 +136,47 @@ final class Renderer {
         } catch {
             print("Unable to load sprite asset '\(spriteAsset.path)': \(error)")
         }
+    }
+
+    private func drawCommand(
+        _ command: RenderCommand,
+        game: Game,
+        renderEncoder: MTLRenderCommandEncoder
+    ) {
+        command.forEachPrimitive { primitive in
+            drawPrimitive(primitive, game: game, renderEncoder: renderEncoder)
+        }
+    }
+
+    private func drawPrimitive(
+        _ primitive: RenderPrimitive,
+        game: Game,
+        renderEncoder: MTLRenderCommandEncoder
+    ) {
+        switch primitive {
+        case .sprite(let sprite):
+            drawSprite(sprite, game: game, renderEncoder: renderEncoder)
+        case .rect(let rect, let color):
+            drawRect(
+                rect,
+                color: color,
+                game: game,
+                renderEncoder: renderEncoder
+            )
+        }
+    }
+
+    private func drawRect(
+        _ rect: Rect,
+        color: Color,
+        game: Game,
+        renderEncoder: MTLRenderCommandEncoder
+    ) {
+        drawSprite(
+            Sprite(position: rect.origin, size: rect.size, material: .color(color)),
+            game: game,
+            renderEncoder: renderEncoder
+        )
     }
 
     private func drawSprite(

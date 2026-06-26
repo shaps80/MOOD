@@ -36,8 +36,8 @@ final class Renderer {
         syncCanvasWithGameResolution(game: game)
         clearScreen(color: game.clearColor)
 
-        for sprite in game.sprites {
-            drawSprite(sprite, game: game)
+        for command in game.renderCommands {
+            drawCommand(command, game: game)
         }
     }
 
@@ -144,6 +144,28 @@ final class Renderer {
 
         _ = gl.clearColor!(color.red, color.green, color.blue, color.alpha)
         _ = gl.clear!(gl.COLOR_BUFFER_BIT)
+    }
+
+    private func drawCommand(_ command: RenderCommand, game: Game) {
+        command.forEachPrimitive { primitive in
+            drawPrimitive(primitive, game: game)
+        }
+    }
+
+    private func drawPrimitive(_ primitive: RenderPrimitive, game: Game) {
+        switch primitive {
+        case .sprite(let sprite):
+            drawSprite(sprite, game: game)
+        case .rect(let rect, let color):
+            drawRect(rect, color: color, game: game)
+        }
+    }
+
+    private func drawRect(_ rect: Rect, color: Color, game: Game) {
+        drawSprite(
+            Sprite(position: rect.origin, size: rect.size, material: .color(color)),
+            game: game
+        )
     }
 
     private func drawSprite(_ sprite: Sprite, game: Game) {

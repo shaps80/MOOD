@@ -115,6 +115,7 @@ Status: Not Started
 - [ ] Render only visible sprites/entities
 - [ ] Add render layer / z-index ordering
 - [ ] Keep deterministic draw order within each layer
+- [ ] Render command culling, sorting, and batching
 
 Question answered:
 

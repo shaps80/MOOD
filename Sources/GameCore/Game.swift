@@ -27,14 +27,14 @@ public struct Game {
     private var sounds: [Sound] = []
     public let soundAssets: [SoundAsset] = [.jump]
 
-    private var spriteBuffer: [Sprite] = []
-    public var sprites: [Sprite] { spriteBuffer }
+    private var renderContext = RenderContext()
+    public var renderCommands: [RenderCommand] { renderContext.commands }
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
         logicalResolution: Vec2 = .init(x: 800, y: 400),
         interpolationMode: InterpolationMode = .nearest,
-        preferredFPS: Double = 60
+        preferredFPS: Double = 120
     ) {
         self.logicalResolution = logicalResolution
         self.interpolationMode = interpolationMode
@@ -108,24 +108,22 @@ public struct Game {
     }
 
     private mutating func rebuildSpriteBuffer() {
-        var context = RenderContext()
+        renderContext.removeAll(keepingCapacity: true)
 
-        appendTileSprites(to: &context)
-        appendPlayerSprites(to: &context)
+        appendTileSprites(to: &renderContext)
+        appendPlayerSprites(to: &renderContext)
 
         if debugOptions.contains(.colliders) {
-            appendColliderDebug(to: &context)
+            appendColliderDebug(to: &renderContext)
         }
 
         if debugOptions.contains(.visibility) {
-            context.stroke(
+            renderContext.stroke(
                 renderView.visibleBounds,
                 color: Color(red: 0, green: 0.8, blue: 1, alpha: 0.5),
                 width: 2
             )
         }
-
-        spriteBuffer = context.sprites
     }
 
     private func appendTileSprites(to context: inout RenderContext) {
