@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIGURATION="debug"
+CONFIGURATION="release"
 PRODUCT="MOOD"
 SDK="swift-6.3.2-RELEASE_wasm"
 PACKAGE_DIR=".build/deploy-wasm/package"
@@ -44,7 +44,7 @@ copy_assets() {
 while (($#)); do
   case "$1" in
     -c|--configuration)
-      CONFIGURATION="${2:-debug}"
+      CONFIGURATION="${2:-release}"
       shift 2
       ;;
     -c=*)
@@ -72,6 +72,7 @@ if ((${#ARGS[@]})); then
     js \
     --product "${PRODUCT}" \
     -c "${CONFIGURATION}" \
+    --debug-info-format none \
     --output "${PACKAGE_DIR}" \
     "${ARGS[@]}"
 else
@@ -81,6 +82,7 @@ else
     js \
     --product "${PRODUCT}" \
     -c "${CONFIGURATION}" \
+    --debug-info-format none \
     --output "${PACKAGE_DIR}"
 fi
 

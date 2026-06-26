@@ -3,13 +3,13 @@ set -euo pipefail
 
 PORT=9999
 URL="http://127.0.0.1:${PORT}/"
-CONFIGURATION="debug"
+CONFIGURATION="release"
 ARGS=()
 
 while (($#)); do
   case "$1" in
     -c|--configuration)
-      CONFIGURATION="${2:-debug}"
+      CONFIGURATION="${2:-release}"
       shift 2
       ;;
     -c=*)
