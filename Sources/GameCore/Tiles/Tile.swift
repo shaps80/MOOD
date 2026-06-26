@@ -5,8 +5,8 @@ extension Tilemap {
         public let kind: Kind
         public let material: Material
         public let layer: RenderLayer
-        /// Optional local-space collider relative to this tile's origin.
-        public let collider: Collider?
+        /// Local-space colliders relative to this tile's origin.
+        public let colliders: [Collider]
 
         public init(
             kind: Kind,
@@ -14,10 +14,24 @@ extension Tilemap {
             layer: RenderLayer = .world,
             collider: Collider? = nil
         ) {
+            self.init(
+                kind: kind,
+                material: material,
+                layer: layer,
+                colliders: collider.map { [$0] } ?? []
+            )
+        }
+
+        public init(
+            kind: Kind,
+            material: Material,
+            layer: RenderLayer = .world,
+            colliders: [Collider]
+        ) {
             self.kind = kind
             self.material = material
             self.layer = layer
-            self.collider = collider
+            self.colliders = colliders
         }
     }
 }

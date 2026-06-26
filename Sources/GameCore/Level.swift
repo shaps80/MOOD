@@ -63,7 +63,9 @@ private extension Tilemap {
                 bounds: Rect(
                     origin: .zero,
                     size: tileSize
-                )
+                ),
+                layer: .world,
+                mask: .player
             ) : nil
         )
     }

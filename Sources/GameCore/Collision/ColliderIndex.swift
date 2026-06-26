@@ -74,21 +74,22 @@ extension Tilemap {
             for y in range.rows {
                 for x in range.columns {
                     guard let tile = tilemap.tile(x: x, y: y),
-                          let collider = tile.collider
-                    else {
+                          !tile.colliders.isEmpty else {
                         continue
                     }
 
-                    body(
-                        Collider(
-                            bounds: collider.worldBounds(
-                                at: Vec2(
-                                    x: Double(x) * tilemap.tileSize.x,
-                                    y: Double(y) * tilemap.tileSize.y
-                                )
+                    let tileOrigin = Vec2(
+                        x: Double(x) * tilemap.tileSize.x,
+                        y: Double(y) * tilemap.tileSize.y
+                    )
+
+                    for collider in tile.colliders {
+                        body(
+                            collider.placed(
+                                at: tileOrigin
                             )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -97,21 +98,22 @@ extension Tilemap {
             for y in 0..<tilemap.rows {
                 for x in 0..<tilemap.columns {
                     guard let tile = tilemap.tile(x: x, y: y),
-                          let collider = tile.collider
-                    else {
+                          !tile.colliders.isEmpty else {
                         continue
                     }
 
-                    body(
-                        Collider(
-                            bounds: collider.worldBounds(
-                                at: Vec2(
-                                    x: Double(x) * tilemap.tileSize.x,
-                                    y: Double(y) * tilemap.tileSize.y
-                                )
+                    let tileOrigin = Vec2(
+                        x: Double(x) * tilemap.tileSize.x,
+                        y: Double(y) * tilemap.tileSize.y
+                    )
+
+                    for collider in tile.colliders {
+                        body(
+                            collider.placed(
+                                at: tileOrigin
                             )
                         )
-                    )
+                    }
                 }
             }
         }

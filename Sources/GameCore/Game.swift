@@ -96,20 +96,26 @@ public struct Game {
             debugOptions.toggle(.colliders)
         }
 
-        var context = Context(
-            delta: delta,
-            input: input,
-            level: level
-        )
+        var frameSounds: [Sound] = []
 
         for index in players.indices {
-            entities.modify(players[index].entityID) { entity in
+            let entityID = players[index].entityID
+            var context = Context(
+                delta: delta,
+                input: input,
+                level: level,
+                entityColliders: entities.worldColliders(excluding: entityID)
+            )
+
+            entities.modify(entityID) { entity in
                 players[index].update(context: &context, entity: &entity)
             }
+
+            frameSounds.append(contentsOf: context.sounds)
         }
 
         updateCamera()
-        sounds.append(contentsOf: context.sounds)
+        sounds.append(contentsOf: frameSounds)
         rebuildSpriteBuffer()
     }
 
@@ -263,13 +269,13 @@ public struct Game {
         }
 
         for player in players {
-            guard let entity = entities[player.entityID],
-                  let colliderBounds = entity.colliderWorldBounds,
-                  colliderBounds.intersects(bounds) else {
+            guard let entity = entities[player.entityID] else {
                 continue
             }
 
-            context.fill(colliderBounds, color: color, layer: .debug)
+            for colliderBounds in entity.colliderWorldBoundsList where colliderBounds.intersects(bounds) {
+                context.fill(colliderBounds, color: color, layer: .debug)
+            }
         }
     }
 
@@ -301,12 +307,18 @@ extension Game {
         private let collisionWorld: CollisionWorld
         fileprivate private(set) var sounds: [Sound] = []
 
-        init(delta: Double, input: Input, level: Level) {
+        init(
+            delta: Double,
+            input: Input,
+            level: Level,
+            entityColliders: [Collider] = []
+        ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
             self.collisionWorld = CollisionWorld(
                 tilemap: level.tilemap,
+                entityColliders: entityColliders,
                 delta: delta
             )
         }

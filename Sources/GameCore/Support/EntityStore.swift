@@ -31,4 +31,18 @@ struct EntityStore: Equatable, Sendable {
     func bounds(for id: Entity.ID) -> Rect? {
         entitiesByID[id]?.bounds
     }
+
+    func worldColliders(excluding excludedID: Entity.ID) -> [Collider] {
+        entitiesByID.values.reduce(into: []) { colliders, entity in
+            guard entity.id != excludedID else {
+                return
+            }
+
+            colliders.append(
+                contentsOf: entity.colliders.map { collider in
+                    collider.placed(at: entity.position)
+                }
+            )
+        }
+    }
 }

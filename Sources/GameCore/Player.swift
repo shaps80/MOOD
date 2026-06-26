@@ -17,14 +17,16 @@ struct Player {
             id: entityID,
             position: .zero,
             size: size,
-            collider: Collider(
-                bounds: Rect(
+            collider: .init(
+                bounds: .init(
                     origin: .zero,
                     size: size
                 )
                 .padding(.left, 8)
                 .padding(.right, 9)
-                .padding(.vertical, 3)
+                .padding(.vertical, 3),
+                layer: .player,
+                mask: [.playerMovement, .pickup]
             )
         )
     }

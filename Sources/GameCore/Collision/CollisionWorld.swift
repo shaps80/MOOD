@@ -4,7 +4,7 @@ import Swift
 ///
 /// `CollisionWorld` is intentionally separate from `Entity`.
 ///
-/// - `Entity` stores state: position, size, velocity, optional collider.
+/// - `Entity` stores state: position, size, velocity, colliders.
 /// - `CollisionWorld` knows how to query world colliders and resolve movement.
 ///
 /// Movement is resolved one axis at a time:
@@ -28,14 +28,17 @@ import Swift
 /// ```
 ///
 /// Current broad phase is tile-grid based: only tile cells touched by the
-/// proposed bounds are checked. This avoids scanning the whole tilemap.
+/// proposed bounds are checked. Entity colliders are currently checked as a
+/// flat list because the active entity count is still small.
 struct CollisionWorld {
     /// Collision-facing view of a tilemap.
     private let colliderIndex: Tilemap.ColliderIndex
+    private let entityColliders: [Collider]
     let delta: Double
 
-    init(tilemap: Tilemap, delta: Double) {
+    init(tilemap: Tilemap, entityColliders: [Collider] = [], delta: Double) {
         self.colliderIndex = tilemap.colliderIndex
+        self.entityColliders = entityColliders
         self.delta = max(delta, 0)
     }
 
@@ -44,7 +47,7 @@ struct CollisionWorld {
     /// Entities without colliders move freely. Entities with colliders use
     /// axis-separated collision resolution against the tilemap collider index.
     func move(entity: inout Entity, velocity proposedVelocity: Vec2) {
-        guard let collider = entity.collider else {
+        guard !entity.colliders.isEmpty else {
             entity.move(
                 to: Vec2(
                     x: entity.position.x + (proposedVelocity.x * delta),
@@ -61,14 +64,14 @@ struct CollisionWorld {
         let horizontal = resolveHorizontalMovement(
             from: position,
             distance: velocity.x * delta,
-            collider: collider
+            colliders: entity.colliders
         )
         position = Vec2(x: horizontal.value, y: position.y)
 
         let vertical = resolveVerticalMovement(
             from: position,
             distance: velocity.y * delta,
-            collider: collider
+            colliders: entity.colliders
         )
         position = Vec2(x: position.x, y: vertical.value)
 
@@ -88,28 +91,44 @@ struct CollisionWorld {
     private func resolveHorizontalMovement(
         from position: Vec2,
         distance: Double,
-        collider: Collider
+        colliders: [Collider]
     ) -> AxisResolution {
         guard distance != 0 else {
             return AxisResolution(value: position.x, blocked: false)
         }
 
         let proposedPosition = Vec2(x: position.x + distance, y: position.y)
-        let proposedBounds = collider.worldBounds(at: proposedPosition)
         var resolvedX = proposedPosition.x
         var blocked = false
 
-        colliderIndex.forEach(intersecting: proposedBounds) { tileCollider in
-            let obstacle = tileCollider.bounds
-            guard proposedBounds.intersects(obstacle) else { return }
+        for collider in colliders {
+            let previousBounds = collider.worldBounds(at: position)
+            let proposedBounds = collider.worldBounds(at: proposedPosition)
 
-            blocked = true
-            if distance > 0 {
-                // Moving right: place the collider's right edge on obstacle left.
-                resolvedX = min(resolvedX, obstacle.minX - collider.bounds.maxX)
-            } else {
-                // Moving left: place the collider's left edge on obstacle right.
-                resolvedX = max(resolvedX, obstacle.maxX - collider.bounds.minX)
+            forEachObstacle(intersecting: proposedBounds) { obstacleCollider in
+                let obstacle = obstacleCollider.bounds
+                guard proposedBounds.intersects(obstacle),
+                      collider.behaviour == .blocking,
+                      collider.canCollide(with: obstacleCollider),
+                      obstacleCollider.behaviour == .blocking,
+                      shouldBlockHorizontalMovement(
+                          distance: distance,
+                          from: previousBounds,
+                          to: proposedBounds,
+                          obstacle: obstacleCollider
+                      )
+                else {
+                    return
+                }
+
+                blocked = true
+                if distance > 0 {
+                    // Moving right: place the collider's right edge on obstacle left.
+                    resolvedX = min(resolvedX, obstacle.minX - collider.bounds.maxX)
+                } else {
+                    // Moving left: place the collider's left edge on obstacle right.
+                    resolvedX = max(resolvedX, obstacle.maxX - collider.bounds.minX)
+                }
             }
         }
 
@@ -120,32 +139,105 @@ struct CollisionWorld {
     private func resolveVerticalMovement(
         from position: Vec2,
         distance: Double,
-        collider: Collider
+        colliders: [Collider]
     ) -> AxisResolution {
         guard distance != 0 else {
             return AxisResolution(value: position.y, blocked: false)
         }
 
         let proposedPosition = Vec2(x: position.x, y: position.y + distance)
-        let proposedBounds = collider.worldBounds(at: proposedPosition)
         var resolvedY = proposedPosition.y
         var blocked = false
 
-        colliderIndex.forEach(intersecting: proposedBounds) { tileCollider in
-            let obstacle = tileCollider.bounds
-            guard proposedBounds.intersects(obstacle) else { return }
+        for collider in colliders {
+            let previousBounds = collider.worldBounds(at: position)
+            let proposedBounds = collider.worldBounds(at: proposedPosition)
 
-            blocked = true
-            if distance > 0 {
-                // Moving down: place the collider's bottom edge on obstacle top.
-                resolvedY = min(resolvedY, obstacle.minY - collider.bounds.maxY)
-            } else {
-                // Moving up: place the collider's top edge on obstacle bottom.
-                resolvedY = max(resolvedY, obstacle.maxY - collider.bounds.minY)
+            forEachObstacle(intersecting: proposedBounds) { obstacleCollider in
+                let obstacle = obstacleCollider.bounds
+                guard proposedBounds.intersects(obstacle),
+                      collider.behaviour == .blocking,
+                      collider.canCollide(with: obstacleCollider),
+                      obstacleCollider.behaviour == .blocking,
+                      shouldBlockVerticalMovement(
+                          distance: distance,
+                          from: previousBounds,
+                          to: proposedBounds,
+                          obstacle: obstacleCollider
+                      )
+                else {
+                    return
+                }
+
+                blocked = true
+                if distance > 0 {
+                    // Moving down: place the collider's bottom edge on obstacle top.
+                    resolvedY = min(resolvedY, obstacle.minY - collider.bounds.maxY)
+                } else {
+                    // Moving up: place the collider's top edge on obstacle bottom.
+                    resolvedY = max(resolvedY, obstacle.maxY - collider.bounds.minY)
+                }
             }
         }
 
         return AxisResolution(value: resolvedY, blocked: blocked)
+    }
+
+    private func forEachObstacle(
+        intersecting bounds: Rect,
+        _ body: (Collider) -> Void
+    ) {
+        colliderIndex.forEach(intersecting: bounds, body)
+
+        for collider in entityColliders where collider.bounds.intersects(bounds) {
+            body(collider)
+        }
+    }
+
+    private func shouldBlockHorizontalMovement(
+        distance: Double,
+        from previousBounds: Rect,
+        to proposedBounds: Rect,
+        obstacle: Collider
+    ) -> Bool {
+        guard let oneWay = obstacle.oneWay else {
+            return true
+        }
+
+        let margin = oneWay.margin
+
+        if distance > 0 {
+            return oneWay.face == .left
+                && previousBounds.maxX <= obstacle.bounds.minX + margin
+                && proposedBounds.maxX >= obstacle.bounds.minX
+        } else {
+            return oneWay.face == .right
+                && previousBounds.minX >= obstacle.bounds.maxX - margin
+                && proposedBounds.minX <= obstacle.bounds.maxX
+        }
+    }
+
+    private func shouldBlockVerticalMovement(
+        distance: Double,
+        from previousBounds: Rect,
+        to proposedBounds: Rect,
+        obstacle: Collider
+    ) -> Bool {
+        guard let oneWay = obstacle.oneWay else {
+            return true
+        }
+
+        let margin = oneWay.margin
+
+        if distance > 0 {
+            return oneWay.face == .top
+                && previousBounds.maxY <= obstacle.bounds.minY + margin
+                && proposedBounds.maxY >= obstacle.bounds.minY
+        } else {
+            return oneWay.face == .bottom
+                && previousBounds.minY >= obstacle.bounds.maxY - margin
+                && proposedBounds.minY <= obstacle.bounds.maxY
+        }
     }
 }
 
@@ -153,4 +245,10 @@ struct CollisionWorld {
 private struct AxisResolution {
     let value: Double
     let blocked: Bool
+}
+
+private extension Collider {
+    func canCollide(with other: Collider) -> Bool {
+        mask.contains(.init(other.layer))
+    }
 }

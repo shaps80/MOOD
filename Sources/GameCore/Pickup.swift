@@ -18,7 +18,16 @@ struct Pickup {
                 x: center.x - (size.x / 2),
                 y: center.y - (size.y / 2)
             ),
-            size: size
+            size: size,
+            collider: .init(
+                bounds: .init(
+                    origin: .zero,
+                    size: size
+                ),
+                layer: .pickup,
+                mask: [],
+                behaviour: .trigger
+            )
         )
     }
 
