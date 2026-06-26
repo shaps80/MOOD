@@ -107,7 +107,21 @@ Question answered:
 
 Can MOOD present worlds larger than the viewport?
 
-## Milestone 7 - Visibility & Render Ordering
+## Milestone 7 - Render Commands
+
+Status: Done
+
+- [x] Add platform-neutral render commands in GameCore
+- [x] Add a RenderContext draw API for sprites, rect fills, and rect strokes
+- [x] Keep stroke expansion platform-neutral
+- [x] Make platform renderers consume render primitives
+- [x] Share missing-texture color through GameCore
+
+Question answered:
+
+Can MOOD describe what to draw before each platform decides how to draw it?
+
+## Milestone 8 - Visibility & Render Ordering
 
 Status: Not Started
 
@@ -115,13 +129,26 @@ Status: Not Started
 - [ ] Render only visible sprites/entities
 - [ ] Add render layer / z-index ordering
 - [ ] Keep deterministic draw order within each layer
-- [ ] Render command culling, sorting, and batching
 
 Question answered:
 
-Can MOOD keep rendering work bounded by what the player can see?
+Can MOOD keep render work bounded by what the player can see while preserving draw order?
 
-## Milestone 8 - Collision Filtering & Interactions
+## Milestone 9 - Render Batching
+
+Status: Not Started
+
+- [ ] Measure command, primitive, and draw-call counts after visibility culling
+- [ ] Define batching rules that preserve layer and z-index ordering
+- [ ] Batch compatible consecutive rect primitives
+- [ ] Batch compatible consecutive sprite primitives by texture
+- [ ] Keep platform-specific batching optimizations behind the same GameCore render command semantics
+
+Question answered:
+
+Can MOOD reduce draw calls without changing visual ordering or increasing platform rewrite cost?
+
+## Milestone 10 - Collision Filtering & Interactions
 
 Status: Not Started
 
@@ -136,7 +163,7 @@ Question answered:
 
 Can MOOD distinguish blocking collisions from gameplay overlaps?
 
-## Milestone 9 - Playable Game
+## Milestone 11 - Playable Game
 
 Status: Not Started
 
@@ -147,7 +174,7 @@ This is the most important milestone.
 
 Everything before this is technology validation.
 
-## Milestone 10 - Swift Tooling Review
+## Milestone 12 - Swift Tooling Review
 
 Status: Not Started
 
