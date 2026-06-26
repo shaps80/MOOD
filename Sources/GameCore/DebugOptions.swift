@@ -11,7 +11,6 @@ struct DebugOptions: OptionSet, Sendable {
     static let visibility = DebugOptions(rawValue: 1 << 1)
 }
 
-
 extension DebugOptions {
     mutating func toggle(_ option: DebugOptions) {
         if contains(option) {

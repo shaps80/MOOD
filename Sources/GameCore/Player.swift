@@ -47,11 +47,6 @@ struct Player: Entity {
         context.move(state: &state, velocity: velocity)
     }
 
-    mutating func onCollision(
-        context: inout Game.Context,
-        state: inout EntityState,
-        contact: Contact
-    ) { }
 }
 
 private extension SpriteAnimation {

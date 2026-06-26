@@ -58,14 +58,14 @@ final class Renderer {
         }
     }
 
-    func draw(game: Game, in view: MTKView) -> RendererStats {
+    func draw(game: Game, in view: MTKView) {
         guard view.drawableSize.width > 0,
               view.drawableSize.height > 0,
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer()
         else {
-            return RendererStats()
+            return
         }
 
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(
@@ -79,10 +79,9 @@ final class Renderer {
         guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: renderPassDescriptor
         ) else {
-            return RendererStats()
+            return
         }
 
-        var stats = RendererStats()
         let viewport = GameViewport(
             drawableSize: view.drawableSize,
             gameSize: game.logicalResolution
@@ -109,7 +108,7 @@ final class Renderer {
         prepareBatches(game: game)
         if let instanceBuffer = uploadBatchInstances() {
             for batch in preparedBatches {
-                stats.drawCallCount += drawBatch(
+                drawBatch(
                     batch,
                     instanceBuffer: instanceBuffer,
                     renderEncoder: renderEncoder
@@ -120,8 +119,6 @@ final class Renderer {
         renderEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
-
-        return stats
     }
 
     private func loadSpriteTexture(_ spriteAsset: SpriteAsset) {
@@ -284,7 +281,7 @@ final class Renderer {
         _ batch: PreparedBatch,
         instanceBuffer: MTLBuffer,
         renderEncoder: MTLRenderCommandEncoder
-    ) -> Int {
+    ) {
         var colorUniform = batch.material.colorUniform
         var useTexture = batch.material.useTexture
 
@@ -313,8 +310,6 @@ final class Renderer {
             vertexCount: 6,
             instanceCount: batch.instanceCount
         )
-
-        return 1
     }
 
     private func renderRect(
@@ -507,10 +502,6 @@ final class Renderer {
 
         return texture
     }
-}
-
-struct RendererStats {
-    var drawCallCount = 0
 }
 
 private enum RenderMaterial {

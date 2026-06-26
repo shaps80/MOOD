@@ -92,8 +92,10 @@ public struct Game {
                 x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
                 y: level.spawnPoint.y
             )
-        } else {
+        } else if id == .enemy {
             center = .init(x: 64, y: 64)
+        } else {
+            center = .zero
         }
 
         state.move(

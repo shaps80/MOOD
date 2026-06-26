@@ -186,8 +186,6 @@ Agent verification preference:
 * Do not run `./deploy-wasm.sh` for routine verification; reserve it for explicit deploy/itch packaging requests or when the user says they are running that flow themselves.
 * Do not launch browsers, start local browser testing flows, use browser automation, or run test suites unless explicitly requested.
 * The user handles gameplay, browser, and test-suite verification.
-* For macOS signpost profiling, pass `--profiling` to the native runtime; profiling must stay independent from visual debug overlays.
-
 Install the browser packaging tools:
 
 * `brew install binaryen`

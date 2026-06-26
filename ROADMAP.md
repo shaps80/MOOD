@@ -164,7 +164,17 @@ Can MOOD distinguish blocking collisions from gameplay overlaps?
 
 ## Milestone 10.5 - Entities and Testing
 
+Status: In Progress
+
+- [x] Add a game-facing Entity protocol
+- [x] Split runtime entity state from entity behavior
+- [x] Route update, collision, and sprite rendering through unified entity records
+- [x] Keep level/tile geometry separate from entity lifecycle
 - [ ] Camera anchor animates between 2 entities
+
+Question answered:
+
+Can MOOD add a new game entity without adding new per-type game loop paths?
 
 ## Milestone 11 - Swift Tooling Review
 
