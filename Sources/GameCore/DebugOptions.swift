@@ -8,6 +8,7 @@ struct DebugOptions: OptionSet, Sendable {
     }
 
     static let colliders = DebugOptions(rawValue: 1 << 0)
+    static let visibility = DebugOptions(rawValue: 1 << 1)
 }
 
 

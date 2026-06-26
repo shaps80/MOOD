@@ -22,8 +22,9 @@ struct Player {
                     origin: .zero,
                     size: size
                 )
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
+                .padding(.left, 8)
+                .padding(.right, 9)
+                .padding(.vertical, 3)
             )
         )
     }

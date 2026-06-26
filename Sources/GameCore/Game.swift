@@ -6,6 +6,15 @@ public struct Game {
     public let preferredFps: Double
     public private(set) var clearColor: Color = .white
     public var camera: Camera { cameraRig.camera }
+    public var renderView: RenderView {
+        RenderView(
+            origin: camera.origin,
+            size: camera.viewportSize,
+            padding: debugOptions.contains(.visibility)
+                ? .init(horizontal: 80, vertical: 72)
+                : .zero
+        )
+    }
 
     private let level: Level
     private var players: [Player]
@@ -23,7 +32,7 @@ public struct Game {
     public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
-        logicalResolution: Vec2 = .init(x: 480, y: 320),
+        logicalResolution: Vec2 = .init(x: 800, y: 400),
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60
     ) {
@@ -69,6 +78,7 @@ public struct Game {
         }
 
         if input.jump && !wasDebugTogglePressed {
+            debugOptions.toggle(.visibility)
             debugOptions.toggle(.colliders)
         }
 
@@ -98,17 +108,27 @@ public struct Game {
     }
 
     private mutating func rebuildSpriteBuffer() {
-        spriteBuffer.removeAll(keepingCapacity: true)
+        var context = RenderContext()
 
-        appendTileSprites()
-        appendPlayerSprites()
+        appendTileSprites(to: &context)
+        appendPlayerSprites(to: &context)
 
         if debugOptions.contains(.colliders) {
-            appendColliderDebugSprites()
+            appendColliderDebug(to: &context)
         }
+
+        if debugOptions.contains(.visibility) {
+            context.stroke(
+                renderView.visibleBounds,
+                color: Color(red: 0, green: 0.8, blue: 1, alpha: 0.5),
+                width: 2
+            )
+        }
+
+        spriteBuffer = context.sprites
     }
 
-    private mutating func appendTileSprites() {
+    private func appendTileSprites(to context: inout RenderContext) {
         for y in 0..<level.tilemap.rows {
             for x in 0..<level.tilemap.columns {
                 guard let tile = level.tilemap.tile(x: x, y: y),
@@ -117,7 +137,7 @@ public struct Game {
                     continue
                 }
 
-                spriteBuffer.append(
+                context.sprite(
                     Sprite(
                         position: Vec2(
                             x: Double(x) * level.tilemap.tileSize.x,
@@ -131,21 +151,21 @@ public struct Game {
         }
     }
 
-    private mutating func appendPlayerSprites() {
+    private func appendPlayerSprites(to context: inout RenderContext) {
         for player in players {
             guard let entity = entities[player.entityID] else {
                 continue
             }
 
-            spriteBuffer.append(player.sprite(for: entity))
+            context.sprite(player.sprite(for: entity))
         }
     }
 
-    private mutating func appendColliderDebugSprites() {
+    private func appendColliderDebug(to context: inout RenderContext) {
         let color = Color.green.opacity(0.35)
 
         level.tilemap.colliderIndex.forEach { collider in
-            appendDebugSprite(bounds: collider.bounds, color: color)
+            context.fill(collider.bounds, color: color)
         }
 
         for player in players {
@@ -154,18 +174,8 @@ public struct Game {
                 continue
             }
 
-            appendDebugSprite(bounds: bounds, color: color)
+            context.fill(bounds, color: color)
         }
-    }
-
-    private mutating func appendDebugSprite(bounds: Rect, color: Color) {
-        spriteBuffer.append(
-            Sprite(
-                position: bounds.origin,
-                size: bounds.size,
-                material: .color(color)
-            )
-        )
     }
 
     private mutating func resetPlayers() {

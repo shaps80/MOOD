@@ -164,6 +164,7 @@ Potential future improvements. These are not committed milestone work.
 
 - Collision shapes beyond rectangles, such as ellipses or polygons, once gameplay needs them.
 - Convenience APIs for adjusting rectangles in code, such as edge-specific padding/insetting.
+- Rounded rectangles or arbitrary path drawing support, once UI or gameplay needs them.
 - Define failure/death condition.
 - Track active respawn point.
 - Add checkpoint trigger.
