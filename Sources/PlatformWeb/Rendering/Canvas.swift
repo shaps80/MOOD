@@ -86,11 +86,7 @@ extension Renderer {
         let viewportWidth = JSObject.global.innerWidth.number ?? game.logicalResolution.x
         let viewportHeight = JSObject.global.innerHeight.number ?? game.logicalResolution.y
         let devicePixelRatio = max(1, JSObject.global.devicePixelRatio.number ?? 1)
-        let scale = displayScale(
-            viewportWidth: viewportWidth,
-            viewportHeight: viewportHeight,
-            game: game
-        )
+        let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight, game: game)
         let displayWidth = game.logicalResolution.x * scale
         let displayHeight = game.logicalResolution.y * scale
         let backingWidth = max(1, (displayWidth * devicePixelRatio).rounded())
@@ -111,16 +107,7 @@ extension Renderer {
         viewportHeight: Double,
         game: Game
     ) -> Double {
-        let fitScale = min(viewportWidth / game.logicalResolution.x, viewportHeight / game.logicalResolution.y)
-
-        switch game.interpolationMode {
-        case .linear:
-            return fitScale
-        case .nearest:
-            guard fitScale >= 1 else { return fitScale }
-
-            return max(1, fitScale.rounded(.down))
-        }
+        min(viewportWidth / game.logicalResolution.x, viewportHeight / game.logicalResolution.y)
     }
 
     private var imageRendering: String {

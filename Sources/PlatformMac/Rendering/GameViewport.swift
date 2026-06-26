@@ -7,13 +7,11 @@ struct GameViewport {
 
     init(
         drawableSize: CGSize,
-        gameSize: Vec2,
-        interpolationMode: InterpolationMode
+        gameSize: Vec2
     ) {
         let scale = Self.displayScale(
             drawableSize: drawableSize,
-            gameSize: gameSize,
-            interpolationMode: interpolationMode
+            gameSize: gameSize
         )
         let width = gameSize.x * scale
         let height = gameSize.y * scale
@@ -32,21 +30,11 @@ struct GameViewport {
 
     private static func displayScale(
         drawableSize: CGSize,
-        gameSize: Vec2,
-        interpolationMode: InterpolationMode
+        gameSize: Vec2
     ) -> Double {
-        let fitScale = min(
+        min(
             drawableSize.width / gameSize.x,
             drawableSize.height / gameSize.y
         )
-
-        switch interpolationMode {
-        case .linear:
-            return fitScale
-        case .nearest:
-            guard fitScale >= 1 else { return fitScale }
-
-            return max(1, fitScale.rounded(.down))
-        }
     }
 }

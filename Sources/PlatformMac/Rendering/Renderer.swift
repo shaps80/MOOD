@@ -80,8 +80,7 @@ final class Renderer {
 
         let viewport = GameViewport(
             drawableSize: view.drawableSize,
-            gameSize: game.logicalResolution,
-            interpolationMode: game.interpolationMode
+            gameSize: game.logicalResolution
         )
 
         renderEncoder.setViewport(viewport.metalViewport)
