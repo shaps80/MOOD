@@ -1,7 +1,8 @@
+import GameCore
 import JavaScriptKit
 import Swift
 
-extension Runtime {
+extension Renderer {
     func configureCanvas() {
         let document = JSObject.global.document
         installDocumentStyles(in: document)
@@ -66,9 +67,9 @@ extension Runtime {
         canvas.style.webkitTapHighlightColor = .string("transparent")
     }
 
-    func syncCanvasWithGameResolution() {
+    func syncCanvasWithGameResolution(game: Game) {
         guard let canvas, let gl else { return }
-        let displaySize = fitCanvasElementToViewport(canvas)
+        let displaySize = fitCanvasElementToViewport(canvas, game: game)
 
         if canvas.width.number != displaySize.backingWidth {
             canvas.width = .number(displaySize.backingWidth)
@@ -81,11 +82,15 @@ extension Runtime {
         _ = gl.viewport!(0, 0, displaySize.backingWidth, displaySize.backingHeight)
     }
 
-    func fitCanvasElementToViewport(_ canvas: JSObject) -> CanvasDisplaySize {
+    func fitCanvasElementToViewport(_ canvas: JSObject, game: Game) -> CanvasDisplaySize {
         let viewportWidth = JSObject.global.innerWidth.number ?? game.logicalResolution.x
         let viewportHeight = JSObject.global.innerHeight.number ?? game.logicalResolution.y
         let devicePixelRatio = max(1, JSObject.global.devicePixelRatio.number ?? 1)
-        let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight)
+        let scale = displayScale(
+            viewportWidth: viewportWidth,
+            viewportHeight: viewportHeight,
+            game: game
+        )
         let displayWidth = game.logicalResolution.x * scale
         let displayHeight = game.logicalResolution.y * scale
         let backingWidth = max(1, (displayWidth * devicePixelRatio).rounded())
@@ -101,7 +106,11 @@ extension Runtime {
         )
     }
 
-    private func displayScale(viewportWidth: Double, viewportHeight: Double) -> Double {
+    private func displayScale(
+        viewportWidth: Double,
+        viewportHeight: Double,
+        game: Game
+    ) -> Double {
         let fitScale = min(viewportWidth / game.logicalResolution.x, viewportHeight / game.logicalResolution.y)
 
         switch game.interpolationMode {
@@ -115,7 +124,7 @@ extension Runtime {
     }
 
     private var imageRendering: String {
-        switch game.interpolationMode {
+        switch interpolationMode {
         case .linear:
             return "auto"
         case .nearest:

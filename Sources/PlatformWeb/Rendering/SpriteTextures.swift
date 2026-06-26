@@ -2,9 +2,9 @@ import GameCore
 import JavaScriptKit
 import Swift
 
-extension Runtime {
-    func loadSpriteTextures() {
-        for spriteAsset in Set(game.spriteAssets) {
+extension Renderer {
+    func loadSpriteTextures(_ spriteAssets: [SpriteAsset]) {
+        for spriteAsset in Set(spriteAssets) {
             loadSpriteTexture(spriteAsset)
         }
     }
@@ -47,7 +47,7 @@ extension Runtime {
     private func configureTextureParameters(_ gl: JSObject) {
         let filter: JSValue
 
-        switch game.interpolationMode {
+        switch interpolationMode {
         case .linear:
             filter = gl.LINEAR
         case .nearest:

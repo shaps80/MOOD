@@ -168,7 +168,7 @@ final class Renderer {
                         game: game,
                         interpolationMode: game.interpolationMode
                     ),
-                    material: .color(missingTextureColor),
+                    material: .color(.missingTexture),
                     game: game,
                     renderEncoder: renderEncoder
                 )
@@ -407,8 +407,6 @@ final class Renderer {
         return texture
     }
 }
-
-private let missingTextureColor = Color(red: 1, green: 0, blue: 1, alpha: 1)
 
 private enum RenderMaterial {
     case color(Color)

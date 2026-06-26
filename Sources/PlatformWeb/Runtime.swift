@@ -3,52 +3,25 @@ import JavaScriptKit
 import Swift
 
 final class Runtime {
-    var game: Game
+    private var game: Game
+    private let renderer: Renderer
+    private let audio: Audio
 
-    // Input
-    let keyboardInput = KeyboardInput()
-    let gamepadInput = GamepadInput()
-    let touchInput = TouchInput()
+    private let keyboardInput = KeyboardInput()
+    private let gamepadInput = GamepadInput()
+    private let touchInput = TouchInput()
 
-    // Renderer
-    var canvas: JSObject?
-    var gl: JSObject?
-    var shaderProgram: JSValue = .undefined
-
-    // Positions
-    var positionBuffer: JSValue = .undefined
-    var positionAttributeLocation: Int = 0
-
-    // Uniforms
-    var resolutionUniform: JSValue = .undefined
-    var rectUniform: JSValue = .undefined
-    var colorUniform: JSValue = .undefined
-    var useTextureUniform: JSValue = .undefined
-    var textureUniform: JSValue = .undefined
-    var textureRectUniform: JSValue = .undefined
-
-    // Sprites
-    var spriteTextures: [TextureID: JSValue] = [:]
-    var spriteTextureSizes: [TextureID: Vec2] = [:]
-    var spriteImages: [TextureID: JSObject] = [:]
-    var spriteLoadClosures: [TextureID: JSClosure] = [:]
-    var spriteErrorClosures: [TextureID: JSClosure] = [:]
-
-    // Audio
-    var audioContext: JSObject?
-    var soundBuffers: [SoundID: JSValue] = [:]
-    var soundLoadClosures: [JSClosure] = []
-
-    // Animation
-    var animationFrameCallback: JSClosure?
-    var lastFrameMilliseconds: Double?
-    var accumulatedTime = 0.0
+    private var animationFrameCallback: JSClosure?
+    private var lastFrameMilliseconds: Double?
+    private var accumulatedTime = 0.0
 
     init(game: Game) {
         self.game = game
+        self.renderer = Renderer(interpolationMode: game.interpolationMode)
+        self.audio = Audio()
     }
 
-    var fixedTimeStep: Double {
+    private var fixedTimeStep: Double {
         guard game.preferredFps > 0 else {
             return 1.0 / 60.0
         }
@@ -57,14 +30,12 @@ final class Runtime {
     }
 
     func start() {
-        configureCanvas()
-        configureWebGL()
-        configureSpritePipeline()
-        configureAudio()
-        loadSpriteTextures()
-        loadSoundBuffers()
+        renderer.configure()
+        renderer.loadSpriteTextures(game.spriteAssets)
+        audio.configure()
+        audio.loadSoundBuffers(game.soundAssets)
         keyboardInput.startListening()
-        touchInput.startListening(on: canvas)
+        touchInput.startListening(on: renderer.canvas)
 
         animationFrameCallback = JSClosure { arguments in
             let timestampMilliseconds = arguments.first?.number ?? 0
@@ -75,7 +46,7 @@ final class Runtime {
         requestNextFrame()
     }
 
-    func renderFrame(timestampMilliseconds: Double) {
+    private func renderFrame(timestampMilliseconds: Double) {
         let rawDeltaSeconds = lastFrameMilliseconds.map {
             (timestampMilliseconds - $0) / 1000
         } ?? fixedTimeStep
@@ -88,23 +59,19 @@ final class Runtime {
             accumulatedTime -= fixedTimeStep
         }
 
-        playSounds(game.drainSounds())
-        syncCanvasWithGameResolution()
-        clearScreen()
-        for sprite in game.sprites {
-            drawSprite(sprite)
-        }
+        audio.playSounds(game.drainSounds())
+        renderer.draw(game: game)
 
         requestNextFrame()
     }
 
-    var inputState: Input {
+    private var inputState: Input {
         keyboardInput.state
             .combined(with: gamepadInput.state)
             .combined(with: touchInput.state)
     }
 
-    func requestNextFrame() {
+    private func requestNextFrame() {
         guard let animationFrameCallback else { return }
 
         _ = JSObject.global.requestAnimationFrame!(animationFrameCallback)

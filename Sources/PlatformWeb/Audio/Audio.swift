@@ -2,8 +2,12 @@ import GameCore
 import JavaScriptKit
 import Swift
 
-extension Runtime {
-    func configureAudio() {
+final class Audio {
+    private var audioContext: JSObject?
+    private var soundBuffers: [SoundID: JSValue] = [:]
+    private var soundLoadClosures: [JSClosure] = []
+
+    func configure() {
         let global = JSObject.global
         guard let audioContextConstructor = global.AudioContext.object ?? global.webkitAudioContext.object else {
             _ = global.console.warn("Web Audio is not available")
@@ -13,10 +17,10 @@ extension Runtime {
         audioContext = audioContextConstructor.new()
     }
 
-    func loadSoundBuffers() {
+    func loadSoundBuffers(_ soundAssets: [SoundAsset]) {
         guard audioContext != nil else { return }
 
-        for soundAsset in Set(game.soundAssets) {
+        for soundAsset in Set(soundAssets) {
             loadSoundBuffer(soundAsset)
         }
     }

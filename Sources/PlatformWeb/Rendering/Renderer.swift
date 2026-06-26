@@ -2,7 +2,45 @@ import GameCore
 import JavaScriptKit
 import Swift
 
-extension Runtime {
+final class Renderer {
+    var canvas: JSObject?
+    var gl: JSObject?
+    private var shaderProgram: JSValue = .undefined
+    private var positionBuffer: JSValue = .undefined
+    private var positionAttributeLocation: Int = 0
+    private var resolutionUniform: JSValue = .undefined
+    private var rectUniform: JSValue = .undefined
+    private var colorUniform: JSValue = .undefined
+    private var useTextureUniform: JSValue = .undefined
+    private var textureUniform: JSValue = .undefined
+    private var textureRectUniform: JSValue = .undefined
+
+    var spriteTextures: [TextureID: JSValue] = [:]
+    var spriteTextureSizes: [TextureID: Vec2] = [:]
+    var spriteImages: [TextureID: JSObject] = [:]
+    var spriteLoadClosures: [TextureID: JSClosure] = [:]
+    var spriteErrorClosures: [TextureID: JSClosure] = [:]
+    let interpolationMode: InterpolationMode
+
+    init(interpolationMode: InterpolationMode) {
+        self.interpolationMode = interpolationMode
+    }
+
+    func configure() {
+        configureCanvas()
+        configureWebGL()
+        configureSpritePipeline()
+    }
+
+    func draw(game: Game) {
+        syncCanvasWithGameResolution(game: game)
+        clearScreen(color: game.clearColor)
+
+        for sprite in game.sprites {
+            drawSprite(sprite, game: game)
+        }
+    }
+
     func configureWebGL() {
         guard let canvas else {
             fatalError("Canvas must be configured before WebGL")
@@ -101,33 +139,32 @@ extension Runtime {
         return shader
     }
 
-    func clearScreen() {
+    private func clearScreen(color: Color) {
         guard let gl else { return }
 
-        let color = game.clearColor
         _ = gl.clearColor!(color.red, color.green, color.blue, color.alpha)
         _ = gl.clear!(gl.COLOR_BUFFER_BIT)
     }
 
-    func drawSprite(_ sprite: Sprite) {
+    private func drawSprite(_ sprite: Sprite, game: Game) {
         switch sprite.material {
         case .color(let color):
-            drawSprite(sprite, material: .color(color))
+            drawSprite(sprite, material: .color(color), game: game)
         case .sprite(let textureID, let sourceRect):
             guard let texture = spriteTextures[textureID],
                   let textureRect = textureRect(for: sourceRect, textureID: textureID) else {
-                drawSprite(sprite, material: .color(missingTextureColor))
+                drawSprite(sprite, material: .color(.missingTexture), game: game)
                 return
             }
 
-            drawSprite(sprite, material: .texture(texture, textureRect))
+            drawSprite(sprite, material: .texture(texture, textureRect), game: game)
         }
     }
 
-    private func drawSprite(_ sprite: Sprite, material: RenderMaterial) {
+    private func drawSprite(_ sprite: Sprite, material: RenderMaterial, game: Game) {
         guard let gl else { return }
 
-        let rect = renderRect(for: sprite)
+        let rect = renderRect(for: sprite, game: game)
 
         _ = gl.useProgram!(shaderProgram)
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
@@ -180,7 +217,7 @@ extension Runtime {
         )
     }
 
-    private func renderRect(for sprite: Sprite) -> RenderRect {
+    private func renderRect(for sprite: Sprite, game: Game) -> RenderRect {
         let position = Vec2(
             x: sprite.position.x - game.camera.origin.x,
             y: sprite.position.y - game.camera.origin.y
@@ -204,8 +241,6 @@ extension Runtime {
         }
     }
 }
-
-private let missingTextureColor = Color(red: 1, green: 0, blue: 1, alpha: 1)
 
 private enum RenderMaterial {
     case color(Color)

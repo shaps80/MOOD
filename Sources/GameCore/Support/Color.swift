@@ -69,4 +69,11 @@ public extension Color {
         blue: 1,
         alpha: 1
     )
+
+    static let missingTexture: Self = .init(
+        red: 1,
+        green: 0,
+        blue: 1,
+        alpha: 1
+    )
 }
