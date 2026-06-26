@@ -1,11 +1,13 @@
 import Swift
 
-public struct TextureID: Hashable, Sendable, RawRepresentable {
+public struct TextureID: Hashable, Sendable, RawRepresentable, ExpressibleByStringLiteral {
     public let rawValue: String
 
     public init(rawValue: String) {
         self.rawValue = rawValue
     }
 
-    public static let player = TextureID(rawValue: "player")
+    public init(stringLiteral value: String) {
+        rawValue = value
+    }
 }

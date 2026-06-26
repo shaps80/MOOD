@@ -63,7 +63,9 @@ struct MOOD {
                     entity: Player(),
                     position: level.spawnPoint
                 ),
-            ]
+            ],
+            sprites: [.player],
+            sounds: [.jump]
         )
     }
 

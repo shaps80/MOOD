@@ -8,9 +8,4 @@ public struct SoundAsset: Hashable, Sendable {
         self.id = id
         self.path = path
     }
-
-    public static let jump = SoundAsset(
-        id: .jump,
-        path: "assets/audio/jump.wav"
-    )
 }

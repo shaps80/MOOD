@@ -26,13 +26,13 @@ public struct Game {
     private var debugOptions: DebugOptions = []
 
     private var sounds: [Sound] = []
-    public let soundAssets: [SoundAsset] = [.jump]
+    public let soundAssets: [SoundAsset]
+    public let spriteAssets: [SpriteAsset]
 
     private var renderContext = RenderContext()
     public var renderCommands: [RenderCommand] { renderContext.commands }
     public private(set) var renderBatches: [RenderBatch] = []
     public private(set) var renderStats = RenderStats()
-    public let spriteAssets: [SpriteAsset] = [.player]
 
     public init(
         size: Vec2 = .init(x: 800, y: 400),
@@ -40,13 +40,17 @@ public struct Game {
         preferredFPS: Double = 60,
         level: Level,
         camera: CameraRig,
-        entities: [EntitySpawn]
+        entities: [EntitySpawn],
+        sprites: [SpriteAsset],
+        sounds: [SoundAsset]
     ) {
         self.logicalResolution = size
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
         self.level = level
         self.cameraRig = camera
+        self.spriteAssets = sprites
+        self.soundAssets = sounds
 
         for spawn in entities {
             entityRecords.append(EntityRecord(id: spawn.id, entity: spawn.entity))

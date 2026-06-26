@@ -8,9 +8,4 @@ public struct SpriteAsset: Hashable, Sendable {
         self.id = id
         self.path = path
     }
-
-    public static let player = SpriteAsset(
-        id: .player,
-        path: "assets/sprites/player.png"
-    )
 }

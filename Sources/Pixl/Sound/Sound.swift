@@ -6,6 +6,4 @@ public struct Sound: Equatable, Sendable {
     public init(id: SoundID) {
         self.id = id
     }
-
-    public static let jump = Sound(id: .jump)
 }
