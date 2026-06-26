@@ -79,10 +79,7 @@ struct Player {
         context: inout Game.Context,
         entity: inout Entity,
         contact: Contact
-    ) {
-        guard contact.phase == .began else { return }
-        print(contact)
-    }
+    ) { }
 }
 
 private extension SpriteAnimation {

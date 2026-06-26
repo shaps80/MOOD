@@ -46,7 +46,7 @@ struct Pickup {
         entity: inout Entity,
         contact: Contact
     ) {
-        guard contact.phase == .began else { return }
-        print(contact)
+        guard contact.phase == .began, contact.target.id == .player else { return }
+        context.play(sound: .jump)
     }
 }

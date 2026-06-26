@@ -151,10 +151,12 @@ Can MOOD reduce draw calls without changing visual ordering or increasing platfo
 
 ## Milestone 10 - Collision Filtering & Interactions
 
-Status: Not Started
+Status: Done
 
-- [ ] Define collision layers and masks
-- [ ] Support pickup overlap without blocking movement
+- [x] Define collision layers and masks
+- [x] Support pickup overlap without blocking movement
+- [x] Add contact phases for began, changed, and ended
+- [x] Route collision callbacks to source entity owners
 
 Question answered:
 
