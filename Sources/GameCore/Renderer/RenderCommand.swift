@@ -1,13 +1,13 @@
 import Swift
 
 public enum RenderCommand: Equatable, Sendable {
-    case sprite(Sprite, Layer)
-    case rect(Rect, Color, Layer)
-    case strokeRect(Rect, Stroke, Layer)
+    case sprite(Sprite, RenderLayer)
+    case rect(Rect, Color, RenderLayer)
+    case strokeRect(Rect, Stroke, RenderLayer)
 }
 
 public extension RenderCommand {
-    var layer: Layer {
+    var layer: RenderLayer {
         switch self {
         case .sprite(_, let layer):
             layer

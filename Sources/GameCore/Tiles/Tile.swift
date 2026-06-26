@@ -4,14 +4,14 @@ extension Tilemap {
     public struct Tile: Equatable, Sendable {
         public let kind: Kind
         public let material: Material
-        public let layer: Layer
+        public let layer: RenderLayer
         /// Optional local-space collider relative to this tile's origin.
         public let collider: Collider?
 
         public init(
             kind: Kind,
             material: Material,
-            layer: Layer = .world,
+            layer: RenderLayer = .world,
             collider: Collider? = nil
         ) {
             self.kind = kind

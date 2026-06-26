@@ -1,6 +1,6 @@
 import Swift
 
-public struct Layer: RawRepresentable, ExpressibleByIntegerLiteral, Comparable, Hashable, Sendable {
+public struct RenderLayer: RawRepresentable, ExpressibleByIntegerLiteral, Comparable, Hashable, Sendable {
     public var rawValue: Int
 
     public init(_ rawValue: Int) {
@@ -15,7 +15,7 @@ public struct Layer: RawRepresentable, ExpressibleByIntegerLiteral, Comparable, 
         self.rawValue = value
     }
 
-    public static func < (lhs: Layer, rhs: Layer) -> Bool {
+    public static func < (lhs: Self, rhs: Self) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
 
@@ -27,12 +27,12 @@ public struct Layer: RawRepresentable, ExpressibleByIntegerLiteral, Comparable, 
     public static let overlay: Self = .init(1000)
 }
 
-public extension Layer {
-    static func + (lhs: Layer, rhs: Int) -> Layer {
-        Layer(lhs.rawValue + rhs)
+public extension RenderLayer {
+    static func + (lhs: Self, rhs: Int) -> Self {
+        .init(lhs.rawValue + rhs)
     }
 
-    static func - (lhs: Layer, rhs: Int) -> Layer {
-        Layer(lhs.rawValue - rhs)
+    static func - (lhs: Self, rhs: Int) -> Self {
+        .init(lhs.rawValue - rhs)
     }
 }

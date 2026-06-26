@@ -52,7 +52,7 @@ private extension Tilemap {
     static func wall(
         tileSize: Vec2,
         color: Color,
-        layer: Layer = .world,
+        layer: RenderLayer = .world,
         isCollidable: Bool = true
     ) -> Tilemap.Tile {
         Tilemap.Tile(
