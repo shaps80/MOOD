@@ -56,6 +56,10 @@ public extension Rect {
         )
     }
 
+    func padding(_ amount: Double) -> Rect {
+        padding(.all, amount)
+    }
+
     func padding(_ edges: Edge.Set = .all, _ amount: Double) -> Rect {
         var origin = origin
         var size = size
