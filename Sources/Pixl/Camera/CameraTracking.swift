@@ -6,24 +6,33 @@ import Swift
 /// a scripted transition. It should not combine multiple movement policies at
 /// once.
 ///
-/// Current implementation:
+/// Current modes:
 ///
 /// ```text
 /// snap:
 ///   current origin ---------> desired origin
 ///                same frame
-/// ```
 ///
-/// Future modes can add smooth movement or scripted transitions once gameplay
-/// needs camera pans, reveals, or tuned follow behavior.
+/// smooth:
+///   current origin -----> desired origin
+///                 speed * delta per update
+/// ```
 public enum CameraTracking: Equatable, Sendable {
     /// Immediately sets the camera origin to the desired origin.
     case snap
 
-    func resolve(current: Vec2, desired: Vec2) -> Vec2 {
+    /// Moves toward the desired origin by at most `speed * delta` each update.
+    case smooth(speed: Double)
+
+    func resolve(current: Vec2, desired: Vec2, delta: Double) -> Vec2 {
         switch self {
         case .snap:
             return desired
+        case .smooth(let speed):
+            return current.moving(
+                toward: desired,
+                by: max(speed, 0) * max(delta, 0)
+            )
         }
     }
 }

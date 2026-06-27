@@ -36,9 +36,7 @@ struct MOOD {
             camera: .init(
                 camera: Camera(viewportSize: size),
                 anchor: .entities([.player]),
-                tracking: .snap,
-                composition: .init(),
-                constraints: CameraConstraints(bounds: level.bounds)
+                constraints: .init(bounds: level.bounds.padding(-200))
             ),
             entities: [
                 .init(

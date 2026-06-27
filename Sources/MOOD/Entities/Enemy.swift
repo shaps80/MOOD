@@ -17,7 +17,6 @@ struct Enemy: Entity {
     }
 
     func onUpdate(context: inout Game.Context, state: inout EntityState) {
-        
     }
 
     func sprite(for state: EntityState) -> Sprite? {

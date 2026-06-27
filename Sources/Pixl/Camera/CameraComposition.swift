@@ -32,7 +32,11 @@ public struct CameraComposition: Equatable, Sendable {
     /// Creates camera composition settings.
     ///
     /// - Parameter offset: World-space offset applied to the framed anchor.
-    public init(offset: Vec2 = .zero) {
+    public init(offset: Vec2) {
         self.offset = offset
+    }
+
+    public init(x: Double = 0, y: Double = 0) {
+        self.offset = .init(x: x, y: y)
     }
 }

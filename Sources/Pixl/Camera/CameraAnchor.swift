@@ -15,8 +15,11 @@ import Swift
 /// +----------+             +----------+
 ///      \                       /
 ///       \                     /
-///        v                   v
-///         average center point
+///        +-------------------+
+///        | union bounds      |
+///        +-------------------+
+///                 v
+///          union center point
 /// ```
 ///
 /// Missing entity bounds are ignored. If no supplied entity resolves, the
@@ -37,29 +40,33 @@ public enum CameraAnchor: Equatable, Sendable {
                 return nil
             }
 
-            var center = Vec2.zero
-            var count = 0
+            var unionBounds: Rect?
 
             for id in ids {
                 guard let bounds = anchorBounds(id) else {
                     continue
                 }
 
-                center = Vec2(
-                    x: center.x + bounds.center.x,
-                    y: center.y + bounds.center.y
-                )
-                count += 1
+                unionBounds = unionBounds.map { $0.union(bounds) } ?? bounds
             }
 
-            guard count > 0 else {
-                return nil
-            }
-
-            return Vec2(
-                x: center.x / Double(count),
-                y: center.y / Double(count)
-            )
+            return unionBounds?.center
         }
+    }
+}
+
+private extension Rect {
+    func union(_ other: Rect) -> Rect {
+        let minX = min(minX, other.minX)
+        let minY = min(minY, other.minY)
+        let maxX = max(maxX, other.maxX)
+        let maxY = max(maxY, other.maxY)
+
+        return Rect(
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        )
     }
 }

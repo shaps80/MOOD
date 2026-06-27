@@ -65,7 +65,7 @@ public struct Game {
             entityStates.insert(state)
         }
 
-        updateCamera()
+        updateCamera(delta: .infinity)
         rebuildSpriteBuffer()
     }
 
@@ -108,7 +108,7 @@ public struct Game {
         contacts.endFrame()
         dispatchCollisions(context: context, sounds: &frameSounds)
 
-        updateCamera()
+        updateCamera(delta: delta)
         sounds.append(contentsOf: frameSounds)
         rebuildSpriteBuffer()
     }
@@ -258,8 +258,8 @@ public struct Game {
         }
     }
 
-    private mutating func updateCamera() {
-        cameraRig.update(anchorBounds: entityBounds)
+    private mutating func updateCamera(delta: Double) {
+        cameraRig.update(delta: delta, anchorBounds: entityBounds)
     }
 
     private func entityBounds(for id: EntityID) -> Rect? {
