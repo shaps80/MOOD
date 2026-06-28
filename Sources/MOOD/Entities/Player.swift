@@ -5,11 +5,6 @@ struct Player: Entity {
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
-    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
-        guard contact.phase == .began else { return }
-        print(contact)
-    }
-
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.size = .init(x: 32, y: 32)
         state.colliders = [

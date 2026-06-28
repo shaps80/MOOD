@@ -28,7 +28,7 @@ struct Enemy: Entity {
         )
     }
 
-    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
+    mutating func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
         guard contact.phase == .began else { return }
         print(contact)
     }

@@ -122,7 +122,8 @@ Hot renderer data should store resolved colors, not protocol values.
 
 `Sprite` is a renderable sprite instance, not an asset definition.
 
-It carries the render state needed to draw itself:
+The entity/sprite lifecycle migration is already done. `Sprite` carries the
+render state needed to draw itself:
 
 ```swift
 public struct Sprite {
@@ -152,10 +153,14 @@ texture/source rect
 the source color. Sprite opacity is a whole-sprite multiplier. Final alpha
 multiplies them.
 
+Current platform renderers do not yet apply `blendMode`, `opacity`, or `tint`.
+The next renderer slice should wire these existing fields through WebGL2 and
+Metal before or alongside shape work.
+
 ## Render Layers
 
-`Pixl` should own the `RenderLayer` type as a small sortable render-order value.
-It should not own MOOD-specific layer constants.
+`Pixl` owns the `RenderLayer` type as a small sortable render-order value. It
+does not own MOOD-specific layer constants.
 
 Good:
 
@@ -165,7 +170,7 @@ public struct RenderLayer: Comparable, Sendable {
 }
 ```
 
-MOOD should define semantic layer constants in MOOD code:
+MOOD defines semantic layer constants in MOOD code:
 
 ```swift
 extension RenderLayer {
@@ -174,8 +179,8 @@ extension RenderLayer {
 }
 ```
 
-`Sprite.layer` should be assigned by game code, usually during entity
-preparation. `Pixl.Game` must not decide that entity sprites belong on a specific
+`Sprite.layer` is assigned by game code, usually during entity preparation.
+`Pixl.Game` must not decide that entity sprites belong on a specific
 named layer.
 
 This mirrors collider layers: Pixl owns the mechanism, game code owns the
@@ -305,11 +310,11 @@ sprite texture or shape color
 -> framebuffer
 ```
 
-The first broadly useful render style fields are:
+The current sprite source modifier fields are:
 
 ```swift
 var blendMode: BlendMode = .normal
-var opacity: Float = 1
+var opacity: Double = 1
 var tint: Color = .white
 ```
 
@@ -329,6 +334,43 @@ to blend mode, opacity, and tint unless gameplay/UI work needs more.
 Noise, blur, glow, drop shadows, masks, and arbitrary filters should not be
 added as basic source modifiers. Those belong to a later material, shader, mask,
 or post-processing design.
+
+## Sprite Renderer Follow-Up
+
+Before implementing shape SDFs, the renderer should make existing sprite draw
+state visible.
+
+Required behavior:
+
+- `Sprite.tint` modulates both textured and color sprites.
+- `Sprite.opacity` multiplies final source alpha for the whole sprite.
+- `Sprite.blendMode` selects the backend blend state.
+- Existing visuals remain unchanged for default sprites:
+  `tint == .white`, `opacity == 1`, `blendMode == .normal`.
+
+Conceptually:
+
+```text
+source = material color or sampled texture
+source = source * tint
+source.a = source.a * opacity
+source.rgb = source.rgb * opacity, when output is premultiplied
+source -> blend mode
+```
+
+For textured sprites, avoid splitting batches by tint/opacity. Prefer adding
+per-instance color data to the sprite instance buffer so many differently tinted
+sprites can still share one texture batch.
+
+The current `RenderBatch` model groups textured sprites by texture and rects by
+color. Renderer work for sprite tint/opacity must update those batching rules so
+style differences do not render incorrectly. Prefer moving toward per-instance
+color/tint data rather than splitting batches by every color or opacity value,
+because shape SDF rendering will need per-instance fill/stroke colors anyway.
+
+Blend mode remains batch/render state. A batch cannot mix sprites with different
+blend modes unless the backend implements a different strategy. Preserve draw
+order over batch size.
 
 ## Path
 
@@ -709,15 +751,18 @@ UIKit, or other platform frameworks.
 
 An agent implementing this should work in this order:
 
-1. Add `Pixl` path/style/shape types without touching platform renderers.
-2. Add tests or compile-time examples for the intended API shape.
-3. Lower supported paths into platform-neutral render primitives.
-4. Teach existing render contexts to accept `context.draw(path)` and
-   `context.draw(sprite)` where appropriate.
-5. Implement WebGL2 SDF primitive rendering.
-6. Implement Metal SDF primitive rendering.
-7. Verify `Pixl` still builds on host.
-8. Verify the browser/Wasm build only when explicitly requested by the user.
+1. Wire existing `Sprite.tint`, `Sprite.opacity`, and `Sprite.blendMode` through
+   WebGL2 and Metal.
+2. Keep sprite batching effective by using per-instance tint/opacity data where
+   practical.
+3. Add `Pixl` path/style/shape types without touching platform-specific APIs.
+4. Add tests or compile-time examples for the intended shape API.
+5. Lower supported paths into platform-neutral render primitives.
+6. Teach existing render contexts to accept `context.draw(path)`.
+7. Implement WebGL2 SDF primitive rendering.
+8. Implement Metal SDF primitive rendering.
+9. Verify `Pixl` still builds on host.
+10. Verify the browser/Wasm build only when explicitly requested by the user.
 
 The project currently prefers these validation commands:
 
@@ -732,6 +777,10 @@ Do not run browser-serving flows or full test suites unless explicitly asked.
 
 V1 is done when:
 
+- Existing sprite render state is honored by WebGL2 and Metal.
+- `Sprite.tint` and `Sprite.opacity` work for textured and color sprites.
+- `Sprite.blendMode` selects `normal`, `additive`, `multiply`, `screen`, or
+  `replace` behavior.
 - `Pixl` exposes `Shape`, `Path`, `ShapeStyle`, `FillStyle`, and `StrokeStyle`.
 - `Rectangle`, `RoundedRectangle`, `Ellipse`, `Circle`, and `Capsule` exist.
 - `Path` can preserve `move`, `addLine`, `addRect`, `addRoundedRect`, and
@@ -740,11 +789,11 @@ V1 is done when:
 - There is no `fillAndStroke` API.
 - `StrokeStyle` does not expose `lineJoin`.
 - `FillStyle` supports `antialiased`.
-- Shapes and sprites can carry `BlendMode`.
+- Shapes can carry `BlendMode`.
 - Supported initial blend modes are `normal`, `additive`, `multiply`, `screen`,
   and `replace`.
 - Internal fragment output uses premultiplied alpha.
-- Basic source modifiers are planned around blend mode, opacity, and tint.
+- Shapes use the same blend mode, opacity, and tint model as sprites.
 - Unsupported compound path fill semantics are not silently misrepresented as
   correct.
 - WebGL2 and Metal can render the supported primitives using backend-owned SDF
