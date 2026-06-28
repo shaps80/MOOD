@@ -23,6 +23,7 @@ final class Renderer {
     private var batchInstances: [BatchInstance] = []
     private var shapeInstances: [ShapeInstance] = []
     private var preparedBatches: [PreparedBatch] = []
+    private var renderPlanner = RenderPlanner()
     private var instanceBuffer: MTLBuffer?
     private var instanceBufferCapacity = 0
     private var shapeInstanceBuffer: MTLBuffer?
@@ -133,7 +134,12 @@ final class Renderer {
             index: 1
         )
 
-        prepareBatches(game: game)
+        let frame = renderPlanner.prepareFrame(
+            game: game,
+            textureSizes: spriteTextureSizes
+        )
+
+        prepareBatches(frame: frame)
         let instanceBuffer = uploadBatchInstances()
         let shapeInstanceBuffer = uploadShapeBatchInstances()
 
@@ -241,51 +247,40 @@ final class Renderer {
         }
     }
 
-    private func prepareBatches(game: Game) {
+    private func prepareBatches(frame: RenderFrame) {
         batchInstances.removeAll(keepingCapacity: true)
         shapeInstances.removeAll(keepingCapacity: true)
         preparedBatches.removeAll(keepingCapacity: true)
-        batchInstances.reserveCapacity(game.renderStats.primitiveCount)
-        shapeInstances.reserveCapacity(game.renderStats.primitiveCount)
-        preparedBatches.reserveCapacity(game.renderStats.batchCount)
+        preparedBatches.reserveCapacity(frame.batches.count)
 
-        for batch in game.renderBatches {
+        for batch in frame.batches {
             switch batch {
-            case .sprites(let textureID, let blendMode, let sprites):
+            case .sprites(let textureID, let blendMode, let instances):
                 appendSpriteBatch(
-                    sprites,
+                    instances,
                     textureID: textureID,
-                    blendMode: blendMode,
-                    game: game
+                    blendMode: blendMode
                 )
-            case .shapes(let blendMode, let shapes):
-                appendShapeBatch(shapes, blendMode: blendMode, game: game)
+            case .shapes(let blendMode, let instances):
+                appendShapeBatch(instances, blendMode: blendMode)
             }
         }
     }
 
     private func appendSpriteBatch(
-        _ sprites: [PositionedSprite],
+        _ instances: [SpriteRenderInstance],
         textureID: TextureID,
-        blendMode: BlendMode,
-        game: Game
+        blendMode: BlendMode
     ) {
         guard let texture = spriteTextures[textureID] else {
             let startIndex = batchInstances.count
 
-            for positionedSprite in sprites {
+            for instance in instances {
                 batchInstances.append(
                     BatchInstance(
-                        rect: renderRect(
-                            for: positionedSprite,
-                            textureID: textureID,
-                            game: game
-                        ).uniform,
+                        rect: instance.rect.uniform,
                         textureRect: TextureRect.full.uniform,
-                        color: resolvedColor(
-                            for: positionedSprite.sprite,
-                            fallbackColor: .missingTexture
-                        ).uniform
+                        color: instance.color.uniform
                     )
                 )
             }
@@ -300,27 +295,12 @@ final class Renderer {
 
         let startIndex = batchInstances.count
 
-        for positionedSprite in sprites {
-            let sprite = positionedSprite.sprite
-
-            guard case .sprite(_, let sourceRect) = sprite.material,
-                  let textureRect = textureRect(
-                    for: sourceRect,
-                    textureID: textureID
-                  )
-            else {
-                continue
-            }
-
+        for instance in instances {
             batchInstances.append(
                 BatchInstance(
-                    rect: renderRect(
-                        for: positionedSprite,
-                        textureID: textureID,
-                        game: game
-                    ).uniform,
-                    textureRect: textureRect.uniform,
-                    color: resolvedColor(for: sprite).uniform
+                    rect: instance.rect.uniform,
+                    textureRect: instance.textureRect.uniform,
+                    color: instance.color.uniform
                 )
             )
         }
@@ -352,14 +332,13 @@ final class Renderer {
     }
 
     private func appendShapeBatch(
-        _ shapes: [ShapePrimitive],
-        blendMode: BlendMode,
-        game: Game
+        _ instances: [ShapeRenderInstance],
+        blendMode: BlendMode
     ) {
         let startIndex = shapeInstances.count
 
-        for shape in shapes {
-            shapeInstances.append(shapeInstance(for: shape, game: game))
+        for instance in instances {
+            shapeInstances.append(shapeInstance(for: instance))
         }
 
         let instanceCount = shapeInstances.count - startIndex
@@ -523,125 +502,29 @@ final class Renderer {
         )
     }
 
-    private func resolvedColor(
-        for sprite: Sprite,
-        fallbackColor: Color? = nil
-    ) -> Color {
-        let baseColor: Color
-
-        switch sprite.material {
-        case .sprite,
-             .shape:
-            baseColor = fallbackColor ?? .white
-        }
-
-        return Color(
-            red: baseColor.red * sprite.tint.red,
-            green: baseColor.green * sprite.tint.green,
-            blue: baseColor.blue * sprite.tint.blue,
-            alpha: baseColor.alpha * sprite.tint.alpha * sprite.opacity
-        )
-    }
-
-    private func renderRect(
-        for rect: Rect,
-        game: Game
-    ) -> RenderRect {
-        let position = Vec2(
-            x: rect.origin.x - game.camera.origin.x,
-            y: rect.origin.y - game.camera.origin.y
-        )
-        let aligned = Rect(origin: position, size: rect.size).integral
-
-        return RenderRect(
-            x: aligned.origin.x,
-            y: aligned.origin.y,
-            width: aligned.size.x,
-            height: aligned.size.y
-        )
-    }
-
-    private func shapeInstance(for shape: ShapePrimitive, game: Game) -> ShapeInstance {
+    private func shapeInstance(for instance: ShapeRenderInstance) -> ShapeInstance {
         ShapeInstance(
-            rect: renderRect(
-                for: shape.bounds,
-                game: game
-            ).uniform,
+            rect: instance.rect.uniform,
             info: SIMD4(
-                Float(shape.kind.rawValue),
-                Float(shape.radius),
-                Float(shape.strokeWidth),
-                Float(shape.lineCap.shaderValue)
+                Float(instance.info.x),
+                Float(instance.info.y),
+                Float(instance.info.z),
+                Float(instance.info.w)
             ),
             line: SIMD4(
-                Float(shape.lineStart.x),
-                Float(shape.lineStart.y),
-                Float(shape.lineEnd.x),
-                Float(shape.lineEnd.y)
+                Float(instance.line.x),
+                Float(instance.line.y),
+                Float(instance.line.z),
+                Float(instance.line.w)
             ),
-            fillColor: shape.fillColor.uniform,
-            strokeColor: shape.strokeColor.uniform,
+            fillColor: instance.fillColor.uniform,
+            strokeColor: instance.strokeColor.uniform,
             flags: SIMD4(
-                shape.fillAntialiased ? 1 : 0,
-                shape.strokeAntialiased ? 1 : 0,
-                Float(shape.cornerStyle.shaderValue),
-                0
+                Float(instance.flags.x),
+                Float(instance.flags.y),
+                Float(instance.flags.z),
+                Float(instance.flags.w)
             )
-        )
-    }
-
-    private func renderRect(
-        for positionedSprite: PositionedSprite,
-        textureID: TextureID,
-        game: Game
-    ) -> RenderRect {
-        let sprite = positionedSprite.sprite
-        let size = naturalSize(for: sprite, textureID: textureID) * sprite.scale
-        let origin = Vec2(
-            x: positionedSprite.position.x - game.camera.origin.x - (size.x / 2),
-            y: positionedSprite.position.y - game.camera.origin.y - (size.y / 2)
-        )
-        let aligned = Rect(origin: origin, size: size).integral
-
-        return RenderRect(
-            x: aligned.origin.x,
-            y: aligned.origin.y,
-            width: aligned.size.x,
-            height: aligned.size.y
-        )
-    }
-
-    private func naturalSize(for sprite: Sprite, textureID: TextureID) -> Vec2 {
-        switch sprite.material {
-        case .sprite(_, let sourceRect):
-            return sourceRect?.size
-                ?? spriteTextureSizes[textureID]
-                ?? .zero
-        case .shape:
-            return .zero
-        }
-    }
-
-    private func textureRect(
-        for sourceRect: Rect?,
-        textureID: TextureID
-    ) -> TextureRect? {
-        guard let sourceRect else {
-            return .full
-        }
-
-        guard let textureSize = spriteTextureSizes[textureID],
-              textureSize.x > 0,
-              textureSize.y > 0
-        else {
-            return nil
-        }
-
-        return TextureRect(
-            x: sourceRect.origin.x / textureSize.x,
-            y: sourceRect.origin.y / textureSize.y,
-            width: sourceRect.size.x / textureSize.x,
-            height: sourceRect.size.y / textureSize.y
         )
     }
 
@@ -876,40 +759,6 @@ private struct ShapeInstance {
     let flags: SIMD4<Float>
 }
 
-private struct RenderRect {
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-
-    var uniform: SIMD4<Float> {
-        SIMD4(
-            Float(x),
-            Float(y),
-            Float(width),
-            Float(height)
-        )
-    }
-}
-
-private struct TextureRect {
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-
-    static let full = TextureRect(x: 0, y: 0, width: 1, height: 1)
-
-    var uniform: SIMD4<Float> {
-        SIMD4(
-            Float(x),
-            Float(y),
-            Float(width),
-            Float(height)
-        )
-    }
-}
-
 private extension Color {
     var uniform: SIMD4<Float> {
         SIMD4(
@@ -921,27 +770,25 @@ private extension Color {
     }
 }
 
-private extension LineCap {
-    var shaderValue: Double {
-        switch self {
-        case .butt:
-            return 0
-        case .square:
-            return 1
-        case .round:
-            return 2
-        }
+private extension Rect {
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(origin.x),
+            Float(origin.y),
+            Float(size.x),
+            Float(size.y)
+        )
     }
 }
 
-private extension RoundedCornerStyle {
-    var shaderValue: Double {
-        switch self {
-        case .circular:
-            return 0
-        case .continuous:
-            return 1
-        }
+private extension TextureRect {
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(origin.x),
+            Float(origin.y),
+            Float(size.x),
+            Float(size.y)
+        )
     }
 }
 

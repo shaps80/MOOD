@@ -201,3 +201,19 @@ public extension Rect {
             && maxY > other.minY
     }
 }
+
+public extension Rect {
+    var integral: Rect {
+        let minX = origin.x.rounded()
+        let minY = origin.y.rounded()
+        let maxX = (origin.x + size.x).rounded()
+        let maxY = (origin.y + size.y).rounded()
+
+        return Rect(
+            x: minX,
+            y: minY,
+            width: max(0, maxX - minX),
+            height: max(0, maxY - minY)
+        )
+    }
+}

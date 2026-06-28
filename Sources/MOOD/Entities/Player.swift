@@ -50,6 +50,16 @@ struct Player: Entity {
             sourceRect: timeline.frame
         )
     }
+
+    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
+        switch contact.phase {
+        case .began:
+            state.sprite?.scale = .init(x: 2, y: 1)
+        case .changed: break
+        case .ended:
+            state.sprite?.scale = .init(x: 1, y: 1)
+        }
+    }
 }
 
 private extension SpriteAnimation {

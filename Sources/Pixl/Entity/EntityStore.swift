@@ -34,7 +34,9 @@ final class EntityStore {
 
     func forEachCollider(_ body: (EntityID, Int, Collider) -> Void) {
         for entity in entitiesByID.values {
-            for index in entity.colliders.indices {
+            let colliders = entity.worldColliders
+
+            for index in colliders.indices {
                 body(
                     entity.id,
                     index,
