@@ -253,10 +253,13 @@ public struct Game {
         visibleWithin bounds: Rect,
         to context: inout RenderContext
     ) {
-        let color = Color.green.opacity(0.35)
+        let style = RenderStyle(
+            fill: Color.green.opacity(0.25),
+            blendMode: .normal
+        )
 
         level.tilemap.colliderIndex.forEach(intersecting: bounds) { collider in
-            context.fill(collider.bounds, color: color, layer: 900)
+            context.draw(.init(collider.bounds), style: style, layer: 900)
         }
 
         for record in entityRecords {
@@ -265,7 +268,7 @@ public struct Game {
             }
 
             for frame in state.colliderFrames where frame.intersects(bounds) {
-                context.fill(frame, color: color, layer: 900)
+                context.draw(.init(frame), style: style, layer: 900)
             }
         }
     }
