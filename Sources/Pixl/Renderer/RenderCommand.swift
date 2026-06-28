@@ -42,6 +42,7 @@ private extension Sprite {
             body(.sprite(self))
         case .shape(let shape):
             let rect = Rect(origin: position, size: size)
+            let path = shape.path(in: rect)
             let style = RenderStyle(
                 fill: .white,
                 blendMode: blendMode,
@@ -49,7 +50,7 @@ private extension Sprite {
                 tint: tint
             )
 
-            shape.path(in: rect)
+            path
                 .applying(style, layer: layer)
                 .forEachPrimitive(body)
         }
