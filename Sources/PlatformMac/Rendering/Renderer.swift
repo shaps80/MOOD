@@ -8,7 +8,7 @@ import Swift
 final class Renderer {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
-    private let pipelineState: MTLRenderPipelineState
+    private let pipelineStates: [BlendMode: MTLRenderPipelineState]
     private let quadVertexBuffer: MTLBuffer
     private let textureLoader: MTKTextureLoader
     private let nearestSamplerState: MTLSamplerState
@@ -35,7 +35,7 @@ final class Renderer {
         self.device = device
         self.commandQueue = commandQueue
         self.textureLoader = MTKTextureLoader(device: device)
-        self.pipelineState = Renderer.makePipelineState(
+        self.pipelineStates = Renderer.makePipelineStates(
             device: device,
             pixelFormat: pixelFormat
         )
@@ -88,7 +88,6 @@ final class Renderer {
         )
 
         renderEncoder.setViewport(viewport.metalViewport)
-        renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(quadVertexBuffer, offset: 0, index: 0)
         renderEncoder.setFragmentSamplerState(
             samplerState(for: game.interpolationMode),
@@ -154,36 +153,43 @@ final class Renderer {
 
         for batch in game.renderBatches {
             switch batch {
-            case .rects(let color, let rects):
-                appendRectBatch(rects, color: color, game: game)
-            case .sprites(let textureID, let sprites):
-                appendSpriteBatch(sprites, textureID: textureID, game: game)
+            case .solids(let blendMode, let sprites):
+                appendSolidBatch(sprites, blendMode: blendMode, game: game)
+            case .sprites(let textureID, let blendMode, let sprites):
+                appendSpriteBatch(
+                    sprites,
+                    textureID: textureID,
+                    blendMode: blendMode,
+                    game: game
+                )
             }
         }
     }
 
-    private func appendRectBatch(
-        _ rects: [Rect],
-        color: Color,
+    private func appendSolidBatch(
+        _ sprites: [Sprite],
+        blendMode: BlendMode,
         game: Game
     ) {
         let startIndex = batchInstances.count
 
-        for rect in rects {
+        for sprite in sprites {
             batchInstances.append(
                 BatchInstance(
                     rect: renderRect(
-                        for: rect,
+                        for: sprite,
                         game: game,
                         interpolationMode: game.interpolationMode
                     ).uniform,
-                    textureRect: TextureRect.full.uniform
+                    textureRect: TextureRect.full.uniform,
+                    color: resolvedColor(for: sprite).uniform
                 )
             )
         }
 
         appendPreparedBatch(
-            material: .color(color),
+            material: .color,
+            blendMode: blendMode,
             startIndex: startIndex
         )
     }
@@ -191,13 +197,33 @@ final class Renderer {
     private func appendSpriteBatch(
         _ sprites: [Sprite],
         textureID: TextureID,
+        blendMode: BlendMode,
         game: Game
     ) {
         guard let texture = spriteTextures[textureID] else {
-            appendRectBatch(
-                sprites.map { Rect(origin: $0.position, size: $0.size) },
-                color: .missingTexture,
-                game: game
+            let startIndex = batchInstances.count
+
+            for sprite in sprites {
+                batchInstances.append(
+                    BatchInstance(
+                        rect: renderRect(
+                            for: sprite,
+                            game: game,
+                            interpolationMode: game.interpolationMode
+                        ).uniform,
+                        textureRect: TextureRect.full.uniform,
+                        color: resolvedColor(
+                            for: sprite,
+                            fallbackColor: .missingTexture
+                        ).uniform
+                    )
+                )
+            }
+
+            appendPreparedBatch(
+                material: .color,
+                blendMode: blendMode,
+                startIndex: startIndex
             )
             return
         }
@@ -221,19 +247,22 @@ final class Renderer {
                         game: game,
                         interpolationMode: game.interpolationMode
                     ).uniform,
-                    textureRect: textureRect.uniform
+                    textureRect: textureRect.uniform,
+                    color: resolvedColor(for: sprite).uniform
                 )
             )
         }
 
         appendPreparedBatch(
             material: .texture(texture),
+            blendMode: blendMode,
             startIndex: startIndex
         )
     }
 
     private func appendPreparedBatch(
         material: RenderMaterial,
+        blendMode: BlendMode,
         startIndex: Int
     ) {
         let instanceCount = batchInstances.count - startIndex
@@ -243,6 +272,7 @@ final class Renderer {
         preparedBatches.append(
             PreparedBatch(
                 material: material,
+                blendMode: blendMode,
                 startIndex: startIndex,
                 instanceCount: instanceCount
             )
@@ -282,23 +312,22 @@ final class Renderer {
         instanceBuffer: MTLBuffer,
         renderEncoder: MTLRenderCommandEncoder
     ) {
-        var colorUniform = batch.material.colorUniform
         var useTexture = batch.material.useTexture
 
+        guard let pipelineState = pipelineStates[batch.blendMode] else {
+            return
+        }
+
+        renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(
             instanceBuffer,
             offset: batch.startIndex * MemoryLayout<BatchInstance>.stride,
             index: 2
         )
         renderEncoder.setFragmentBytes(
-            &colorUniform,
-            length: MemoryLayout<SIMD4<Float>>.stride,
-            index: 0
-        )
-        renderEncoder.setFragmentBytes(
             &useTexture,
             length: MemoryLayout<UInt32>.stride,
-            index: 1
+            index: 0
         )
         renderEncoder.setFragmentTexture(
             batch.material.texture ?? whiteTexture,
@@ -309,6 +338,27 @@ final class Renderer {
             vertexStart: 0,
             vertexCount: 6,
             instanceCount: batch.instanceCount
+        )
+    }
+
+    private func resolvedColor(
+        for sprite: Sprite,
+        fallbackColor: Color? = nil
+    ) -> Color {
+        let baseColor: Color
+
+        switch sprite.material {
+        case .color(let color):
+            baseColor = color
+        case .sprite:
+            baseColor = fallbackColor ?? .white
+        }
+
+        return Color(
+            red: baseColor.red * sprite.tint.red,
+            green: baseColor.green * sprite.tint.green,
+            blue: baseColor.blue * sprite.tint.blue,
+            alpha: baseColor.alpha * sprite.tint.alpha * sprite.opacity
         )
     }
 
@@ -402,9 +452,34 @@ final class Renderer {
         }
     }
 
-    private static func makePipelineState(
+    private static func makePipelineStates(
         device: MTLDevice,
         pixelFormat: MTLPixelFormat
+    ) -> [BlendMode: MTLRenderPipelineState] {
+        Dictionary(
+            uniqueKeysWithValues: [
+                .normal,
+                .additive,
+                .multiply,
+                .screen,
+                .replace
+            ].map { blendMode in
+                (
+                    blendMode,
+                    makePipelineState(
+                        device: device,
+                        pixelFormat: pixelFormat,
+                        blendMode: blendMode
+                    )
+                )
+            }
+        )
+    }
+
+    private static func makePipelineState(
+        device: MTLDevice,
+        pixelFormat: MTLPixelFormat,
+        blendMode: BlendMode
     ) -> MTLRenderPipelineState {
         do {
             let library = try device.makeLibrary(
@@ -420,15 +495,50 @@ final class Renderer {
                 name: "spriteFragment"
             )
             descriptor.colorAttachments[0].pixelFormat = pixelFormat
-            descriptor.colorAttachments[0].isBlendingEnabled = true
-            descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-            descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-            descriptor.colorAttachments[0].sourceAlphaBlendFactor = .one
-            descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            configureBlendMode(blendMode, descriptor: descriptor)
 
             return try device.makeRenderPipelineState(descriptor: descriptor)
         } catch {
             fatalError("Unable to create Metal sprite pipeline: \(error)")
+        }
+    }
+
+    private static func configureBlendMode(
+        _ blendMode: BlendMode,
+        descriptor: MTLRenderPipelineDescriptor
+    ) {
+        guard let attachment = descriptor.colorAttachments[0] else { return }
+
+        attachment.rgbBlendOperation = .add
+        attachment.alphaBlendOperation = .add
+
+        switch blendMode {
+        case .replace:
+            attachment.isBlendingEnabled = false
+        case .normal:
+            attachment.isBlendingEnabled = true
+            attachment.sourceRGBBlendFactor = .one
+            attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            attachment.sourceAlphaBlendFactor = .one
+            attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        case .additive:
+            attachment.isBlendingEnabled = true
+            attachment.sourceRGBBlendFactor = .one
+            attachment.destinationRGBBlendFactor = .one
+            attachment.sourceAlphaBlendFactor = .one
+            attachment.destinationAlphaBlendFactor = .one
+        case .multiply:
+            attachment.isBlendingEnabled = true
+            attachment.sourceRGBBlendFactor = .destinationColor
+            attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            attachment.sourceAlphaBlendFactor = .one
+            attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        case .screen:
+            attachment.isBlendingEnabled = true
+            attachment.sourceRGBBlendFactor = .one
+            attachment.destinationRGBBlendFactor = .oneMinusSourceColor
+            attachment.sourceAlphaBlendFactor = .one
+            attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
         }
     }
 
@@ -505,7 +615,7 @@ final class Renderer {
 }
 
 private enum RenderMaterial {
-    case color(Color)
+    case color
     case texture(MTLTexture)
 
     var texture: MTLTexture? {
@@ -514,20 +624,6 @@ private enum RenderMaterial {
             return nil
         case .texture(let texture):
             return texture
-        }
-    }
-
-    var colorUniform: SIMD4<Float> {
-        switch self {
-        case .color(let color):
-            return SIMD4(
-                Float(color.red),
-                Float(color.green),
-                Float(color.blue),
-                Float(color.alpha)
-            )
-        case .texture:
-            return SIMD4(1, 1, 1, 1)
         }
     }
 
@@ -543,6 +639,7 @@ private enum RenderMaterial {
 
 private struct PreparedBatch {
     let material: RenderMaterial
+    let blendMode: BlendMode
     let startIndex: Int
     let instanceCount: Int
 }
@@ -550,6 +647,7 @@ private struct PreparedBatch {
 private struct BatchInstance {
     let rect: SIMD4<Float>
     let textureRect: SIMD4<Float>
+    let color: SIMD4<Float>
 }
 
 private struct RenderRect {
@@ -586,6 +684,17 @@ private struct TextureRect {
     }
 }
 
+private extension Color {
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(red),
+            Float(green),
+            Float(blue),
+            Float(alpha)
+        )
+    }
+}
+
 private let metalShaderSource = """
 #include <metal_stdlib>
 using namespace metal;
@@ -593,11 +702,13 @@ using namespace metal;
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
+    float4 color;
 };
 
 struct BatchInstance {
     float4 rect;
     float4 textureRect;
+    float4 color;
 };
 
 vertex VertexOut spriteVertex(
@@ -616,20 +727,24 @@ vertex VertexOut spriteVertex(
     VertexOut out;
     out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
     out.texCoord = instance.textureRect.xy + (unitPosition * instance.textureRect.zw);
+    out.color = instance.color;
     return out;
 }
 
 fragment float4 spriteFragment(
     VertexOut in [[stage_in]],
-    constant float4 &color [[buffer(0)]],
-    constant uint &useTexture [[buffer(1)]],
+    constant uint &useTexture [[buffer(0)]],
     texture2d<float> spriteTexture [[texture(0)]],
     sampler spriteSampler [[sampler(0)]]
 ) {
+    float4 source = float4(1.0);
+
     if (useTexture != 0) {
-        return spriteTexture.sample(spriteSampler, in.texCoord);
+        source = spriteTexture.sample(spriteSampler, in.texCoord);
     }
 
-    return color;
+    source *= in.color;
+    source.rgb *= source.a;
+    return source;
 }
 """

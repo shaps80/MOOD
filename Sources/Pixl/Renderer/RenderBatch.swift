@@ -1,8 +1,8 @@
 import Swift
 
 public enum RenderBatch: Equatable, Sendable {
-    case rects(color: Color, rects: [Rect])
-    case sprites(textureID: TextureID, sprites: [Sprite])
+    case solids(blendMode: BlendMode, sprites: [Sprite])
+    case sprites(textureID: TextureID, blendMode: BlendMode, sprites: [Sprite])
 }
 
 public extension RenderBatch {
@@ -20,9 +20,8 @@ public extension RenderBatch {
 
     var primitiveCount: Int {
         switch self {
-        case .rects(_, let rects):
-            rects.count
-        case .sprites(_, let sprites):
+        case .solids(_, let sprites),
+             .sprites(_, _, let sprites):
             sprites.count
         }
     }
@@ -42,48 +41,72 @@ public extension RenderBatch {
     private init(_ primitive: RenderPrimitive) {
         switch primitive {
         case .rect(let rect, let color):
-            self = .rects(color: color, rects: [rect])
+            self = .solids(
+                blendMode: .normal,
+                sprites: [
+                    Sprite(
+                        position: rect.origin,
+                        size: rect.size,
+                        material: .color(color)
+                    )
+                ]
+            )
         case .sprite(let sprite):
             switch sprite.material {
-            case .color(let color):
-                self = .rects(
-                    color: color,
-                    rects: [Rect(origin: sprite.position, size: sprite.size)]
+            case .color:
+                self = .solids(
+                    blendMode: sprite.blendMode,
+                    sprites: [sprite]
                 )
             case .sprite(let textureID, sourceRect: _):
-                self = .sprites(textureID: textureID, sprites: [sprite])
+                self = .sprites(
+                    textureID: textureID,
+                    blendMode: sprite.blendMode,
+                    sprites: [sprite]
+                )
             }
         }
     }
 
     private mutating func append(_ primitive: RenderPrimitive) -> Bool {
         switch (self, primitive) {
-        case (.rects(let batchColor, var rects), .rect(let rect, let color))
-            where batchColor == color:
-            rects.append(rect)
-            self = .rects(color: batchColor, rects: rects)
+        case (.solids(let blendMode, var sprites), .rect(let rect, let color))
+            where blendMode == .normal:
+            sprites.append(
+                Sprite(
+                    position: rect.origin,
+                    size: rect.size,
+                    material: .color(color)
+                )
+            )
+            self = .solids(blendMode: blendMode, sprites: sprites)
             return true
 
-        case (.rects(let batchColor, var rects), .sprite(let sprite)):
-            guard case .color(let color) = sprite.material,
-                  batchColor == color
-            else {
-                return false
-            }
-
-            rects.append(Rect(origin: sprite.position, size: sprite.size))
-            self = .rects(color: batchColor, rects: rects)
-            return true
-
-        case (.sprites(let batchTextureID, var sprites), .sprite(let sprite)):
-            guard case .sprite(let textureID, sourceRect: _) = sprite.material,
-                  batchTextureID == textureID
+        case (.solids(let blendMode, var sprites), .sprite(let sprite)):
+            guard case .color = sprite.material,
+                  blendMode == sprite.blendMode
             else {
                 return false
             }
 
             sprites.append(sprite)
-            self = .sprites(textureID: batchTextureID, sprites: sprites)
+            self = .solids(blendMode: blendMode, sprites: sprites)
+            return true
+
+        case (.sprites(let batchTextureID, let blendMode, var sprites), .sprite(let sprite)):
+            guard case .sprite(let textureID, sourceRect: _) = sprite.material,
+                  batchTextureID == textureID,
+                  blendMode == sprite.blendMode
+            else {
+                return false
+            }
+
+            sprites.append(sprite)
+            self = .sprites(
+                textureID: batchTextureID,
+                blendMode: blendMode,
+                sprites: sprites
+            )
             return true
 
         default:

@@ -1,6 +1,6 @@
 import Swift
 
-public enum BlendMode: Equatable, Sendable {
+public enum BlendMode: Hashable, Sendable {
     case normal
     case additive
     case multiply

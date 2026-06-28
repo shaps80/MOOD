@@ -11,8 +11,8 @@ final class Renderer {
     private var positionAttributeLocation: Int = 0
     private var rectAttributeLocation: Int = 0
     private var textureRectAttributeLocation: Int = 0
+    private var colorAttributeLocation: Int = 0
     private var resolutionUniform: JSValue = .undefined
-    private var colorUniform: JSValue = .undefined
     private var useTextureUniform: JSValue = .undefined
     private var textureUniform: JSValue = .undefined
     private var batchData: [Float] = []
@@ -59,7 +59,7 @@ final class Renderer {
 
         self.gl = gl
         _ = gl.enable!(gl.BLEND)
-        _ = gl.blendFunc!(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+        applyBlendMode(.normal, gl: gl)
     }
 
     func configureSpritePipeline() {
@@ -71,14 +71,17 @@ final class Renderer {
             attribute vec2 a_position;
             attribute vec4 a_rect;
             attribute vec4 a_textureRect;
+            attribute vec4 a_color;
             uniform vec2 u_resolution;
             varying vec2 v_texCoord;
+            varying vec4 v_color;
 
             void main() {
                 vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
                 vec2 zeroToOne = pixelPosition / u_resolution;
                 vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
                 v_texCoord = a_textureRect.xy + (a_position * a_textureRect.zw);
+                v_color = a_color;
                 gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
             }
             """
@@ -87,13 +90,16 @@ final class Renderer {
             type: gl.FRAGMENT_SHADER,
             source: """
             precision mediump float;
-            uniform vec4 u_color;
             uniform bool u_useTexture;
             uniform sampler2D u_texture;
             varying vec2 v_texCoord;
+            varying vec4 v_color;
 
             void main() {
-                gl_FragColor = u_useTexture ? texture2D(u_texture, v_texCoord) : u_color;
+                vec4 source = u_useTexture ? texture2D(u_texture, v_texCoord) : vec4(1.0);
+                source *= v_color;
+                source.rgb *= source.a;
+                gl_FragColor = source;
             }
             """
         )
@@ -113,8 +119,8 @@ final class Renderer {
         textureRectAttributeLocation = Int(
             gl.getAttribLocation!(program, "a_textureRect").number ?? 0
         )
+        colorAttributeLocation = Int(gl.getAttribLocation!(program, "a_color").number ?? 0)
         resolutionUniform = gl.getUniformLocation!(program, "u_resolution")
-        colorUniform = gl.getUniformLocation!(program, "u_color")
         useTextureUniform = gl.getUniformLocation!(program, "u_useTexture")
         textureUniform = gl.getUniformLocation!(program, "u_texture")
         positionBuffer = gl.createBuffer!()
@@ -159,31 +165,42 @@ final class Renderer {
     private func prepareBatches(game: Game) {
         batchData.removeAll(keepingCapacity: true)
         preparedBatches.removeAll(keepingCapacity: true)
-        batchData.reserveCapacity(game.renderStats.primitiveCount * 8)
+        batchData.reserveCapacity(game.renderStats.primitiveCount * 12)
         preparedBatches.reserveCapacity(game.renderStats.batchCount)
 
         for batch in game.renderBatches {
             switch batch {
-            case .rects(let color, let rects):
-                appendRectBatch(rects, color: color, game: game)
-            case .sprites(let textureID, let sprites):
-                appendSpriteBatch(sprites, textureID: textureID, game: game)
+            case .solids(let blendMode, let sprites):
+                appendSolidBatch(sprites, blendMode: blendMode, game: game)
+            case .sprites(let textureID, let blendMode, let sprites):
+                appendSpriteBatch(
+                    sprites,
+                    textureID: textureID,
+                    blendMode: blendMode,
+                    game: game
+                )
             }
         }
     }
 
-    private func appendRectBatch(_ rects: [Rect], color: Color, game: Game) {
-        let startIndex = batchData.count / 8
+    private func appendSolidBatch(
+        _ sprites: [Sprite],
+        blendMode: BlendMode,
+        game: Game
+    ) {
+        let startIndex = batchData.count / 12
 
-        for rect in rects {
+        for sprite in sprites {
             appendInstance(
-                rect: renderRect(for: rect, game: game),
-                textureRect: .full
+                rect: renderRect(for: sprite, game: game),
+                textureRect: .full,
+                color: resolvedColor(for: sprite)
             )
         }
 
         appendPreparedBatch(
-            material: .color(color),
+            material: .color,
+            blendMode: blendMode,
             startIndex: startIndex
         )
     }
@@ -191,26 +208,32 @@ final class Renderer {
     private func appendSpriteBatch(
         _ sprites: [Sprite],
         textureID: TextureID,
+        blendMode: BlendMode,
         game: Game
     ) {
         guard let texture = spriteTextures[textureID] else {
-            let startIndex = batchData.count / 8
+            let startIndex = batchData.count / 12
 
             for sprite in sprites {
                 appendInstance(
                     rect: renderRect(for: sprite, game: game),
-                    textureRect: .full
+                    textureRect: .full,
+                    color: resolvedColor(
+                        for: sprite,
+                        fallbackColor: .missingTexture
+                    )
                 )
             }
 
             appendPreparedBatch(
-                material: .color(.missingTexture),
+                material: .color,
+                blendMode: blendMode,
                 startIndex: startIndex
             )
             return
         }
 
-        let startIndex = batchData.count / 8
+        let startIndex = batchData.count / 12
 
         for sprite in sprites {
             guard case .sprite(_, let sourceRect) = sprite.material,
@@ -221,31 +244,42 @@ final class Renderer {
 
             appendInstance(
                 rect: renderRect(for: sprite, game: game),
-                textureRect: textureRect
+                textureRect: textureRect,
+                color: resolvedColor(for: sprite)
             )
         }
 
         appendPreparedBatch(
             material: .texture(texture),
+            blendMode: blendMode,
             startIndex: startIndex
         )
     }
 
-    private func appendPreparedBatch(material: RenderMaterial, startIndex: Int) {
-        let instanceCount = (batchData.count / 8) - startIndex
+    private func appendPreparedBatch(
+        material: RenderMaterial,
+        blendMode: BlendMode,
+        startIndex: Int
+    ) {
+        let instanceCount = (batchData.count / 12) - startIndex
 
         guard instanceCount > 0 else { return }
 
         preparedBatches.append(
             PreparedBatch(
                 material: material,
+                blendMode: blendMode,
                 startIndex: startIndex,
                 instanceCount: instanceCount
             )
         )
     }
 
-    private func appendInstance(rect: RenderRect, textureRect: TextureRect) {
+    private func appendInstance(
+        rect: RenderRect,
+        textureRect: TextureRect,
+        color: Color
+    ) {
         batchData.append(contentsOf: [
             Float(rect.x),
             Float(rect.y),
@@ -254,7 +288,11 @@ final class Renderer {
             Float(textureRect.x),
             Float(textureRect.y),
             Float(textureRect.width),
-            Float(textureRect.height)
+            Float(textureRect.height),
+            Float(color.red),
+            Float(color.green),
+            Float(color.blue),
+            Float(color.alpha)
         ])
     }
 
@@ -282,8 +320,8 @@ final class Renderer {
             4,
             gl.FLOAT,
             false,
-            32,
-            batch.startIndex * 32
+            48,
+            batch.startIndex * 48
         )
         _ = gl.vertexAttribDivisor!(rectAttributeLocation, 1)
         _ = gl.enableVertexAttribArray!(textureRectAttributeLocation)
@@ -292,28 +330,96 @@ final class Renderer {
             4,
             gl.FLOAT,
             false,
-            32,
-            (batch.startIndex * 32) + 16
+            48,
+            (batch.startIndex * 48) + 16
         )
         _ = gl.vertexAttribDivisor!(textureRectAttributeLocation, 1)
+        _ = gl.enableVertexAttribArray!(colorAttributeLocation)
+        _ = gl.vertexAttribPointer!(
+            colorAttributeLocation,
+            4,
+            gl.FLOAT,
+            false,
+            48,
+            (batch.startIndex * 48) + 32
+        )
+        _ = gl.vertexAttribDivisor!(colorAttributeLocation, 1)
 
         _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
+        applyBlendMode(batch.blendMode, gl: gl)
         applyMaterial(batch.material, gl: gl)
         _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, batch.instanceCount)
     }
 
     private func applyMaterial(_ material: RenderMaterial, gl: JSObject) {
         switch material {
-        case .color(let color):
-            _ = gl.uniform4f!(colorUniform, color.red, color.green, color.blue, color.alpha)
+        case .color:
             _ = gl.uniform1i!(useTextureUniform, 0)
         case .texture(let texture):
-            _ = gl.uniform4f!(colorUniform, 1, 1, 1, 1)
             _ = gl.uniform1i!(useTextureUniform, 1)
             _ = gl.activeTexture!(gl.TEXTURE0)
             _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
             _ = gl.uniform1i!(textureUniform, 0)
         }
+    }
+
+    private func applyBlendMode(_ blendMode: BlendMode, gl: JSObject) {
+        switch blendMode {
+        case .replace:
+            _ = gl.disable!(gl.BLEND)
+        case .normal:
+            _ = gl.enable!(gl.BLEND)
+            _ = gl.blendEquation!(gl.FUNC_ADD)
+            _ = gl.blendFuncSeparate!(
+                gl.ONE,
+                gl.ONE_MINUS_SRC_ALPHA,
+                gl.ONE,
+                gl.ONE_MINUS_SRC_ALPHA
+            )
+        case .additive:
+            _ = gl.enable!(gl.BLEND)
+            _ = gl.blendEquation!(gl.FUNC_ADD)
+            _ = gl.blendFuncSeparate!(gl.ONE, gl.ONE, gl.ONE, gl.ONE)
+        case .multiply:
+            _ = gl.enable!(gl.BLEND)
+            _ = gl.blendEquation!(gl.FUNC_ADD)
+            _ = gl.blendFuncSeparate!(
+                gl.DST_COLOR,
+                gl.ONE_MINUS_SRC_ALPHA,
+                gl.ONE,
+                gl.ONE_MINUS_SRC_ALPHA
+            )
+        case .screen:
+            _ = gl.enable!(gl.BLEND)
+            _ = gl.blendEquation!(gl.FUNC_ADD)
+            _ = gl.blendFuncSeparate!(
+                gl.ONE,
+                gl.ONE_MINUS_SRC_COLOR,
+                gl.ONE,
+                gl.ONE_MINUS_SRC_ALPHA
+            )
+        }
+    }
+
+    private func resolvedColor(
+        for sprite: Sprite,
+        fallbackColor: Color? = nil
+    ) -> Color {
+        let baseColor: Color
+
+        switch sprite.material {
+        case .color(let color):
+            baseColor = color
+        case .sprite:
+            baseColor = fallbackColor ?? .white
+        }
+
+        return Color(
+            red: baseColor.red * sprite.tint.red,
+            green: baseColor.green * sprite.tint.green,
+            blue: baseColor.blue * sprite.tint.blue,
+            alpha: baseColor.alpha * sprite.tint.alpha * sprite.opacity
+        )
     }
 
     private func renderRect(for rect: Rect, game: Game) -> RenderRect {
@@ -385,12 +491,13 @@ final class Renderer {
 }
 
 private enum RenderMaterial {
-    case color(Color)
+    case color
     case texture(JSValue)
 }
 
 private struct PreparedBatch {
     let material: RenderMaterial
+    let blendMode: BlendMode
     let startIndex: Int
     let instanceCount: Int
 }

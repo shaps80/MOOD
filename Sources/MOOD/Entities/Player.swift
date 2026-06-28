@@ -55,6 +55,10 @@ struct Player: Entity {
         )
     }
 
+    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
+        guard contact.phase == .began else { return }
+        state.sprite?.tint = .red
+    }
 }
 
 private extension SpriteAnimation {
