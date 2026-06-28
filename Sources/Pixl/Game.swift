@@ -212,6 +212,7 @@ public struct Game {
                     Sprite(
                         material: tile.material,
                         layer: tile.layer,
+                        blendMode: tile.blendMode,
                         tint: tile.tint
                     ),
                     at: Vec2(

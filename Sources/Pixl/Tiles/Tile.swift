@@ -5,6 +5,7 @@ extension Tilemap {
         public let kind: Kind
         public let material: Material
         public let layer: RenderLayer
+        public let blendMode: BlendMode
         public let tint: Color
         /// Local-space colliders relative to this tile's origin.
         public let colliders: [Collider]
@@ -13,6 +14,7 @@ extension Tilemap {
             kind: Kind,
             material: Material,
             layer: RenderLayer = 0,
+            blendMode: BlendMode = .normal,
             tint: Color = .white,
             collider: Collider? = nil
         ) {
@@ -20,6 +22,7 @@ extension Tilemap {
                 kind: kind,
                 material: material,
                 layer: layer,
+                blendMode: blendMode,
                 tint: tint,
                 colliders: collider.map { [$0] } ?? []
             )
@@ -29,11 +32,13 @@ extension Tilemap {
             kind: Kind,
             material: Material,
             layer: RenderLayer = 0,
+            blendMode: BlendMode = .normal,
             tint: Color = .white,
             colliders: [Collider]
         ) {
             self.kind = kind
             self.material = material
+            self.blendMode = blendMode
             self.layer = layer
             self.tint = tint
             self.colliders = colliders

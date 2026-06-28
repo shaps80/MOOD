@@ -39,12 +39,14 @@ private extension Tilemap {
         tileSize: Vec2,
         color: Color,
         layer: RenderLayer = .world,
+        blendMode: BlendMode = .normal,
         isCollidable: Bool = true
     ) -> Tilemap.Tile {
         Tilemap.Tile(
             kind: .wall,
             material: .shape(Rectangle(), size: tileSize),
             layer: layer,
+            blendMode: blendMode,
             tint: color,
             collider: isCollidable ? Collider(
                 bounds: Rect(
@@ -114,6 +116,7 @@ private extension Tilemap {
             tileSize: tileSize,
             color: Color(red: 0.08, green: 0.55, blue: 0.22, alpha: 1),
             layer: .foreground,
+            blendMode: .multiply,
             isCollidable: false
         )
         let block = Tilemap.wall(
