@@ -3,6 +3,7 @@ import Swift
 public enum RenderBatch: Equatable, Sendable {
     case solids(blendMode: BlendMode, sprites: [Sprite])
     case sprites(textureID: TextureID, blendMode: BlendMode, sprites: [Sprite])
+    case shapes(blendMode: BlendMode, shapes: [ShapePrimitive])
 }
 
 public extension RenderBatch {
@@ -23,6 +24,8 @@ public extension RenderBatch {
         case .solids(_, let sprites),
              .sprites(_, _, let sprites):
             sprites.count
+        case .shapes(_, let shapes):
+            shapes.count
         }
     }
 
@@ -65,6 +68,8 @@ public extension RenderBatch {
                     sprites: [sprite]
                 )
             }
+        case .shape(let shape):
+            self = .shapes(blendMode: shape.blendMode, shapes: [shape])
         }
     }
 
@@ -107,6 +112,12 @@ public extension RenderBatch {
                 blendMode: blendMode,
                 sprites: sprites
             )
+            return true
+
+        case (.shapes(let blendMode, var shapes), .shape(let shape))
+            where blendMode == shape.blendMode:
+            shapes.append(shape)
+            self = .shapes(blendMode: blendMode, shapes: shapes)
             return true
 
         default:

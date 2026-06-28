@@ -9,6 +9,7 @@ final class Renderer {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let pipelineStates: [BlendMode: MTLRenderPipelineState]
+    private let shapePipelineStates: [BlendMode: MTLRenderPipelineState]
     private let quadVertexBuffer: MTLBuffer
     private let textureLoader: MTKTextureLoader
     private let nearestSamplerState: MTLSamplerState
@@ -19,9 +20,12 @@ final class Renderer {
     private var spriteTextures: [TextureID: MTLTexture] = [:]
     private var spriteTextureSizes: [TextureID: Vec2] = [:]
     private var batchInstances: [BatchInstance] = []
+    private var shapeInstances: [ShapeInstance] = []
     private var preparedBatches: [PreparedBatch] = []
     private var instanceBuffer: MTLBuffer?
     private var instanceBufferCapacity = 0
+    private var shapeInstanceBuffer: MTLBuffer?
+    private var shapeInstanceBufferCapacity = 0
 
     init(
         device: MTLDevice,
@@ -37,7 +41,15 @@ final class Renderer {
         self.textureLoader = MTKTextureLoader(device: device)
         self.pipelineStates = Renderer.makePipelineStates(
             device: device,
-            pixelFormat: pixelFormat
+            pixelFormat: pixelFormat,
+            vertexFunctionName: "spriteVertex",
+            fragmentFunctionName: "spriteFragment"
+        )
+        self.shapePipelineStates = Renderer.makePipelineStates(
+            device: device,
+            pixelFormat: pixelFormat,
+            vertexFunctionName: "shapeVertex",
+            fragmentFunctionName: "shapeFragment"
         )
         self.quadVertexBuffer = Renderer.makeQuadVertexBuffer(device: device)
         self.nearestSamplerState = Renderer.makeSamplerState(
@@ -105,14 +117,16 @@ final class Renderer {
         )
 
         prepareBatches(game: game)
-        if let instanceBuffer = uploadBatchInstances() {
-            for batch in preparedBatches {
-                drawBatch(
-                    batch,
-                    instanceBuffer: instanceBuffer,
-                    renderEncoder: renderEncoder
-                )
-            }
+        let instanceBuffer = uploadBatchInstances()
+        let shapeInstanceBuffer = uploadShapeBatchInstances()
+
+        for batch in preparedBatches {
+            drawBatch(
+                batch,
+                instanceBuffer: instanceBuffer,
+                shapeInstanceBuffer: shapeInstanceBuffer,
+                renderEncoder: renderEncoder
+            )
         }
 
         renderEncoder.endEncoding()
@@ -147,8 +161,10 @@ final class Renderer {
 
     private func prepareBatches(game: Game) {
         batchInstances.removeAll(keepingCapacity: true)
+        shapeInstances.removeAll(keepingCapacity: true)
         preparedBatches.removeAll(keepingCapacity: true)
         batchInstances.reserveCapacity(game.renderStats.primitiveCount)
+        shapeInstances.reserveCapacity(game.renderStats.primitiveCount)
         preparedBatches.reserveCapacity(game.renderStats.batchCount)
 
         for batch in game.renderBatches {
@@ -162,6 +178,8 @@ final class Renderer {
                     blendMode: blendMode,
                     game: game
                 )
+            case .shapes(let blendMode, let shapes):
+                appendShapeBatch(shapes, blendMode: blendMode, game: game)
             }
         }
     }
@@ -270,8 +288,32 @@ final class Renderer {
         guard instanceCount > 0 else { return }
 
         preparedBatches.append(
-            PreparedBatch(
+            .sprites(
                 material: material,
+                blendMode: blendMode,
+                startIndex: startIndex,
+                instanceCount: instanceCount
+            )
+        )
+    }
+
+    private func appendShapeBatch(
+        _ shapes: [ShapePrimitive],
+        blendMode: BlendMode,
+        game: Game
+    ) {
+        let startIndex = shapeInstances.count
+
+        for shape in shapes {
+            shapeInstances.append(shapeInstance(for: shape, game: game))
+        }
+
+        let instanceCount = shapeInstances.count - startIndex
+
+        guard instanceCount > 0 else { return }
+
+        preparedBatches.append(
+            .shapes(
                 blendMode: blendMode,
                 startIndex: startIndex,
                 instanceCount: instanceCount
@@ -307,21 +349,82 @@ final class Renderer {
         return instanceBuffer
     }
 
+    private func uploadShapeBatchInstances() -> MTLBuffer? {
+        guard !shapeInstances.isEmpty else { return nil }
+
+        let length = shapeInstances.count * MemoryLayout<ShapeInstance>.stride
+
+        if shapeInstanceBufferCapacity < length {
+            guard let buffer = device.makeBuffer(length: length) else {
+                return nil
+            }
+
+            shapeInstanceBuffer = buffer
+            shapeInstanceBufferCapacity = length
+        }
+
+        guard let shapeInstanceBuffer else { return nil }
+
+        shapeInstances.withUnsafeBytes { bytes in
+            guard let source = bytes.baseAddress else { return }
+
+            shapeInstanceBuffer.contents().copyMemory(
+                from: source,
+                byteCount: bytes.count
+            )
+        }
+
+        return shapeInstanceBuffer
+    }
+
     private func drawBatch(
         _ batch: PreparedBatch,
+        instanceBuffer: MTLBuffer?,
+        shapeInstanceBuffer: MTLBuffer?,
+        renderEncoder: MTLRenderCommandEncoder
+    ) {
+        switch batch {
+        case .sprites(let material, let blendMode, let startIndex, let instanceCount):
+            guard let instanceBuffer else { return }
+            drawSpriteBatch(
+                material: material,
+                blendMode: blendMode,
+                startIndex: startIndex,
+                instanceCount: instanceCount,
+                instanceBuffer: instanceBuffer,
+                renderEncoder: renderEncoder
+            )
+
+        case .shapes(let blendMode, let startIndex, let instanceCount):
+            guard let shapeInstanceBuffer else { return }
+            drawShapeBatch(
+                blendMode: blendMode,
+                startIndex: startIndex,
+                instanceCount: instanceCount,
+                instanceBuffer: shapeInstanceBuffer,
+                renderEncoder: renderEncoder
+            )
+        }
+    }
+
+    private func drawSpriteBatch(
+        material: RenderMaterial,
+        blendMode: BlendMode,
+        startIndex: Int,
+        instanceCount: Int,
         instanceBuffer: MTLBuffer,
         renderEncoder: MTLRenderCommandEncoder
     ) {
-        var useTexture = batch.material.useTexture
+        var useTexture = material.useTexture
 
-        guard let pipelineState = pipelineStates[batch.blendMode] else {
+        guard let pipelineState = pipelineStates[blendMode] else {
             return
         }
 
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(
             instanceBuffer,
-            offset: batch.startIndex * MemoryLayout<BatchInstance>.stride,
+            offset: startIndex * MemoryLayout<BatchInstance>.stride,
             index: 2
         )
         renderEncoder.setFragmentBytes(
@@ -330,14 +433,39 @@ final class Renderer {
             index: 0
         )
         renderEncoder.setFragmentTexture(
-            batch.material.texture ?? whiteTexture,
+            material.texture ?? whiteTexture,
             index: 0
         )
         renderEncoder.drawPrimitives(
             type: .triangle,
             vertexStart: 0,
             vertexCount: 6,
-            instanceCount: batch.instanceCount
+            instanceCount: instanceCount
+        )
+    }
+
+    private func drawShapeBatch(
+        blendMode: BlendMode,
+        startIndex: Int,
+        instanceCount: Int,
+        instanceBuffer: MTLBuffer,
+        renderEncoder: MTLRenderCommandEncoder
+    ) {
+        guard let pipelineState = shapePipelineStates[blendMode] else {
+            return
+        }
+
+        renderEncoder.setRenderPipelineState(pipelineState)
+        renderEncoder.setVertexBuffer(
+            instanceBuffer,
+            offset: startIndex * MemoryLayout<ShapeInstance>.stride,
+            index: 2
+        )
+        renderEncoder.drawPrimitives(
+            type: .triangle,
+            vertexStart: 0,
+            vertexCount: 6,
+            instanceCount: instanceCount
         )
     }
 
@@ -388,6 +516,36 @@ final class Renderer {
                 height: rect.size.y.rounded()
             )
         }
+    }
+
+    private func shapeInstance(for shape: ShapePrimitive, game: Game) -> ShapeInstance {
+        ShapeInstance(
+            rect: renderRect(
+                for: shape.bounds,
+                game: game,
+                interpolationMode: game.interpolationMode
+            ).uniform,
+            info: SIMD4(
+                Float(shape.kind.rawValue),
+                Float(shape.radius),
+                Float(shape.strokeWidth),
+                Float(shape.lineCap.shaderValue)
+            ),
+            line: SIMD4(
+                Float(shape.lineStart.x),
+                Float(shape.lineStart.y),
+                Float(shape.lineEnd.x),
+                Float(shape.lineEnd.y)
+            ),
+            fillColor: shape.fillColor.uniform,
+            strokeColor: shape.strokeColor.uniform,
+            flags: SIMD4(
+                shape.fillAntialiased ? 1 : 0,
+                shape.strokeAntialiased ? 1 : 0,
+                0,
+                0
+            )
+        )
     }
 
     private func renderRect(
@@ -454,7 +612,9 @@ final class Renderer {
 
     private static func makePipelineStates(
         device: MTLDevice,
-        pixelFormat: MTLPixelFormat
+        pixelFormat: MTLPixelFormat,
+        vertexFunctionName: String,
+        fragmentFunctionName: String
     ) -> [BlendMode: MTLRenderPipelineState] {
         Dictionary(
             uniqueKeysWithValues: [
@@ -469,6 +629,8 @@ final class Renderer {
                     makePipelineState(
                         device: device,
                         pixelFormat: pixelFormat,
+                        vertexFunctionName: vertexFunctionName,
+                        fragmentFunctionName: fragmentFunctionName,
                         blendMode: blendMode
                     )
                 )
@@ -479,6 +641,8 @@ final class Renderer {
     private static func makePipelineState(
         device: MTLDevice,
         pixelFormat: MTLPixelFormat,
+        vertexFunctionName: String,
+        fragmentFunctionName: String,
         blendMode: BlendMode
     ) -> MTLRenderPipelineState {
         do {
@@ -489,10 +653,10 @@ final class Renderer {
             let descriptor = MTLRenderPipelineDescriptor()
 
             descriptor.vertexFunction = library.makeFunction(
-                name: "spriteVertex"
+                name: vertexFunctionName
             )
             descriptor.fragmentFunction = library.makeFunction(
-                name: "spriteFragment"
+                name: fragmentFunctionName
             )
             descriptor.colorAttachments[0].pixelFormat = pixelFormat
             configureBlendMode(blendMode, descriptor: descriptor)
@@ -637,17 +801,33 @@ private enum RenderMaterial {
     }
 }
 
-private struct PreparedBatch {
-    let material: RenderMaterial
-    let blendMode: BlendMode
-    let startIndex: Int
-    let instanceCount: Int
+private enum PreparedBatch {
+    case sprites(
+        material: RenderMaterial,
+        blendMode: BlendMode,
+        startIndex: Int,
+        instanceCount: Int
+    )
+    case shapes(
+        blendMode: BlendMode,
+        startIndex: Int,
+        instanceCount: Int
+    )
 }
 
 private struct BatchInstance {
     let rect: SIMD4<Float>
     let textureRect: SIMD4<Float>
     let color: SIMD4<Float>
+}
+
+private struct ShapeInstance {
+    let rect: SIMD4<Float>
+    let info: SIMD4<Float>
+    let line: SIMD4<Float>
+    let fillColor: SIMD4<Float>
+    let strokeColor: SIMD4<Float>
+    let flags: SIMD4<Float>
 }
 
 private struct RenderRect {
@@ -695,6 +875,19 @@ private extension Color {
     }
 }
 
+private extension LineCap {
+    var shaderValue: Double {
+        switch self {
+        case .butt:
+            return 0
+        case .square:
+            return 1
+        case .round:
+            return 2
+        }
+    }
+}
+
 private let metalShaderSource = """
 #include <metal_stdlib>
 using namespace metal;
@@ -705,10 +898,30 @@ struct VertexOut {
     float4 color;
 };
 
+struct ShapeVertexOut {
+    float4 position [[position]];
+    float2 localPosition;
+    float2 size;
+    float4 info;
+    float4 line;
+    float4 fillColor;
+    float4 strokeColor;
+    float4 flags;
+};
+
 struct BatchInstance {
     float4 rect;
     float4 textureRect;
     float4 color;
+};
+
+struct ShapeInstance {
+    float4 rect;
+    float4 info;
+    float4 line;
+    float4 fillColor;
+    float4 strokeColor;
+    float4 flags;
 };
 
 vertex VertexOut spriteVertex(
@@ -746,5 +959,105 @@ fragment float4 spriteFragment(
     source *= in.color;
     source.rgb *= source.a;
     return source;
+}
+
+vertex ShapeVertexOut shapeVertex(
+    uint vertexID [[vertex_id]],
+    uint instanceID [[instance_id]],
+    constant float2 *positions [[buffer(0)]],
+    constant float2 &resolution [[buffer(1)]],
+    constant ShapeInstance *instances [[buffer(2)]]
+) {
+    ShapeInstance instance = instances[instanceID];
+    float2 unitPosition = positions[vertexID];
+    float2 pixelPosition = instance.rect.xy + (unitPosition * instance.rect.zw);
+    float2 zeroToOne = pixelPosition / resolution;
+    float2 clipSpace = (zeroToOne * 2.0) - 1.0;
+
+    ShapeVertexOut out;
+    out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
+    out.localPosition = unitPosition * instance.rect.zw;
+    out.size = instance.rect.zw;
+    out.info = instance.info;
+    out.line = instance.line;
+    out.fillColor = instance.fillColor;
+    out.strokeColor = instance.strokeColor;
+    out.flags = instance.flags;
+    return out;
+}
+
+float roundedBoxDistance(float2 p, float2 size, float radius) {
+    float2 halfSize = size * 0.5;
+    float2 q = abs(p - halfSize) - (halfSize - float2(radius));
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+}
+
+float ellipseDistance(float2 p, float2 size) {
+    float2 radius = max(size * 0.5, float2(0.0001));
+    float2 centered = p - radius;
+    return (length(centered / radius) - 1.0) * min(radius.x, radius.y);
+}
+
+float segmentDistance(float2 p, float2 a, float2 b) {
+    float2 pa = p - a;
+    float2 ba = b - a;
+    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
+    return length(pa - (ba * h));
+}
+
+float lineBoxDistance(float2 p, float2 a, float2 b, float width, float cap) {
+    float2 center = (a + b) * 0.5;
+    float2 axis = b - a;
+    float len = max(length(axis), 0.0001);
+    float2 dir = axis / len;
+    float2 normal = float2(-dir.y, dir.x);
+    float halfLen = (len * 0.5) + ((cap > 0.5) ? width * 0.5 : 0.0);
+    float2 local = float2(dot(p - center, dir), dot(p - center, normal));
+    float2 q = abs(local) - float2(halfLen, width * 0.5);
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+}
+
+float coverage(float distance, float antialiased) {
+    float hard = step(distance, 0.0);
+    float width = max(fwidth(distance), 0.0001);
+    float soft = clamp(0.5 - (distance / width), 0.0, 1.0);
+    return mix(hard, soft, antialiased);
+}
+
+fragment float4 shapeFragment(ShapeVertexOut in [[stage_in]]) {
+    float kind = in.info.x;
+    float radius = in.info.y;
+    float strokeWidth = in.info.z;
+    float cap = in.info.w;
+    float d = 0.0;
+
+    if (kind < 0.5) {
+        d = roundedBoxDistance(in.localPosition, in.size, 0.0);
+    } else if (kind < 1.5) {
+        d = roundedBoxDistance(in.localPosition, in.size, radius);
+    } else if (kind < 2.5) {
+        d = ellipseDistance(in.localPosition, in.size);
+    } else {
+        if (cap > 1.5) {
+            d = segmentDistance(in.localPosition, in.line.xy, in.line.zw) - (strokeWidth * 0.5);
+        } else {
+            d = lineBoxDistance(in.localPosition, in.line.xy, in.line.zw, strokeWidth, cap);
+        }
+    }
+
+    float fillCoverage = coverage(d, in.flags.x) * in.fillColor.a;
+    float strokeDistance = abs(d + (strokeWidth * 0.5)) - (strokeWidth * 0.5);
+    float strokeCoverage = coverage(strokeDistance, in.flags.y) * in.strokeColor.a;
+
+    if (kind > 2.5) {
+        fillCoverage = 0.0;
+        strokeCoverage = coverage(d, in.flags.y) * in.strokeColor.a;
+    }
+
+    float4 color = float4(in.fillColor.rgb, 1.0) * fillCoverage;
+    color = mix(color, float4(in.strokeColor.rgb, 1.0) * strokeCoverage, min(strokeCoverage, 1.0));
+    color.a = max(fillCoverage, strokeCoverage);
+    color.rgb *= color.a;
+    return color;
 }
 """

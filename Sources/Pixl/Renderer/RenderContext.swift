@@ -9,6 +9,10 @@ public struct RenderContext: Sendable {
         commands.removeAll(keepingCapacity: keepingCapacity)
     }
 
+    mutating func append(contentsOf commands: [RenderCommand]) {
+        self.commands.append(contentsOf: commands)
+    }
+
     public mutating func sortCommands() {
         commands = commands.enumerated()
             .sorted { lhs, rhs in
@@ -25,6 +29,28 @@ public struct RenderContext: Sendable {
         commands.append(
             .sprite(sprite)
         )
+    }
+
+    public mutating func draw(_ path: Path) {
+        commands.append(
+            .path(path)
+        )
+    }
+
+    public mutating func draw<S: Shape>(
+        _ shape: S,
+        in rect: Rect,
+        layer: RenderLayer = 0
+    ) {
+        draw(shape.path(in: rect).layer(layer))
+    }
+
+    public mutating func draw<S: Shape>(
+        _ shape: StyledShape<S>,
+        in rect: Rect,
+        layer: RenderLayer = 0
+    ) {
+        draw(shape.path(in: rect).layer(layer))
     }
 
     public mutating func fill(
@@ -47,12 +73,10 @@ public struct RenderContext: Sendable {
         width: Double = 1,
         layer: RenderLayer = 0
     ) {
-        commands.append(
-            .strokeRect(
-                rect,
-                Stroke(color: color, width: width),
-                layer
-            )
+        draw(
+            Path(rect)
+                .stroke(color, lineWidth: width)
+                .layer(layer)
         )
     }
 }

@@ -30,6 +30,7 @@ public struct Game {
     public let spriteAssets: [SpriteAsset]
 
     private var renderContext = RenderContext()
+    private var frameContext = RenderContext()
     public var renderCommands: [RenderCommand] { renderContext.commands }
     public private(set) var renderBatches: [RenderBatch] = []
     public private(set) var renderStats = RenderStats()
@@ -83,6 +84,7 @@ public struct Game {
         }
 
         var frameSounds: [SoundID] = []
+        frameContext.removeAll(keepingCapacity: true)
         contacts.beginFrame()
 
         let context = Context(
@@ -104,6 +106,7 @@ public struct Game {
 
             entityRecords[index].entity = entity
             frameSounds.append(contentsOf: entityContext.sounds)
+            appendFrameCommands(from: entityContext)
         }
 
         context.detectContacts()
@@ -136,7 +139,12 @@ public struct Game {
 
             entityRecords[index].entity = entity
             sounds.append(contentsOf: entityContext.sounds)
+            appendFrameCommands(from: entityContext)
         }
+    }
+
+    private mutating func appendFrameCommands(from context: Context) {
+        frameContext.append(contentsOf: context.renderContext.commands)
     }
 
     public mutating func drainSounds() -> [SoundID] {
@@ -155,6 +163,7 @@ public struct Game {
 
         visibleTileCount += appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
         visibleEntityCount += appendEntitySprites(visibleWithin: visibleBounds, to: &renderContext)
+        renderContext.append(contentsOf: frameContext.commands)
 
         if debugOptions.contains(.colliders) {
             appendColliderDebug(visibleWithin: visibleBounds, to: &renderContext)
@@ -285,6 +294,7 @@ extension Game {
         let contacts: ContactState
         private let collisionSystem: CollisionSystem
         fileprivate private(set) var sounds: [SoundID] = []
+        fileprivate private(set) var renderContext = RenderContext()
 
         init(
             delta: Double,
@@ -306,6 +316,30 @@ extension Game {
 
         public mutating func play(sound: SoundID) {
             sounds.append(sound)
+        }
+
+        public mutating func draw(_ sprite: Sprite) {
+            renderContext.draw(sprite)
+        }
+
+        public mutating func draw(_ path: Path) {
+            renderContext.draw(path)
+        }
+
+        public mutating func draw<S: Shape>(
+            _ shape: S,
+            in rect: Rect,
+            layer: RenderLayer = 0
+        ) {
+            renderContext.draw(shape, in: rect, layer: layer)
+        }
+
+        public mutating func draw<S: Shape>(
+            _ shape: StyledShape<S>,
+            in rect: Rect,
+            layer: RenderLayer = 0
+        ) {
+            renderContext.draw(shape, in: rect, layer: layer)
         }
 
         public func move(state: inout EntityState, velocity: Vec2) {
