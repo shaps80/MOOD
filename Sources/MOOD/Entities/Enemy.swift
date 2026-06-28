@@ -1,18 +1,18 @@
 import Pixl
 
 struct Enemy: Entity {
-    private let baseSize = Vec2(x: 16, y: 32)
+    private let size = Vec2(x: 16, y: 32)
 
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.colliders = [
             .init(
-                bounds: Rect(size: baseSize),
+                bounds: Rect(size: size),
                 layer: .enemy,
                 mask: .player
             )
         ]
         state.sprite = Sprite(
-            material: .shape(Capsule(), size: baseSize),
+            material: .shape(Capsule(), size: size),
             layer: .entity,
             tint: .red
         )

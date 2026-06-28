@@ -1,7 +1,7 @@
 import Pixl
 
 struct Player: Entity {
-    private let baseSize = Vec2(x: 48, y: 48)
+    private let size = Vec2(x: 48, y: 48)
     private var controller: TopPlayerController = .slippery
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
@@ -9,7 +9,7 @@ struct Player: Entity {
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.colliders = [
             .init(
-                bounds: Rect(size: baseSize)
+                bounds: Rect(size: size)
                     .padding(.left, 8)
                     .padding(.right, 9)
                     .padding(.vertical, 3),

@@ -1,19 +1,19 @@
 import Pixl
 
 struct Pickup: Entity {
-    private let baseSize = Vec2(x: 16, y: 16)
+    private let size = Vec2(x: 16, y: 16)
 
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.colliders = [
             Collider(
-                bounds: Rect(size: baseSize),
+                bounds: Rect(size: size),
                 layer: .pickup,
                 mask: .player,
                 behaviour: .trigger
             )
         ]
         state.sprite = Sprite(
-            material: .shape(Rectangle(), size: baseSize),
+            material: .shape(Rectangle(), size: size),
             layer: .entity,
             tint: .yellow
         )

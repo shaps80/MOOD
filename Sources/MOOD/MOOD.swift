@@ -10,8 +10,8 @@ import Pixl
 @main
 struct MOOD {
     private static let size: Vec2 = .init(
-        x: 800,
-        y: 400
+        x: 1920,
+        y: 1080
     )
 
     private static var level: Level {
