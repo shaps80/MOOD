@@ -7,6 +7,7 @@ final class Renderer {
     var gl: JSObject?
     private var shaderProgram: JSValue = .undefined
     private var shapeProgram: JSValue = .undefined
+    private var presentProgram: JSValue = .undefined
     private var positionBuffer: JSValue = .undefined
     private var instanceBuffer: JSValue = .undefined
     private var shapeInstanceBuffer: JSValue = .undefined
@@ -26,6 +27,11 @@ final class Renderer {
     private var shapeFlagsAttributeLocation: Int = 0
     private var shapeResolutionUniform: JSValue = .undefined
     private var shapeAAWidthUniform: JSValue = .undefined
+    private var presentPositionAttributeLocation: Int = 0
+    private var presentTextureUniform: JSValue = .undefined
+    private var sceneFramebuffer: JSValue = .undefined
+    private var sceneTexture: JSValue = .undefined
+    private var sceneTextureSize: Vec2 = .zero
     private var batchData: [Float] = []
     private var shapeBatchData: [Float] = []
     private var preparedBatches: [PreparedBatch] = []
@@ -47,10 +53,13 @@ final class Renderer {
         configureWebGL()
         configureSpritePipeline()
         configureShapePipeline()
+        configurePresentPipeline()
     }
 
     func draw(game: Game) {
         syncCanvasWithGameResolution(game: game)
+        configureSceneTarget(game: game)
+        bindSceneTarget(game: game)
         clearScreen(color: game.clearColor)
 
         prepareBatches(game: game)
@@ -60,6 +69,8 @@ final class Renderer {
         for batch in preparedBatches {
             drawBatch(batch, game: game)
         }
+
+        presentScene()
     }
 
     func configureWebGL() {
@@ -333,6 +344,53 @@ final class Renderer {
         shapeInstanceBuffer = gl.createBuffer!()
     }
 
+    func configurePresentPipeline() {
+        guard let gl else { return }
+
+        let vertexShader = compileShader(
+            type: gl.VERTEX_SHADER,
+            source: """
+            attribute vec2 a_position;
+            varying vec2 v_texCoord;
+
+            void main() {
+                vec2 clipSpace = (a_position * 2.0) - 1.0;
+                v_texCoord = a_position;
+                gl_Position = vec4(clipSpace, 0.0, 1.0);
+            }
+            """
+        )
+        let fragmentShader = compileShader(
+            type: gl.FRAGMENT_SHADER,
+            source: """
+            precision mediump float;
+            uniform sampler2D u_texture;
+            varying vec2 v_texCoord;
+
+            void main() {
+                gl_FragColor = texture2D(u_texture, v_texCoord);
+            }
+            """
+        )
+        let program = gl.createProgram!()
+
+        _ = gl.attachShader!(program, vertexShader)
+        _ = gl.attachShader!(program, fragmentShader)
+        _ = gl.linkProgram!(program)
+
+        guard gl.getProgramParameter!(program, gl.LINK_STATUS).boolean == true else {
+            let infoLog = gl.getProgramInfoLog!(program).string ?? "No program info log"
+            _ = JSObject.global.console.error("Unable to link WebGL present shader program: \(infoLog)")
+            fatalError("Unable to link WebGL present shader program")
+        }
+
+        presentProgram = program
+        presentPositionAttributeLocation = Int(
+            gl.getAttribLocation!(program, "a_position").number ?? 0
+        )
+        presentTextureUniform = gl.getUniformLocation!(program, "u_texture")
+    }
+
     func compileShader(type: JSValue, source: String) -> JSValue {
         guard let gl else { return .undefined }
 
@@ -354,6 +412,92 @@ final class Renderer {
 
         _ = gl.clearColor!(color.red, color.green, color.blue, color.alpha)
         _ = gl.clear!(gl.COLOR_BUFFER_BIT)
+    }
+
+    private func configureSceneTarget(game: Game) {
+        guard let gl else { return }
+
+        let width = max(1, game.logicalResolution.x.rounded())
+        let height = max(1, game.logicalResolution.y.rounded())
+        let size = Vec2(x: width, y: height)
+
+        guard sceneTextureSize != size else { return }
+
+        let texture = gl.createTexture!()
+        let framebuffer = gl.createFramebuffer!()
+
+        _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
+        configureSceneTextureParameters(gl)
+        _ = gl.texImage2D!(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            width,
+            height,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            JSValue.null
+        )
+        _ = gl.bindFramebuffer!(gl.FRAMEBUFFER, framebuffer)
+        _ = gl.framebufferTexture2D!(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            texture,
+            0
+        )
+        _ = gl.bindFramebuffer!(gl.FRAMEBUFFER, JSValue.null)
+
+        sceneTexture = texture
+        sceneFramebuffer = framebuffer
+        sceneTextureSize = size
+    }
+
+    private func configureSceneTextureParameters(_ gl: JSObject) {
+        let filter: JSValue
+
+        switch interpolationMode {
+        case .linear:
+            filter = gl.LINEAR
+        case .nearest:
+            filter = gl.NEAREST
+        }
+
+        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
+        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
+        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    }
+
+    private func bindSceneTarget(game: Game) {
+        guard let gl else { return }
+
+        _ = gl.bindFramebuffer!(gl.FRAMEBUFFER, sceneFramebuffer)
+        _ = gl.viewport!(
+            0,
+            0,
+            game.logicalResolution.x.rounded(),
+            game.logicalResolution.y.rounded()
+        )
+    }
+
+    private func presentScene() {
+        guard let gl, let displaySize = lastCanvasDisplaySize else { return }
+
+        _ = gl.bindFramebuffer!(gl.FRAMEBUFFER, JSValue.null)
+        _ = gl.viewport!(0, 0, displaySize.backingWidth, displaySize.backingHeight)
+        _ = gl.disable!(gl.BLEND)
+        _ = gl.useProgram!(presentProgram)
+        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
+        _ = gl.enableVertexAttribArray!(presentPositionAttributeLocation)
+        _ = gl.vertexAttribPointer!(presentPositionAttributeLocation, 2, gl.FLOAT, false, 0, 0)
+        _ = gl.vertexAttribDivisor!(presentPositionAttributeLocation, 0)
+        _ = gl.activeTexture!(gl.TEXTURE0)
+        _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
+        _ = gl.uniform1i!(presentTextureUniform, 0)
+        _ = gl.drawArrays!(gl.TRIANGLES, 0, 6)
+        applyBlendMode(.normal, gl: gl)
     }
 
     private func prepareBatches(game: Game) {
@@ -648,17 +792,13 @@ final class Renderer {
             game.logicalResolution.x,
             game.logicalResolution.y
         )
-        _ = gl.uniform1f!(shapeAAWidthUniform, shapeAAWidth(game: game))
+        _ = gl.uniform1f!(shapeAAWidthUniform, shapeAAWidth())
         applyBlendMode(blendMode, gl: gl)
         _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
     }
 
-    private func shapeAAWidth(game: Game) -> Double {
-        guard let displaySize = lastCanvasDisplaySize else { return 1 }
-
-        let x = game.logicalResolution.x / max(displaySize.backingWidth, 1)
-        let y = game.logicalResolution.y / max(displaySize.backingHeight, 1)
-        return max(min(x, y), 0.0001)
+    private func shapeAAWidth() -> Double {
+        1
     }
 
     private func configureShapeAttribute(
@@ -756,23 +896,14 @@ final class Renderer {
             x: rect.origin.x - game.camera.origin.x,
             y: rect.origin.y - game.camera.origin.y
         )
+        let aligned = Rect(origin: position, size: rect.size).integral
 
-        switch game.interpolationMode {
-        case .linear:
-            return RenderRect(
-                x: position.x,
-                y: position.y,
-                width: rect.size.x,
-                height: rect.size.y
-            )
-        case .nearest:
-            return RenderRect(
-                x: position.x.rounded(),
-                y: position.y.rounded(),
-                width: rect.size.x.rounded(),
-                height: rect.size.y.rounded()
-            )
-        }
+        return RenderRect(
+            x: aligned.origin.x,
+            y: aligned.origin.y,
+            width: aligned.size.x,
+            height: aligned.size.y
+        )
     }
 
     private func textureRect(for sourceRect: Rect?, textureID: TextureID) -> TextureRect? {
@@ -799,23 +930,14 @@ final class Renderer {
             x: sprite.position.x - game.camera.origin.x,
             y: sprite.position.y - game.camera.origin.y
         )
+        let aligned = Rect(origin: position, size: sprite.size).integral
 
-        switch game.interpolationMode {
-        case .linear:
-            return RenderRect(
-                x: position.x,
-                y: position.y,
-                width: sprite.size.x,
-                height: sprite.size.y
-            )
-        case .nearest:
-            return RenderRect(
-                x: position.x.rounded(),
-                y: position.y.rounded(),
-                width: sprite.size.x.rounded(),
-                height: sprite.size.y.rounded()
-            )
-        }
+        return RenderRect(
+            x: aligned.origin.x,
+            y: aligned.origin.y,
+            width: aligned.size.x,
+            height: aligned.size.y
+        )
     }
 }
 

@@ -83,7 +83,7 @@ extension Renderer {
             canvas.height = .number(displaySize.backingHeight)
         }
 
-        canvas.style.imageRendering = .string(displaySize.imageRendering)
+        canvas.style.imageRendering = .string("auto")
         canvas.style.width = .string("\(displaySize.displayWidth)px")
         canvas.style.height = .string("\(displaySize.displayHeight)px")
         _ = gl.viewport!(0, 0, displaySize.backingWidth, displaySize.backingHeight)
@@ -93,36 +93,25 @@ extension Renderer {
     func canvasDisplaySize(game: Game) -> CanvasDisplaySize {
         let viewportWidth = JSObject.global.innerWidth.number ?? game.logicalResolution.x
         let viewportHeight = JSObject.global.innerHeight.number ?? game.logicalResolution.y
-        let scale = displayScale(viewportWidth: viewportWidth, viewportHeight: viewportHeight, game: game)
-        let displayWidth = game.logicalResolution.x * scale
-        let displayHeight = game.logicalResolution.y * scale
-        let backingWidth = max(1, game.logicalResolution.x.rounded())
-        let backingHeight = max(1, game.logicalResolution.y.rounded())
+        let devicePixelRatio = max(1, JSObject.global.devicePixelRatio.number ?? 1)
+        let viewport = PresentationViewport(
+            containerSize: Vec2(
+                x: viewportWidth * devicePixelRatio,
+                y: viewportHeight * devicePixelRatio
+            ),
+            logicalResolution: game.logicalResolution
+        )
+        let backingWidth = viewport.rect.size.x
+        let backingHeight = viewport.rect.size.y
+        let displayWidth = backingWidth / devicePixelRatio
+        let displayHeight = backingHeight / devicePixelRatio
 
         return CanvasDisplaySize(
             displayWidth: displayWidth,
             displayHeight: displayHeight,
             backingWidth: backingWidth,
-            backingHeight: backingHeight,
-            imageRendering: imageRendering
+            backingHeight: backingHeight
         )
-    }
-
-    private func displayScale(
-        viewportWidth: Double,
-        viewportHeight: Double,
-        game: Game
-    ) -> Double {
-        min(viewportWidth / game.logicalResolution.x, viewportHeight / game.logicalResolution.y)
-    }
-
-    private var imageRendering: String {
-        switch interpolationMode {
-        case .linear:
-            return "auto"
-        case .nearest:
-            return "pixelated"
-        }
     }
 }
 
@@ -131,5 +120,4 @@ struct CanvasDisplaySize: Equatable {
     let displayHeight: Double
     let backingWidth: Double
     let backingHeight: Double
-    let imageRendering: String
 }

@@ -9,32 +9,21 @@ struct GameViewport {
         drawableSize: CGSize,
         gameSize: Vec2
     ) {
-        let scale = Self.displayScale(
-            drawableSize: drawableSize,
-            gameSize: gameSize
+        let viewport = PresentationViewport(
+            containerSize: Vec2(
+                x: Double(drawableSize.width),
+                y: Double(drawableSize.height)
+            ),
+            logicalResolution: gameSize
         )
-        let width = gameSize.x * scale
-        let height = gameSize.y * scale
-        let x = (drawableSize.width - width) / 2
-        let y = (drawableSize.height - height) / 2
 
         self.metalViewport = MTLViewport(
-            originX: x,
-            originY: y,
-            width: width,
-            height: height,
+            originX: viewport.rect.origin.x,
+            originY: viewport.rect.origin.y,
+            width: viewport.rect.size.x,
+            height: viewport.rect.size.y,
             znear: 0,
             zfar: 1
-        )
-    }
-
-    private static func displayScale(
-        drawableSize: CGSize,
-        gameSize: Vec2
-    ) -> Double {
-        min(
-            drawableSize.width / gameSize.x,
-            drawableSize.height / gameSize.y
         )
     }
 }

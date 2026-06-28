@@ -10,6 +10,7 @@ final class Renderer {
     private let commandQueue: MTLCommandQueue
     private let pipelineStates: [BlendMode: MTLRenderPipelineState]
     private let shapePipelineStates: [BlendMode: MTLRenderPipelineState]
+    private let presentPipelineState: MTLRenderPipelineState
     private let quadVertexBuffer: MTLBuffer
     private let textureLoader: MTKTextureLoader
     private let nearestSamplerState: MTLSamplerState
@@ -26,6 +27,8 @@ final class Renderer {
     private var instanceBufferCapacity = 0
     private var shapeInstanceBuffer: MTLBuffer?
     private var shapeInstanceBufferCapacity = 0
+    private var sceneTexture: MTLTexture?
+    private var sceneTextureSize: Vec2 = .zero
 
     init(
         device: MTLDevice,
@@ -51,6 +54,13 @@ final class Renderer {
             vertexFunctionName: "shapeVertex",
             fragmentFunctionName: "shapeFragment"
         )
+        self.presentPipelineState = Renderer.makePipelineState(
+            device: device,
+            pixelFormat: pixelFormat,
+            vertexFunctionName: "presentVertex",
+            fragmentFunctionName: "presentFragment",
+            blendMode: .replace
+        )
         self.quadVertexBuffer = Renderer.makeQuadVertexBuffer(device: device)
         self.nearestSamplerState = Renderer.makeSamplerState(
             device: device,
@@ -74,34 +84,41 @@ final class Renderer {
         guard view.drawableSize.width > 0,
               view.drawableSize.height > 0,
               let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer()
         else {
             return
         }
 
-        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(
+        let sceneTexture = sceneTexture(for: game)
+        let scenePassDescriptor = MTLRenderPassDescriptor()
+        scenePassDescriptor.colorAttachments[0].texture = sceneTexture
+        scenePassDescriptor.colorAttachments[0].clearColor = MTLClearColor(
             red: game.clearColor.red,
             green: game.clearColor.green,
             blue: game.clearColor.blue,
             alpha: game.clearColor.alpha
         )
-        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        scenePassDescriptor.colorAttachments[0].loadAction = .clear
+        scenePassDescriptor.colorAttachments[0].storeAction = .store
 
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(
-            descriptor: renderPassDescriptor
+        guard let sceneEncoder = commandBuffer.makeRenderCommandEncoder(
+            descriptor: scenePassDescriptor
         ) else {
             return
         }
 
-        let viewport = GameViewport(
-            drawableSize: view.drawableSize,
-            gameSize: game.logicalResolution
+        sceneEncoder.setViewport(
+            MTLViewport(
+                originX: 0,
+                originY: 0,
+                width: game.logicalResolution.x.rounded(),
+                height: game.logicalResolution.y.rounded(),
+                znear: 0,
+                zfar: 1
+            )
         )
-
-        renderEncoder.setViewport(viewport.metalViewport)
-        renderEncoder.setVertexBuffer(quadVertexBuffer, offset: 0, index: 0)
-        renderEncoder.setFragmentSamplerState(
+        sceneEncoder.setVertexBuffer(quadVertexBuffer, offset: 0, index: 0)
+        sceneEncoder.setFragmentSamplerState(
             samplerState(for: game.interpolationMode),
             index: 0
         )
@@ -110,7 +127,7 @@ final class Renderer {
             Float(game.logicalResolution.x),
             Float(game.logicalResolution.y)
         )
-        renderEncoder.setVertexBytes(
+        sceneEncoder.setVertexBytes(
             &resolution,
             length: MemoryLayout<SIMD2<Float>>.stride,
             index: 1
@@ -125,13 +142,78 @@ final class Renderer {
                 batch,
                 instanceBuffer: instanceBuffer,
                 shapeInstanceBuffer: shapeInstanceBuffer,
-                renderEncoder: renderEncoder
+                renderEncoder: sceneEncoder
             )
         }
 
-        renderEncoder.endEncoding()
+        sceneEncoder.endEncoding()
+
+        guard let presentPassDescriptor = view.currentRenderPassDescriptor else {
+            return
+        }
+        presentPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(
+            red: 0,
+            green: 0,
+            blue: 0,
+            alpha: 1
+        )
+        presentPassDescriptor.colorAttachments[0].loadAction = .clear
+
+        guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(
+            descriptor: presentPassDescriptor
+        ) else {
+            return
+        }
+
+        let viewport = GameViewport(
+            drawableSize: view.drawableSize,
+            gameSize: game.logicalResolution
+        )
+
+        presentEncoder.setViewport(viewport.metalViewport)
+        presentEncoder.setRenderPipelineState(presentPipelineState)
+        presentEncoder.setVertexBuffer(quadVertexBuffer, offset: 0, index: 0)
+        presentEncoder.setFragmentTexture(sceneTexture, index: 0)
+        presentEncoder.setFragmentSamplerState(
+            linearSamplerState,
+            index: 0
+        )
+        presentEncoder.drawPrimitives(
+            type: .triangle,
+            vertexStart: 0,
+            vertexCount: 6
+        )
+        presentEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+    }
+
+    private func sceneTexture(for game: Game) -> MTLTexture {
+        let size = Vec2(
+            x: max(1, game.logicalResolution.x.rounded()),
+            y: max(1, game.logicalResolution.y.rounded())
+        )
+
+        if let sceneTexture, sceneTextureSize == size {
+            return sceneTexture
+        }
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: Int(size.x),
+            height: Int(size.y),
+            mipmapped: false
+        )
+        descriptor.usage = [.renderTarget, .shaderRead]
+
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            fatalError("Unable to create Metal scene texture")
+        }
+
+        sceneTexture = texture
+        sceneTextureSize = size
+
+        return texture
     }
 
     private func loadSpriteTexture(_ spriteAsset: SpriteAsset) {
@@ -196,8 +278,7 @@ final class Renderer {
                     BatchInstance(
                         rect: renderRect(
                             for: sprite,
-                            game: game,
-                            interpolationMode: game.interpolationMode
+                            game: game
                         ).uniform,
                         textureRect: TextureRect.full.uniform,
                         color: resolvedColor(
@@ -232,8 +313,7 @@ final class Renderer {
                 BatchInstance(
                     rect: renderRect(
                         for: sprite,
-                        game: game,
-                        interpolationMode: game.interpolationMode
+                        game: game
                     ).uniform,
                     textureRect: textureRect.uniform,
                     color: resolvedColor(for: sprite).uniform
@@ -461,38 +541,27 @@ final class Renderer {
 
     private func renderRect(
         for rect: Rect,
-        game: Game,
-        interpolationMode: InterpolationMode
+        game: Game
     ) -> RenderRect {
         let position = Vec2(
             x: rect.origin.x - game.camera.origin.x,
             y: rect.origin.y - game.camera.origin.y
         )
+        let aligned = Rect(origin: position, size: rect.size).integral
 
-        switch interpolationMode {
-        case .linear:
-            return RenderRect(
-                x: position.x,
-                y: position.y,
-                width: rect.size.x,
-                height: rect.size.y
-            )
-        case .nearest:
-            return RenderRect(
-                x: position.x.rounded(),
-                y: position.y.rounded(),
-                width: rect.size.x.rounded(),
-                height: rect.size.y.rounded()
-            )
-        }
+        return RenderRect(
+            x: aligned.origin.x,
+            y: aligned.origin.y,
+            width: aligned.size.x,
+            height: aligned.size.y
+        )
     }
 
     private func shapeInstance(for shape: ShapePrimitive, game: Game) -> ShapeInstance {
         ShapeInstance(
             rect: renderRect(
                 for: shape.bounds,
-                game: game,
-                interpolationMode: game.interpolationMode
+                game: game
             ).uniform,
             info: SIMD4(
                 Float(shape.kind.rawValue),
@@ -519,30 +588,20 @@ final class Renderer {
 
     private func renderRect(
         for sprite: Sprite,
-        game: Game,
-        interpolationMode: InterpolationMode
+        game: Game
     ) -> RenderRect {
         let position = Vec2(
             x: sprite.position.x - game.camera.origin.x,
             y: sprite.position.y - game.camera.origin.y
         )
+        let aligned = Rect(origin: position, size: sprite.size).integral
 
-        switch interpolationMode {
-        case .linear:
-            return RenderRect(
-                x: position.x,
-                y: position.y,
-                width: sprite.size.x,
-                height: sprite.size.y
-            )
-        case .nearest:
-            return RenderRect(
-                x: position.x.rounded(),
-                y: position.y.rounded(),
-                width: sprite.size.x.rounded(),
-                height: sprite.size.y.rounded()
-            )
-        }
+        return RenderRect(
+            x: aligned.origin.x,
+            y: aligned.origin.y,
+            width: aligned.size.x,
+            height: aligned.size.y
+        )
     }
 
     private func textureRect(
@@ -889,6 +948,11 @@ struct ShapeVertexOut {
     float4 flags;
 };
 
+struct PresentVertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+};
+
 struct BatchInstance {
     float4 rect;
     float4 textureRect;
@@ -903,6 +967,27 @@ struct ShapeInstance {
     float4 strokeColor;
     float4 flags;
 };
+
+vertex PresentVertexOut presentVertex(
+    uint vertexID [[vertex_id]],
+    constant float2 *positions [[buffer(0)]]
+) {
+    float2 unitPosition = positions[vertexID];
+    float2 clipSpace = (unitPosition * 2.0) - 1.0;
+
+    PresentVertexOut out;
+    out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
+    out.texCoord = unitPosition;
+    return out;
+}
+
+fragment float4 presentFragment(
+    PresentVertexOut in [[stage_in]],
+    texture2d<float> sceneTexture [[texture(0)]],
+    sampler sceneSampler [[sampler(0)]]
+) {
+    return sceneTexture.sample(sceneSampler, in.texCoord);
+}
 
 vertex VertexOut spriteVertex(
     uint vertexID [[vertex_id]],
