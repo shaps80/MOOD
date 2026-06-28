@@ -11,6 +11,7 @@ public struct ShapePrimitive: Equatable, Sendable {
     public var kind: ShapePrimitiveKind
     public var bounds: Rect
     public var radius: Double
+    public var cornerStyle: RoundedCornerStyle
     public var lineStart: Vec2
     public var lineEnd: Vec2
     public var fillColor: Color

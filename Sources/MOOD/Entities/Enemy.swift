@@ -27,10 +27,16 @@ struct Enemy: Entity {
         state.sprite?.position = position
         state.sprite?.size = size
 
-        let path = RoundedRectangle(cornerRadius: 28)
+        let continuous = RoundedRectangle(cornerRadius: 28)
             .fill(.blue)
 
-        context.draw(path, in: .init(origin: state.position, size: .init(x: 300, y: 300)))
+        context.draw(
+            continuous,
+            in: .init(
+                origin: state.position,
+                size: .init(x: 100, y: 100)
+            )
+        )
     }
 
     mutating func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {

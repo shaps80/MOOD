@@ -29,6 +29,11 @@ public struct FillStyle: Equatable, Sendable {
     }
 }
 
+public enum RoundedCornerStyle: Equatable, Sendable {
+    case circular
+    case continuous
+}
+
 public enum LineCap: Equatable, Sendable {
     case butt
     case square

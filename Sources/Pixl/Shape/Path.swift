@@ -5,7 +5,11 @@ public struct Path: Equatable, Sendable {
         case move(to: Vec2)
         case addLine(to: Vec2)
         case addRect(Rect)
-        case addRoundedRect(in: Rect, cornerRadius: Double)
+        case addRoundedRect(
+            in: Rect,
+            cornerRadius: Double,
+            style: RoundedCornerStyle
+        )
         case addEllipse(in: Rect)
     }
 
@@ -49,9 +53,13 @@ public struct Path: Equatable, Sendable {
         addRect(rect)
     }
 
-    public init(roundedRect rect: Rect, cornerRadius: Double) {
+    public init(
+        roundedRect rect: Rect,
+        cornerRadius: Double,
+        style: RoundedCornerStyle = .continuous
+    ) {
         self.init()
-        addRoundedRect(in: rect, cornerRadius: cornerRadius)
+        addRoundedRect(in: rect, cornerRadius: cornerRadius, style: style)
     }
 
     public init(ellipseIn rect: Rect) {
@@ -71,8 +79,18 @@ public struct Path: Equatable, Sendable {
         commands.append(.addRect(rect))
     }
 
-    public mutating func addRoundedRect(in rect: Rect, cornerRadius: Double) {
-        commands.append(.addRoundedRect(in: rect, cornerRadius: cornerRadius))
+    public mutating func addRoundedRect(
+        in rect: Rect,
+        cornerRadius: Double,
+        style: RoundedCornerStyle = .continuous
+    ) {
+        commands.append(
+            .addRoundedRect(
+                in: rect,
+                cornerRadius: cornerRadius,
+                style: style
+            )
+        )
     }
 
     public mutating func addEllipse(in rect: Rect) {

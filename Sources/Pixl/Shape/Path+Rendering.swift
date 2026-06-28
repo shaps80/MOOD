@@ -13,11 +13,16 @@ extension Path {
             case .addRect(let rect):
                 return primitive(kind: .rect, bounds: rect, radius: 0)
 
-            case .addRoundedRect(in: let rect, cornerRadius: let radius):
+            case .addRoundedRect(
+                in: let rect,
+                cornerRadius: let radius,
+                style: let style
+            ):
                 return primitive(
                     kind: .roundedRect,
                     bounds: rect,
-                    radius: min(radius, min(rect.size.x, rect.size.y) / 2)
+                    radius: min(radius, min(rect.size.x, rect.size.y) / 2),
+                    cornerStyle: style
                 )
 
             case .addEllipse(in: let rect):
@@ -40,7 +45,8 @@ extension Path {
     private func primitive(
         kind: ShapePrimitiveKind,
         bounds: Rect,
-        radius: Double
+        radius: Double,
+        cornerStyle: RoundedCornerStyle = .continuous
     ) -> ShapePrimitive? {
         guard bounds.size.x > 0, bounds.size.y > 0 else {
             return nil
@@ -57,6 +63,7 @@ extension Path {
             kind: kind,
             bounds: bounds,
             radius: radius,
+            cornerStyle: cornerStyle,
             lineStart: .zero,
             lineEnd: .zero,
             fillColor: fillColor,
@@ -94,6 +101,7 @@ extension Path {
             kind: .line,
             bounds: bounds,
             radius: 0,
+            cornerStyle: .circular,
             lineStart: Vec2(
                 x: start.x - bounds.origin.x,
                 y: start.y - bounds.origin.y

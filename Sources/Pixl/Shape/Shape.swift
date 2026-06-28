@@ -14,13 +14,18 @@ public struct Rectangle: Shape, Equatable, Sendable {
 
 public struct RoundedRectangle: Shape, Equatable, Sendable {
     public var cornerRadius: Double
+    public var style: RoundedCornerStyle
 
-    public init(cornerRadius: Double) {
+    public init(
+        cornerRadius: Double,
+        style: RoundedCornerStyle = .continuous
+    ) {
         self.cornerRadius = cornerRadius
+        self.style = style
     }
 
     public func path(in rect: Rect) -> Path {
-        Path(roundedRect: rect, cornerRadius: cornerRadius)
+        Path(roundedRect: rect, cornerRadius: cornerRadius, style: style)
     }
 }
 
@@ -41,12 +46,17 @@ public struct Circle: Shape, Equatable, Sendable {
 }
 
 public struct Capsule: Shape, Equatable, Sendable {
-    public init() {}
+    public var style: RoundedCornerStyle
+
+    public init(style: RoundedCornerStyle = .continuous) {
+        self.style = style
+    }
 
     public func path(in rect: Rect) -> Path {
         Path(
             roundedRect: rect,
-            cornerRadius: min(rect.size.x, rect.size.y) / 2
+            cornerRadius: min(rect.size.x, rect.size.y) / 2,
+            style: style
         )
     }
 }

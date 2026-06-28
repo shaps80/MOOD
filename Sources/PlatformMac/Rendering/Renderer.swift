@@ -542,7 +542,7 @@ final class Renderer {
             flags: SIMD4(
                 shape.fillAntialiased ? 1 : 0,
                 shape.strokeAntialiased ? 1 : 0,
-                0,
+                Float(shape.cornerStyle.shaderValue),
                 0
             )
         )
@@ -888,6 +888,17 @@ private extension LineCap {
     }
 }
 
+private extension RoundedCornerStyle {
+    var shaderValue: Double {
+        switch self {
+        case .circular:
+            return 0
+        case .continuous:
+            return 1
+        }
+    }
+}
+
 private let metalShaderSource = """
 #include <metal_stdlib>
 using namespace metal;
@@ -992,6 +1003,23 @@ float roundedBoxDistance(float2 p, float2 size, float radius) {
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
+float continuousRoundedBoxDistance(float2 p, float2 size, float radius) {
+    float r = max(radius, 0.0);
+    float2 halfSize = size * 0.5;
+    float2 q = abs(p - halfSize) - (halfSize - float2(r));
+    float2 outside = max(q, 0.0);
+    float circular = roundedBoxDistance(p, size, r);
+    float2 outside2 = outside * outside;
+    float2 outside4 = outside2 * outside2;
+    float continuousDistance = sqrt(sqrt(max(outside4.x + outside4.y, 0.0)))
+        + min(max(q.x, q.y), 0.0) - r;
+    return mix(
+        circular,
+        continuousDistance,
+        0.28 * step(0.0001, r)
+    );
+}
+
 float ellipseDistance(float2 p, float2 size) {
     float2 radius = max(size * 0.5, float2(0.0001));
     float2 centered = p - radius;
@@ -1029,12 +1057,15 @@ fragment float4 shapeFragment(ShapeVertexOut in [[stage_in]]) {
     float radius = in.info.y;
     float strokeWidth = in.info.z;
     float cap = in.info.w;
+    float cornerStyle = in.flags.z;
     float d = 0.0;
 
     if (kind < 0.5) {
         d = roundedBoxDistance(in.localPosition, in.size, 0.0);
     } else if (kind < 1.5) {
-        d = roundedBoxDistance(in.localPosition, in.size, radius);
+        float circular = roundedBoxDistance(in.localPosition, in.size, radius);
+        float continuousDistance = continuousRoundedBoxDistance(in.localPosition, in.size, radius);
+        d = mix(circular, continuousDistance, cornerStyle);
     } else if (kind < 2.5) {
         d = ellipseDistance(in.localPosition, in.size);
     } else {
@@ -1054,10 +1085,9 @@ fragment float4 shapeFragment(ShapeVertexOut in [[stage_in]]) {
         strokeCoverage = coverage(d, in.flags.y) * in.strokeColor.a;
     }
 
-    float4 color = float4(in.fillColor.rgb, 1.0) * fillCoverage;
-    color = mix(color, float4(in.strokeColor.rgb, 1.0) * strokeCoverage, min(strokeCoverage, 1.0));
-    color.a = max(fillCoverage, strokeCoverage);
-    color.rgb *= color.a;
+    float4 fill = float4(in.fillColor.rgb * fillCoverage, fillCoverage);
+    float4 stroke = float4(in.strokeColor.rgb * strokeCoverage, strokeCoverage);
+    float4 color = stroke + (fill * (1.0 - stroke.a));
     return color;
 }
 """

@@ -17,6 +17,7 @@ final class Renderer {
     private var resolutionUniform: JSValue = .undefined
     private var useTextureUniform: JSValue = .undefined
     private var textureUniform: JSValue = .undefined
+    private var shapePositionAttributeLocation: Int = 0
     private var shapeRectAttributeLocation: Int = 0
     private var shapeInfoAttributeLocation: Int = 0
     private var shapeLineAttributeLocation: Int = 0
@@ -24,6 +25,7 @@ final class Renderer {
     private var shapeStrokeColorAttributeLocation: Int = 0
     private var shapeFlagsAttributeLocation: Int = 0
     private var shapeResolutionUniform: JSValue = .undefined
+    private var shapeAAWidthUniform: JSValue = .undefined
     private var batchData: [Float] = []
     private var shapeBatchData: [Float] = []
     private var preparedBatches: [PreparedBatch] = []
@@ -122,6 +124,8 @@ final class Renderer {
         _ = gl.linkProgram!(program)
 
         guard gl.getProgramParameter!(program, gl.LINK_STATUS).boolean == true else {
+            let infoLog = gl.getProgramInfoLog!(program).string ?? "No program info log"
+            _ = JSObject.global.console.error("Unable to link WebGL shader program: \(infoLog)")
             fatalError("Unable to link WebGL shader program")
         }
 
@@ -194,6 +198,7 @@ final class Renderer {
             type: gl.FRAGMENT_SHADER,
             source: """
             precision mediump float;
+            uniform float u_aaWidth;
             varying vec2 v_localPosition;
             varying vec2 v_size;
             varying vec4 v_info;
@@ -206,6 +211,23 @@ final class Renderer {
                 vec2 halfSize = size * 0.5;
                 vec2 q = abs(p - halfSize) - (halfSize - vec2(radius));
                 return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+            }
+
+            float continuousRoundedBoxDistance(vec2 p, vec2 size, float radius) {
+                float r = max(radius, 0.0);
+                vec2 halfSize = size * 0.5;
+                vec2 q = abs(p - halfSize) - (halfSize - vec2(r));
+                vec2 outside = max(q, 0.0);
+                float circular = roundedBoxDistance(p, size, r);
+                vec2 outside2 = outside * outside;
+                vec2 outside4 = outside2 * outside2;
+                float continuousDistance = sqrt(sqrt(max(outside4.x + outside4.y, 0.0)))
+                    + min(max(q.x, q.y), 0.0) - r;
+                return mix(
+                    circular,
+                    continuousDistance,
+                    0.28 * step(0.0001, r)
+                );
             }
 
             float ellipseDistance(vec2 p, vec2 size) {
@@ -235,7 +257,7 @@ final class Renderer {
 
             float coverage(float distance, float antialiased) {
                 float hard = step(distance, 0.0);
-                float width = max(fwidth(distance), 0.0001);
+                float width = max(u_aaWidth, 0.0001);
                 float soft = clamp(0.5 - (distance / width), 0.0, 1.0);
                 return mix(hard, soft, antialiased);
             }
@@ -245,12 +267,15 @@ final class Renderer {
                 float radius = v_info.y;
                 float strokeWidth = v_info.z;
                 float cap = v_info.w;
+                float cornerStyle = v_flags.z;
                 float d = 0.0;
 
                 if (kind < 0.5) {
                     d = roundedBoxDistance(v_localPosition, v_size, 0.0);
                 } else if (kind < 1.5) {
-                    d = roundedBoxDistance(v_localPosition, v_size, radius);
+                    float circular = roundedBoxDistance(v_localPosition, v_size, radius);
+                    float continuousDistance = continuousRoundedBoxDistance(v_localPosition, v_size, radius);
+                    d = mix(circular, continuousDistance, cornerStyle);
                 } else if (kind < 2.5) {
                     d = ellipseDistance(v_localPosition, v_size);
                 } else {
@@ -270,10 +295,9 @@ final class Renderer {
                     strokeCoverage = coverage(d, v_flags.y) * v_strokeColor.a;
                 }
 
-                vec4 color = vec4(v_fillColor.rgb, 1.0) * fillCoverage;
-                color = mix(color, vec4(v_strokeColor.rgb, 1.0) * strokeCoverage, min(strokeCoverage, 1.0));
-                color.a = max(fillCoverage, strokeCoverage);
-                color.rgb *= color.a;
+                vec4 fill = vec4(v_fillColor.rgb * fillCoverage, fillCoverage);
+                vec4 stroke = vec4(v_strokeColor.rgb * strokeCoverage, strokeCoverage);
+                vec4 color = stroke + (fill * (1.0 - stroke.a));
                 gl_FragColor = color;
             }
             """
@@ -285,10 +309,15 @@ final class Renderer {
         _ = gl.linkProgram!(program)
 
         guard gl.getProgramParameter!(program, gl.LINK_STATUS).boolean == true else {
+            let infoLog = gl.getProgramInfoLog!(program).string ?? "No program info log"
+            _ = JSObject.global.console.error("Unable to link WebGL shape shader program: \(infoLog)")
             fatalError("Unable to link WebGL shape shader program")
         }
 
         shapeProgram = program
+        shapePositionAttributeLocation = Int(
+            gl.getAttribLocation!(program, "a_position").number ?? 0
+        )
         shapeRectAttributeLocation = Int(gl.getAttribLocation!(program, "a_rect").number ?? 0)
         shapeInfoAttributeLocation = Int(gl.getAttribLocation!(program, "a_info").number ?? 0)
         shapeLineAttributeLocation = Int(gl.getAttribLocation!(program, "a_line").number ?? 0)
@@ -300,6 +329,7 @@ final class Renderer {
         )
         shapeFlagsAttributeLocation = Int(gl.getAttribLocation!(program, "a_flags").number ?? 0)
         shapeResolutionUniform = gl.getUniformLocation!(program, "u_resolution")
+        shapeAAWidthUniform = gl.getUniformLocation!(program, "u_aaWidth")
         shapeInstanceBuffer = gl.createBuffer!()
     }
 
@@ -311,6 +341,8 @@ final class Renderer {
         _ = gl.compileShader!(shader)
 
         guard gl.getShaderParameter!(shader, gl.COMPILE_STATUS).boolean == true else {
+            let infoLog = gl.getShaderInfoLog!(shader).string ?? "No shader info log"
+            _ = JSObject.global.console.error("Unable to compile WebGL shader: \(infoLog)")
             fatalError("Unable to compile WebGL shader")
         }
 
@@ -512,7 +544,7 @@ final class Renderer {
             Float(shape.strokeColor.alpha),
             shape.fillAntialiased ? 1 : 0,
             shape.strokeAntialiased ? 1 : 0,
-            0,
+            Float(shape.cornerStyle.shaderValue),
             0
         ])
     }
@@ -616,9 +648,16 @@ final class Renderer {
 
         _ = gl.useProgram!(shapeProgram)
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
-        _ = gl.enableVertexAttribArray!(positionAttributeLocation)
-        _ = gl.vertexAttribPointer!(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0)
-        _ = gl.vertexAttribDivisor!(positionAttributeLocation, 0)
+        _ = gl.enableVertexAttribArray!(shapePositionAttributeLocation)
+        _ = gl.vertexAttribPointer!(
+            shapePositionAttributeLocation,
+            2,
+            gl.FLOAT,
+            false,
+            0,
+            0
+        )
+        _ = gl.vertexAttribDivisor!(shapePositionAttributeLocation, 0)
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, shapeInstanceBuffer)
         configureShapeAttribute(shapeRectAttributeLocation, offset: 0, startIndex: startIndex)
@@ -633,8 +672,17 @@ final class Renderer {
             game.logicalResolution.x,
             game.logicalResolution.y
         )
+        _ = gl.uniform1f!(shapeAAWidthUniform, shapeAAWidth(game: game))
         applyBlendMode(blendMode, gl: gl)
         _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
+    }
+
+    private func shapeAAWidth(game: Game) -> Double {
+        guard let displaySize = lastCanvasDisplaySize else { return 1 }
+
+        let x = game.logicalResolution.x / max(displaySize.backingWidth, 1)
+        let y = game.logicalResolution.y / max(displaySize.backingHeight, 1)
+        return max(min(x, y), 0.0001)
     }
 
     private func configureShapeAttribute(
@@ -643,6 +691,7 @@ final class Renderer {
         startIndex: Int
     ) {
         guard let gl else { return }
+        guard location >= 0 else { return }
 
         _ = gl.enableVertexAttribArray!(location)
         _ = gl.vertexAttribPointer!(
@@ -839,6 +888,17 @@ private extension LineCap {
             return 1
         case .round:
             return 2
+        }
+    }
+}
+
+private extension RoundedCornerStyle {
+    var shaderValue: Double {
+        switch self {
+        case .circular:
+            return 0
+        case .continuous:
+            return 1
         }
     }
 }

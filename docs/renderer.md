@@ -373,7 +373,7 @@ The first version should support these construction forms:
 
 ```swift
 Path(rect)
-Path(roundedRect: rect, cornerRadius: radius)
+Path(roundedRect: rect, cornerRadius: radius, style: .circular)
 Path(ellipseIn: rect)
 ```
 
@@ -384,7 +384,7 @@ Path { path in
     path.move(to: point)
     path.addLine(to: point)
     path.addRect(rect)
-    path.addRoundedRect(in: rect, cornerRadius: radius)
+    path.addRoundedRect(in: rect, cornerRadius: radius, style: .continuous)
     path.addEllipse(in: rect)
 }
 ```
@@ -649,8 +649,11 @@ software or platform-native renderers, even if their implementation differs.
 Expected backend mappings:
 
 - Rect: box SDF.
-- Rounded rect: rounded box SDF.
-- Capsule: rounded box SDF with radius equal to half the smaller axis.
+- Rounded rect: rounded box SDF. `.circular` uses quarter-circle corners.
+  `.continuous` uses a calibrated continuous corner approximation that keeps
+  the same-radius footprint close to `.circular`.
+- Capsule: rounded box SDF with radius equal to half the smaller axis, using the
+  selected rounded corner style.
 - Circle/ellipse: ellipse SDF.
 - Stroked single segment: segment SDF with butt, square, or round cap behavior.
 
@@ -748,6 +751,7 @@ Implemented:
 - `Sprite.tint` and `Sprite.opacity` work for textured and color sprites.
 - `Sprite.blendMode` selects blend state.
 - `Pixl` exposes `Shape`, `Path`, `ShapeStyle`, `FillStyle`, and `StrokeStyle`.
+- `RoundedCornerStyle` supports `.circular` and `.continuous`.
 - `Rectangle`, `RoundedRectangle`, `Ellipse`, `Circle`, and `Capsule` exist.
 - `Path` preserves `move`, `addLine`, `addRect`, `addRoundedRect`, and
   `addEllipse` commands.
