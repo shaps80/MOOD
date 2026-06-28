@@ -1,5 +1,6 @@
 import Swift
 
+/// Numeric values shared by the shape SDF shaders.
 extension LineCap {
     var renderValue: Double {
         switch self {
@@ -13,6 +14,7 @@ extension LineCap {
     }
 }
 
+/// Numeric values shared by the shape SDF shaders.
 extension RoundedCornerStyle {
     var renderValue: Double {
         switch self {

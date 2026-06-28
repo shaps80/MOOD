@@ -5,6 +5,10 @@ public extension Sprite {
     ///
     /// Sprite frames use their source rect size. Full-texture sprites use the
     /// platform-provided loaded texture size. Shapes use their explicit size.
+    ///
+    /// ```swift
+    /// let size = sprite.naturalSize(textureSize: loadedSize)
+    /// ```
     func naturalSize(textureSize: Vec2? = nil) -> Vec2 {
         switch material {
         case .sprite(_, let sourceRect):
@@ -15,6 +19,10 @@ public extension Sprite {
     }
 
     /// The final visual size after applying sprite scale.
+    ///
+    /// ```swift
+    /// let drawSize = sprite.renderedSize(textureSize: loadedSize)
+    /// ```
     func renderedSize(textureSize: Vec2? = nil) -> Vec2 {
         naturalSize(textureSize: textureSize) * scale
     }

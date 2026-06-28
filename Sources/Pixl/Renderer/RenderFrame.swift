@@ -6,8 +6,10 @@ import Swift
 /// platform renderer. Pixl decides rects, UVs, colors, ordering, and batching;
 /// platforms decide how to upload and draw that data.
 public struct RenderFrame: Equatable, Sendable {
+    /// Prepared batches in draw order.
     public var batches: [PreparedRenderBatch]
 
+    /// Creates a prepared frame.
     public init(batches: [PreparedRenderBatch] = []) {
         self.batches = batches
     }

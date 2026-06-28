@@ -6,9 +6,26 @@ import Swift
 /// shared render semantics so platform renderers cannot diverge on sprite
 /// sizing, centering, camera offset, pixel alignment, texture coordinates,
 /// colors, or shape packing.
+///
+/// ```swift
+/// var planner = RenderPlanner()
+/// let frame = planner.prepareFrame(
+///     game: game,
+///     textureSizes: loadedTextureSizes
+/// )
+/// ```
 public struct RenderPlanner: Sendable {
+    /// Creates an empty render planner.
     public init() {}
 
+    /// Converts a game's render batches into platform-uploadable frame data.
+    ///
+    /// - Parameters:
+    ///   - game: The game state containing sorted render batches.
+    ///   - textureSizes: Loaded texture sizes keyed by texture ID. Platforms
+    ///     provide this because only they know the real loaded texture size.
+    /// - Returns: A prepared frame with camera-adjusted rects, normalized UVs,
+    ///   resolved colors, and packed shape values.
     public mutating func prepareFrame(
         game: Game,
         textureSizes: [TextureID: Vec2]

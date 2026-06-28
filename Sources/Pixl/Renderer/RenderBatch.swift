@@ -1,11 +1,24 @@
 import Swift
 
+/// A coarse platform-neutral batch built from sorted render commands.
+///
+/// `RenderBatch` groups adjacent primitives that can be prepared together.
+/// `RenderPlanner` later converts these into upload-ready `PreparedRenderBatch`
+/// values.
 public enum RenderBatch: Equatable, Sendable {
+    /// Adjacent texture sprites sharing a texture and blend mode.
     case sprites(textureID: TextureID, blendMode: BlendMode, sprites: [PositionedSprite])
+
+    /// Adjacent shape primitives sharing a blend mode.
     case shapes(blendMode: BlendMode, shapes: [ShapePrimitive])
 }
 
 public extension RenderBatch {
+    /// Builds render batches from commands while preserving command order.
+    ///
+    /// ```swift
+    /// let batches = RenderBatch.make(from: context.commands)
+    /// ```
     static func make(from commands: [RenderCommand]) -> [RenderBatch] {
         var batches: [RenderBatch] = []
 
@@ -18,6 +31,7 @@ public extension RenderBatch {
         return batches
     }
 
+    /// Number of primitives contained in this batch.
     var primitiveCount: Int {
         switch self {
         case .sprites(_, _, let sprites):

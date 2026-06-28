@@ -1,11 +1,19 @@
 import Swift
 
+/// A game-facing render request before primitive expansion and batching.
+///
+/// Commands are the high-level output of gameplay rendering. Shape sprites are
+/// expanded into paths, paths into shape primitives, then batches.
 public enum RenderCommand: Equatable, Sendable {
+    /// Draw a sprite at a world-space center point.
     case sprite(PositionedSprite)
+
+    /// Draw a styled path.
     case path(Path)
 }
 
 public extension RenderCommand {
+    /// The layer used for stable render ordering.
     var layer: RenderLayer {
         switch self {
         case .sprite(let positionedSprite):
@@ -15,6 +23,7 @@ public extension RenderCommand {
         }
     }
 
+    /// Number of low-level primitives this command expands into.
     var primitiveCount: Int {
         var count = 0
 
@@ -25,6 +34,13 @@ public extension RenderCommand {
         return count
     }
 
+    /// Visits every primitive produced by this command.
+    ///
+    /// ```swift
+    /// command.forEachPrimitive { primitive in
+    ///     // Count, batch, or inspect each primitive.
+    /// }
+    /// ```
     func forEachPrimitive(_ body: (RenderPrimitive) -> Void) {
         switch self {
         case .sprite(let positionedSprite):
