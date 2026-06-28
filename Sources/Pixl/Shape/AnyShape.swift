@@ -3,10 +3,6 @@ import Swift
 public struct AnyShape: Shape, Sendable {
     private let box: any AnyShapeBox
 
-    public init<S: Shape & Equatable>(_ shape: S) {
-        self.box = EquatableShapeBox(shape)
-    }
-
     public init<S: Shape>(_ shape: S) {
         self.box = ShapeBox(shape)
     }
@@ -25,23 +21,6 @@ extension AnyShape: Equatable {
 private protocol AnyShapeBox: Sendable {
     func path(in rect: Rect) -> Path
     func isEqual(to other: any AnyShapeBox) -> Bool
-}
-
-private struct EquatableShapeBox<S: Shape & Equatable>: AnyShapeBox {
-    let shape: S
-
-    init(_ shape: S) {
-        self.shape = shape
-    }
-
-    func path(in rect: Rect) -> Path {
-        shape.path(in: rect)
-    }
-
-    func isEqual(to other: any AnyShapeBox) -> Bool {
-        guard let other = other as? Self else { return false }
-        return shape == other.shape
-    }
 }
 
 private struct ShapeBox<S: Shape>: AnyShapeBox {

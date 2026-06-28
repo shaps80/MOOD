@@ -34,10 +34,45 @@ import Swift
 public struct Collider: Equatable, Sendable {
     /// Local-space AABB, relative to the owning entity or tile origin.
     public var bounds: Rect
+    public var shape: AnyShape
     public var layer: Layer
     public var mask: Layer.Mask
     public var behaviour: Behaviour
     public var oneWay: OneWay?
+
+    internal init(
+        bounds: Rect,
+        shape: AnyShape,
+        layer: Layer,
+        mask: Layer.Mask,
+        behaviour: Behaviour = .blocking,
+        oneWay: OneWay? = nil
+    ) {
+        self.bounds = bounds
+        self.shape = shape
+        self.layer = layer
+        self.mask = mask
+        self.behaviour = behaviour
+        self.oneWay = oneWay
+    }
+
+    public init<S: Shape>(
+        bounds: Rect,
+        shape: S,
+        layer: Layer,
+        mask: Layer.Mask,
+        behaviour: Behaviour = .blocking,
+        oneWay: OneWay? = nil
+    ) {
+        self.init(
+            bounds: bounds,
+            shape: AnyShape(shape),
+            layer: layer,
+            mask: mask,
+            behaviour: behaviour,
+            oneWay: oneWay
+        )
+    }
 
     public init(
         bounds: Rect,
@@ -46,11 +81,14 @@ public struct Collider: Equatable, Sendable {
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil
     ) {
-        self.bounds = bounds
-        self.layer = layer
-        self.mask = mask
-        self.behaviour = behaviour
-        self.oneWay = oneWay
+        self.init(
+            bounds: bounds,
+            shape: AnyShape(.rect),
+            layer: layer,
+            mask: mask,
+            behaviour: behaviour,
+            oneWay: oneWay
+        )
     }
 
     /// Converts local bounds into world-space bounds at an owner position.

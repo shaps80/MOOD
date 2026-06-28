@@ -112,8 +112,8 @@ Can MOOD present worlds larger than the viewport?
 Status: Done
 
 - [x] Add platform-neutral render commands in Pixl
-- [x] Add a RenderContext draw API for sprites, rect fills, and rect strokes
-- [x] Keep stroke expansion platform-neutral
+- [x] Add a RenderContext draw API for sprites and immediate shape/path drawing
+- [x] Keep shape primitive expansion platform-neutral
 - [x] Make platform renderers consume render primitives
 - [x] Share missing-texture color through Pixl
 
@@ -141,13 +141,30 @@ Status: Done
 
 - [x] Measure command, primitive, and draw-call counts after visibility culling
 - [x] Define batching rules that preserve layer ordering
-- [x] Batch compatible consecutive rect primitives
+- [x] Batch compatible consecutive shape primitives
 - [x] Batch compatible consecutive sprite primitives by texture
 - [x] Keep platform-specific batching optimizations behind the same Pixl render command semantics
 
 Question answered:
 
 Can MOOD reduce draw calls without changing visual ordering or increasing platform rewrite cost?
+
+## Milestone 9.5 - Shape Rendering
+
+Status: Done
+
+- [x] Add `Shape`, `Path`, and primitive shape types in Pixl
+- [x] Add `Material.shape(...)` for retained sprite and tile visuals
+- [x] Remove `Material.color` in favor of shape materials plus tint
+- [x] Add `RenderStyle` for immediate shape/path debug drawing
+- [x] Support rect, rounded rect, ellipse, circle, capsule, and single-segment paths
+- [x] Support circular and continuous rounded corner styles
+- [x] Support tint, opacity, and blend mode for textured sprites and shape materials
+- [x] Lower supported shapes to SDF batches in WebGL2 and Metal
+
+Question answered:
+
+Can MOOD use simple dynamic shapes as first-class game visuals without bypassing sprite lifecycle, visibility, ordering, or platform portability?
 
 ## Milestone 10 - Collision Filtering & Interactions
 
@@ -196,5 +213,4 @@ Can MOOD's project tooling grow toward editor workflows?
 Potential future improvements. These are not committed milestone work.
 
 - Collision shapes beyond rectangles, such as ellipses or polygons, once gameplay needs them.
-- Rounded rectangles or arbitrary path drawing support, once UI or gameplay needs them.
-- Blend Modes
+- General arbitrary path drawing beyond the current primitive subset.

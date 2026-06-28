@@ -57,6 +57,10 @@ public struct EntityState: Equatable, Identifiable, Sendable {
         colliders.map { $0.worldBounds(at: position) }
     }
 
+    var worldColliders: [Collider] {
+        colliders.map { $0.placed(at: position) }
+    }
+
     public var bounds: Rect {
         Rect(origin: position, size: size)
     }

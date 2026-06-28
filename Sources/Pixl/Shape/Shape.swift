@@ -19,7 +19,7 @@ public struct Rectangle: Shape, Equatable, Sendable {
 }
 
 extension Shape where Self == Rectangle {
-    static var rect: Self { .init() }
+    public static var rect: Self { .init() }
 }
 
 public struct RoundedRectangle: Shape, Equatable, Sendable {
@@ -86,6 +86,7 @@ public struct Capsule: Shape, Equatable, Sendable {
 }
 
 extension Shape where Self == Capsule {
+    public static var capsule: Self { .init() }
     public static func capsule(style: RoundedCornerStyle) -> Self {
         .init(style: style)
     }

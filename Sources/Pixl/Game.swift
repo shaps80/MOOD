@@ -259,7 +259,7 @@ public struct Game {
         )
 
         level.tilemap.colliderIndex.forEach(intersecting: bounds) { collider in
-            context.draw(.init(collider.bounds), style: style, layer: 900)
+            context.draw(collider.shape, in: collider.bounds, style: style, layer: 900)
         }
 
         for record in entityRecords {
@@ -267,8 +267,8 @@ public struct Game {
                 continue
             }
 
-            for frame in state.colliderFrames where frame.intersects(bounds) {
-                context.draw(.init(frame), style: style, layer: 900)
+            for collider in state.worldColliders where collider.bounds.intersects(bounds) {
+                context.draw(collider.shape, in: collider.bounds, style: style, layer: 900)
             }
         }
     }

@@ -13,28 +13,22 @@ struct Player: Entity {
                     .padding(.left, 8)
                     .padding(.right, 9)
                     .padding(.vertical, 3),
+                shape: .capsule,
                 layer: .player,
                 mask: [.playerMovement, .pickup],
                 behaviour: .blocking
             )
         ]
-
-        state.sprite = .init(
-            position: .zero,
-            size: state.size,
-            material: .shape(.rect(cornerRadius: 13)),
-            tint: .green
-        )
         
-//        state.sprite = Sprite(
-//            position: state.position,
-//            size: state.size,
-//            material: .sprite(
-//                timeline.animation.textureID,
-//                sourceRect: timeline.frame
-//            ),
-//            layer: .entity
-//        )
+        state.sprite = Sprite(
+            position: state.position,
+            size: state.size,
+            material: .sprite(
+                timeline.animation.textureID,
+                sourceRect: timeline.frame
+            ),
+            layer: .entity
+        )
     }
 
     mutating func onUpdate(context: inout Game.Context, state: inout EntityState) {
@@ -57,10 +51,10 @@ struct Player: Entity {
         let size = state.size
         state.sprite?.position = position
         state.sprite?.size = size
-//        state.sprite?.material = .sprite(
-//            timeline.animation.textureID,
-//            sourceRect: timeline.frame
-//        )
+        state.sprite?.material = .sprite(
+            timeline.animation.textureID,
+            sourceRect: timeline.frame
+        )
     }
 }
 
