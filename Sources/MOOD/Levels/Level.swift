@@ -43,7 +43,7 @@ private extension Tilemap {
     ) -> Tilemap.Tile {
         Tilemap.Tile(
             kind: .wall,
-            material: .shape(Rectangle()),
+            material: .shape(Rectangle(), size: tileSize),
             layer: layer,
             tint: color,
             collider: isCollidable ? Collider(

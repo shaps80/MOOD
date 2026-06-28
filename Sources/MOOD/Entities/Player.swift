@@ -1,15 +1,15 @@
 import Pixl
 
 struct Player: Entity {
+    private let baseSize = Vec2(x: 48, y: 48)
     private var controller: TopPlayerController = .slippery
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
 
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
-        state.size = .init(x: 32, y: 32)
         state.colliders = [
             .init(
-                bounds: Rect(origin: .zero, size: state.size)
+                bounds: Rect(size: baseSize)
                     .padding(.left, 8)
                     .padding(.right, 9)
                     .padding(.vertical, 3),
@@ -21,8 +21,6 @@ struct Player: Entity {
         ]
         
         state.sprite = Sprite(
-            position: state.position,
-            size: state.size,
             material: .sprite(
                 timeline.animation.textureID,
                 sourceRect: timeline.frame
@@ -47,10 +45,6 @@ struct Player: Entity {
         )
 
         context.move(state: &state, velocity: velocity)
-        let position = state.position
-        let size = state.size
-        state.sprite?.position = position
-        state.sprite?.size = size
         state.sprite?.material = .sprite(
             timeline.animation.textureID,
             sourceRect: timeline.frame

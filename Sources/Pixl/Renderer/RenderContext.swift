@@ -25,9 +25,9 @@ public struct RenderContext: Sendable {
             .map(\.element)
     }
 
-    public mutating func draw(_ sprite: Sprite) {
+    public mutating func draw(_ sprite: Sprite, at position: Vec2) {
         commands.append(
-            .sprite(sprite)
+            .sprite(PositionedSprite(sprite: sprite, position: position))
         )
     }
 

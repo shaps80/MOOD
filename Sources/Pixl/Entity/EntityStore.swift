@@ -38,7 +38,7 @@ final class EntityStore {
                 body(
                     entity.id,
                     index,
-                    entity.colliders[index].placed(at: entity.position)
+                    colliders[index]
                 )
             }
         }

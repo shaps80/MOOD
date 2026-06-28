@@ -60,12 +60,17 @@ struct CollisionSystem {
 
         var velocity = proposedVelocity
         var position = state.position
+        let spriteSize = state.sprite?.naturalSize ?? .zero
+        let spriteScale = state.sprite?.scale ?? Vec2(x: 1, y: 1)
+        let colliders = state.colliders.map {
+            $0.placed(at: .zero, spriteSize: spriteSize, scale: spriteScale)
+        }
 
         let horizontal = resolveHorizontalMovement(
             entityID: state.id,
             from: position,
             distance: velocity.x * delta,
-            colliders: state.colliders
+            colliders: colliders
         )
         position = Vec2(x: horizontal.value, y: position.y)
 
@@ -73,7 +78,7 @@ struct CollisionSystem {
             entityID: state.id,
             from: position,
             distance: velocity.y * delta,
-            colliders: state.colliders
+            colliders: colliders
         )
         position = Vec2(x: position.x, y: vertical.value)
 

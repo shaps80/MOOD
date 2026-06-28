@@ -39,6 +39,7 @@ public struct Collider: Equatable, Sendable {
     public var mask: Layer.Mask
     public var behaviour: Behaviour
     public var oneWay: OneWay?
+    private var usesDefaultBounds: Bool
 
     internal init(
         bounds: Rect,
@@ -46,7 +47,8 @@ public struct Collider: Equatable, Sendable {
         layer: Layer,
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
-        oneWay: OneWay? = nil
+        oneWay: OneWay? = nil,
+        usesDefaultBounds: Bool = false
     ) {
         self.bounds = bounds
         self.shape = shape
@@ -54,6 +56,7 @@ public struct Collider: Equatable, Sendable {
         self.mask = mask
         self.behaviour = behaviour
         self.oneWay = oneWay
+        self.usesDefaultBounds = usesDefaultBounds
     }
 
     public init<S: Shape>(
@@ -91,7 +94,42 @@ public struct Collider: Equatable, Sendable {
         )
     }
 
-    /// Converts local bounds into world-space bounds at an owner position.
+    public init<S: Shape>(
+        shape: S,
+        layer: Layer,
+        mask: Layer.Mask,
+        behaviour: Behaviour = .blocking,
+        oneWay: OneWay? = nil
+    ) {
+        self.init(
+            bounds: .zero,
+            shape: AnyShape(shape),
+            layer: layer,
+            mask: mask,
+            behaviour: behaviour,
+            oneWay: oneWay,
+            usesDefaultBounds: true
+        )
+    }
+
+    public init(
+        layer: Layer,
+        mask: Layer.Mask,
+        behaviour: Behaviour = .blocking,
+        oneWay: OneWay? = nil
+    ) {
+        self.init(
+            bounds: .zero,
+            shape: AnyShape(.rect),
+            layer: layer,
+            mask: mask,
+            behaviour: behaviour,
+            oneWay: oneWay,
+            usesDefaultBounds: true
+        )
+    }
+
+    /// Converts center-relative local bounds into world-space bounds at an owner position.
     public func worldBounds(at position: Vec2) -> Rect {
         bounds.translated(by: position)
     }
@@ -99,6 +137,32 @@ public struct Collider: Equatable, Sendable {
     public func placed(at position: Vec2) -> Collider {
         var collider = self
         collider.bounds = bounds.translated(by: position)
+        return collider
+    }
+
+    public func scaled(by scale: Vec2) -> Collider {
+        var collider = self
+        collider.bounds = bounds.scaled(by: scale)
+        return collider
+    }
+
+    public func placed(at position: Vec2, scale: Vec2) -> Collider {
+        scaled(by: scale).placed(at: position)
+    }
+
+    public func placed(at position: Vec2, spriteSize: Vec2, scale: Vec2) -> Collider {
+        var collider = self
+        let localBounds = usesDefaultBounds ? Rect(size: spriteSize) : bounds
+        let scaledOrigin = Vec2(
+            x: (localBounds.origin.x - (spriteSize.x / 2)) * scale.x,
+            y: (localBounds.origin.y - (spriteSize.y / 2)) * scale.y
+        )
+        let scaledSize = localBounds.size * scale
+
+        collider.bounds = Rect(origin: scaledOrigin, size: scaledSize)
+            .translated(by: position)
+        collider.usesDefaultBounds = false
+
         return collider
     }
 }

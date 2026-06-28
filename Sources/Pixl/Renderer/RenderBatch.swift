@@ -1,7 +1,7 @@
 import Swift
 
 public enum RenderBatch: Equatable, Sendable {
-    case sprites(textureID: TextureID, blendMode: BlendMode, sprites: [Sprite])
+    case sprites(textureID: TextureID, blendMode: BlendMode, sprites: [PositionedSprite])
     case shapes(blendMode: BlendMode, shapes: [ShapePrimitive])
 }
 
@@ -41,13 +41,13 @@ public extension RenderBatch {
 
     private init(_ primitive: RenderPrimitive) {
         switch primitive {
-        case .sprite(let sprite):
-            switch sprite.material {
+        case .sprite(let positionedSprite):
+            switch positionedSprite.sprite.material {
             case .sprite(let textureID, sourceRect: _):
                 self = .sprites(
                     textureID: textureID,
-                    blendMode: sprite.blendMode,
-                    sprites: [sprite]
+                    blendMode: positionedSprite.sprite.blendMode,
+                    sprites: [positionedSprite]
                 )
             case .shape:
                 preconditionFailure("Shape sprites must expand before batching.")
@@ -59,15 +59,15 @@ public extension RenderBatch {
 
     private mutating func append(_ primitive: RenderPrimitive) -> Bool {
         switch (self, primitive) {
-        case (.sprites(let batchTextureID, let blendMode, var sprites), .sprite(let sprite)):
-            guard case .sprite(let textureID, sourceRect: _) = sprite.material,
+        case (.sprites(let batchTextureID, let blendMode, var sprites), .sprite(let positionedSprite)):
+            guard case .sprite(let textureID, sourceRect: _) = positionedSprite.sprite.material,
                   batchTextureID == textureID,
-                  blendMode == sprite.blendMode
+                  blendMode == positionedSprite.sprite.blendMode
             else {
                 return false
             }
 
-            sprites.append(sprite)
+            sprites.append(positionedSprite)
             self = .sprites(
                 textureID: batchTextureID,
                 blendMode: blendMode,

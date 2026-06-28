@@ -10,33 +10,18 @@ public struct EntityID: Hashable, Sendable {
 
 public struct EntityState: Equatable, Identifiable, Sendable {
     public let id: EntityID
-    public var size: Vec2 {
-        get { storedSize }
-        set {
-            storedSize = newValue
-            hasExplicitSize = true
-        }
-    }
     public internal(set) var position: Vec2
     public internal(set) var velocity: Vec2
     public var sprite: Sprite?
     public var colliders: [Collider]
-    private var storedSize: Vec2
-    private var hasExplicitSize: Bool
 
-    public init(id: EntityID, size: Vec2 = .zero, collider: Collider? = nil) {
-        self.init(
-            id: id,
-            size: size,
-            colliders: collider.map { [$0] } ?? []
-        )
+    public init(id: EntityID, collider: Collider? = nil) {
+        self.init(id: id, colliders: collider.map { [$0] } ?? [])
     }
 
-    public init(id: EntityID, size: Vec2, colliders: [Collider]) {
+    public init(id: EntityID, colliders: [Collider]) {
         self.id = id
         self.position = .zero
-        self.storedSize = size
-        self.hasExplicitSize = size != .zero
         self.velocity = .zero
         self.sprite = nil
         self.colliders = colliders
@@ -48,20 +33,30 @@ public struct EntityState: Equatable, Identifiable, Sendable {
     }
 
     mutating func finalizePreparation() {
-        guard !hasExplicitSize else { return }
-
-        storedSize = sprite?.size ?? .zero
     }
 
     var colliderFrames: [Rect] {
-        colliders.map { $0.worldBounds(at: position) }
+        worldColliders.map(\.bounds)
     }
 
     var worldColliders: [Collider] {
-        colliders.map { $0.placed(at: position) }
+        let spriteSize = sprite?.naturalSize ?? .zero
+        let spriteScale = sprite?.scale ?? Vec2(x: 1, y: 1)
+
+        return colliders.map {
+            $0.placed(
+                at: position,
+                spriteSize: spriteSize,
+                scale: spriteScale
+            )
+        }
     }
 
     public var bounds: Rect {
-        Rect(origin: position, size: size)
+        guard let sprite else {
+            return Rect(center: position, size: .zero)
+        }
+
+        return Rect(center: position, size: sprite.naturalSize * sprite.scale)
     }
 }

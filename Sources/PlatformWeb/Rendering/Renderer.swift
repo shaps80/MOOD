@@ -524,7 +524,7 @@ final class Renderer {
     }
 
     private func appendSpriteBatch(
-        _ sprites: [Sprite],
+        _ sprites: [PositionedSprite],
         textureID: TextureID,
         blendMode: BlendMode,
         game: Game
@@ -532,12 +532,12 @@ final class Renderer {
         guard let texture = spriteTextures[textureID] else {
             let startIndex = batchData.count / 12
 
-            for sprite in sprites {
+            for positionedSprite in sprites {
                 appendInstance(
-                    rect: renderRect(for: sprite, game: game),
+                    rect: renderRect(for: positionedSprite, textureID: textureID, game: game),
                     textureRect: .full,
                     color: resolvedColor(
-                        for: sprite,
+                        for: positionedSprite.sprite,
                         fallbackColor: .missingTexture
                     )
                 )
@@ -553,7 +553,9 @@ final class Renderer {
 
         let startIndex = batchData.count / 12
 
-        for sprite in sprites {
+        for positionedSprite in sprites {
+            let sprite = positionedSprite.sprite
+
             guard case .sprite(_, let sourceRect) = sprite.material,
                   let textureRect = textureRect(for: sourceRect, textureID: textureID)
             else {
@@ -561,7 +563,7 @@ final class Renderer {
             }
 
             appendInstance(
-                rect: renderRect(for: sprite, game: game),
+                rect: renderRect(for: positionedSprite, textureID: textureID, game: game),
                 textureRect: textureRect,
                 color: resolvedColor(for: sprite)
             )
@@ -925,12 +927,18 @@ final class Renderer {
         )
     }
 
-    private func renderRect(for sprite: Sprite, game: Game) -> RenderRect {
-        let position = Vec2(
-            x: sprite.position.x - game.camera.origin.x,
-            y: sprite.position.y - game.camera.origin.y
+    private func renderRect(
+        for positionedSprite: PositionedSprite,
+        textureID: TextureID,
+        game: Game
+    ) -> RenderRect {
+        let sprite = positionedSprite.sprite
+        let size = naturalSize(for: sprite, textureID: textureID) * sprite.scale
+        let origin = Vec2(
+            x: positionedSprite.position.x - game.camera.origin.x - (size.x / 2),
+            y: positionedSprite.position.y - game.camera.origin.y - (size.y / 2)
         )
-        let aligned = Rect(origin: position, size: sprite.size).integral
+        let aligned = Rect(origin: origin, size: size).integral
 
         return RenderRect(
             x: aligned.origin.x,
@@ -938,6 +946,17 @@ final class Renderer {
             width: aligned.size.x,
             height: aligned.size.y
         )
+    }
+
+    private func naturalSize(for sprite: Sprite, textureID: TextureID) -> Vec2 {
+        switch sprite.material {
+        case .sprite(_, let sourceRect):
+            return sourceRect?.size
+                ?? spriteTextureSizes[textureID]
+                ?? .zero
+        case .shape:
+            return .zero
+        }
     }
 }
 

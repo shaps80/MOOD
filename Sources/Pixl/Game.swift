@@ -67,7 +67,6 @@ public struct Game {
             entityRecords.append(EntityRecord(id: spawn.id, entity: entity))
             entityStates.insert(state)
         }
-
         updateCamera(delta: .infinity)
         rebuildSpriteBuffer()
     }
@@ -211,14 +210,15 @@ public struct Game {
 
                 context.draw(
                     Sprite(
-                        position: Vec2(
-                            x: Double(x) * level.tilemap.tileSize.x,
-                            y: Double(y) * level.tilemap.tileSize.y
-                        ),
-                        size: level.tilemap.tileSize,
                         material: tile.material,
                         layer: tile.layer,
                         tint: tile.tint
+                    ),
+                    at: Vec2(
+                            x: (Double(x) * level.tilemap.tileSize.x)
+                                + (level.tilemap.tileSize.x / 2),
+                            y: (Double(y) * level.tilemap.tileSize.y)
+                                + (level.tilemap.tileSize.y / 2)
                     )
                 )
                 visibleTileCount += 1
@@ -242,7 +242,7 @@ public struct Game {
                 continue
             }
 
-            context.draw(sprite)
+            context.draw(sprite, at: state.position)
             visibleEntityCount += 1
         }
 
@@ -322,8 +322,8 @@ extension Game {
             sounds.append(sound)
         }
 
-        public mutating func draw(_ sprite: Sprite) {
-            renderContext.draw(sprite)
+        public mutating func draw(_ sprite: Sprite, at position: Vec2) {
+            renderContext.draw(sprite, at: position)
         }
 
         public mutating func draw(

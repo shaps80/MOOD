@@ -44,7 +44,7 @@ extension Tilemap {
 extension Tilemap.Tile {
     public static let empty: Self = .init(
         kind: .empty,
-        material: .shape(Rectangle()),
+        material: .shape(Rectangle(), size: .zero),
         tint: .clear
     )
 }

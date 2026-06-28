@@ -48,6 +48,20 @@ public struct Rect: Equatable, Sendable {
         )
     }
 
+    public init(center: Vec2, size: Vec2) {
+        self.init(
+            origin: Vec2(
+                x: center.x - (size.x / 2),
+                y: center.y - (size.y / 2)
+            ),
+            size: size
+        )
+    }
+
+    public init(size: Vec2) {
+        self.init(origin: .zero, size: size)
+    }
+
     /// A rectangle with zero origin and zero size.
     ///
     /// ```swift
@@ -121,6 +135,13 @@ public extension Rect {
                 y: origin.y + offset.y
             ),
             size: size
+        )
+    }
+
+    func scaled(by scale: Vec2) -> Rect {
+        Rect(
+            origin: origin * scale,
+            size: size * scale
         )
     }
 

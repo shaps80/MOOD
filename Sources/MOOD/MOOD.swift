@@ -26,9 +26,6 @@ struct MOOD {
 
     private static var game: Game {
         let level = level
-        let pickup = Pickup()
-        let pickupSize = Vec2(x: 16, y: 16)
-
         return .init(
             size: size,
             interpolationMode: .nearest,
@@ -42,13 +39,10 @@ struct MOOD {
             entities: [
                 .init(
                     id: .pickup,
-                    entity: pickup,
-                    position: origin(
-                        center: Vec2(
-                            x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
-                            y: level.spawnPoint.y
-                        ),
-                        size: pickupSize
+                    entity: Pickup(),
+                    position: Vec2(
+                        x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
+                        y: level.spawnPoint.y
                     )
                 ),
                 .init(
@@ -67,13 +61,6 @@ struct MOOD {
             ],
             sprites: [.player],
             sounds: [.jump]
-        )
-    }
-
-    private static func origin(center: Vec2, size: Vec2) -> Vec2 {
-        Vec2(
-            x: center.x - (size.x / 2),
-            y: center.y - (size.y / 2)
         )
     }
 

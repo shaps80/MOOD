@@ -46,7 +46,21 @@ public struct Vec2: Equatable, Sendable {
     )
 }
 
-extension Vec2 {
+public extension Vec2 {
+    static func * (lhs: Vec2, rhs: Vec2) -> Vec2 {
+        Vec2(x: lhs.x * rhs.x, y: lhs.y * rhs.y)
+    }
+
+    static func * (lhs: Vec2, rhs: Double) -> Vec2 {
+        Vec2(x: lhs.x * rhs, y: lhs.y * rhs)
+    }
+
+    static func * (lhs: Double, rhs: Vec2) -> Vec2 {
+        rhs * lhs
+    }
+}
+
+public extension Vec2 {
     func moving(toward target: Vec2, by distance: Double) -> Vec2 {
         guard distance > 0 else { return self }
 
