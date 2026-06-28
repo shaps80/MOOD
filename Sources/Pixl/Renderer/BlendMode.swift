@@ -77,8 +77,8 @@ public extension BlendMode {
         .replace
     ]
 
-    /// Whether this mode needs shader compositing with the destination texture.
-    var usesShaderCompositing: Bool {
+    /// Whether this mode samples the existing scene texture while drawing.
+    var usesSceneSampling: Bool {
         !Self.fixedFunctionModes.contains(self)
     }
 

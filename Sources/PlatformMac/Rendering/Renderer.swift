@@ -10,8 +10,8 @@ final class Renderer {
     private let commandQueue: MTLCommandQueue
     private let pipelineStates: [BlendMode: MTLRenderPipelineState]
     private let shapePipelineStates: [BlendMode: MTLRenderPipelineState]
-    private let advancedSpritePipelineState: MTLRenderPipelineState
-    private let advancedShapePipelineState: MTLRenderPipelineState
+    private let sampledSpritePipelineState: MTLRenderPipelineState
+    private let sampledShapePipelineState: MTLRenderPipelineState
     private let presentPipelineState: MTLRenderPipelineState
     private let quadVertexBuffer: MTLBuffer
     private let textureLoader: MTKTextureLoader
@@ -58,18 +58,18 @@ final class Renderer {
             vertexFunctionName: "shapeVertex",
             fragmentFunctionName: "shapeFragment"
         )
-        self.advancedSpritePipelineState = Renderer.makePipelineState(
+        self.sampledSpritePipelineState = Renderer.makePipelineState(
             device: device,
             pixelFormat: pixelFormat,
             vertexFunctionName: "spriteVertex",
-            fragmentFunctionName: "advancedSpriteFragment",
+            fragmentFunctionName: "spriteFragment",
             blendMode: .replace
         )
-        self.advancedShapePipelineState = Renderer.makePipelineState(
+        self.sampledShapePipelineState = Renderer.makePipelineState(
             device: device,
             pixelFormat: pixelFormat,
             vertexFunctionName: "shapeVertex",
-            fragmentFunctionName: "advancedShapeFragment",
+            fragmentFunctionName: "shapeFragment",
             blendMode: .replace
         )
         self.presentPipelineState = Renderer.makePipelineState(
@@ -130,7 +130,7 @@ final class Renderer {
         }
 
         for batch in preparedBatches {
-            if batch.blendMode.usesShaderCompositing {
+            if batch.blendMode.usesSceneSampling {
                 sceneEncoder.endEncoding()
                 copyScene(
                     from: currentSceneTexture,
@@ -138,7 +138,7 @@ final class Renderer {
                     commandBuffer: commandBuffer
                 )
 
-                guard let advancedEncoder = makeSceneEncoder(
+                guard let sampledEncoder = makeSceneEncoder(
                     commandBuffer: commandBuffer,
                     texture: nextSceneTexture,
                     game: game,
@@ -148,10 +148,10 @@ final class Renderer {
                     return
                 }
 
-                sceneEncoder = advancedEncoder
-                drawAdvancedBatch(
+                sceneEncoder = sampledEncoder
+                drawSampledBatch(
                     batch,
-                    destinationTexture: currentSceneTexture,
+                    sampledSceneTexture: currentSceneTexture,
                     instanceBuffer: instanceBuffer,
                     shapeInstanceBuffer: shapeInstanceBuffer,
                     renderEncoder: sceneEncoder
@@ -544,6 +544,7 @@ final class Renderer {
             drawSpriteBatch(
                 material: material,
                 blendMode: blendMode,
+                sampledSceneTexture: nil,
                 startIndex: startIndex,
                 instanceCount: instanceCount,
                 instanceBuffer: instanceBuffer,
@@ -554,6 +555,7 @@ final class Renderer {
             guard let shapeInstanceBuffer else { return }
             drawShapeBatch(
                 blendMode: blendMode,
+                sampledSceneTexture: nil,
                 startIndex: startIndex,
                 instanceCount: instanceCount,
                 instanceBuffer: shapeInstanceBuffer,
@@ -562,9 +564,9 @@ final class Renderer {
         }
     }
 
-    private func drawAdvancedBatch(
+    private func drawSampledBatch(
         _ batch: PreparedBatch,
-        destinationTexture: MTLTexture,
+        sampledSceneTexture: MTLTexture,
         instanceBuffer: MTLBuffer?,
         shapeInstanceBuffer: MTLBuffer?,
         renderEncoder: MTLRenderCommandEncoder
@@ -572,10 +574,10 @@ final class Renderer {
         switch batch {
         case .sprites(let material, let blendMode, let startIndex, let instanceCount):
             guard let instanceBuffer else { return }
-            drawAdvancedSpriteBatch(
+            drawSpriteBatch(
                 material: material,
                 blendMode: blendMode,
-                destinationTexture: destinationTexture,
+                sampledSceneTexture: sampledSceneTexture,
                 startIndex: startIndex,
                 instanceCount: instanceCount,
                 instanceBuffer: instanceBuffer,
@@ -584,9 +586,9 @@ final class Renderer {
 
         case .shapes(let blendMode, let startIndex, let instanceCount):
             guard let shapeInstanceBuffer else { return }
-            drawAdvancedShapeBatch(
+            drawShapeBatch(
                 blendMode: blendMode,
-                destinationTexture: destinationTexture,
+                sampledSceneTexture: sampledSceneTexture,
                 startIndex: startIndex,
                 instanceCount: instanceCount,
                 instanceBuffer: shapeInstanceBuffer,
@@ -598,14 +600,20 @@ final class Renderer {
     private func drawSpriteBatch(
         material: RenderMaterial,
         blendMode: BlendMode,
+        sampledSceneTexture: MTLTexture?,
         startIndex: Int,
         instanceCount: Int,
         instanceBuffer: MTLBuffer,
         renderEncoder: MTLRenderCommandEncoder
     ) {
         var useTexture = material.useTexture
+        var sampled = sampledSceneTexture == nil ? UInt32(0) : UInt32(1)
+        var blendModeValue = UInt32(blendMode.shaderValue)
 
-        guard let pipelineState = pipelineStates[blendMode] else {
+        guard let pipelineState = sampledSceneTexture == nil
+            ? pipelineStates[blendMode]
+            : sampledSpritePipelineState
+        else {
             return
         }
 
@@ -620,9 +628,23 @@ final class Renderer {
             length: MemoryLayout<UInt32>.stride,
             index: 0
         )
+        renderEncoder.setFragmentBytes(
+            &sampled,
+            length: MemoryLayout<UInt32>.stride,
+            index: 1
+        )
+        renderEncoder.setFragmentBytes(
+            &blendModeValue,
+            length: MemoryLayout<UInt32>.stride,
+            index: 2
+        )
         renderEncoder.setFragmentTexture(
             material.texture ?? whiteTexture,
             index: 0
+        )
+        renderEncoder.setFragmentTexture(
+            sampledSceneTexture ?? whiteTexture,
+            index: 1
         )
         renderEncoder.drawPrimitives(
             type: .triangle,
@@ -634,12 +656,19 @@ final class Renderer {
 
     private func drawShapeBatch(
         blendMode: BlendMode,
+        sampledSceneTexture: MTLTexture?,
         startIndex: Int,
         instanceCount: Int,
         instanceBuffer: MTLBuffer,
         renderEncoder: MTLRenderCommandEncoder
     ) {
-        guard let pipelineState = shapePipelineStates[blendMode] else {
+        var sampled = sampledSceneTexture == nil ? UInt32(0) : UInt32(1)
+        var blendModeValue = UInt32(blendMode.shaderValue)
+
+        guard let pipelineState = sampledSceneTexture == nil
+            ? shapePipelineStates[blendMode]
+            : sampledShapePipelineState
+        else {
             return
         }
 
@@ -649,34 +678,8 @@ final class Renderer {
             offset: startIndex * MemoryLayout<ShapeInstance>.stride,
             index: 2
         )
-        renderEncoder.drawPrimitives(
-            type: .triangle,
-            vertexStart: 0,
-            vertexCount: 6,
-            instanceCount: instanceCount
-        )
-    }
-
-    private func drawAdvancedSpriteBatch(
-        material: RenderMaterial,
-        blendMode: BlendMode,
-        destinationTexture: MTLTexture,
-        startIndex: Int,
-        instanceCount: Int,
-        instanceBuffer: MTLBuffer,
-        renderEncoder: MTLRenderCommandEncoder
-    ) {
-        var useTexture = material.useTexture
-        var blendModeValue = UInt32(blendMode.shaderValue)
-
-        renderEncoder.setRenderPipelineState(advancedSpritePipelineState)
-        renderEncoder.setVertexBuffer(
-            instanceBuffer,
-            offset: startIndex * MemoryLayout<BatchInstance>.stride,
-            index: 2
-        )
         renderEncoder.setFragmentBytes(
-            &useTexture,
+            &sampled,
             length: MemoryLayout<UInt32>.stride,
             index: 0
         )
@@ -685,11 +688,7 @@ final class Renderer {
             length: MemoryLayout<UInt32>.stride,
             index: 1
         )
-        renderEncoder.setFragmentTexture(
-            material.texture ?? whiteTexture,
-            index: 0
-        )
-        renderEncoder.setFragmentTexture(destinationTexture, index: 1)
+        renderEncoder.setFragmentTexture(sampledSceneTexture ?? whiteTexture, index: 0)
         renderEncoder.drawPrimitives(
             type: .triangle,
             vertexStart: 0,
@@ -698,35 +697,6 @@ final class Renderer {
         )
     }
 
-    private func drawAdvancedShapeBatch(
-        blendMode: BlendMode,
-        destinationTexture: MTLTexture,
-        startIndex: Int,
-        instanceCount: Int,
-        instanceBuffer: MTLBuffer,
-        renderEncoder: MTLRenderCommandEncoder
-    ) {
-        var blendModeValue = UInt32(blendMode.shaderValue)
-
-        renderEncoder.setRenderPipelineState(advancedShapePipelineState)
-        renderEncoder.setVertexBuffer(
-            instanceBuffer,
-            offset: startIndex * MemoryLayout<ShapeInstance>.stride,
-            index: 2
-        )
-        renderEncoder.setFragmentBytes(
-            &blendModeValue,
-            length: MemoryLayout<UInt32>.stride,
-            index: 0
-        )
-        renderEncoder.setFragmentTexture(destinationTexture, index: 0)
-        renderEncoder.drawPrimitives(
-            type: .triangle,
-            vertexStart: 0,
-            vertexCount: 6,
-            instanceCount: instanceCount
-        )
-    }
 
     private func shapeInstance(for instance: ShapeRenderInstance) -> ShapeInstance {
         ShapeInstance(
@@ -1118,23 +1088,6 @@ vertex VertexOut spriteVertex(
     return out;
 }
 
-fragment float4 spriteFragment(
-    VertexOut in [[stage_in]],
-    constant uint &useTexture [[buffer(0)]],
-    texture2d<float> spriteTexture [[texture(0)]],
-    sampler spriteSampler [[sampler(0)]]
-) {
-    float4 source = float4(1.0);
-
-    if (useTexture != 0) {
-        source = spriteTexture.sample(spriteSampler, in.texCoord);
-    }
-
-    source *= in.color;
-    source.rgb *= source.a;
-    return source;
-}
-
 vertex ShapeVertexOut shapeVertex(
     uint vertexID [[vertex_id]],
     uint instanceID [[instance_id]],
@@ -1430,44 +1383,52 @@ float4 shapeSourceColor(ShapeVertexOut in) {
     return color;
 }
 
-fragment float4 shapeFragment(ShapeVertexOut in [[stage_in]]) {
-    return shapeSourceColor(in);
-}
-
-fragment float4 advancedSpriteFragment(
+fragment float4 spriteFragment(
     VertexOut in [[stage_in]],
     constant uint &useTexture [[buffer(0)]],
-    constant uint &blendMode [[buffer(1)]],
+    constant uint &sampled [[buffer(1)]],
+    constant uint &blendMode [[buffer(2)]],
     texture2d<float> spriteTexture [[texture(0)]],
-    texture2d<float> destinationTexture [[texture(1)]],
-    sampler sceneSampler [[sampler(0)]]
+    texture2d<float> sampledSceneTexture [[texture(1)]],
+    sampler spriteSampler [[sampler(0)]]
 ) {
     float4 source = float4(1.0);
 
     if (useTexture != 0) {
-        source = spriteTexture.sample(sceneSampler, in.texCoord);
+        source = spriteTexture.sample(spriteSampler, in.texCoord);
     }
 
     source *= in.color;
     source.rgb *= source.a;
 
-    float2 destinationSize = float2(destinationTexture.get_width(), destinationTexture.get_height());
+    if (sampled == 0) {
+        return source;
+    }
+
+    float2 destinationSize = float2(sampledSceneTexture.get_width(), sampledSceneTexture.get_height());
     float2 destinationCoord = in.position.xy / destinationSize;
-    float4 destination = destinationTexture.sample(sceneSampler, destinationCoord);
+    float4 destination = sampledSceneTexture.sample(spriteSampler, destinationCoord);
 
     return compositeSource(source, destination, blendMode);
 }
 
-fragment float4 advancedShapeFragment(
+fragment float4 shapeFragment(
     ShapeVertexOut in [[stage_in]],
-    constant uint &blendMode [[buffer(0)]],
-    texture2d<float> destinationTexture [[texture(0)]],
+    constant uint &sampled [[buffer(0)]],
+    constant uint &blendMode [[buffer(1)]],
+    texture2d<float> sampledSceneTexture [[texture(0)]],
     sampler sceneSampler [[sampler(0)]]
 ) {
-    float2 destinationSize = float2(destinationTexture.get_width(), destinationTexture.get_height());
-    float2 destinationCoord = in.position.xy / destinationSize;
-    float4 destination = destinationTexture.sample(sceneSampler, destinationCoord);
+    float4 source = shapeSourceColor(in);
 
-    return compositeSource(shapeSourceColor(in), destination, blendMode);
+    if (sampled == 0) {
+        return source;
+    }
+
+    float2 destinationSize = float2(sampledSceneTexture.get_width(), sampledSceneTexture.get_height());
+    float2 destinationCoord = in.position.xy / destinationSize;
+    float4 destination = sampledSceneTexture.sample(sceneSampler, destinationCoord);
+
+    return compositeSource(source, destination, blendMode);
 }
 """

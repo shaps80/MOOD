@@ -7,8 +7,6 @@ final class Renderer {
     var gl: JSObject?
     private var shaderProgram: JSValue = .undefined
     private var shapeProgram: JSValue = .undefined
-    private var advancedSpriteProgram: JSValue = .undefined
-    private var advancedShapeProgram: JSValue = .undefined
     private var presentProgram: JSValue = .undefined
     private var positionBuffer: JSValue = .undefined
     private var instanceBuffer: JSValue = .undefined
@@ -20,15 +18,9 @@ final class Renderer {
     private var resolutionUniform: JSValue = .undefined
     private var useTextureUniform: JSValue = .undefined
     private var textureUniform: JSValue = .undefined
-    private var advancedSpritePositionAttributeLocation: Int = 0
-    private var advancedSpriteRectAttributeLocation: Int = 0
-    private var advancedSpriteTextureRectAttributeLocation: Int = 0
-    private var advancedSpriteColorAttributeLocation: Int = 0
-    private var advancedSpriteResolutionUniform: JSValue = .undefined
-    private var advancedSpriteUseTextureUniform: JSValue = .undefined
-    private var advancedSpriteTextureUniform: JSValue = .undefined
-    private var advancedSpriteDestinationTextureUniform: JSValue = .undefined
-    private var advancedSpriteBlendModeUniform: JSValue = .undefined
+    private var sampledUniform: JSValue = .undefined
+    private var sampledSceneTextureUniform: JSValue = .undefined
+    private var blendModeUniform: JSValue = .undefined
     private var shapePositionAttributeLocation: Int = 0
     private var shapeRectAttributeLocation: Int = 0
     private var shapeInfoAttributeLocation: Int = 0
@@ -38,17 +30,9 @@ final class Renderer {
     private var shapeFlagsAttributeLocation: Int = 0
     private var shapeResolutionUniform: JSValue = .undefined
     private var shapeAAWidthUniform: JSValue = .undefined
-    private var advancedShapePositionAttributeLocation: Int = 0
-    private var advancedShapeRectAttributeLocation: Int = 0
-    private var advancedShapeInfoAttributeLocation: Int = 0
-    private var advancedShapeLineAttributeLocation: Int = 0
-    private var advancedShapeFillColorAttributeLocation: Int = 0
-    private var advancedShapeStrokeColorAttributeLocation: Int = 0
-    private var advancedShapeFlagsAttributeLocation: Int = 0
-    private var advancedShapeResolutionUniform: JSValue = .undefined
-    private var advancedShapeAAWidthUniform: JSValue = .undefined
-    private var advancedShapeDestinationTextureUniform: JSValue = .undefined
-    private var advancedShapeBlendModeUniform: JSValue = .undefined
+    private var shapeSampledUniform: JSValue = .undefined
+    private var shapeSampledSceneTextureUniform: JSValue = .undefined
+    private var shapeBlendModeUniform: JSValue = .undefined
     private var presentPositionAttributeLocation: Int = 0
     private var presentTextureUniform: JSValue = .undefined
     private var sceneFramebuffer: JSValue = .undefined
@@ -78,8 +62,6 @@ final class Renderer {
         configureWebGL()
         configureSpritePipeline()
         configureShapePipeline()
-        configureAdvancedSpritePipeline()
-        configureAdvancedShapePipeline()
         configurePresentPipeline()
     }
 
@@ -148,15 +130,21 @@ final class Renderer {
             source: """
             precision highp float;
             uniform bool u_useTexture;
+            uniform bool u_sampled;
+            uniform float u_blendMode;
+            uniform vec2 u_resolution;
             uniform sampler2D u_texture;
+            uniform sampler2D u_sampledSceneTexture;
             varying vec2 v_texCoord;
             varying vec4 v_color;
+
+            \(webBlendShaderSource)
 
             void main() {
                 vec4 source = u_useTexture ? texture2D(u_texture, v_texCoord) : vec4(1.0);
                 source *= v_color;
                 source.rgb *= source.a;
-                gl_FragColor = source;
+                gl_FragColor = u_sampled ? compositeSource(source) : source;
             }
             """
         )
@@ -182,6 +170,9 @@ final class Renderer {
         resolutionUniform = gl.getUniformLocation!(program, "u_resolution")
         useTextureUniform = gl.getUniformLocation!(program, "u_useTexture")
         textureUniform = gl.getUniformLocation!(program, "u_texture")
+        sampledUniform = gl.getUniformLocation!(program, "u_sampled")
+        sampledSceneTextureUniform = gl.getUniformLocation!(program, "u_sampledSceneTexture")
+        blendModeUniform = gl.getUniformLocation!(program, "u_blendMode")
         positionBuffer = gl.createBuffer!()
         instanceBuffer = gl.createBuffer!()
 
@@ -242,6 +233,10 @@ final class Renderer {
             source: """
             precision highp float;
             uniform float u_aaWidth;
+            uniform bool u_sampled;
+            uniform float u_blendMode;
+            uniform vec2 u_resolution;
+            uniform sampler2D u_sampledSceneTexture;
             varying vec2 v_localPosition;
             varying vec2 v_size;
             varying vec4 v_info;
@@ -249,6 +244,8 @@ final class Renderer {
             varying vec4 v_fillColor;
             varying vec4 v_strokeColor;
             varying vec4 v_flags;
+
+            \(webBlendShaderSource)
 
             float roundedBoxDistance(vec2 p, vec2 size, float radius) {
                 vec2 halfSize = size * 0.5;
@@ -341,7 +338,7 @@ final class Renderer {
                 vec4 fill = vec4(v_fillColor.rgb * fillCoverage, fillCoverage);
                 vec4 stroke = vec4(v_strokeColor.rgb * strokeCoverage, strokeCoverage);
                 vec4 color = stroke + (fill * (1.0 - stroke.a));
-                gl_FragColor = color;
+                gl_FragColor = u_sampled ? compositeSource(color) : color;
             }
             """
         )
@@ -373,184 +370,10 @@ final class Renderer {
         shapeFlagsAttributeLocation = Int(gl.getAttribLocation!(program, "a_flags").number ?? 0)
         shapeResolutionUniform = gl.getUniformLocation!(program, "u_resolution")
         shapeAAWidthUniform = gl.getUniformLocation!(program, "u_aaWidth")
+        shapeSampledUniform = gl.getUniformLocation!(program, "u_sampled")
+        shapeSampledSceneTextureUniform = gl.getUniformLocation!(program, "u_sampledSceneTexture")
+        shapeBlendModeUniform = gl.getUniformLocation!(program, "u_blendMode")
         shapeInstanceBuffer = gl.createBuffer!()
-    }
-
-    func configureAdvancedSpritePipeline() {
-        guard let gl else { return }
-
-        let vertexShader = compileShader(
-            type: gl.VERTEX_SHADER,
-            source: """
-            attribute vec2 a_position;
-            attribute vec4 a_rect;
-            attribute vec4 a_textureRect;
-            attribute vec4 a_color;
-            uniform vec2 u_resolution;
-            varying vec2 v_texCoord;
-            varying vec4 v_color;
-
-            void main() {
-                vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
-                vec2 zeroToOne = pixelPosition / u_resolution;
-                vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
-                v_texCoord = a_textureRect.xy + (a_position * a_textureRect.zw);
-                v_color = a_color;
-                gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
-            }
-            """
-        )
-        let fragmentShader = compileShader(
-            type: gl.FRAGMENT_SHADER,
-            source: """
-            precision highp float;
-            uniform bool u_useTexture;
-            uniform float u_blendMode;
-            uniform vec2 u_resolution;
-            uniform sampler2D u_texture;
-            uniform sampler2D u_destinationTexture;
-            varying vec2 v_texCoord;
-            varying vec4 v_color;
-
-            \(webBlendShaderSource)
-
-            void main() {
-                vec4 source = u_useTexture ? texture2D(u_texture, v_texCoord) : vec4(1.0);
-                source *= v_color;
-                source.rgb *= source.a;
-                gl_FragColor = compositeSource(source);
-            }
-            """
-        )
-        let program = gl.createProgram!()
-
-        _ = gl.attachShader!(program, vertexShader)
-        _ = gl.attachShader!(program, fragmentShader)
-        _ = gl.linkProgram!(program)
-
-        guard gl.getProgramParameter!(program, gl.LINK_STATUS).boolean == true else {
-            let infoLog = gl.getProgramInfoLog!(program).string ?? "No program info log"
-            _ = JSObject.global.console.error("Unable to link WebGL advanced sprite shader program: \(infoLog)")
-            fatalError("Unable to link WebGL advanced sprite shader program")
-        }
-
-        advancedSpriteProgram = program
-        advancedSpritePositionAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_position").number ?? 0
-        )
-        advancedSpriteRectAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_rect").number ?? 0
-        )
-        advancedSpriteTextureRectAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_textureRect").number ?? 0
-        )
-        advancedSpriteColorAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_color").number ?? 0
-        )
-        advancedSpriteResolutionUniform = gl.getUniformLocation!(program, "u_resolution")
-        advancedSpriteUseTextureUniform = gl.getUniformLocation!(program, "u_useTexture")
-        advancedSpriteTextureUniform = gl.getUniformLocation!(program, "u_texture")
-        advancedSpriteDestinationTextureUniform = gl.getUniformLocation!(
-            program,
-            "u_destinationTexture"
-        )
-        advancedSpriteBlendModeUniform = gl.getUniformLocation!(program, "u_blendMode")
-    }
-
-    func configureAdvancedShapePipeline() {
-        guard let gl else { return }
-
-        let vertexShader = compileShader(
-            type: gl.VERTEX_SHADER,
-            source: """
-            attribute vec2 a_position;
-            attribute vec4 a_rect;
-            attribute vec4 a_info;
-            attribute vec4 a_line;
-            attribute vec4 a_fillColor;
-            attribute vec4 a_strokeColor;
-            attribute vec4 a_flags;
-            uniform vec2 u_resolution;
-            varying vec2 v_localPosition;
-            varying vec2 v_size;
-            varying vec4 v_info;
-            varying vec4 v_line;
-            varying vec4 v_fillColor;
-            varying vec4 v_strokeColor;
-            varying vec4 v_flags;
-
-            void main() {
-                vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
-                vec2 zeroToOne = pixelPosition / u_resolution;
-                vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
-                v_localPosition = a_position * a_rect.zw;
-                v_size = a_rect.zw;
-                v_info = a_info;
-                v_line = a_line;
-                v_fillColor = a_fillColor;
-                v_strokeColor = a_strokeColor;
-                v_flags = a_flags;
-                gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
-            }
-            """
-        )
-        let fragmentShader = compileShader(
-            type: gl.FRAGMENT_SHADER,
-            source: """
-            precision highp float;
-            uniform float u_aaWidth;
-            uniform float u_blendMode;
-            uniform vec2 u_resolution;
-            uniform sampler2D u_destinationTexture;
-            varying vec2 v_localPosition;
-            varying vec2 v_size;
-            varying vec4 v_info;
-            varying vec4 v_line;
-            varying vec4 v_fillColor;
-            varying vec4 v_strokeColor;
-            varying vec4 v_flags;
-
-            \(webShapeShaderSource)
-            \(webBlendShaderSource)
-
-            void main() {
-                gl_FragColor = compositeSource(shapeSourceColor());
-            }
-            """
-        )
-        let program = gl.createProgram!()
-
-        _ = gl.attachShader!(program, vertexShader)
-        _ = gl.attachShader!(program, fragmentShader)
-        _ = gl.linkProgram!(program)
-
-        guard gl.getProgramParameter!(program, gl.LINK_STATUS).boolean == true else {
-            let infoLog = gl.getProgramInfoLog!(program).string ?? "No program info log"
-            _ = JSObject.global.console.error("Unable to link WebGL advanced shape shader program: \(infoLog)")
-            fatalError("Unable to link WebGL advanced shape shader program")
-        }
-
-        advancedShapeProgram = program
-        advancedShapePositionAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_position").number ?? 0
-        )
-        advancedShapeRectAttributeLocation = Int(gl.getAttribLocation!(program, "a_rect").number ?? 0)
-        advancedShapeInfoAttributeLocation = Int(gl.getAttribLocation!(program, "a_info").number ?? 0)
-        advancedShapeLineAttributeLocation = Int(gl.getAttribLocation!(program, "a_line").number ?? 0)
-        advancedShapeFillColorAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_fillColor").number ?? 0
-        )
-        advancedShapeStrokeColorAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_strokeColor").number ?? 0
-        )
-        advancedShapeFlagsAttributeLocation = Int(gl.getAttribLocation!(program, "a_flags").number ?? 0)
-        advancedShapeResolutionUniform = gl.getUniformLocation!(program, "u_resolution")
-        advancedShapeAAWidthUniform = gl.getUniformLocation!(program, "u_aaWidth")
-        advancedShapeDestinationTextureUniform = gl.getUniformLocation!(
-            program,
-            "u_destinationTexture"
-        )
-        advancedShapeBlendModeUniform = gl.getUniformLocation!(program, "u_blendMode")
     }
 
     func configurePresentPipeline() {
@@ -695,6 +518,7 @@ final class Renderer {
     private func bindSceneTarget(game: Game) {
         guard let gl else { return }
 
+        unbindSceneTextures(gl)
         _ = gl.bindFramebuffer!(gl.FRAMEBUFFER, sceneFramebuffer)
         _ = gl.viewport!(
             0,
@@ -719,6 +543,7 @@ final class Renderer {
         _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
         _ = gl.uniform1i!(presentTextureUniform, 0)
         _ = gl.drawArrays!(gl.TRIANGLES, 0, 6)
+        unbindSceneTextures(gl)
         applyBlendMode(.normal, gl: gl)
     }
 
@@ -894,14 +719,15 @@ final class Renderer {
     private func drawBatch(_ batch: PreparedBatch, game: Game) {
         switch batch {
         case .sprites(let material, let blendMode, let startIndex, let instanceCount):
-            if blendMode.usesShaderCompositing {
+            if blendMode.usesSceneSampling {
                 copySceneToAlternate(game: game)
-                drawAdvancedSpriteBatch(
+                drawSpriteBatch(
                     material: material,
                     blendMode: blendMode,
                     startIndex: startIndex,
                     instanceCount: instanceCount,
-                    game: game
+                    game: game,
+                    sampled: true
                 )
                 swapSceneTargets()
             } else {
@@ -910,17 +736,19 @@ final class Renderer {
                     blendMode: blendMode,
                     startIndex: startIndex,
                     instanceCount: instanceCount,
-                    game: game
+                    game: game,
+                    sampled: false
                 )
             }
         case .shapes(let blendMode, let startIndex, let instanceCount):
-            if blendMode.usesShaderCompositing {
+            if blendMode.usesSceneSampling {
                 copySceneToAlternate(game: game)
-                drawAdvancedShapeBatch(
+                drawShapeBatch(
                     blendMode: blendMode,
                     startIndex: startIndex,
                     instanceCount: instanceCount,
-                    game: game
+                    game: game,
+                    sampled: true
                 )
                 swapSceneTargets()
             } else {
@@ -928,7 +756,8 @@ final class Renderer {
                     blendMode: blendMode,
                     startIndex: startIndex,
                     instanceCount: instanceCount,
-                    game: game
+                    game: game,
+                    sampled: false
                 )
             }
         }
@@ -937,6 +766,7 @@ final class Renderer {
     private func copySceneToAlternate(game: Game) {
         guard let gl else { return }
 
+        unbindSceneTextures(gl)
         _ = gl.bindFramebuffer!(gl.FRAMEBUFFER, alternateSceneFramebuffer)
         _ = gl.viewport!(0, 0, game.logicalResolution.x.rounded(), game.logicalResolution.y.rounded())
         _ = gl.disable!(gl.BLEND)
@@ -949,6 +779,15 @@ final class Renderer {
         _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
         _ = gl.uniform1i!(presentTextureUniform, 0)
         _ = gl.drawArrays!(gl.TRIANGLES, 0, 6)
+        _ = gl.bindTexture!(gl.TEXTURE_2D, JSValue.null)
+    }
+
+    private func unbindSceneTextures(_ gl: JSObject) {
+        _ = gl.activeTexture!(gl.TEXTURE0)
+        _ = gl.bindTexture!(gl.TEXTURE_2D, JSValue.null)
+        _ = gl.activeTexture!(gl.TEXTURE1)
+        _ = gl.bindTexture!(gl.TEXTURE_2D, JSValue.null)
+        _ = gl.activeTexture!(gl.TEXTURE0)
     }
 
     private func swapSceneTargets() {
@@ -961,7 +800,8 @@ final class Renderer {
         blendMode: BlendMode,
         startIndex: Int,
         instanceCount: Int,
-        game: Game
+        game: Game,
+        sampled: Bool
     ) {
         guard let gl else { return }
 
@@ -1004,7 +844,16 @@ final class Renderer {
         _ = gl.vertexAttribDivisor!(colorAttributeLocation, 1)
 
         _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
-        applyBlendMode(blendMode, gl: gl)
+        _ = gl.uniform1i!(sampledUniform, sampled ? 1 : 0)
+        _ = gl.uniform1f!(blendModeUniform, Double(blendMode.shaderValue))
+        if sampled {
+            _ = gl.disable!(gl.BLEND)
+            _ = gl.activeTexture!(gl.TEXTURE1)
+            _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
+            _ = gl.uniform1i!(sampledSceneTextureUniform, 1)
+        } else {
+            applyBlendMode(blendMode, gl: gl)
+        }
         applyMaterial(material, gl: gl)
         _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
     }
@@ -1013,7 +862,8 @@ final class Renderer {
         blendMode: BlendMode,
         startIndex: Int,
         instanceCount: Int,
-        game: Game
+        game: Game,
+        sampled: Bool
     ) {
         guard let gl else { return }
 
@@ -1044,106 +894,17 @@ final class Renderer {
             game.logicalResolution.y
         )
         _ = gl.uniform1f!(shapeAAWidthUniform, shapeAAWidth())
-        applyBlendMode(blendMode, gl: gl)
+        _ = gl.uniform1i!(shapeSampledUniform, sampled ? 1 : 0)
+        _ = gl.uniform1f!(shapeBlendModeUniform, Double(blendMode.shaderValue))
+        if sampled {
+            _ = gl.disable!(gl.BLEND)
+            _ = gl.activeTexture!(gl.TEXTURE1)
+            _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
+            _ = gl.uniform1i!(shapeSampledSceneTextureUniform, 1)
+        } else {
+            applyBlendMode(blendMode, gl: gl)
+        }
         _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
-    }
-
-    private func drawAdvancedSpriteBatch(
-        material: RenderMaterial,
-        blendMode: BlendMode,
-        startIndex: Int,
-        instanceCount: Int,
-        game: Game
-    ) {
-        guard let gl else { return }
-
-        _ = gl.disable!(gl.BLEND)
-        _ = gl.useProgram!(advancedSpriteProgram)
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
-        _ = gl.enableVertexAttribArray!(advancedSpritePositionAttributeLocation)
-        _ = gl.vertexAttribPointer!(
-            advancedSpritePositionAttributeLocation,
-            2,
-            gl.FLOAT,
-            false,
-            0,
-            0
-        )
-        _ = gl.vertexAttribDivisor!(advancedSpritePositionAttributeLocation, 0)
-
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
-        configureSpriteAttribute(advancedSpriteRectAttributeLocation, offset: 0, startIndex: startIndex)
-        configureSpriteAttribute(
-            advancedSpriteTextureRectAttributeLocation,
-            offset: 16,
-            startIndex: startIndex
-        )
-        configureSpriteAttribute(advancedSpriteColorAttributeLocation, offset: 32, startIndex: startIndex)
-
-        _ = gl.uniform2f!(
-            advancedSpriteResolutionUniform,
-            game.logicalResolution.x,
-            game.logicalResolution.y
-        )
-        _ = gl.uniform1f!(advancedSpriteBlendModeUniform, Double(blendMode.shaderValue))
-        applyAdvancedMaterial(material, gl: gl)
-        _ = gl.activeTexture!(gl.TEXTURE1)
-        _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
-        _ = gl.uniform1i!(advancedSpriteDestinationTextureUniform, 1)
-        _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
-        applyBlendMode(.normal, gl: gl)
-    }
-
-    private func drawAdvancedShapeBatch(
-        blendMode: BlendMode,
-        startIndex: Int,
-        instanceCount: Int,
-        game: Game
-    ) {
-        guard let gl else { return }
-
-        _ = gl.disable!(gl.BLEND)
-        _ = gl.useProgram!(advancedShapeProgram)
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
-        _ = gl.enableVertexAttribArray!(advancedShapePositionAttributeLocation)
-        _ = gl.vertexAttribPointer!(
-            advancedShapePositionAttributeLocation,
-            2,
-            gl.FLOAT,
-            false,
-            0,
-            0
-        )
-        _ = gl.vertexAttribDivisor!(advancedShapePositionAttributeLocation, 0)
-
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, shapeInstanceBuffer)
-        configureAdvancedShapeAttribute(advancedShapeRectAttributeLocation, offset: 0, startIndex: startIndex)
-        configureAdvancedShapeAttribute(advancedShapeInfoAttributeLocation, offset: 16, startIndex: startIndex)
-        configureAdvancedShapeAttribute(advancedShapeLineAttributeLocation, offset: 32, startIndex: startIndex)
-        configureAdvancedShapeAttribute(
-            advancedShapeFillColorAttributeLocation,
-            offset: 48,
-            startIndex: startIndex
-        )
-        configureAdvancedShapeAttribute(
-            advancedShapeStrokeColorAttributeLocation,
-            offset: 64,
-            startIndex: startIndex
-        )
-        configureAdvancedShapeAttribute(advancedShapeFlagsAttributeLocation, offset: 80, startIndex: startIndex)
-
-        _ = gl.uniform2f!(
-            advancedShapeResolutionUniform,
-            game.logicalResolution.x,
-            game.logicalResolution.y
-        )
-        _ = gl.uniform1f!(advancedShapeAAWidthUniform, shapeAAWidth())
-        _ = gl.uniform1f!(advancedShapeBlendModeUniform, Double(blendMode.shaderValue))
-        _ = gl.activeTexture!(gl.TEXTURE0)
-        _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
-        _ = gl.uniform1i!(advancedShapeDestinationTextureUniform, 0)
-        _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
-        applyBlendMode(.normal, gl: gl)
     }
 
     private func shapeAAWidth() -> Double {
@@ -1170,34 +931,6 @@ final class Renderer {
         _ = gl.vertexAttribDivisor!(location, 1)
     }
 
-    private func configureSpriteAttribute(
-        _ location: Int,
-        offset: Int,
-        startIndex: Int
-    ) {
-        guard let gl else { return }
-        guard location >= 0 else { return }
-
-        _ = gl.enableVertexAttribArray!(location)
-        _ = gl.vertexAttribPointer!(
-            location,
-            4,
-            gl.FLOAT,
-            false,
-            48,
-            (startIndex * 48) + offset
-        )
-        _ = gl.vertexAttribDivisor!(location, 1)
-    }
-
-    private func configureAdvancedShapeAttribute(
-        _ location: Int,
-        offset: Int,
-        startIndex: Int
-    ) {
-        configureShapeAttribute(location, offset: offset, startIndex: startIndex)
-    }
-
     private func applyMaterial(_ material: RenderMaterial, gl: JSObject) {
         switch material {
         case .color:
@@ -1207,18 +940,6 @@ final class Renderer {
             _ = gl.activeTexture!(gl.TEXTURE0)
             _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
             _ = gl.uniform1i!(textureUniform, 0)
-        }
-    }
-
-    private func applyAdvancedMaterial(_ material: RenderMaterial, gl: JSObject) {
-        switch material {
-        case .color:
-            _ = gl.uniform1i!(advancedSpriteUseTextureUniform, 0)
-        case .texture(let texture):
-            _ = gl.uniform1i!(advancedSpriteUseTextureUniform, 1)
-            _ = gl.activeTexture!(gl.TEXTURE0)
-            _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
-            _ = gl.uniform1i!(advancedSpriteTextureUniform, 0)
         }
     }
 
@@ -1456,7 +1177,7 @@ vec3 blendColor(float mode, vec3 source, vec3 destination) {
 }
 
 vec4 compositeSource(vec4 source) {
-    vec4 destination = texture2D(u_destinationTexture, gl_FragCoord.xy / u_resolution);
+    vec4 destination = texture2D(u_sampledSceneTexture, gl_FragCoord.xy / u_resolution);
 
     if (u_blendMode == 4.0) {
         return source;
