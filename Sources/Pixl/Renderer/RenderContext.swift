@@ -31,26 +31,23 @@ public struct RenderContext: Sendable {
         )
     }
 
-    public mutating func draw(_ path: Path) {
+    public mutating func draw(
+        _ path: Path,
+        style: RenderStyle = RenderStyle(),
+        layer: RenderLayer = 0
+    ) {
         commands.append(
-            .path(path)
+            .path(path.applying(style, layer: layer))
         )
     }
 
     public mutating func draw<S: Shape>(
         _ shape: S,
         in rect: Rect,
+        style: RenderStyle = RenderStyle(),
         layer: RenderLayer = 0
     ) {
-        draw(shape.path(in: rect).layer(layer))
-    }
-
-    public mutating func draw<S: Shape>(
-        _ shape: StyledShape<S>,
-        in rect: Rect,
-        layer: RenderLayer = 0
-    ) {
-        draw(shape.path(in: rect).layer(layer))
+        draw(shape.path(in: rect), style: style, layer: layer)
     }
 
     public mutating func fill(
@@ -58,12 +55,10 @@ public struct RenderContext: Sendable {
         color: Color,
         layer: RenderLayer = 0
     ) {
-        commands.append(
-            .rect(
-                rect,
-                color,
-                layer
-            )
+        draw(
+            Path(rect),
+            style: RenderStyle(fill: color),
+            layer: layer
         )
     }
 
@@ -74,9 +69,13 @@ public struct RenderContext: Sendable {
         layer: RenderLayer = 0
     ) {
         draw(
-            Path(rect)
-                .stroke(color, lineWidth: width)
-                .layer(layer)
+            Path(rect),
+            style: RenderStyle(
+                fill: nil,
+                stroke: color,
+                strokeStyle: StrokeStyle(lineWidth: width)
+            ),
+            layer: layer
         )
     }
 }

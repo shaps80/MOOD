@@ -217,7 +217,8 @@ public struct Game {
                         ),
                         size: level.tilemap.tileSize,
                         material: tile.material,
-                        layer: tile.layer
+                        layer: tile.layer,
+                        tint: tile.tint
                     )
                 )
                 visibleTileCount += 1
@@ -322,24 +323,21 @@ extension Game {
             renderContext.draw(sprite)
         }
 
-        public mutating func draw(_ path: Path) {
-            renderContext.draw(path)
+        public mutating func draw(
+            _ path: Path,
+            style: RenderStyle = RenderStyle(),
+            layer: RenderLayer = 0
+        ) {
+            renderContext.draw(path, style: style, layer: layer)
         }
 
         public mutating func draw<S: Shape>(
             _ shape: S,
             in rect: Rect,
+            style: RenderStyle = RenderStyle(),
             layer: RenderLayer = 0
         ) {
-            renderContext.draw(shape, in: rect, layer: layer)
-        }
-
-        public mutating func draw<S: Shape>(
-            _ shape: StyledShape<S>,
-            in rect: Rect,
-            layer: RenderLayer = 0
-        ) {
-            renderContext.draw(shape, in: rect, layer: layer)
+            renderContext.draw(shape, in: rect, style: style, layer: layer)
         }
 
         public func move(state: inout EntityState, velocity: Vec2) {

@@ -14,8 +14,9 @@ struct Pickup: Entity {
         state.sprite = Sprite(
             position: state.position,
             size: state.size,
-            material: .color(.yellow),
-            layer: .entity
+            material: .shape(Rectangle()),
+            layer: .entity,
+            tint: .yellow
         )
     }
 

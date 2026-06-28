@@ -26,7 +26,6 @@ public struct Path: Equatable, Sendable {
     public private(set) var commands: [Command]
     var fill: Fill?
     var stroke: Stroke?
-    var strokedStyle: StrokeStyle?
     var layer: RenderLayer
     var blendMode: BlendMode
     var opacity: Double
@@ -36,7 +35,6 @@ public struct Path: Equatable, Sendable {
         self.commands = []
         self.fill = nil
         self.stroke = nil
-        self.strokedStyle = nil
         self.layer = 0
         self.blendMode = .normal
         self.opacity = 1
@@ -97,64 +95,32 @@ public struct Path: Equatable, Sendable {
         commands.append(.addEllipse(in: rect))
     }
 
-    public func fill<S: ShapeStyle>(
-        _ content: S,
-        style: FillStyle = FillStyle()
-    ) -> Path {
+    func applying(_ style: RenderStyle, layer: RenderLayer? = nil) -> Path {
         var copy = self
 
-        if let strokedStyle, copy.stroke == nil {
-            copy.stroke = .init(color: content.resolve(), style: strokedStyle)
+        if let fill = style.fill {
+            copy.fill = .init(color: fill, style: style.fillStyle)
         } else {
-            copy.fill = .init(color: content.resolve(), style: style)
+            copy.fill = nil
         }
 
-        return copy
-    }
+        if let stroke = style.stroke {
+            copy.stroke = .init(
+                color: stroke,
+                style: style.strokeStyle ?? StrokeStyle()
+            )
+        } else {
+            copy.stroke = nil
+        }
 
-    public func stroke<S: ShapeStyle>(
-        _ content: S,
-        style: StrokeStyle
-    ) -> Path {
-        var copy = self
-        copy.stroke = .init(color: content.resolve(), style: style)
-        return copy
-    }
+        copy.blendMode = style.blendMode
+        copy.opacity = style.opacity
+        copy.tint = style.tint
 
-    public func stroke<S: ShapeStyle>(
-        _ content: S,
-        lineWidth: Double = 1
-    ) -> Path {
-        stroke(content, style: .init(lineWidth: lineWidth))
-    }
+        if let layer {
+            copy.layer = layer
+        }
 
-    public func strokedPath(_ style: StrokeStyle) -> Path {
-        var copy = self
-        copy.strokedStyle = style
-        return copy
-    }
-
-    public func layer(_ layer: RenderLayer) -> Path {
-        var copy = self
-        copy.layer = layer
-        return copy
-    }
-
-    public func blendMode(_ blendMode: BlendMode) -> Path {
-        var copy = self
-        copy.blendMode = blendMode
-        return copy
-    }
-
-    public func opacity(_ opacity: Double) -> Path {
-        var copy = self
-        copy.opacity = opacity
-        return copy
-    }
-
-    public func tint(_ tint: Color) -> Path {
-        var copy = self
-        copy.tint = tint
         return copy
     }
 }

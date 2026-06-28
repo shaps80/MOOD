@@ -337,7 +337,7 @@ or post-processing design.
 
 Current behavior:
 
-- `Sprite.tint` modulates both textured and color sprites.
+- `Sprite.tint` modulates both textured sprites and shape materials.
 - `Sprite.opacity` multiplies final source alpha for the whole sprite.
 - `Sprite.blendMode` selects the backend blend state.
 - Existing visuals remain unchanged for default sprites:
@@ -401,118 +401,57 @@ construction API.
 Preserving identity lets renderers classify commands into optimized primitive
 draws.
 
-## Fill And Stroke
+## Render Style
 
-`fill` and `stroke` should follow SwiftUI-style shape operations.
+`Shape` and `Path` describe geometry only. They should not carry color or
+renderer state in the caller-facing API.
 
-Examples of the intended call shape:
-
-```swift
-Path(roundedRect: rect, cornerRadius: 5)
-    .strokedPath(.init(lineWidth: 2))
-    .fill(.red)
-
-Circle()
-    .stroke(lineWidth: 1)
-    .fill(.red, style: .init(antialiased: false))
-
-Path { path in
-    path.move(to: .zero)
-    path.addLine(to: .init(x: 20, y: 0))
-}
-.fill(.blue, style: .init(antialiased: false))
-```
-
-These operations do not draw immediately. They produce shape/path values carrying
-enough render intent for a later draw submission.
-
-Do not add an API shaped like this:
+Immediate drawing passes render intent at the draw boundary:
 
 ```swift
-context.draw(path.fill(.red).stroke(.white, lineWidth: 2))
+let style = RenderStyle(
+    fill: .blue,
+    stroke: .white,
+    strokeStyle: StrokeStyle(lineWidth: 2),
+    blendMode: .normal,
+    opacity: 1,
+    tint: .white
+)
+
+context.draw(path, style: style, layer: .entity)
+context.draw(Capsule(), in: rect, style: style, layer: .entity)
 ```
 
-That pattern is not the target call site. Callers should be able to create a
-styled shape/path value first, then submit that value to the context:
+`RenderStyle` stores optional fill and stroke colors plus fill/stroke options,
+blend mode, opacity, and tint. This is only needed for immediate/context
+drawing where there is no sprite to provide render state.
+
+Retained game visuals should use shape materials on sprites:
 
 ```swift
-let shape = Circle()
-    .stroke(lineWidth: 1)
-    .fill(.red, style: .init(antialiased: false))
-
-context.draw(shape)
+Sprite(
+    position: position,
+    size: size,
+    material: .shape(Capsule()),
+    layer: .entity,
+    tint: .blue
+)
 ```
 
-The draw boundary should be explicit:
+`Sprite.tint`, `Sprite.opacity`, `Sprite.blendMode`, and `Sprite.layer` provide
+the render state for shape materials. Shape materials render as a white fill
+modulated by sprite tint and opacity. This makes prototype sprites, solid
+rectangles, and simple entity visuals participate in normal sprite lifecycle,
+visibility culling, ordering, and batching.
+
+`Material.color` should not exist. Solid colored sprites should use:
 
 ```swift
-context.draw(path)
+material: .shape(Rectangle())
+tint: .red
 ```
-
-`context.draw` resolves the path/style state into platform-neutral render
-commands. Platform renderers then lower those commands into GPU work.
 
 There should be no `fillAndStroke` convenience API in V1.
-
-### Required Operations
-
-Implement instance-style operations for the built-in shapes and paths. They
-should feel like SwiftUI modifiers, not renderer commands:
-
-```swift
-extension Shape {
-    func fill<S: ShapeStyle>(
-        _ content: S,
-        style: FillStyle = FillStyle()
-    ) -> some Shape
-
-    func stroke(
-        style: StrokeStyle
-    ) -> some Shape
-
-    func stroke(
-        lineWidth: Float = 1
-    ) -> some Shape
-}
-
-extension Path {
-    func fill<S: ShapeStyle>(
-        _ content: S,
-        style: FillStyle = FillStyle()
-    ) -> Path
-
-    func stroke(
-        style: StrokeStyle
-    ) -> Path
-
-    func stroke(
-        lineWidth: Float = 1
-    ) -> Path
-
-    func strokedPath(_ style: StrokeStyle) -> Path
-}
-```
-
-The exact return types and overload set can be adjusted to fit Swift type
-constraints. The caller-facing behavior should remain SwiftUI-like.
-
-`stroke` means "render this shape as a stroke." `strokedPath` means "convert the
-stroke outline into a fillable path." For V1, `strokedPath` only needs to work
-for shapes that can be lowered to the supported primitive set.
-
-### Fill And Stroke Together
-
-A shape may carry both fill and stroke intent. The API should allow this using
-normal SwiftUI-style operations, not a special combined call.
-
-For V1, if implementing exact SwiftUI chaining semantics becomes too broad, it
-is acceptable to support the common primitive cases explicitly and document any
-unsupported chaining cases in code comments or tests.
-
-The renderer command emitted by `context.draw` should contain optional resolved
-fill and optional resolved stroke data where the primitive supports both. This
-avoids submitting two unrelated primitives when one SDF primitive can compute
-both fill and stroke coverage.
 
 ## Styles
 
@@ -595,8 +534,8 @@ The first renderer pass should classify only these cases:
 - A path containing exactly one `addRect` command.
 - A path containing exactly one `addRoundedRect` command.
 - A path containing exactly one `addEllipse` command.
-- A path containing exactly `move(to:)` and `addLine(to:)`, when stroked or
-  converted with `strokedPath`.
+- A path containing exactly `move(to:)` and `addLine(to:)`, when submitted with
+  a `RenderStyle` stroke.
 - Built-in shapes that resolve to one of the above paths.
 
 Everything else is outside V1.
@@ -748,15 +687,19 @@ UIKit, or other platform frameworks.
 Implemented:
 
 - Existing sprite render state is honored by WebGL2 and Metal.
-- `Sprite.tint` and `Sprite.opacity` work for textured and color sprites.
+- `Sprite.tint` and `Sprite.opacity` work for textured sprites and shape
+  materials.
 - `Sprite.blendMode` selects blend state.
-- `Pixl` exposes `Shape`, `Path`, `ShapeStyle`, `FillStyle`, and `StrokeStyle`.
+- `Pixl` exposes `Shape`, `AnyShape`, `Path`, `RenderStyle`, `ShapeStyle`,
+  `FillStyle`, and `StrokeStyle`.
 - `RoundedCornerStyle` supports `.circular` and `.continuous`.
 - `Rectangle`, `RoundedRectangle`, `Ellipse`, `Circle`, and `Capsule` exist.
+- `Material.shape(...)` stores shape geometry for retained sprite and tile
+  rendering. `Material.color` has been removed.
 - `Path` preserves `move`, `addLine`, `addRect`, `addRoundedRect`, and
   `addEllipse` commands.
-- `RenderContext` accepts `context.draw(path)` and shape values with an explicit
-  rect.
+- `RenderContext` accepts `context.draw(path, style:layer:)` and
+  `context.draw(shape, in:style:layer:)`.
 - WebGL2 and Metal lower supported primitives to SDF shader batches.
 - Compatible shape primitives batch while preserving draw order.
 
@@ -783,12 +726,14 @@ Do not run browser-serving flows or full test suites unless explicitly asked.
 V1 is acceptable when visual testing confirms:
 
 - Existing sprite render state is honored by WebGL2 and Metal.
-- `Sprite.tint` and `Sprite.opacity` work for textured and color sprites.
+- `Sprite.tint` and `Sprite.opacity` work for textured sprites and shape
+  materials.
 - `Sprite.blendMode` selects `normal`, `additive`, `multiply`, `screen`, or
   `replace` behavior.
 - `Rectangle`, `RoundedRectangle`, `Ellipse`, `Circle`, `Capsule`, and
   single-segment lines render correctly.
-- Fill and stroke use SwiftUI-like names and call shape.
+- Immediate shape/path drawing takes explicit `RenderStyle`.
+- Retained solid visuals use `Material.shape(...)` plus sprite tint.
 - There is no `fillAndStroke` API.
 - `StrokeStyle` does not expose `lineJoin`.
 - `FillStyle` supports `antialiased`.

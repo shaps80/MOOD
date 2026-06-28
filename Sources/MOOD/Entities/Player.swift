@@ -18,15 +18,23 @@ struct Player: Entity {
                 behaviour: .blocking
             )
         ]
-        state.sprite = Sprite(
-            position: state.position,
+
+        state.sprite = .init(
+            position: .zero,
             size: state.size,
-            material: .sprite(
-                timeline.animation.textureID,
-                sourceRect: timeline.frame
-            ),
-            layer: .entity
+            material: .shape(.rect(cornerRadius: 13)),
+            tint: .green
         )
+        
+//        state.sprite = Sprite(
+//            position: state.position,
+//            size: state.size,
+//            material: .sprite(
+//                timeline.animation.textureID,
+//                sourceRect: timeline.frame
+//            ),
+//            layer: .entity
+//        )
     }
 
     mutating func onUpdate(context: inout Game.Context, state: inout EntityState) {
@@ -49,15 +57,10 @@ struct Player: Entity {
         let size = state.size
         state.sprite?.position = position
         state.sprite?.size = size
-        state.sprite?.material = .sprite(
-            timeline.animation.textureID,
-            sourceRect: timeline.frame
-        )
-    }
-
-    func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
-        guard contact.phase == .began else { return }
-        state.sprite?.tint = .red
+//        state.sprite?.material = .sprite(
+//            timeline.animation.textureID,
+//            sourceRect: timeline.frame
+//        )
     }
 }
 

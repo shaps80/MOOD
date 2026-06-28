@@ -43,8 +43,9 @@ private extension Tilemap {
     ) -> Tilemap.Tile {
         Tilemap.Tile(
             kind: .wall,
-            material: .color(color),
+            material: .shape(Rectangle()),
             layer: layer,
+            tint: color,
             collider: isCollidable ? Collider(
                 bounds: Rect(
                     origin: .zero,
@@ -233,4 +234,3 @@ private extension Tilemap {
         }
     }
 }
-

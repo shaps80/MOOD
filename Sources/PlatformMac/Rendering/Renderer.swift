@@ -169,8 +169,6 @@ final class Renderer {
 
         for batch in game.renderBatches {
             switch batch {
-            case .solids(let blendMode, let sprites):
-                appendSolidBatch(sprites, blendMode: blendMode, game: game)
             case .sprites(let textureID, let blendMode, let sprites):
                 appendSpriteBatch(
                     sprites,
@@ -182,34 +180,6 @@ final class Renderer {
                 appendShapeBatch(shapes, blendMode: blendMode, game: game)
             }
         }
-    }
-
-    private func appendSolidBatch(
-        _ sprites: [Sprite],
-        blendMode: BlendMode,
-        game: Game
-    ) {
-        let startIndex = batchInstances.count
-
-        for sprite in sprites {
-            batchInstances.append(
-                BatchInstance(
-                    rect: renderRect(
-                        for: sprite,
-                        game: game,
-                        interpolationMode: game.interpolationMode
-                    ).uniform,
-                    textureRect: TextureRect.full.uniform,
-                    color: resolvedColor(for: sprite).uniform
-                )
-            )
-        }
-
-        appendPreparedBatch(
-            material: .color,
-            blendMode: blendMode,
-            startIndex: startIndex
-        )
     }
 
     private func appendSpriteBatch(
@@ -476,9 +446,8 @@ final class Renderer {
         let baseColor: Color
 
         switch sprite.material {
-        case .color(let color):
-            baseColor = color
-        case .sprite:
+        case .sprite,
+             .shape:
             baseColor = fallbackColor ?? .white
         }
 

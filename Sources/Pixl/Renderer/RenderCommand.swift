@@ -3,7 +3,6 @@ import Swift
 public enum RenderCommand: Equatable, Sendable {
     case sprite(Sprite)
     case path(Path)
-    case rect(Rect, Color, RenderLayer)
 }
 
 public extension RenderCommand {
@@ -13,8 +12,6 @@ public extension RenderCommand {
             sprite.layer
         case .path(let path):
             path.layer
-        case .rect(_, _, let layer):
-            layer
         }
     }
 
@@ -31,11 +28,30 @@ public extension RenderCommand {
     func forEachPrimitive(_ body: (RenderPrimitive) -> Void) {
         switch self {
         case .sprite(let sprite):
-            body(.sprite(sprite))
+            sprite.forEachPrimitive(body)
         case .path(let path):
             path.forEachPrimitive(body)
-        case .rect(let rect, let color, _):
-            body(.rect(rect, color))
+        }
+    }
+}
+
+private extension Sprite {
+    func forEachPrimitive(_ body: (RenderPrimitive) -> Void) {
+        switch material {
+        case .sprite:
+            body(.sprite(self))
+        case .shape(let shape):
+            let rect = Rect(origin: position, size: size)
+            let style = RenderStyle(
+                fill: .white,
+                blendMode: blendMode,
+                opacity: opacity,
+                tint: tint
+            )
+
+            shape.path(in: rect)
+                .applying(style, layer: layer)
+                .forEachPrimitive(body)
         }
     }
 }

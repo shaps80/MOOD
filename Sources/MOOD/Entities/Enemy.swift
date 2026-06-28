@@ -2,7 +2,7 @@ import Pixl
 
 struct Enemy: Entity {
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
-        state.size = .init(x: 16, y: 16)
+        state.size = .init(x: 16, y: 32)
         state.colliders = [
             .init(
                 bounds: .init(
@@ -16,8 +16,9 @@ struct Enemy: Entity {
         state.sprite = Sprite(
             position: state.position,
             size: state.size,
-            material: .color(.red),
-            layer: .entity
+            material: .shape(Capsule()),
+            layer: .entity,
+            tint: .red
         )
     }
 
