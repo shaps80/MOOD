@@ -13,12 +13,12 @@ struct Enemy: Entity {
                 mask: .player
             )
         ]
-//        state.sprite = Sprite(
-//            position: state.position,
-//            size: state.size,
-//            material: .color(.red),
-//            layer: .entity
-//        )
+        state.sprite = Sprite(
+            position: state.position,
+            size: state.size,
+            material: .color(.red),
+            layer: .entity
+        )
     }
 
     mutating func onUpdate(context: inout Game.Context, state: inout EntityState) {
@@ -26,17 +26,6 @@ struct Enemy: Entity {
         let size = state.size
         state.sprite?.position = position
         state.sprite?.size = size
-
-        let continuous = RoundedRectangle(cornerRadius: 28)
-            .fill(.blue)
-
-        context.draw(
-            continuous,
-            in: .init(
-                origin: state.position,
-                size: .init(x: 100, y: 100)
-            )
-        )
     }
 
     mutating func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {

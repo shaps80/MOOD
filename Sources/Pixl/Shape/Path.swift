@@ -24,13 +24,13 @@ public struct Path: Equatable, Sendable {
     }
 
     public private(set) var commands: [Command]
-    public var fill: Fill?
-    public var stroke: Stroke?
-    public var strokedStyle: StrokeStyle?
-    public var layer: RenderLayer
-    public var blendMode: BlendMode
-    public var opacity: Double
-    public var tint: Color
+    var fill: Fill?
+    var stroke: Stroke?
+    var strokedStyle: StrokeStyle?
+    var layer: RenderLayer
+    var blendMode: BlendMode
+    var opacity: Double
+    var tint: Color
 
     public init() {
         self.commands = []
