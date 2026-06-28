@@ -6,33 +6,25 @@ final class Renderer {
     var canvas: JSObject?
     var gl: JSObject?
     private var shaderProgram: JSValue = .undefined
-    private var shapeProgram: JSValue = .undefined
     private var presentProgram: JSValue = .undefined
     private var positionBuffer: JSValue = .undefined
     private var instanceBuffer: JSValue = .undefined
-    private var shapeInstanceBuffer: JSValue = .undefined
     private var positionAttributeLocation: Int = 0
     private var rectAttributeLocation: Int = 0
     private var textureRectAttributeLocation: Int = 0
     private var colorAttributeLocation: Int = 0
+    private var infoAttributeLocation: Int = 0
+    private var lineAttributeLocation: Int = 0
+    private var fillColorAttributeLocation: Int = 0
+    private var strokeColorAttributeLocation: Int = 0
+    private var flagsAttributeLocation: Int = 0
     private var resolutionUniform: JSValue = .undefined
+    private var aaWidthUniform: JSValue = .undefined
     private var useTextureUniform: JSValue = .undefined
     private var textureUniform: JSValue = .undefined
     private var sampledUniform: JSValue = .undefined
     private var sampledSceneTextureUniform: JSValue = .undefined
     private var blendModeUniform: JSValue = .undefined
-    private var shapePositionAttributeLocation: Int = 0
-    private var shapeRectAttributeLocation: Int = 0
-    private var shapeInfoAttributeLocation: Int = 0
-    private var shapeLineAttributeLocation: Int = 0
-    private var shapeFillColorAttributeLocation: Int = 0
-    private var shapeStrokeColorAttributeLocation: Int = 0
-    private var shapeFlagsAttributeLocation: Int = 0
-    private var shapeResolutionUniform: JSValue = .undefined
-    private var shapeAAWidthUniform: JSValue = .undefined
-    private var shapeSampledUniform: JSValue = .undefined
-    private var shapeSampledSceneTextureUniform: JSValue = .undefined
-    private var shapeBlendModeUniform: JSValue = .undefined
     private var presentPositionAttributeLocation: Int = 0
     private var presentTextureUniform: JSValue = .undefined
     private var sceneFramebuffer: JSValue = .undefined
@@ -40,8 +32,7 @@ final class Renderer {
     private var alternateSceneFramebuffer: JSValue = .undefined
     private var alternateSceneTexture: JSValue = .undefined
     private var sceneTextureSize: Vec2 = .zero
-    private var batchData: [Float] = []
-    private var shapeBatchData: [Float] = []
+    private var itemData: [Float] = []
     private var preparedBatches: [PreparedBatch] = []
     private var renderPlanner = RenderPlanner()
     var lastCanvasDisplaySize: CanvasDisplaySize?
@@ -60,8 +51,7 @@ final class Renderer {
     func configure() {
         configureCanvas()
         configureWebGL()
-        configureSpritePipeline()
-        configureShapePipeline()
+        configureItemPipeline()
         configurePresentPipeline()
     }
 
@@ -77,8 +67,7 @@ final class Renderer {
         )
 
         prepareBatches(frame: frame)
-        uploadBatchInstances()
-        uploadShapeBatchInstances()
+        uploadItemInstances()
 
         for batch in preparedBatches {
             drawBatch(batch, game: game)
@@ -101,7 +90,7 @@ final class Renderer {
         applyBlendMode(.normal, gl: gl)
     }
 
-    func configureSpritePipeline() {
+    func configureItemPipeline() {
         guard let gl else { return }
 
         let vertexShader = compileShader(
@@ -111,9 +100,21 @@ final class Renderer {
             attribute vec4 a_rect;
             attribute vec4 a_textureRect;
             attribute vec4 a_color;
+            attribute vec4 a_info;
+            attribute vec4 a_line;
+            attribute vec4 a_fillColor;
+            attribute vec4 a_strokeColor;
+            attribute vec4 a_flags;
             uniform vec2 u_resolution;
             varying vec2 v_texCoord;
             varying vec4 v_color;
+            varying vec2 v_localPosition;
+            varying vec2 v_size;
+            varying vec4 v_info;
+            varying vec4 v_line;
+            varying vec4 v_fillColor;
+            varying vec4 v_strokeColor;
+            varying vec4 v_flags;
 
             void main() {
                 vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
@@ -121,6 +122,13 @@ final class Renderer {
                 vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
                 v_texCoord = a_textureRect.xy + (a_position * a_textureRect.zw);
                 v_color = a_color;
+                v_localPosition = a_position * a_rect.zw;
+                v_size = a_rect.zw;
+                v_info = a_info;
+                v_line = a_line;
+                v_fillColor = a_fillColor;
+                v_strokeColor = a_strokeColor;
+                v_flags = a_flags;
                 gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
             }
             """
@@ -129,6 +137,7 @@ final class Renderer {
             type: gl.FRAGMENT_SHADER,
             source: """
             precision highp float;
+            uniform float u_aaWidth;
             uniform bool u_useTexture;
             uniform bool u_sampled;
             uniform float u_blendMode;
@@ -137,13 +146,29 @@ final class Renderer {
             uniform sampler2D u_sampledSceneTexture;
             varying vec2 v_texCoord;
             varying vec4 v_color;
+            varying vec2 v_localPosition;
+            varying vec2 v_size;
+            varying vec4 v_info;
+            varying vec4 v_line;
+            varying vec4 v_fillColor;
+            varying vec4 v_strokeColor;
+            varying vec4 v_flags;
 
             \(webBlendShaderSource)
+            \(webShapeShaderSource)
 
             void main() {
-                vec4 source = u_useTexture ? texture2D(u_texture, v_texCoord) : vec4(1.0);
-                source *= v_color;
-                source.rgb *= source.a;
+                vec4 source;
+
+                // v_info.x is RenderItemKind. 0 is sprite; shape kinds start at 1.
+                if (v_info.x < 0.5) {
+                    source = u_useTexture ? texture2D(u_texture, v_texCoord) : vec4(1.0);
+                    source *= v_color;
+                    source.rgb *= source.a;
+                } else {
+                    source = shapeSourceColor();
+                }
+
                 gl_FragColor = u_sampled ? compositeSource(source) : source;
             }
             """
@@ -167,7 +192,15 @@ final class Renderer {
             gl.getAttribLocation!(program, "a_textureRect").number ?? 0
         )
         colorAttributeLocation = Int(gl.getAttribLocation!(program, "a_color").number ?? 0)
+        infoAttributeLocation = Int(gl.getAttribLocation!(program, "a_info").number ?? 0)
+        lineAttributeLocation = Int(gl.getAttribLocation!(program, "a_line").number ?? 0)
+        fillColorAttributeLocation = Int(gl.getAttribLocation!(program, "a_fillColor").number ?? 0)
+        strokeColorAttributeLocation = Int(
+            gl.getAttribLocation!(program, "a_strokeColor").number ?? 0
+        )
+        flagsAttributeLocation = Int(gl.getAttribLocation!(program, "a_flags").number ?? 0)
         resolutionUniform = gl.getUniformLocation!(program, "u_resolution")
+        aaWidthUniform = gl.getUniformLocation!(program, "u_aaWidth")
         useTextureUniform = gl.getUniformLocation!(program, "u_useTexture")
         textureUniform = gl.getUniformLocation!(program, "u_texture")
         sampledUniform = gl.getUniformLocation!(program, "u_sampled")
@@ -189,191 +222,6 @@ final class Renderer {
             ]
         )
         _ = gl.bufferData!(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
-    }
-
-    func configureShapePipeline() {
-        guard let gl else { return }
-
-        let vertexShader = compileShader(
-            type: gl.VERTEX_SHADER,
-            source: """
-            attribute vec2 a_position;
-            attribute vec4 a_rect;
-            attribute vec4 a_info;
-            attribute vec4 a_line;
-            attribute vec4 a_fillColor;
-            attribute vec4 a_strokeColor;
-            attribute vec4 a_flags;
-            uniform vec2 u_resolution;
-            varying vec2 v_localPosition;
-            varying vec2 v_size;
-            varying vec4 v_info;
-            varying vec4 v_line;
-            varying vec4 v_fillColor;
-            varying vec4 v_strokeColor;
-            varying vec4 v_flags;
-
-            void main() {
-                vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
-                vec2 zeroToOne = pixelPosition / u_resolution;
-                vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
-                v_localPosition = a_position * a_rect.zw;
-                v_size = a_rect.zw;
-                v_info = a_info;
-                v_line = a_line;
-                v_fillColor = a_fillColor;
-                v_strokeColor = a_strokeColor;
-                v_flags = a_flags;
-                gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
-            }
-            """
-        )
-        let fragmentShader = compileShader(
-            type: gl.FRAGMENT_SHADER,
-            source: """
-            precision highp float;
-            uniform float u_aaWidth;
-            uniform bool u_sampled;
-            uniform float u_blendMode;
-            uniform vec2 u_resolution;
-            uniform sampler2D u_sampledSceneTexture;
-            varying vec2 v_localPosition;
-            varying vec2 v_size;
-            varying vec4 v_info;
-            varying vec4 v_line;
-            varying vec4 v_fillColor;
-            varying vec4 v_strokeColor;
-            varying vec4 v_flags;
-
-            \(webBlendShaderSource)
-
-            float roundedBoxDistance(vec2 p, vec2 size, float radius) {
-                vec2 halfSize = size * 0.5;
-                vec2 q = abs(p - halfSize) - (halfSize - vec2(radius));
-                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
-            }
-
-            float continuousRoundedBoxDistance(vec2 p, vec2 size, float radius) {
-                float r = max(radius, 0.0);
-                vec2 halfSize = size * 0.5;
-                vec2 q = abs(p - halfSize) - (halfSize - vec2(r));
-                vec2 outside = max(q, 0.0);
-                float circular = roundedBoxDistance(p, size, r);
-                vec2 outside2 = outside * outside;
-                vec2 outside4 = outside2 * outside2;
-                float continuousDistance = sqrt(sqrt(max(outside4.x + outside4.y, 0.0)))
-                    + min(max(q.x, q.y), 0.0) - r;
-                return mix(
-                    circular,
-                    continuousDistance,
-                    0.28 * step(0.0001, r)
-                );
-            }
-
-            float ellipseDistance(vec2 p, vec2 size) {
-                vec2 radius = max(size * 0.5, vec2(0.0001));
-                vec2 centered = p - radius;
-                return (length(centered / radius) - 1.0) * min(radius.x, radius.y);
-            }
-
-            float segmentDistance(vec2 p, vec2 a, vec2 b) {
-                vec2 pa = p - a;
-                vec2 ba = b - a;
-                float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
-                return length(pa - (ba * h));
-            }
-
-            float lineBoxDistance(vec2 p, vec2 a, vec2 b, float width, float cap) {
-                vec2 center = (a + b) * 0.5;
-                vec2 axis = b - a;
-                float len = max(length(axis), 0.0001);
-                vec2 dir = axis / len;
-                vec2 normal = vec2(-dir.y, dir.x);
-                float halfLen = (len * 0.5) + ((cap > 0.5) ? width * 0.5 : 0.0);
-                vec2 local = vec2(dot(p - center, dir), dot(p - center, normal));
-                vec2 q = abs(local) - vec2(halfLen, width * 0.5);
-                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
-            }
-
-            float coverage(float distance, float antialiased) {
-                float hard = step(distance, 0.0);
-                float width = max(u_aaWidth, 0.0001);
-                float soft = clamp(0.5 - (distance / width), 0.0, 1.0);
-                return mix(hard, soft, antialiased);
-            }
-
-            void main() {
-                float kind = v_info.x;
-                float radius = v_info.y;
-                float strokeWidth = v_info.z;
-                float cap = v_info.w;
-                float cornerStyle = v_flags.z;
-                float d = 0.0;
-
-                if (kind < 0.5) {
-                    d = roundedBoxDistance(v_localPosition, v_size, 0.0);
-                } else if (kind < 1.5) {
-                    float circular = roundedBoxDistance(v_localPosition, v_size, radius);
-                    float continuousDistance = continuousRoundedBoxDistance(v_localPosition, v_size, radius);
-                    d = mix(circular, continuousDistance, cornerStyle);
-                } else if (kind < 2.5) {
-                    d = ellipseDistance(v_localPosition, v_size);
-                } else {
-                    if (cap > 1.5) {
-                        d = segmentDistance(v_localPosition, v_line.xy, v_line.zw) - (strokeWidth * 0.5);
-                    } else {
-                        d = lineBoxDistance(v_localPosition, v_line.xy, v_line.zw, strokeWidth, cap);
-                    }
-                }
-
-                float fillCoverage = coverage(d, v_flags.x) * v_fillColor.a;
-                float strokeDistance = abs(d + (strokeWidth * 0.5)) - (strokeWidth * 0.5);
-                float strokeCoverage = coverage(strokeDistance, v_flags.y) * v_strokeColor.a;
-
-                if (kind > 2.5) {
-                    fillCoverage = 0.0;
-                    strokeCoverage = coverage(d, v_flags.y) * v_strokeColor.a;
-                }
-
-                vec4 fill = vec4(v_fillColor.rgb * fillCoverage, fillCoverage);
-                vec4 stroke = vec4(v_strokeColor.rgb * strokeCoverage, strokeCoverage);
-                vec4 color = stroke + (fill * (1.0 - stroke.a));
-                gl_FragColor = u_sampled ? compositeSource(color) : color;
-            }
-            """
-        )
-        let program = gl.createProgram!()
-
-        _ = gl.attachShader!(program, vertexShader)
-        _ = gl.attachShader!(program, fragmentShader)
-        _ = gl.linkProgram!(program)
-
-        guard gl.getProgramParameter!(program, gl.LINK_STATUS).boolean == true else {
-            let infoLog = gl.getProgramInfoLog!(program).string ?? "No program info log"
-            _ = JSObject.global.console.error("Unable to link WebGL shape shader program: \(infoLog)")
-            fatalError("Unable to link WebGL shape shader program")
-        }
-
-        shapeProgram = program
-        shapePositionAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_position").number ?? 0
-        )
-        shapeRectAttributeLocation = Int(gl.getAttribLocation!(program, "a_rect").number ?? 0)
-        shapeInfoAttributeLocation = Int(gl.getAttribLocation!(program, "a_info").number ?? 0)
-        shapeLineAttributeLocation = Int(gl.getAttribLocation!(program, "a_line").number ?? 0)
-        shapeFillColorAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_fillColor").number ?? 0
-        )
-        shapeStrokeColorAttributeLocation = Int(
-            gl.getAttribLocation!(program, "a_strokeColor").number ?? 0
-        )
-        shapeFlagsAttributeLocation = Int(gl.getAttribLocation!(program, "a_flags").number ?? 0)
-        shapeResolutionUniform = gl.getUniformLocation!(program, "u_resolution")
-        shapeAAWidthUniform = gl.getUniformLocation!(program, "u_aaWidth")
-        shapeSampledUniform = gl.getUniformLocation!(program, "u_sampled")
-        shapeSampledSceneTextureUniform = gl.getUniformLocation!(program, "u_sampledSceneTexture")
-        shapeBlendModeUniform = gl.getUniformLocation!(program, "u_blendMode")
-        shapeInstanceBuffer = gl.createBuffer!()
     }
 
     func configurePresentPipeline() {
@@ -548,61 +396,37 @@ final class Renderer {
     }
 
     private func prepareBatches(frame: RenderFrame) {
-        batchData.removeAll(keepingCapacity: true)
-        shapeBatchData.removeAll(keepingCapacity: true)
+        itemData.removeAll(keepingCapacity: true)
         preparedBatches.removeAll(keepingCapacity: true)
         preparedBatches.reserveCapacity(frame.batches.count)
 
         for batch in frame.batches {
             switch batch {
-            case .sprites(let textureID, let blendMode, let instances):
-                appendSpriteBatch(
-                    instances,
+            case .items(let textureID, let blendMode, let items):
+                appendItemBatch(
+                    items,
                     textureID: textureID,
                     blendMode: blendMode
                 )
-            case .shapes(let blendMode, let instances):
-                appendShapeBatch(instances, blendMode: blendMode)
             }
         }
     }
 
-    private func appendSpriteBatch(
-        _ instances: [SpriteRenderInstance],
-        textureID: TextureID,
+    private func appendItemBatch(
+        _ items: [RenderItem],
+        textureID: TextureID?,
         blendMode: BlendMode
     ) {
-        guard let texture = spriteTextures[textureID] else {
-            let startIndex = batchData.count / 12
+        let material = textureID.flatMap { spriteTextures[$0] }
+            .map(RenderMaterial.texture) ?? .color
+        let startIndex = itemData.count / itemStride
 
-            for instance in instances {
-                appendInstance(
-                    rect: instance.rect,
-                    textureRect: .full,
-                    color: instance.color
-                )
-            }
-
-            appendPreparedBatch(
-                material: .color,
-                blendMode: blendMode,
-                startIndex: startIndex
-            )
-            return
-        }
-
-        let startIndex = batchData.count / 12
-
-        for instance in instances {
-            appendInstance(
-                rect: instance.rect,
-                textureRect: instance.textureRect,
-                color: instance.color
-            )
+        for item in items {
+            appendItem(item, useFallbackTextureRect: textureID != nil && material.isColor)
         }
 
         appendPreparedBatch(
-            material: .texture(texture),
+            material: material,
             blendMode: blendMode,
             startIndex: startIndex
         )
@@ -613,12 +437,12 @@ final class Renderer {
         blendMode: BlendMode,
         startIndex: Int
     ) {
-        let instanceCount = (batchData.count / 12) - startIndex
+        let instanceCount = (itemData.count / itemStride) - startIndex
 
         guard instanceCount > 0 else { return }
 
         preparedBatches.append(
-            .sprites(
+            .items(
                 material: material,
                 blendMode: blendMode,
                 startIndex: startIndex,
@@ -627,101 +451,59 @@ final class Renderer {
         )
     }
 
-    private func appendShapeBatch(
-        _ instances: [ShapeRenderInstance],
-        blendMode: BlendMode
-    ) {
-        let startIndex = shapeBatchData.count / 24
-
-        for instance in instances {
-            appendShapeInstance(instance)
-        }
-
-        let instanceCount = (shapeBatchData.count / 24) - startIndex
-
-        guard instanceCount > 0 else { return }
-
-        preparedBatches.append(
-            .shapes(
-                blendMode: blendMode,
-                startIndex: startIndex,
-                instanceCount: instanceCount
-            )
-        )
-    }
-
-    private func appendInstance(
-        rect: Rect,
-        textureRect: TextureRect,
-        color: Color
-    ) {
-        batchData.append(contentsOf: [
-            Float(rect.origin.x),
-            Float(rect.origin.y),
-            Float(rect.size.x),
-            Float(rect.size.y),
+    private func appendItem(_ item: RenderItem, useFallbackTextureRect: Bool) {
+        let textureRect = useFallbackTextureRect ? TextureRect.full : item.textureRect
+        itemData.append(contentsOf: [
+            Float(item.rect.origin.x),
+            Float(item.rect.origin.y),
+            Float(item.rect.size.x),
+            Float(item.rect.size.y),
             Float(textureRect.origin.x),
             Float(textureRect.origin.y),
             Float(textureRect.size.x),
             Float(textureRect.size.y),
-            Float(color.red),
-            Float(color.green),
-            Float(color.blue),
-            Float(color.alpha)
+            Float(item.color.red),
+            Float(item.color.green),
+            Float(item.color.blue),
+            Float(item.color.alpha),
+            // info.x is RenderItemKind. Shaders branch on this packed value.
+            Float(item.info.x),
+            Float(item.info.y),
+            Float(item.info.z),
+            Float(item.info.w),
+            Float(item.line.x),
+            Float(item.line.y),
+            Float(item.line.z),
+            Float(item.line.w),
+            Float(item.fillColor.red),
+            Float(item.fillColor.green),
+            Float(item.fillColor.blue),
+            Float(item.fillColor.alpha),
+            Float(item.strokeColor.red),
+            Float(item.strokeColor.green),
+            Float(item.strokeColor.blue),
+            Float(item.strokeColor.alpha),
+            Float(item.flags.x),
+            Float(item.flags.y),
+            Float(item.flags.z),
+            Float(item.flags.w)
         ])
     }
 
-    private func appendShapeInstance(_ instance: ShapeRenderInstance) {
-        shapeBatchData.append(contentsOf: [
-            Float(instance.rect.origin.x),
-            Float(instance.rect.origin.y),
-            Float(instance.rect.size.x),
-            Float(instance.rect.size.y),
-            Float(instance.info.x),
-            Float(instance.info.y),
-            Float(instance.info.z),
-            Float(instance.info.w),
-            Float(instance.line.x),
-            Float(instance.line.y),
-            Float(instance.line.z),
-            Float(instance.line.w),
-            Float(instance.fillColor.red),
-            Float(instance.fillColor.green),
-            Float(instance.fillColor.blue),
-            Float(instance.fillColor.alpha),
-            Float(instance.strokeColor.red),
-            Float(instance.strokeColor.green),
-            Float(instance.strokeColor.blue),
-            Float(instance.strokeColor.alpha),
-            Float(instance.flags.x),
-            Float(instance.flags.y),
-            Float(instance.flags.z),
-            Float(instance.flags.w)
-        ])
-    }
-
-    private func uploadBatchInstances() {
+    private func uploadItemInstances() {
         guard let gl else { return }
-        guard !batchData.isEmpty else { return }
+        guard !itemData.isEmpty else { return }
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
-        _ = gl.bufferData!(gl.ARRAY_BUFFER, JSFloat32Array(batchData), gl.DYNAMIC_DRAW)
-    }
-
-    private func uploadShapeBatchInstances() {
-        guard let gl else { return }
-        guard !shapeBatchData.isEmpty else { return }
-
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, shapeInstanceBuffer)
-        _ = gl.bufferData!(gl.ARRAY_BUFFER, JSFloat32Array(shapeBatchData), gl.DYNAMIC_DRAW)
+        _ = gl.bufferData!(gl.ARRAY_BUFFER, JSFloat32Array(itemData), gl.DYNAMIC_DRAW)
     }
 
     private func drawBatch(_ batch: PreparedBatch, game: Game) {
         switch batch {
-        case .sprites(let material, let blendMode, let startIndex, let instanceCount):
+        case .items(let material, let blendMode, let startIndex, let instanceCount):
             if blendMode.usesSceneSampling {
                 copySceneToAlternate(game: game)
-                drawSpriteBatch(
+                drawItemBatch(
                     material: material,
                     blendMode: blendMode,
                     startIndex: startIndex,
@@ -731,28 +513,8 @@ final class Renderer {
                 )
                 swapSceneTargets()
             } else {
-                drawSpriteBatch(
+                drawItemBatch(
                     material: material,
-                    blendMode: blendMode,
-                    startIndex: startIndex,
-                    instanceCount: instanceCount,
-                    game: game,
-                    sampled: false
-                )
-            }
-        case .shapes(let blendMode, let startIndex, let instanceCount):
-            if blendMode.usesSceneSampling {
-                copySceneToAlternate(game: game)
-                drawShapeBatch(
-                    blendMode: blendMode,
-                    startIndex: startIndex,
-                    instanceCount: instanceCount,
-                    game: game,
-                    sampled: true
-                )
-                swapSceneTargets()
-            } else {
-                drawShapeBatch(
                     blendMode: blendMode,
                     startIndex: startIndex,
                     instanceCount: instanceCount,
@@ -795,7 +557,7 @@ final class Renderer {
         swap(&sceneFramebuffer, &alternateSceneFramebuffer)
     }
 
-    private func drawSpriteBatch(
+    private func drawItemBatch(
         material: RenderMaterial,
         blendMode: BlendMode,
         startIndex: Int,
@@ -812,38 +574,17 @@ final class Renderer {
         _ = gl.vertexAttribDivisor!(positionAttributeLocation, 0)
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
-        _ = gl.enableVertexAttribArray!(rectAttributeLocation)
-        _ = gl.vertexAttribPointer!(
-            rectAttributeLocation,
-            4,
-            gl.FLOAT,
-            false,
-            48,
-            startIndex * 48
-        )
-        _ = gl.vertexAttribDivisor!(rectAttributeLocation, 1)
-        _ = gl.enableVertexAttribArray!(textureRectAttributeLocation)
-        _ = gl.vertexAttribPointer!(
-            textureRectAttributeLocation,
-            4,
-            gl.FLOAT,
-            false,
-            48,
-            (startIndex * 48) + 16
-        )
-        _ = gl.vertexAttribDivisor!(textureRectAttributeLocation, 1)
-        _ = gl.enableVertexAttribArray!(colorAttributeLocation)
-        _ = gl.vertexAttribPointer!(
-            colorAttributeLocation,
-            4,
-            gl.FLOAT,
-            false,
-            48,
-            (startIndex * 48) + 32
-        )
-        _ = gl.vertexAttribDivisor!(colorAttributeLocation, 1)
+        configureItemAttribute(rectAttributeLocation, offset: 0, startIndex: startIndex)
+        configureItemAttribute(textureRectAttributeLocation, offset: 16, startIndex: startIndex)
+        configureItemAttribute(colorAttributeLocation, offset: 32, startIndex: startIndex)
+        configureItemAttribute(infoAttributeLocation, offset: 48, startIndex: startIndex)
+        configureItemAttribute(lineAttributeLocation, offset: 64, startIndex: startIndex)
+        configureItemAttribute(fillColorAttributeLocation, offset: 80, startIndex: startIndex)
+        configureItemAttribute(strokeColorAttributeLocation, offset: 96, startIndex: startIndex)
+        configureItemAttribute(flagsAttributeLocation, offset: 112, startIndex: startIndex)
 
         _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
+        _ = gl.uniform1f!(aaWidthUniform, shapeAAWidth())
         _ = gl.uniform1i!(sampledUniform, sampled ? 1 : 0)
         _ = gl.uniform1f!(blendModeUniform, Double(blendMode.shaderValue))
         if sampled {
@@ -858,60 +599,11 @@ final class Renderer {
         _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
     }
 
-    private func drawShapeBatch(
-        blendMode: BlendMode,
-        startIndex: Int,
-        instanceCount: Int,
-        game: Game,
-        sampled: Bool
-    ) {
-        guard let gl else { return }
-
-        _ = gl.useProgram!(shapeProgram)
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, positionBuffer)
-        _ = gl.enableVertexAttribArray!(shapePositionAttributeLocation)
-        _ = gl.vertexAttribPointer!(
-            shapePositionAttributeLocation,
-            2,
-            gl.FLOAT,
-            false,
-            0,
-            0
-        )
-        _ = gl.vertexAttribDivisor!(shapePositionAttributeLocation, 0)
-
-        _ = gl.bindBuffer!(gl.ARRAY_BUFFER, shapeInstanceBuffer)
-        configureShapeAttribute(shapeRectAttributeLocation, offset: 0, startIndex: startIndex)
-        configureShapeAttribute(shapeInfoAttributeLocation, offset: 16, startIndex: startIndex)
-        configureShapeAttribute(shapeLineAttributeLocation, offset: 32, startIndex: startIndex)
-        configureShapeAttribute(shapeFillColorAttributeLocation, offset: 48, startIndex: startIndex)
-        configureShapeAttribute(shapeStrokeColorAttributeLocation, offset: 64, startIndex: startIndex)
-        configureShapeAttribute(shapeFlagsAttributeLocation, offset: 80, startIndex: startIndex)
-
-        _ = gl.uniform2f!(
-            shapeResolutionUniform,
-            game.logicalResolution.x,
-            game.logicalResolution.y
-        )
-        _ = gl.uniform1f!(shapeAAWidthUniform, shapeAAWidth())
-        _ = gl.uniform1i!(shapeSampledUniform, sampled ? 1 : 0)
-        _ = gl.uniform1f!(shapeBlendModeUniform, Double(blendMode.shaderValue))
-        if sampled {
-            _ = gl.disable!(gl.BLEND)
-            _ = gl.activeTexture!(gl.TEXTURE1)
-            _ = gl.bindTexture!(gl.TEXTURE_2D, sceneTexture)
-            _ = gl.uniform1i!(shapeSampledSceneTextureUniform, 1)
-        } else {
-            applyBlendMode(blendMode, gl: gl)
-        }
-        _ = gl.drawArraysInstanced!(gl.TRIANGLES, 0, 6, instanceCount)
-    }
-
     private func shapeAAWidth() -> Double {
         1
     }
 
-    private func configureShapeAttribute(
+    private func configureItemAttribute(
         _ location: Int,
         offset: Int,
         startIndex: Int
@@ -925,8 +617,8 @@ final class Renderer {
             4,
             gl.FLOAT,
             false,
-            96,
-            (startIndex * 96) + offset
+            itemStrideBytes,
+            (startIndex * itemStrideBytes) + offset
         )
         _ = gl.vertexAttribDivisor!(location, 1)
     }
@@ -1002,19 +694,28 @@ private enum RenderMaterial {
     case texture(JSValue)
 }
 
+private extension RenderMaterial {
+    var isColor: Bool {
+        switch self {
+        case .color:
+            return true
+        case .texture:
+            return false
+        }
+    }
+}
+
 private enum PreparedBatch {
-    case sprites(
+    case items(
         material: RenderMaterial,
         blendMode: BlendMode,
         startIndex: Int,
         instanceCount: Int
     )
-    case shapes(
-        blendMode: BlendMode,
-        startIndex: Int,
-        instanceCount: Int
-    )
 }
+
+private let itemStride = 32
+private let itemStrideBytes = itemStride * MemoryLayout<Float>.stride
 
 private let webBlendShaderSource = """
 vec3 multiplyBlend(vec3 source, vec3 destination) {
@@ -1260,13 +961,13 @@ vec4 shapeSourceColor() {
     float cornerStyle = v_flags.z;
     float d = 0.0;
 
-    if (kind < 0.5) {
+    if (kind < 1.5) {
         d = roundedBoxDistance(v_localPosition, v_size, 0.0);
-    } else if (kind < 1.5) {
+    } else if (kind < 2.5) {
         float circular = roundedBoxDistance(v_localPosition, v_size, radius);
         float continuousDistance = continuousRoundedBoxDistance(v_localPosition, v_size, radius);
         d = mix(circular, continuousDistance, cornerStyle);
-    } else if (kind < 2.5) {
+    } else if (kind < 3.5) {
         d = ellipseDistance(v_localPosition, v_size);
     } else {
         if (cap > 1.5) {
@@ -1280,7 +981,7 @@ vec4 shapeSourceColor() {
     float strokeDistance = abs(d + (strokeWidth * 0.5)) - (strokeWidth * 0.5);
     float strokeCoverage = coverage(strokeDistance, v_flags.y) * v_strokeColor.a;
 
-    if (kind > 2.5) {
+    if (kind > 3.5) {
         fillCoverage = 0.0;
         strokeCoverage = coverage(d, v_flags.y) * v_strokeColor.a;
     }

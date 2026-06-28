@@ -44,6 +44,16 @@ public struct Vec2: Equatable, Sendable {
         x: .zero,
         y: .zero
     )
+
+    /// A vector with both components set to 1.
+    ///
+    /// ```swift
+    /// let origin = Vec2.one
+    /// ```
+    public static let one: Self = .init(
+        x: 1,
+        y: 1
+    )
 }
 
 public extension Vec2 {

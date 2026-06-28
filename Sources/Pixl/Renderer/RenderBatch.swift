@@ -6,11 +6,8 @@ import Swift
 /// `RenderPlanner` later converts these into upload-ready `PreparedRenderBatch`
 /// values.
 public enum RenderBatch: Equatable, Sendable {
-    /// Adjacent texture sprites sharing a texture and blend mode.
-    case sprites(textureID: TextureID, blendMode: BlendMode, sprites: [PositionedSprite])
-
-    /// Adjacent shape primitives sharing a blend mode.
-    case shapes(blendMode: BlendMode, shapes: [ShapePrimitive])
+    /// Adjacent render primitives sharing a blend mode and compatible texture binding.
+    case items(textureID: TextureID?, blendMode: BlendMode, primitives: [RenderPrimitive])
 }
 
 public extension RenderBatch {
@@ -34,10 +31,8 @@ public extension RenderBatch {
     /// Number of primitives contained in this batch.
     var primitiveCount: Int {
         switch self {
-        case .sprites(_, _, let sprites):
-            sprites.count
-        case .shapes(_, let shapes):
-            shapes.count
+        case .items(_, _, let primitives):
+            primitives.count
         }
     }
 
@@ -54,49 +49,61 @@ public extension RenderBatch {
     }
 
     private init(_ primitive: RenderPrimitive) {
-        switch primitive {
-        case .sprite(let positionedSprite):
-            switch positionedSprite.sprite.material {
-            case .sprite(let textureID, sourceRect: _):
-                self = .sprites(
-                    textureID: textureID,
-                    blendMode: positionedSprite.sprite.blendMode,
-                    sprites: [positionedSprite]
-                )
-            case .shape:
-                preconditionFailure("Shape sprites must expand before batching.")
-            }
-        case .shape(let shape):
-            self = .shapes(blendMode: shape.blendMode, shapes: [shape])
-        }
+        self = .items(
+            textureID: primitive.textureID,
+            blendMode: primitive.blendMode,
+            primitives: [primitive]
+        )
     }
 
     private mutating func append(_ primitive: RenderPrimitive) -> Bool {
-        switch (self, primitive) {
-        case (.sprites(let batchTextureID, let blendMode, var sprites), .sprite(let positionedSprite)):
-            guard case .sprite(let textureID, sourceRect: _) = positionedSprite.sprite.material,
-                  batchTextureID == textureID,
-                  blendMode == positionedSprite.sprite.blendMode
-            else {
+        switch self {
+        case .items(let batchTextureID, let blendMode, var primitives):
+            guard blendMode == primitive.blendMode else {
                 return false
             }
 
-            sprites.append(positionedSprite)
-            self = .sprites(
-                textureID: batchTextureID,
+            let primitiveTextureID = primitive.textureID
+            let textureID: TextureID?
+
+            if let batchTextureID, let primitiveTextureID, batchTextureID != primitiveTextureID {
+                return false
+            } else {
+                textureID = batchTextureID ?? primitiveTextureID
+            }
+
+            primitives.append(primitive)
+            self = .items(
+                textureID: textureID,
                 blendMode: blendMode,
-                sprites: sprites
+                primitives: primitives
             )
             return true
+        }
+    }
+}
 
-        case (.shapes(let blendMode, var shapes), .shape(let shape))
-            where blendMode == shape.blendMode:
-            shapes.append(shape)
-            self = .shapes(blendMode: blendMode, shapes: shapes)
-            return true
+private extension RenderPrimitive {
+    var textureID: TextureID? {
+        switch self {
+        case .sprite(let positionedSprite):
+            switch positionedSprite.sprite.material {
+            case .sprite(let textureID, sourceRect: _):
+                return textureID
+            case .shape:
+                preconditionFailure("Shape sprites must expand before batching.")
+            }
+        case .shape:
+            return nil
+        }
+    }
 
-        default:
-            return false
+    var blendMode: BlendMode {
+        switch self {
+        case .sprite(let positionedSprite):
+            return positionedSprite.sprite.blendMode
+        case .shape(let shape):
+            return shape.blendMode
         }
     }
 }

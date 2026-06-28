@@ -9,9 +9,7 @@ final class Renderer {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let pipelineStates: [BlendMode: MTLRenderPipelineState]
-    private let shapePipelineStates: [BlendMode: MTLRenderPipelineState]
-    private let sampledSpritePipelineState: MTLRenderPipelineState
-    private let sampledShapePipelineState: MTLRenderPipelineState
+    private let sampledPipelineState: MTLRenderPipelineState
     private let presentPipelineState: MTLRenderPipelineState
     private let quadVertexBuffer: MTLBuffer
     private let textureLoader: MTKTextureLoader
@@ -22,14 +20,11 @@ final class Renderer {
 
     private var spriteTextures: [TextureID: MTLTexture] = [:]
     private var spriteTextureSizes: [TextureID: Vec2] = [:]
-    private var batchInstances: [BatchInstance] = []
-    private var shapeInstances: [ShapeInstance] = []
+    private var itemInstances: [ItemInstance] = []
     private var preparedBatches: [PreparedBatch] = []
     private var renderPlanner = RenderPlanner()
     private var instanceBuffer: MTLBuffer?
     private var instanceBufferCapacity = 0
-    private var shapeInstanceBuffer: MTLBuffer?
-    private var shapeInstanceBufferCapacity = 0
     private var sceneTexture: MTLTexture?
     private var alternateSceneTexture: MTLTexture?
     private var sceneTextureSize: Vec2 = .zero
@@ -49,27 +44,14 @@ final class Renderer {
         self.pipelineStates = Renderer.makePipelineStates(
             device: device,
             pixelFormat: pixelFormat,
-            vertexFunctionName: "spriteVertex",
-            fragmentFunctionName: "spriteFragment"
+            vertexFunctionName: "itemVertex",
+            fragmentFunctionName: "itemFragment"
         )
-        self.shapePipelineStates = Renderer.makePipelineStates(
+        self.sampledPipelineState = Renderer.makePipelineState(
             device: device,
             pixelFormat: pixelFormat,
-            vertexFunctionName: "shapeVertex",
-            fragmentFunctionName: "shapeFragment"
-        )
-        self.sampledSpritePipelineState = Renderer.makePipelineState(
-            device: device,
-            pixelFormat: pixelFormat,
-            vertexFunctionName: "spriteVertex",
-            fragmentFunctionName: "spriteFragment",
-            blendMode: .replace
-        )
-        self.sampledShapePipelineState = Renderer.makePipelineState(
-            device: device,
-            pixelFormat: pixelFormat,
-            vertexFunctionName: "shapeVertex",
-            fragmentFunctionName: "shapeFragment",
+            vertexFunctionName: "itemVertex",
+            fragmentFunctionName: "itemFragment",
             blendMode: .replace
         )
         self.presentPipelineState = Renderer.makePipelineState(
@@ -113,8 +95,7 @@ final class Renderer {
         )
 
         prepareBatches(frame: frame)
-        let instanceBuffer = uploadBatchInstances()
-        let shapeInstanceBuffer = uploadShapeBatchInstances()
+        let instanceBuffer = uploadItemInstances()
 
         var currentSceneTexture = sceneTexture(for: game)
         var nextSceneTexture = alternateSceneTexture(for: game)
@@ -153,7 +134,6 @@ final class Renderer {
                     batch,
                     sampledSceneTexture: currentSceneTexture,
                     instanceBuffer: instanceBuffer,
-                    shapeInstanceBuffer: shapeInstanceBuffer,
                     renderEncoder: sceneEncoder
                 )
                 swap(&currentSceneTexture, &nextSceneTexture)
@@ -161,7 +141,6 @@ final class Renderer {
                 drawBatch(
                     batch,
                     instanceBuffer: instanceBuffer,
-                    shapeInstanceBuffer: shapeInstanceBuffer,
                     renderEncoder: sceneEncoder
                 )
             }
@@ -370,65 +349,42 @@ final class Renderer {
     }
 
     private func prepareBatches(frame: RenderFrame) {
-        batchInstances.removeAll(keepingCapacity: true)
-        shapeInstances.removeAll(keepingCapacity: true)
+        itemInstances.removeAll(keepingCapacity: true)
         preparedBatches.removeAll(keepingCapacity: true)
         preparedBatches.reserveCapacity(frame.batches.count)
 
         for batch in frame.batches {
             switch batch {
-            case .sprites(let textureID, let blendMode, let instances):
-                appendSpriteBatch(
-                    instances,
+            case .items(let textureID, let blendMode, let items):
+                appendItemBatch(
+                    items,
                     textureID: textureID,
                     blendMode: blendMode
                 )
-            case .shapes(let blendMode, let instances):
-                appendShapeBatch(instances, blendMode: blendMode)
             }
         }
     }
 
-    private func appendSpriteBatch(
-        _ instances: [SpriteRenderInstance],
-        textureID: TextureID,
+    private func appendItemBatch(
+        _ items: [RenderItem],
+        textureID: TextureID?,
         blendMode: BlendMode
     ) {
-        guard let texture = spriteTextures[textureID] else {
-            let startIndex = batchInstances.count
+        let material = textureID.flatMap { spriteTextures[$0] }
+            .map(RenderMaterial.texture) ?? .color
+        let startIndex = itemInstances.count
 
-            for instance in instances {
-                batchInstances.append(
-                    BatchInstance(
-                        rect: instance.rect.uniform,
-                        textureRect: TextureRect.full.uniform,
-                        color: instance.color.uniform
-                    )
-                )
-            }
-
-            appendPreparedBatch(
-                material: .color,
-                blendMode: blendMode,
-                startIndex: startIndex
-            )
-            return
-        }
-
-        let startIndex = batchInstances.count
-
-        for instance in instances {
-            batchInstances.append(
-                BatchInstance(
-                    rect: instance.rect.uniform,
-                    textureRect: instance.textureRect.uniform,
-                    color: instance.color.uniform
+        for item in items {
+            itemInstances.append(
+                itemInstance(
+                    for: item,
+                    useFallbackTextureRect: textureID != nil && material.isColor
                 )
             )
         }
 
         appendPreparedBatch(
-            material: .texture(texture),
+            material: material,
             blendMode: blendMode,
             startIndex: startIndex
         )
@@ -439,12 +395,12 @@ final class Renderer {
         blendMode: BlendMode,
         startIndex: Int
     ) {
-        let instanceCount = batchInstances.count - startIndex
+        let instanceCount = itemInstances.count - startIndex
 
         guard instanceCount > 0 else { return }
 
         preparedBatches.append(
-            .sprites(
+            .items(
                 material: material,
                 blendMode: blendMode,
                 startIndex: startIndex,
@@ -453,33 +409,10 @@ final class Renderer {
         )
     }
 
-    private func appendShapeBatch(
-        _ instances: [ShapeRenderInstance],
-        blendMode: BlendMode
-    ) {
-        let startIndex = shapeInstances.count
+    private func uploadItemInstances() -> MTLBuffer? {
+        guard !itemInstances.isEmpty else { return nil }
 
-        for instance in instances {
-            shapeInstances.append(shapeInstance(for: instance))
-        }
-
-        let instanceCount = shapeInstances.count - startIndex
-
-        guard instanceCount > 0 else { return }
-
-        preparedBatches.append(
-            .shapes(
-                blendMode: blendMode,
-                startIndex: startIndex,
-                instanceCount: instanceCount
-            )
-        )
-    }
-
-    private func uploadBatchInstances() -> MTLBuffer? {
-        guard !batchInstances.isEmpty else { return nil }
-
-        let length = batchInstances.count * MemoryLayout<BatchInstance>.stride
+        let length = itemInstances.count * MemoryLayout<ItemInstance>.stride
 
         if instanceBufferCapacity < length {
             guard let buffer = device.makeBuffer(length: length) else {
@@ -492,7 +425,7 @@ final class Renderer {
 
         guard let instanceBuffer else { return nil }
 
-        batchInstances.withUnsafeBytes { bytes in
+        itemInstances.withUnsafeBytes { bytes in
             guard let source = bytes.baseAddress else { return }
 
             instanceBuffer.contents().copyMemory(
@@ -504,61 +437,21 @@ final class Renderer {
         return instanceBuffer
     }
 
-    private func uploadShapeBatchInstances() -> MTLBuffer? {
-        guard !shapeInstances.isEmpty else { return nil }
-
-        let length = shapeInstances.count * MemoryLayout<ShapeInstance>.stride
-
-        if shapeInstanceBufferCapacity < length {
-            guard let buffer = device.makeBuffer(length: length) else {
-                return nil
-            }
-
-            shapeInstanceBuffer = buffer
-            shapeInstanceBufferCapacity = length
-        }
-
-        guard let shapeInstanceBuffer else { return nil }
-
-        shapeInstances.withUnsafeBytes { bytes in
-            guard let source = bytes.baseAddress else { return }
-
-            shapeInstanceBuffer.contents().copyMemory(
-                from: source,
-                byteCount: bytes.count
-            )
-        }
-
-        return shapeInstanceBuffer
-    }
-
     private func drawBatch(
         _ batch: PreparedBatch,
         instanceBuffer: MTLBuffer?,
-        shapeInstanceBuffer: MTLBuffer?,
         renderEncoder: MTLRenderCommandEncoder
     ) {
         switch batch {
-        case .sprites(let material, let blendMode, let startIndex, let instanceCount):
+        case .items(let material, let blendMode, let startIndex, let instanceCount):
             guard let instanceBuffer else { return }
-            drawSpriteBatch(
+            drawItemBatch(
                 material: material,
                 blendMode: blendMode,
                 sampledSceneTexture: nil,
                 startIndex: startIndex,
                 instanceCount: instanceCount,
                 instanceBuffer: instanceBuffer,
-                renderEncoder: renderEncoder
-            )
-
-        case .shapes(let blendMode, let startIndex, let instanceCount):
-            guard let shapeInstanceBuffer else { return }
-            drawShapeBatch(
-                blendMode: blendMode,
-                sampledSceneTexture: nil,
-                startIndex: startIndex,
-                instanceCount: instanceCount,
-                instanceBuffer: shapeInstanceBuffer,
                 renderEncoder: renderEncoder
             )
         }
@@ -568,13 +461,12 @@ final class Renderer {
         _ batch: PreparedBatch,
         sampledSceneTexture: MTLTexture,
         instanceBuffer: MTLBuffer?,
-        shapeInstanceBuffer: MTLBuffer?,
         renderEncoder: MTLRenderCommandEncoder
     ) {
         switch batch {
-        case .sprites(let material, let blendMode, let startIndex, let instanceCount):
+        case .items(let material, let blendMode, let startIndex, let instanceCount):
             guard let instanceBuffer else { return }
-            drawSpriteBatch(
+            drawItemBatch(
                 material: material,
                 blendMode: blendMode,
                 sampledSceneTexture: sampledSceneTexture,
@@ -583,21 +475,10 @@ final class Renderer {
                 instanceBuffer: instanceBuffer,
                 renderEncoder: renderEncoder
             )
-
-        case .shapes(let blendMode, let startIndex, let instanceCount):
-            guard let shapeInstanceBuffer else { return }
-            drawShapeBatch(
-                blendMode: blendMode,
-                sampledSceneTexture: sampledSceneTexture,
-                startIndex: startIndex,
-                instanceCount: instanceCount,
-                instanceBuffer: shapeInstanceBuffer,
-                renderEncoder: renderEncoder
-            )
         }
     }
 
-    private func drawSpriteBatch(
+    private func drawItemBatch(
         material: RenderMaterial,
         blendMode: BlendMode,
         sampledSceneTexture: MTLTexture?,
@@ -612,7 +493,7 @@ final class Renderer {
 
         guard let pipelineState = sampledSceneTexture == nil
             ? pipelineStates[blendMode]
-            : sampledSpritePipelineState
+            : sampledPipelineState
         else {
             return
         }
@@ -620,7 +501,7 @@ final class Renderer {
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(
             instanceBuffer,
-            offset: startIndex * MemoryLayout<BatchInstance>.stride,
+            offset: startIndex * MemoryLayout<ItemInstance>.stride,
             index: 2
         )
         renderEncoder.setFragmentBytes(
@@ -654,73 +535,22 @@ final class Renderer {
         )
     }
 
-    private func drawShapeBatch(
-        blendMode: BlendMode,
-        sampledSceneTexture: MTLTexture?,
-        startIndex: Int,
-        instanceCount: Int,
-        instanceBuffer: MTLBuffer,
-        renderEncoder: MTLRenderCommandEncoder
-    ) {
-        var sampled = sampledSceneTexture == nil ? UInt32(0) : UInt32(1)
-        var blendModeValue = UInt32(blendMode.shaderValue)
+    private func itemInstance(
+        for item: RenderItem,
+        useFallbackTextureRect: Bool
+    ) -> ItemInstance {
+        let textureRect = useFallbackTextureRect ? TextureRect.full : item.textureRect
 
-        guard let pipelineState = sampledSceneTexture == nil
-            ? shapePipelineStates[blendMode]
-            : sampledShapePipelineState
-        else {
-            return
-        }
-
-        renderEncoder.setRenderPipelineState(pipelineState)
-        renderEncoder.setVertexBuffer(
-            instanceBuffer,
-            offset: startIndex * MemoryLayout<ShapeInstance>.stride,
-            index: 2
-        )
-        renderEncoder.setFragmentBytes(
-            &sampled,
-            length: MemoryLayout<UInt32>.stride,
-            index: 0
-        )
-        renderEncoder.setFragmentBytes(
-            &blendModeValue,
-            length: MemoryLayout<UInt32>.stride,
-            index: 1
-        )
-        renderEncoder.setFragmentTexture(sampledSceneTexture ?? whiteTexture, index: 0)
-        renderEncoder.drawPrimitives(
-            type: .triangle,
-            vertexStart: 0,
-            vertexCount: 6,
-            instanceCount: instanceCount
-        )
-    }
-
-
-    private func shapeInstance(for instance: ShapeRenderInstance) -> ShapeInstance {
-        ShapeInstance(
-            rect: instance.rect.uniform,
-            info: SIMD4(
-                Float(instance.info.x),
-                Float(instance.info.y),
-                Float(instance.info.z),
-                Float(instance.info.w)
-            ),
-            line: SIMD4(
-                Float(instance.line.x),
-                Float(instance.line.y),
-                Float(instance.line.z),
-                Float(instance.line.w)
-            ),
-            fillColor: instance.fillColor.uniform,
-            strokeColor: instance.strokeColor.uniform,
-            flags: SIMD4(
-                Float(instance.flags.x),
-                Float(instance.flags.y),
-                Float(instance.flags.z),
-                Float(instance.flags.w)
-            )
+        return ItemInstance(
+            rect: item.rect.uniform,
+            textureRect: textureRect.uniform,
+            color: item.color.uniform,
+            // info.x is RenderItemKind. Shaders branch on this packed value.
+            info: item.info.uniform,
+            line: item.line.uniform,
+            fillColor: item.fillColor.uniform,
+            strokeColor: item.strokeColor.uniform,
+            flags: item.flags.uniform
         )
     }
 
@@ -932,16 +762,20 @@ private enum RenderMaterial {
             return 1
         }
     }
+
+    var isColor: Bool {
+        switch self {
+        case .color:
+            return true
+        case .texture:
+            return false
+        }
+    }
 }
 
 private enum PreparedBatch {
-    case sprites(
+    case items(
         material: RenderMaterial,
-        blendMode: BlendMode,
-        startIndex: Int,
-        instanceCount: Int
-    )
-    case shapes(
         blendMode: BlendMode,
         startIndex: Int,
         instanceCount: Int
@@ -951,21 +785,16 @@ private enum PreparedBatch {
 private extension PreparedBatch {
     var blendMode: BlendMode {
         switch self {
-        case .sprites(_, let blendMode, _, _),
-             .shapes(let blendMode, _, _):
+        case .items(_, let blendMode, _, _):
             return blendMode
         }
     }
 }
 
-private struct BatchInstance {
+private struct ItemInstance {
     let rect: SIMD4<Float>
     let textureRect: SIMD4<Float>
     let color: SIMD4<Float>
-}
-
-private struct ShapeInstance {
-    let rect: SIMD4<Float>
     let info: SIMD4<Float>
     let line: SIMD4<Float>
     let fillColor: SIMD4<Float>
@@ -980,6 +809,17 @@ private extension Color {
             Float(green),
             Float(blue),
             Float(alpha)
+        )
+    }
+}
+
+private extension Vec4 {
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(x),
+            Float(y),
+            Float(z),
+            Float(w)
         )
     }
 }
@@ -1010,14 +850,10 @@ private let metalShaderSource = """
 #include <metal_stdlib>
 using namespace metal;
 
-struct VertexOut {
+struct ItemVertexOut {
     float4 position [[position]];
     float2 texCoord;
     float4 color;
-};
-
-struct ShapeVertexOut {
-    float4 position [[position]];
     float2 localPosition;
     float2 size;
     float4 info;
@@ -1032,14 +868,10 @@ struct PresentVertexOut {
     float2 texCoord;
 };
 
-struct BatchInstance {
+struct ItemInstance {
     float4 rect;
     float4 textureRect;
     float4 color;
-};
-
-struct ShapeInstance {
-    float4 rect;
     float4 info;
     float4 line;
     float4 fillColor;
@@ -1068,41 +900,23 @@ fragment float4 presentFragment(
     return sceneTexture.sample(sceneSampler, in.texCoord);
 }
 
-vertex VertexOut spriteVertex(
+vertex ItemVertexOut itemVertex(
     uint vertexID [[vertex_id]],
     uint instanceID [[instance_id]],
     constant float2 *positions [[buffer(0)]],
     constant float2 &resolution [[buffer(1)]],
-    constant BatchInstance *instances [[buffer(2)]]
+    constant ItemInstance *instances [[buffer(2)]]
 ) {
-    BatchInstance instance = instances[instanceID];
+    ItemInstance instance = instances[instanceID];
     float2 unitPosition = positions[vertexID];
     float2 pixelPosition = instance.rect.xy + (unitPosition * instance.rect.zw);
     float2 zeroToOne = pixelPosition / resolution;
     float2 clipSpace = (zeroToOne * 2.0) - 1.0;
 
-    VertexOut out;
+    ItemVertexOut out;
     out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
     out.texCoord = instance.textureRect.xy + (unitPosition * instance.textureRect.zw);
     out.color = instance.color;
-    return out;
-}
-
-vertex ShapeVertexOut shapeVertex(
-    uint vertexID [[vertex_id]],
-    uint instanceID [[instance_id]],
-    constant float2 *positions [[buffer(0)]],
-    constant float2 &resolution [[buffer(1)]],
-    constant ShapeInstance *instances [[buffer(2)]]
-) {
-    ShapeInstance instance = instances[instanceID];
-    float2 unitPosition = positions[vertexID];
-    float2 pixelPosition = instance.rect.xy + (unitPosition * instance.rect.zw);
-    float2 zeroToOne = pixelPosition / resolution;
-    float2 clipSpace = (zeroToOne * 2.0) - 1.0;
-
-    ShapeVertexOut out;
-    out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
     out.localPosition = unitPosition * instance.rect.zw;
     out.size = instance.rect.zw;
     out.info = instance.info;
@@ -1344,7 +1158,7 @@ float4 compositeSource(float4 source, float4 destination, uint mode) {
     return float4(rgb, alpha);
 }
 
-float4 shapeSourceColor(ShapeVertexOut in) {
+float4 shapeSourceColor(ItemVertexOut in) {
     float kind = in.info.x;
     float radius = in.info.y;
     float strokeWidth = in.info.z;
@@ -1352,13 +1166,13 @@ float4 shapeSourceColor(ShapeVertexOut in) {
     float cornerStyle = in.flags.z;
     float d = 0.0;
 
-    if (kind < 0.5) {
+    if (kind < 1.5) {
         d = roundedBoxDistance(in.localPosition, in.size, 0.0);
-    } else if (kind < 1.5) {
+    } else if (kind < 2.5) {
         float circular = roundedBoxDistance(in.localPosition, in.size, radius);
         float continuousDistance = continuousRoundedBoxDistance(in.localPosition, in.size, radius);
         d = mix(circular, continuousDistance, cornerStyle);
-    } else if (kind < 2.5) {
+    } else if (kind < 3.5) {
         d = ellipseDistance(in.localPosition, in.size);
     } else {
         if (cap > 1.5) {
@@ -1372,7 +1186,7 @@ float4 shapeSourceColor(ShapeVertexOut in) {
     float strokeDistance = abs(d + (strokeWidth * 0.5)) - (strokeWidth * 0.5);
     float strokeCoverage = coverage(strokeDistance, in.flags.y) * in.strokeColor.a;
 
-    if (kind > 2.5) {
+    if (kind > 3.5) {
         fillCoverage = 0.0;
         strokeCoverage = coverage(d, in.flags.y) * in.strokeColor.a;
     }
@@ -1383,8 +1197,8 @@ float4 shapeSourceColor(ShapeVertexOut in) {
     return color;
 }
 
-fragment float4 spriteFragment(
-    VertexOut in [[stage_in]],
+fragment float4 itemFragment(
+    ItemVertexOut in [[stage_in]],
     constant uint &useTexture [[buffer(0)]],
     constant uint &sampled [[buffer(1)]],
     constant uint &blendMode [[buffer(2)]],
@@ -1392,14 +1206,18 @@ fragment float4 spriteFragment(
     texture2d<float> sampledSceneTexture [[texture(1)]],
     sampler spriteSampler [[sampler(0)]]
 ) {
-    float4 source = float4(1.0);
+    float4 source;
 
-    if (useTexture != 0) {
-        source = spriteTexture.sample(spriteSampler, in.texCoord);
+    // info.x is RenderItemKind. 0 is sprite; shape kinds start at 1.
+    if (in.info.x < 0.5) {
+        source = useTexture != 0
+            ? spriteTexture.sample(spriteSampler, in.texCoord)
+            : float4(1.0);
+        source *= in.color;
+        source.rgb *= source.a;
+    } else {
+        source = shapeSourceColor(in);
     }
-
-    source *= in.color;
-    source.rgb *= source.a;
 
     if (sampled == 0) {
         return source;
@@ -1408,26 +1226,6 @@ fragment float4 spriteFragment(
     float2 destinationSize = float2(sampledSceneTexture.get_width(), sampledSceneTexture.get_height());
     float2 destinationCoord = in.position.xy / destinationSize;
     float4 destination = sampledSceneTexture.sample(spriteSampler, destinationCoord);
-
-    return compositeSource(source, destination, blendMode);
-}
-
-fragment float4 shapeFragment(
-    ShapeVertexOut in [[stage_in]],
-    constant uint &sampled [[buffer(0)]],
-    constant uint &blendMode [[buffer(1)]],
-    texture2d<float> sampledSceneTexture [[texture(0)]],
-    sampler sceneSampler [[sampler(0)]]
-) {
-    float4 source = shapeSourceColor(in);
-
-    if (sampled == 0) {
-        return source;
-    }
-
-    float2 destinationSize = float2(sampledSceneTexture.get_width(), sampledSceneTexture.get_height());
-    float2 destinationCoord = in.position.xy / destinationSize;
-    float4 destination = sampledSceneTexture.sample(sceneSampler, destinationCoord);
 
     return compositeSource(source, destination, blendMode);
 }

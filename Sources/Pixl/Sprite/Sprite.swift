@@ -10,7 +10,7 @@ public struct Sprite: Equatable, Sendable {
 
     public init(
         material: Material,
-        scale: Vec2 = Vec2(x: 1, y: 1),
+        scale: Vec2 = .one,
         layer: RenderLayer = 0,
         blendMode: BlendMode = .normal,
         opacity: Double = 1,

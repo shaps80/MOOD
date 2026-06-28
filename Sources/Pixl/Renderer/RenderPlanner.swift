@@ -35,35 +35,17 @@ public struct RenderPlanner: Sendable {
 
         for batch in game.renderBatches {
             switch batch {
-            case .sprites(let textureID, let blendMode, let sprites):
-                let instances = sprites.compactMap {
-                    spriteInstance(
-                        for: $0,
-                        textureID: textureID,
-                        game: game,
-                        textureSizes: textureSizes
-                    )
+            case .items(let textureID, let blendMode, let primitives):
+                let items = primitives.compactMap {
+                    item(for: $0, game: game, textureSizes: textureSizes)
                 }
 
-                guard !instances.isEmpty else { continue }
+                guard !items.isEmpty else { continue }
                 batches.append(
-                    .sprites(
+                    .items(
                         textureID: textureID,
                         blendMode: blendMode,
-                        instances: instances
-                    )
-                )
-
-            case .shapes(let blendMode, let shapes):
-                let instances = shapes.map {
-                    shapeInstance(for: $0, game: game)
-                }
-
-                guard !instances.isEmpty else { continue }
-                batches.append(
-                    .shapes(
-                        blendMode: blendMode,
-                        instances: instances
+                        items: items
                     )
                 )
             }
@@ -72,12 +54,34 @@ public struct RenderPlanner: Sendable {
         return RenderFrame(batches: batches)
     }
 
-    private func spriteInstance(
+    private func item(
+        for primitive: RenderPrimitive,
+        game: Game,
+        textureSizes: [TextureID: Vec2]
+    ) -> RenderItem? {
+        switch primitive {
+        case .sprite(let positionedSprite):
+            guard case .sprite(let textureID, sourceRect: _) = positionedSprite.sprite.material else {
+                preconditionFailure("Shape sprites must expand before render planning.")
+            }
+
+            return spriteItem(
+                for: positionedSprite,
+                textureID: textureID,
+                game: game,
+                textureSizes: textureSizes
+            )
+        case .shape(let shape):
+            return shapeItem(for: shape, game: game)
+        }
+    }
+
+    private func spriteItem(
         for positionedSprite: PositionedSprite,
         textureID: TextureID,
         game: Game,
         textureSizes: [TextureID: Vec2]
-    ) -> SpriteRenderInstance? {
+    ) -> RenderItem? {
         let sprite = positionedSprite.sprite
         let textureSize = textureSizes[textureID]
         let size = sprite.renderedSize(textureSize: textureSize)
@@ -99,25 +103,23 @@ public struct RenderPlanner: Sendable {
             fallbackColor: textureSize == nil ? .missingTexture : nil
         )
 
-        return SpriteRenderInstance(
+        return .sprite(
             rect: rect,
             textureRect: textureRect,
             color: color
         )
     }
 
-    private func shapeInstance(
+    private func shapeItem(
         for shape: ShapePrimitive,
         game: Game
-    ) -> ShapeRenderInstance {
-        ShapeRenderInstance(
+    ) -> RenderItem {
+        .shape(
+            kind: shape.kind.renderItemKind,
             rect: renderRect(for: shape.bounds, game: game),
-            info: Vec4(
-                Double(shape.kind.rawValue),
-                shape.radius,
-                shape.strokeWidth,
-                shape.lineCap.renderValue
-            ),
+            radius: shape.radius,
+            strokeWidth: shape.strokeWidth,
+            lineCap: shape.lineCap.renderValue,
             line: Vec4(
                 shape.lineStart.x,
                 shape.lineStart.y,
@@ -143,5 +145,20 @@ public struct RenderPlanner: Sendable {
             ),
             size: rect.size
         ).integral
+    }
+}
+
+private extension ShapePrimitiveKind {
+    var renderItemKind: RenderItemKind {
+        switch self {
+        case .rect:
+            return .rect
+        case .roundedRect:
+            return .roundedRect
+        case .ellipse:
+            return .ellipse
+        case .line:
+            return .line
+        }
     }
 }
