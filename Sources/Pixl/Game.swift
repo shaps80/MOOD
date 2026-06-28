@@ -53,15 +53,17 @@ public struct Game {
         self.soundAssets = sounds
 
         for spawn in entities {
-            entityRecords.append(EntityRecord(id: spawn.id, entity: spawn.entity))
+            var entity = spawn.entity
 
-            var state = EntityState(
-                id: spawn.id,
-                size: spawn.entity.size,
-                colliders: spawn.entity.colliders
-            )
+            var state = EntityState(id: spawn.id)
 
             state.move(to: spawn.position, velocity: .zero)
+
+            var context = PreparationContext(level: level)
+            entity.prepare(context: &context, state: &state)
+            state.finalizePreparation()
+
+            entityRecords.append(EntityRecord(id: spawn.id, entity: entity))
             entityStates.insert(state)
         }
 
@@ -163,7 +165,7 @@ public struct Game {
                 visibleBounds,
                 color: Color(red: 0, green: 0.8, blue: 1, alpha: 0.5),
                 width: 2,
-                layer: .debug
+                layer: 900
             )
         }
 
@@ -198,16 +200,16 @@ public struct Game {
                     continue
                 }
 
-                context.sprite(
+                context.draw(
                     Sprite(
                         position: Vec2(
                             x: Double(x) * level.tilemap.tileSize.x,
                             y: Double(y) * level.tilemap.tileSize.y
                         ),
                         size: level.tilemap.tileSize,
-                        material: tile.material
-                    ),
-                    layer: tile.layer
+                        material: tile.material,
+                        layer: tile.layer
+                    )
                 )
                 visibleTileCount += 1
             }
@@ -225,12 +227,12 @@ public struct Game {
         for record in entityRecords {
             guard let state = entityStates[record.id],
                   state.bounds.intersects(bounds),
-                  let sprite = record.entity.sprite(for: state)
+                  let sprite = state.sprite
             else {
                 continue
             }
 
-            context.sprite(sprite, layer: .entity)
+            context.draw(sprite)
             visibleEntityCount += 1
         }
 
@@ -244,7 +246,7 @@ public struct Game {
         let color = Color.green.opacity(0.35)
 
         level.tilemap.colliderIndex.forEach(intersecting: bounds) { collider in
-            context.fill(collider.bounds, color: color, layer: .debug)
+            context.fill(collider.bounds, color: color, layer: 900)
         }
 
         for record in entityRecords {
@@ -253,7 +255,7 @@ public struct Game {
             }
 
             for frame in state.colliderFrames where frame.intersects(bounds) {
-                context.fill(frame, color: color, layer: .debug)
+                context.fill(frame, color: color, layer: 900)
             }
         }
     }
@@ -268,6 +270,14 @@ public struct Game {
 }
 
 extension Game {
+    public struct PreparationContext {
+        public let level: Level
+
+        init(level: Level) {
+            self.level = level
+        }
+    }
+
     public struct Context {
         public let delta: Double
         public let input: Input

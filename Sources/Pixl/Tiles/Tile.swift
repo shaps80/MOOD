@@ -11,7 +11,7 @@ extension Tilemap {
         public init(
             kind: Kind,
             material: Material,
-            layer: RenderLayer = .world,
+            layer: RenderLayer = 0,
             collider: Collider? = nil
         ) {
             self.init(
@@ -25,7 +25,7 @@ extension Tilemap {
         public init(
             kind: Kind,
             material: Material,
-            layer: RenderLayer = .world,
+            layer: RenderLayer = 0,
             colliders: [Collider]
         ) {
             self.kind = kind

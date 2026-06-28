@@ -27,6 +27,7 @@ struct MOOD {
     private static var game: Game {
         let level = level
         let pickup = Pickup()
+        let pickupSize = Vec2(x: 16, y: 16)
 
         return .init(
             size: size,
@@ -47,7 +48,7 @@ struct MOOD {
                             x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
                             y: level.spawnPoint.y
                         ),
-                        size: pickup.size
+                        size: pickupSize
                     )
                 ),
                 .init(

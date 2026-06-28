@@ -1,7 +1,7 @@
 import Swift
 
 public enum RenderCommand: Equatable, Sendable {
-    case sprite(Sprite, RenderLayer)
+    case sprite(Sprite)
     case rect(Rect, Color, RenderLayer)
     case strokeRect(Rect, Stroke, RenderLayer)
 }
@@ -9,8 +9,8 @@ public enum RenderCommand: Equatable, Sendable {
 public extension RenderCommand {
     var layer: RenderLayer {
         switch self {
-        case .sprite(_, let layer):
-            layer
+        case .sprite(let sprite):
+            sprite.layer
         case .rect(_, _, let layer):
             layer
         case .strokeRect(_, _, let layer):
@@ -30,7 +30,7 @@ public extension RenderCommand {
 
     func forEachPrimitive(_ body: (RenderPrimitive) -> Void) {
         switch self {
-        case .sprite(let sprite, _):
+        case .sprite(let sprite):
             body(.sprite(sprite))
         case .rect(let rect, let color, _):
             body(.rect(rect, color))

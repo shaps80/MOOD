@@ -1,36 +1,36 @@
 import Pixl
 
 struct Player: Entity {
-    let size: Vec2 = .init(x: 32, y: 32)
     private var controller: TopPlayerController = .slippery
     private var timeline: SpriteAnimation.Timeline = .init(animation: .walk)
     private var wasJumpPressed = false
-
-    var colliders: [Collider] {
-        [.init(
-            bounds: Rect(origin: .zero, size: size)
-                .padding(.left, 8)
-                .padding(.right, 9)
-                .padding(.vertical, 3),
-            layer: .player,
-            mask: [.playerMovement, .pickup],
-            behaviour: .blocking
-        )]
-    }
 
     func onCollision(context: inout Game.Context, state: inout EntityState, contact: Contact) {
         guard contact.phase == .began else { return }
         print(contact)
     }
 
-    func sprite(for state: EntityState) -> Sprite? {
-        Sprite(
+    mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
+        state.size = .init(x: 32, y: 32)
+        state.colliders = [
+            .init(
+                bounds: Rect(origin: .zero, size: state.size)
+                    .padding(.left, 8)
+                    .padding(.right, 9)
+                    .padding(.vertical, 3),
+                layer: .player,
+                mask: [.playerMovement, .pickup],
+                behaviour: .blocking
+            )
+        ]
+        state.sprite = Sprite(
             position: state.position,
             size: state.size,
             material: .sprite(
                 timeline.animation.textureID,
                 sourceRect: timeline.frame
-            )
+            ),
+            layer: .entity
         )
     }
 
@@ -50,6 +50,14 @@ struct Player: Entity {
         )
 
         context.move(state: &state, velocity: velocity)
+        let position = state.position
+        let size = state.size
+        state.sprite?.position = position
+        state.sprite?.size = size
+        state.sprite?.material = .sprite(
+            timeline.animation.textureID,
+            sourceRect: timeline.frame
+        )
     }
 
 }

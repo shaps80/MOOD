@@ -34,8 +34,6 @@ evaluation strongly supports the approach described here.
   either or both.
 - Support an initial portable subset of blend modes for shapes and sprites.
 - Use premultiplied alpha internally.
-- Move entity visuals away from query-style `sprite(for:)` and toward explicit
-  mutable sprite state.
 
 ## Initial Shape Set
 
@@ -120,11 +118,11 @@ add them in V1.
 
 Hot renderer data should store resolved colors, not protocol values.
 
-## Sprite Render State
+## Current Sprite Render State
 
 `Sprite` is a renderable sprite instance, not an asset definition.
 
-It should carry the render state needed to draw itself:
+It carries the render state needed to draw itself:
 
 ```swift
 public struct Sprite {
@@ -137,10 +135,6 @@ public struct Sprite {
     public var tint: Color
 }
 ```
-
-The exact initializer shape can be adjusted to fit existing code, but these
-fields should be directly accessible. Do not hide `blendMode`, `opacity`, and
-`tint` behind an extra wrapper type for V1.
 
 `SpriteAsset` remains asset metadata. Do not put tint, opacity, blend mode, or
 layer on sprite assets.
@@ -335,94 +329,6 @@ to blend mode, opacity, and tint unless gameplay/UI work needs more.
 Noise, blur, glow, drop shadows, masks, and arbitrary filters should not be
 added as basic source modifiers. Those belong to a later material, shader, mask,
 or post-processing design.
-
-## Entity Sprite Lifecycle
-
-The current query-style entity API:
-
-```swift
-func sprite(for state: EntityState) -> Sprite?
-```
-
-should be removed.
-
-It is too narrow because it assumes:
-
-- each entity has zero or one sprite
-- sprite state can be derived by query
-- visual state does not need to be mutated during update/collision
-- `Pixl.Game` should choose the entity render layer
-
-For V1, keep the scope simple: one optional sprite per entity state.
-
-```swift
-public struct EntityState {
-    public var position: Vec2
-    public var size: Vec2
-    public var velocity: Vec2
-    public var sprite: Sprite?
-}
-```
-
-`EntityState` already owns mutable per-entity state such as position, velocity,
-size, and colliders. Storing the entity's primary sprite there keeps visual state
-available to `onUpdate` and `onCollision`.
-
-The entity lifecycle should gain a preparation hook:
-
-```swift
-mutating func prepare(
-    context: inout Game.Context,
-    state: inout EntityState
-)
-```
-
-`prepare` replaces the need for entities to lazily create their sprite during
-every update. It is called once when the entity enters the game/level.
-
-Example:
-
-```swift
-mutating func prepare(context: inout Game.Context, state: inout EntityState) {
-    state.sprite = Sprite(
-        position: state.position,
-        size: state.size,
-        material: .sprite(.player, sourceRect: nil),
-        layer: .entity
-    )
-}
-```
-
-Then `onUpdate` and `onCollision` can directly mutate the current sprite:
-
-```swift
-state.sprite?.position = state.position
-state.sprite?.tint = .red
-state.sprite?.opacity = 0.5
-state.sprite?.blendMode = .screen
-```
-
-`Pixl.Game` should collect `state.sprite` values while rebuilding render
-commands. It should not call `entity.sprite(for:)`, and it should not pass an
-entity layer to `RenderContext`.
-
-For now, ignore multi-sprite entities and entity-spawned loose sprites. When a
-real second use case appears, revisit whether `EntityState` should grow
-`sprites`, child render objects, or a different explicit draw API.
-
-## Entity Asset Preparation
-
-Entity `prepare` may also become the place where an entity declares assets it
-intends to use.
-
-The important ownership rule:
-
-- Game/level owns asset loading and caching.
-- Entity code declares what it needs.
-- Sprite instances reference already-known materials/assets.
-
-Do not make platform renderers responsible for discovering entity asset needs.
-Do not add ad-hoc asset loading in `onUpdate`.
 
 ## Path
 
@@ -804,17 +710,14 @@ UIKit, or other platform frameworks.
 An agent implementing this should work in this order:
 
 1. Add `Pixl` path/style/shape types without touching platform renderers.
-2. Add sprite render-state fields and sprite-owned render layer.
-3. Move MOOD-specific `RenderLayer` constants out of `Pixl`.
-4. Replace `sprite(for:)` with entity `prepare` plus `EntityState.sprite`.
-5. Add tests or compile-time examples for the intended API shape.
-6. Lower supported paths into platform-neutral render primitives.
-7. Teach existing render contexts to accept `context.draw(path)` and
+2. Add tests or compile-time examples for the intended API shape.
+3. Lower supported paths into platform-neutral render primitives.
+4. Teach existing render contexts to accept `context.draw(path)` and
    `context.draw(sprite)` where appropriate.
-8. Implement WebGL2 SDF primitive rendering.
-9. Implement Metal SDF primitive rendering.
-10. Verify `Pixl` still builds on host.
-11. Verify the browser/Wasm build only when explicitly requested by the user.
+5. Implement WebGL2 SDF primitive rendering.
+6. Implement Metal SDF primitive rendering.
+7. Verify `Pixl` still builds on host.
+8. Verify the browser/Wasm build only when explicitly requested by the user.
 
 The project currently prefers these validation commands:
 
@@ -833,10 +736,6 @@ V1 is done when:
 - `Rectangle`, `RoundedRectangle`, `Ellipse`, `Circle`, and `Capsule` exist.
 - `Path` can preserve `move`, `addLine`, `addRect`, `addRoundedRect`, and
   `addEllipse` commands.
-- `Sprite` owns `layer`, `blendMode`, `opacity`, and `tint`.
-- `RenderLayer` remains a Pixl ordering type, but MOOD-specific layer constants
-  live in MOOD.
-- Entities use `prepare` and `EntityState.sprite` instead of `sprite(for:)`.
 - Fill and stroke use SwiftUI-like names and call shape.
 - There is no `fillAndStroke` API.
 - `StrokeStyle` does not expose `lineJoin`.

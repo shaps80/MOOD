@@ -17,3 +17,12 @@ extension Collider.Layer.Mask {
     static let playerInteractions: Self = [.pickup]
     static let enemyMovement: Self = [.world, .player]
 }
+
+extension RenderLayer {
+    static let background: Self = 0
+    static let world: Self = 100
+    static let entity: Self = 200
+    static let foreground: Self = 300
+    static let debug: Self = 900
+    static let overlay: Self = 1000
+}

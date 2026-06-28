@@ -21,22 +21,16 @@ public struct RenderContext: Sendable {
             .map(\.element)
     }
 
-    public mutating func sprite(
-        _ sprite: Sprite,
-        layer: RenderLayer = .world
-    ) {
+    public mutating func draw(_ sprite: Sprite) {
         commands.append(
-            .sprite(
-                sprite,
-                layer
-            )
+            .sprite(sprite)
         )
     }
 
     public mutating func fill(
         _ rect: Rect,
         color: Color,
-        layer: RenderLayer = .world
+        layer: RenderLayer = 0
     ) {
         commands.append(
             .rect(
@@ -51,7 +45,7 @@ public struct RenderContext: Sendable {
         _ rect: Rect,
         color: Color,
         width: Double = 1,
-        layer: RenderLayer = .world
+        layer: RenderLayer = 0
     ) {
         commands.append(
             .strokeRect(

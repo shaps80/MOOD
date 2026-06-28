@@ -10,12 +10,21 @@ public struct EntityID: Hashable, Sendable {
 
 public struct EntityState: Equatable, Identifiable, Sendable {
     public let id: EntityID
-    public internal(set) var size: Vec2
+    public var size: Vec2 {
+        get { storedSize }
+        set {
+            storedSize = newValue
+            hasExplicitSize = true
+        }
+    }
     public internal(set) var position: Vec2
     public internal(set) var velocity: Vec2
-    internal var colliders: [Collider]
+    public var sprite: Sprite?
+    public var colliders: [Collider]
+    private var storedSize: Vec2
+    private var hasExplicitSize: Bool
 
-    public init(id: EntityID, size: Vec2, collider: Collider? = nil) {
+    public init(id: EntityID, size: Vec2 = .zero, collider: Collider? = nil) {
         self.init(
             id: id,
             size: size,
@@ -26,14 +35,22 @@ public struct EntityState: Equatable, Identifiable, Sendable {
     public init(id: EntityID, size: Vec2, colliders: [Collider]) {
         self.id = id
         self.position = .zero
-        self.size = size
+        self.storedSize = size
+        self.hasExplicitSize = size != .zero
         self.velocity = .zero
+        self.sprite = nil
         self.colliders = colliders
     }
 
     mutating func move(to position: Vec2, velocity: Vec2) {
         self.position = position
         self.velocity = velocity
+    }
+
+    mutating func finalizePreparation() {
+        guard !hasExplicitSize else { return }
+
+        storedSize = sprite?.size ?? .zero
     }
 
     var colliderFrames: [Rect] {
