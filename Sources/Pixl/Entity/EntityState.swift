@@ -1,10 +1,14 @@
 import Swift
 
-public struct EntityID: Hashable, Sendable {
+public struct EntityID: Hashable, Sendable, ExpressibleByIntegerLiteral {
     public let rawValue: Int
 
     public init(rawValue: Int) {
         self.rawValue = rawValue
+    }
+
+    public init(integerLiteral value: Int) {
+        rawValue = value
     }
 }
 

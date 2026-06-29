@@ -1,7 +1,9 @@
 import Swift
 
-public protocol Entity {
+public protocol Entity: SendableMetatype {
     init()
+
+    static var kind: EntityKind { get }
 
     mutating func prepare(
         context: inout Game.PreparationContext,
@@ -18,7 +20,12 @@ public protocol Entity {
         state: inout EntityState,
         contact: Contact
     )
+}
 
+public extension Entity {
+    static var kind: EntityKind {
+        .init(rawValue: String(describing: self))
+    }
 }
 
 public extension Entity {
