@@ -36,7 +36,7 @@ public struct Game {
     public private(set) var renderStats = RenderStats()
 
     public init(
-        size: Vec2 = .init(x: 800, y: 400),
+        size: Vec2 ,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
         level: Level,

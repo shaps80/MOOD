@@ -1,13 +1,18 @@
 import Pixl
 
 extension Level {
-    static let invaders: Self = .init(
-        tilemap: .init(
-            columns: 21,
-            rows: 10,
+    static let invaders: Self = {
+        let tilemap = Tilemap(
+            columns: 15,
+            rows: 20,
             tileSize: .init(x: 16, y: 16),
             fill: .empty
-        ),
-        spawnPoint: .init(x: 11, y: 19)
-    )
+        )
+
+        return .init(
+            tilemap: tilemap,
+            spawnColumn: 7,
+            spawnRow: 19
+        )
+    }()
 }
