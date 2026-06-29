@@ -1,6 +1,6 @@
 import Swift
 
-public struct Level: Equatable, Sendable {
+public struct OldLevel: Equatable, Sendable {
     public let tilemap: Tilemap
     public let spawnPoint: Vec2
 

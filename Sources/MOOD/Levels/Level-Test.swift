@@ -1,7 +1,7 @@
 import Pixl
 
-extension Level {
-    static func level1(worldSize: Vec2, tileSize: Vec2) -> Level {
+extension OldLevel {
+    static func level1(worldSize: Vec2, tileSize: Vec2) -> OldLevel {
         let tilemap = Tilemap.level1(
             worldSize: worldSize,
             tileSize: tileSize
@@ -12,19 +12,19 @@ extension Level {
             y: (boundaryThickness + (worldSize.y / 2)) / 2
         )
 
-        return Level(
+        return OldLevel(
             tilemap: tilemap,
             spawnPoint: topLeftQuadrantCenter
         )
     }
 
-    static func level2(worldSize: Vec2, tileSize: Vec2) -> Level {
+    static func level2(worldSize: Vec2, tileSize: Vec2) -> OldLevel {
         let tilemap = Tilemap.level2(
             worldSize: worldSize,
             tileSize: tileSize
         )
 
-        return Level(
+        return OldLevel(
             tilemap: tilemap,
             spawnPoint: Vec2(
                 x: tileSize.x * 4.5,

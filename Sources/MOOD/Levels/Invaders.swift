@@ -1,6 +1,6 @@
 import Pixl
 
-extension Level {
+extension OldLevel {
     static let invaders: Self = {
         let tilemap = Tilemap(
             columns: 15,

@@ -16,7 +16,7 @@ public struct Game {
         )
     }
 
-    private let level: Level
+    private let level: OldLevel
     private var entityRecords: [EntityRecord] = []
     private var entityStates: EntityStore = .init()
     private let contacts = ContactState()
@@ -39,7 +39,7 @@ public struct Game {
         size: Vec2 ,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
-        level: Level,
+        level: OldLevel,
         camera: CameraRig,
         entities: [EntitySpawn],
         sprites: [SpriteAsset],
@@ -285,9 +285,9 @@ public struct Game {
 
 extension Game {
     public struct PreparationContext {
-        public let level: Level
+        public let level: OldLevel
 
-        init(level: Level) {
+        init(level: OldLevel) {
             self.level = level
         }
     }
@@ -295,7 +295,7 @@ extension Game {
     public struct Context {
         public let delta: Double
         public let input: Input
-        public let level: Level
+        public let level: OldLevel
         let contacts: ContactState
         private let collisionSystem: CollisionSystem
         fileprivate private(set) var sounds: [SoundID] = []
@@ -304,7 +304,7 @@ extension Game {
         init(
             delta: Double,
             input: Input,
-            level: Level,
+            level: OldLevel,
             entities: EntityStore,
             contacts: ContactState
         ) {

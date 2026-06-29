@@ -10,11 +10,11 @@ import Pixl
 @main
 struct MOOD {
     private static let size: Vec2 = .init(
-        x: 240,
-        y: 320
+        x: 800,
+        y: 400
     )
 
-    private static var level: Level {
+    private static var level: OldLevel {
         .level2(
             worldSize: Vec2(
                 x: size.x * 2,
@@ -25,7 +25,7 @@ struct MOOD {
     }
 
     private static var game: Game {
-        let level: Level = .invaders
+        let level = level
 
         return .init(
             size: size,
@@ -39,9 +39,22 @@ struct MOOD {
             ),
             entities: [
                 .init(
+                    id: .pickup,
+                    entity: Pickup(),
+                    position: Vec2(
+                        x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
+                        y: level.spawnPoint.y
+                    )
+                ),
+                .init(
                     id: .player,
                     entity: Player(),
                     position: level.spawnPoint
+                ),
+                .init(
+                    id: .enemy,
+                    entity: Enemy(),
+                    position: .init(x: 64, y: 64)
                 ),
             ],
             sprites: [.player],
