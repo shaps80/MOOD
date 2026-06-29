@@ -10,8 +10,8 @@ import Pixl
 @main
 struct MOOD {
     private static let size: Vec2 = .init(
-        x: 800,
-        y: 400
+        x: 224,
+        y: 320
     )
 
     private static var level: Level {
@@ -25,7 +25,8 @@ struct MOOD {
     }
 
     private static var game: Game {
-        let level = level
+        let level: Level = .invaders
+
         return .init(
             size: size,
             interpolationMode: .nearest,
@@ -37,22 +38,6 @@ struct MOOD {
                 constraints: .init(bounds: level.bounds)
             ),
             entities: [
-                .init(
-                    id: .pickup,
-                    entity: Pickup(),
-                    position: Vec2(
-                        x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
-                        y: level.spawnPoint.y
-                    )
-                ),
-                .init(
-                    id: .enemy,
-                    entity: Enemy(),
-                    position: .init(
-                        x: 64,
-                        y: 64
-                    )
-                ),
                 .init(
                     id: .player,
                     entity: Player(),
