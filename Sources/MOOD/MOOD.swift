@@ -7,16 +7,9 @@ import PlatformMac
 
 import Pixl
 
-@main
-struct MOOD {
-    private static var game: Game {
-        let size = Vec2(x: 800, y: 400)
-
+extension World {
+    static func makeDefault(size: Vec2) -> Self {
         let level: OldLevel = .level2(
-            worldSize: Vec2(
-                x: size.x * 2,
-                y: size.y
-            ),
             tileSize: Vec2(x: 16, y: 16)
         )
 
@@ -60,11 +53,22 @@ struct MOOD {
             Pickup.self
         )
 
-        return .init(
+        return world
+    }
+}
+
+@main
+struct MOOD {
+    private static var size: Vec2 {
+        .init(x: 800, y: 400)
+    }
+
+    private static var game: Game {
+        .init(
             size: size,
             interpolationMode: .nearest,
             preferredFPS: 60,
-            world: world
+            world: .makeDefault(size: size)
         )
     }
 

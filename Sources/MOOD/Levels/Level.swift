@@ -1,26 +1,22 @@
 import Pixl
 
 extension OldLevel {
-    static func level1(worldSize: Vec2, tileSize: Vec2) -> OldLevel {
+    static func level1(tileSize: Vec2) -> OldLevel {
         let tilemap = Tilemap.level1(
-            worldSize: worldSize,
             tileSize: tileSize
         )
-        let boundaryThickness = tilemap.tileSize.x
-        let topLeftQuadrantCenter = Vec2(
-            x: (boundaryThickness + (worldSize.x / 2)) / 2,
-            y: (boundaryThickness + (worldSize.y / 2)) / 2
-        )
+        let spawnColumn = tilemap.columns / 4
+        let spawnRow = tilemap.rows / 4
 
         return OldLevel(
             tilemap: tilemap,
-            spawnPoint: topLeftQuadrantCenter
+            spawnColumn: spawnColumn,
+            spawnRow: spawnRow
         )
     }
 
-    static func level2(worldSize: Vec2, tileSize: Vec2) -> OldLevel {
+    static func level2(tileSize: Vec2) -> OldLevel {
         let tilemap = Tilemap.level2(
-            worldSize: worldSize,
             tileSize: tileSize
         )
 
@@ -28,13 +24,18 @@ extension OldLevel {
             tilemap: tilemap,
             spawnPoint: Vec2(
                 x: tileSize.x * 4.5,
-                y: worldSize.y / 2
+                y: Double(tilemap.rows) * tileSize.y / 2
             )
         )
     }
 }
 
 private extension Tilemap {
+    static let level1Columns = 50
+    static let level1Rows = 25
+    static let level2Columns = 100
+    static let level2Rows = 25
+
     static func wall(
         tileSize: Vec2,
         color: Color,
@@ -59,9 +60,9 @@ private extension Tilemap {
         )
     }
 
-    static func level1(worldSize: Vec2, tileSize: Vec2) -> Tilemap {
-        let columns = Int(worldSize.x / tileSize.x)
-        let rows = Int(worldSize.y / tileSize.y)
+    static func level1(tileSize: Vec2) -> Tilemap {
+        let columns = level1Columns
+        let rows = level1Rows
         let wall = Tilemap.wall(tileSize: tileSize, color: .red)
 
         var tilemap = Tilemap(
@@ -101,9 +102,9 @@ private extension Tilemap {
         return tilemap
     }
 
-    static func level2(worldSize: Vec2, tileSize: Vec2) -> Tilemap {
-        let columns = Int(worldSize.x / tileSize.x)
-        let rows = Int(worldSize.y / tileSize.y)
+    static func level2(tileSize: Vec2) -> Tilemap {
+        let columns = level2Columns
+        let rows = level2Rows
         let brick = Tilemap.wall(
             tileSize: tileSize,
             color: Color(red: 0.68, green: 0.24, blue: 0.12, alpha: 1)
