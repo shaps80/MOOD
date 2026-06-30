@@ -36,6 +36,63 @@ public struct Game {
     public private(set) var renderStats = RenderStats()
 
     public init(
+        size: Vec2,
+        interpolationMode: InterpolationMode = .nearest,
+        preferredFPS: Double = 60,
+        world: World
+    ) {
+        self.logicalResolution = size
+        self.interpolationMode = interpolationMode
+        self.preferredFps = preferredFPS
+        self.cameraRig = world.camera ?? .init(
+            camera: .init(viewportSize: size),
+            anchor: .entities([]),
+        )
+
+        self.spriteAssets = world.assets.sprites
+        self.soundAssets = world.assets.sounds
+
+        if let tilemap = world.level.tilemap {
+            self.level = .init(
+                tilemap: tilemap,
+                spawnPoint: .init(
+                    x: 32,
+                    y: 32
+                )
+            )
+        } else {
+            self.level = .init(
+                tilemap: .init(
+                    columns: 20,
+                    rows: 10,
+                    tileSize: .init(x: 16, y: 16),
+                    fill: .empty
+                ),
+                spawnPoint: .init(x: 16, y: 16)
+            )
+        }
+
+        var id: Int = 0
+        for marker in world.level.markers {
+            guard var entity = world.registry.make(kind: marker.kind) else { continue }
+            defer { id += 1 }
+
+            var state = EntityState(id: .init(rawValue: id))
+            state.move(to: marker.position, velocity: .zero)
+
+            var context = PreparationContext(level: level)
+            entity.prepare(context: &context, state: &state)
+            state.finalizePreparation()
+
+            entityRecords.append(EntityRecord(id: .init(rawValue: id), entity: entity))
+            entityStates.insert(state)
+        }
+
+        updateCamera(delta: .infinity)
+        rebuildSpriteBuffer()
+    }
+
+    public init(
         size: Vec2 ,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,

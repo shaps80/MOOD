@@ -9,56 +9,62 @@ import Pixl
 
 @main
 struct MOOD {
-    private static let size: Vec2 = .init(
-        x: 800,
-        y: 400
-    )
+    private static var game: Game {
+        let size = Vec2(x: 800, y: 400)
 
-    private static var level: OldLevel {
-        .level2(
+        let level: OldLevel = .level2(
             worldSize: Vec2(
                 x: size.x * 2,
                 y: size.y
             ),
             tileSize: Vec2(x: 16, y: 16)
         )
-    }
 
-    private static var game: Game {
-        let level = level
+        let camera: CameraRig = .init(
+            camera: Camera(viewportSize: size),
+            anchor: .entities([.player]),
+            constraints: .init(bounds: level.bounds)
+        )
+
+        var world: World = .init(
+            level: .init(
+                assets: .init(
+                    sprites: [.player],
+                    sounds: [.jump]
+                ),
+                tilemap: level.tilemap,
+                markers: [
+                    .init(
+                        kind: Player.kind,
+                        position: level.spawnPoint
+                    ),
+                    .init(
+                        kind: Enemy.kind,
+                        position: .init(x: 64, y: 64)
+                    ),
+                    .init(
+                        kind: Pickup.kind,
+                        position: .init(
+                            x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
+                            y: level.spawnPoint.y
+                        )
+                    )
+                ]
+            ),
+            camera: camera
+        )
+
+        world.register(
+            Player.self,
+            Enemy.self,
+            Pickup.self
+        )
 
         return .init(
             size: size,
             interpolationMode: .nearest,
             preferredFPS: 60,
-            level: level,
-            camera: .init(
-                camera: Camera(viewportSize: size),
-                anchor: .entities([.player]),
-                constraints: .init(bounds: level.bounds)
-            ),
-            entities: [
-                .init(
-                    id: .pickup,
-                    entity: Pickup(),
-                    position: Vec2(
-                        x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
-                        y: level.spawnPoint.y
-                    )
-                ),
-                .init(
-                    id: .player,
-                    entity: Player(),
-                    position: level.spawnPoint
-                ),
-                .init(
-                    id: .enemy,
-                    entity: Enemy(),
-                    position: .init(x: 64, y: 64)
-                ),
-            ],
-            sprites: [.player],
-            sounds: [.jump]
+            world: world
         )
     }
 
