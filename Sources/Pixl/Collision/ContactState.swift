@@ -9,7 +9,7 @@ final class ContactState {
         contactsByEntity[entityID] ?? []
     }
 
-    func beginFrame() {
+    func begin() {
         currentKeys.removeAll(keepingCapacity: true)
         contactsByEntity.removeAll(keepingCapacity: true)
     }
@@ -26,7 +26,7 @@ final class ContactState {
         contactsByEntity[source.id, default: []].append(contact)
     }
 
-    func endFrame() {
+    func end() {
         for key in previousKeys where !currentKeys.contains(key) {
             let contact = Contact(
                 source: key.source,

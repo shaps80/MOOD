@@ -25,15 +25,12 @@ public struct Game {
     private var wasDebugTogglePressed = false
     private var debugOptions: DebugOptions = []
 
-    private var sounds: [SoundID] = []
     public let soundAssets: [SoundAsset]
     public let spriteAssets: [SpriteAsset]
 
-    private var renderContext = RenderContext()
-    private var frameContext = RenderContext()
-    public var renderCommands: [RenderCommand] { renderContext.commands }
-    public private(set) var renderBatches: [RenderBatch] = []
-    public private(set) var renderStats = RenderStats()
+    private var frame = Frame()
+    private(set) var renderBatches: [RenderBatch] = []
+    private(set) var renderStats = RenderStats()
 
     public init(
         size: Vec2,
@@ -89,7 +86,8 @@ public struct Game {
         }
 
         updateCamera(delta: .infinity)
-        rebuildSpriteBuffer()
+        frame.prepare()
+        rebuildFrame()
     }
 
     public init(
@@ -125,7 +123,8 @@ public struct Game {
             entityStates.insert(state)
         }
         updateCamera(delta: .infinity)
-        rebuildSpriteBuffer()
+        frame.prepare()
+        rebuildFrame()
     }
 
     public mutating func update(delta: Double, input: Input) {
@@ -139,11 +138,10 @@ public struct Game {
             debugOptions.toggle(.colliders)
         }
 
-        var frameSounds: [SoundID] = []
-        frameContext.removeAll(keepingCapacity: true)
-        contacts.beginFrame()
+        frame.prepare()
+        contacts.begin()
 
-        let context = Context(
+        var context = Context(
             delta: delta,
             input: input,
             level: level,
@@ -153,40 +151,35 @@ public struct Game {
 
         for index in entityRecords.indices {
             let entityID = entityRecords[index].id
-            var entityContext = context
             var entity = entityRecords[index].entity
 
             entityStates.update(entityID) { state in
-                entity.onUpdate(context: &entityContext, state: &state)
+                entity.onUpdate(context: &context, state: &state)
             }
 
             entityRecords[index].entity = entity
-            frameSounds.append(contentsOf: entityContext.sounds)
-            appendFrameCommands(from: entityContext)
         }
 
         context.detectContacts()
-        contacts.endFrame()
-        dispatchCollisions(context: context, sounds: &frameSounds)
+        contacts.end()
+        dispatchCollisions(context: &context)
 
         updateCamera(delta: delta)
-        sounds.append(contentsOf: frameSounds)
-        rebuildSpriteBuffer()
+        frame.sounds.append(contentsOf: context.sounds)
+        rebuildFrame()
     }
 
     private mutating func dispatchCollisions(
-        context: Context,
-        sounds: inout [SoundID]
+        context: inout Context
     ) {
         for index in entityRecords.indices {
             let entityID = entityRecords[index].id
-            var entityContext = context
             var entity = entityRecords[index].entity
 
             for contact in contacts[entityID] {
                 entityStates.update(entityID) { state in
                     entity.onCollision(
-                        context: &entityContext,
+                        context: &context,
                         state: &state,
                         contact: contact
                     )
@@ -194,39 +187,31 @@ public struct Game {
             }
 
             entityRecords[index].entity = entity
-            sounds.append(contentsOf: entityContext.sounds)
-            appendFrameCommands(from: entityContext)
         }
-    }
-
-    private mutating func appendFrameCommands(from context: Context) {
-        frameContext.append(contentsOf: context.renderContext.commands)
     }
 
     public mutating func drainSounds() -> [SoundID] {
         defer {
-            sounds.removeAll(keepingCapacity: true)
+            frame.sounds.removeAll(keepingCapacity: true)
         }
 
-        return sounds
+        return frame.sounds
     }
 
-    private mutating func rebuildSpriteBuffer() {
-        renderContext.removeAll(keepingCapacity: true)
+    private mutating func rebuildFrame() {
         let visibleBounds = renderView.visibleBounds
         var visibleTileCount = 0
         var visibleEntityCount = 0
 
-        visibleTileCount += appendTileSprites(visibleWithin: visibleBounds, to: &renderContext)
-        visibleEntityCount += appendEntitySprites(visibleWithin: visibleBounds, to: &renderContext)
-        renderContext.append(contentsOf: frameContext.commands)
+        visibleTileCount += appendTileSprites(visibleWithin: visibleBounds)
+        visibleEntityCount += appendEntitySprites(visibleWithin: visibleBounds)
 
         if debugOptions.contains(.colliders) {
-            appendColliderDebug(visibleWithin: visibleBounds, to: &renderContext)
+            appendColliderDebug(visibleWithin: visibleBounds)
         }
 
         if debugOptions.contains(.visibility) {
-            renderContext.stroke(
+            appendStroke(
                 visibleBounds,
                 color: Color(red: 0, green: 0.8, blue: 1, alpha: 0.5),
                 width: 2,
@@ -234,11 +219,11 @@ public struct Game {
             )
         }
 
-        renderContext.sortCommands()
-        renderBatches = RenderBatch.make(from: renderContext.commands)
+        sortFrameCommands()
+        renderBatches = RenderBatch.make(from: frame.commands)
         renderStats = RenderStats(
-            commandCount: renderContext.commands.count,
-            primitiveCount: renderContext.commands.reduce(into: 0) { count, command in
+            commandCount: frame.commands.count,
+            primitiveCount: frame.commands.reduce(into: 0) { count, command in
                 count += command.primitiveCount
             },
             batchCount: renderBatches.count,
@@ -247,9 +232,8 @@ public struct Game {
         )
     }
 
-    private func appendTileSprites(
-        visibleWithin bounds: Rect,
-        to context: inout RenderContext
+    private mutating func appendTileSprites(
+        visibleWithin bounds: Rect
     ) -> Int {
         guard let range = level.tilemap.tileRange(intersecting: bounds) else {
             return 0
@@ -265,7 +249,7 @@ public struct Game {
                     continue
                 }
 
-                context.draw(
+                appendSprite(
                     Sprite(
                         material: tile.material,
                         layer: tile.layer,
@@ -286,9 +270,8 @@ public struct Game {
         return visibleTileCount
     }
 
-    private func appendEntitySprites(
-        visibleWithin bounds: Rect,
-        to context: inout RenderContext
+    private mutating func appendEntitySprites(
+        visibleWithin bounds: Rect
     ) -> Int {
         var visibleEntityCount = 0
 
@@ -300,16 +283,15 @@ public struct Game {
                 continue
             }
 
-            context.draw(sprite, at: state.position)
+            appendSprite(sprite, at: state.position)
             visibleEntityCount += 1
         }
 
         return visibleEntityCount
     }
 
-    private func appendColliderDebug(
-        visibleWithin bounds: Rect,
-        to context: inout RenderContext
+    private mutating func appendColliderDebug(
+        visibleWithin bounds: Rect
     ) {
         let style = RenderStyle(
             fill: Color.green.opacity(0.25),
@@ -317,7 +299,7 @@ public struct Game {
         )
 
         level.tilemap.colliderIndex.forEach(intersecting: bounds) { collider in
-            context.draw(collider.shape, in: collider.bounds, style: style, layer: 900)
+            appendShape(collider.shape, in: collider.bounds, style: style, layer: 900)
         }
 
         for record in entityRecords {
@@ -326,9 +308,61 @@ public struct Game {
             }
 
             for collider in state.worldColliders where collider.bounds.intersects(bounds) {
-                context.draw(collider.shape, in: collider.bounds, style: style, layer: 900)
+                appendShape(collider.shape, in: collider.bounds, style: style, layer: 900)
             }
         }
+    }
+
+    private mutating func appendSprite(_ sprite: Sprite, at position: Vec2) {
+        frame.commands.append(
+            .sprite(PositionedSprite(sprite: sprite, position: position))
+        )
+    }
+
+    private mutating func appendShape<S: Shape>(
+        _ shape: S,
+        in rect: Rect,
+        style: RenderStyle,
+        layer: RenderLayer
+    ) {
+        appendPath(shape.path(in: rect), style: style, layer: layer)
+    }
+
+    private mutating func appendPath(
+        _ path: Path,
+        style: RenderStyle,
+        layer: RenderLayer
+    ) {
+        frame.commands.append(.path(path.applying(style, layer: layer)))
+    }
+
+    private mutating func appendStroke(
+        _ rect: Rect,
+        color: Color,
+        width: Double,
+        layer: RenderLayer
+    ) {
+        appendPath(
+            Path(rect),
+            style: RenderStyle(
+                fill: nil,
+                stroke: color,
+                strokeStyle: StrokeStyle(lineWidth: width)
+            ),
+            layer: layer
+        )
+    }
+
+    private mutating func sortFrameCommands() {
+        frame.commands = frame.commands.enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.layer != rhs.element.layer {
+                    return lhs.element.layer < rhs.element.layer
+                }
+
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 
     private mutating func updateCamera(delta: Double) {
@@ -356,7 +390,6 @@ extension Game {
         let contacts: ContactState
         private let collisionSystem: CollisionSystem
         fileprivate private(set) var sounds: [SoundID] = []
-        fileprivate private(set) var renderContext = RenderContext()
 
         init(
             delta: Double,
@@ -378,27 +411,6 @@ extension Game {
 
         public mutating func play(sound: SoundID) {
             sounds.append(sound)
-        }
-
-        public mutating func draw(_ sprite: Sprite, at position: Vec2) {
-            renderContext.draw(sprite, at: position)
-        }
-
-        public mutating func draw(
-            _ path: Path,
-            style: RenderStyle = RenderStyle(),
-            layer: RenderLayer = 0
-        ) {
-            renderContext.draw(path, style: style, layer: layer)
-        }
-
-        public mutating func draw<S: Shape>(
-            _ shape: S,
-            in rect: Rect,
-            style: RenderStyle = RenderStyle(),
-            layer: RenderLayer = 0
-        ) {
-            renderContext.draw(shape, in: rect, style: style, layer: layer)
         }
 
         public func move(state: inout EntityState, velocity: Vec2) {

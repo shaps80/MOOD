@@ -6,7 +6,7 @@ import Swift
 /// time so the same sprite value can be reused without embedding world state.
 ///
 /// ```swift
-/// context.draw(playerSprite, at: player.position)
+/// RenderCommand.sprite(PositionedSprite(sprite: playerSprite, position: player.position))
 /// ```
 public struct PositionedSprite: Equatable, Sendable {
     /// The sprite presentation to draw.
