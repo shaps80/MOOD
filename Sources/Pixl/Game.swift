@@ -17,7 +17,6 @@ public struct Game {
     }
 
     private let level: OldLevel
-    private var entityRecords: [EntityRecord] = []
     private var entityStates: EntityStore = .init()
     private let contacts = ContactState()
     private var cameraRig: CameraRig
@@ -75,14 +74,13 @@ public struct Game {
             defer { id += 1 }
 
             var state = EntityState(id: .init(rawValue: id))
-            state.move(to: marker.position, velocity: .zero)
+            state.position = marker.position
+            state.velocity = .zero
 
             var context = PreparationContext(level: level)
             entity.prepare(context: &context, state: &state)
-            state.finalizePreparation()
 
-            entityRecords.append(EntityRecord(id: .init(rawValue: id), entity: entity))
-            entityStates.insert(state)
+            entityStates.insert(entity: entity, state: state)
         }
 
         updateCamera(delta: .infinity)
@@ -113,14 +111,13 @@ public struct Game {
 
             var state = EntityState(id: spawn.id)
 
-            state.move(to: spawn.position, velocity: .zero)
+            state.position = spawn.position
+            state.velocity = .zero
 
             var context = PreparationContext(level: level)
             entity.prepare(context: &context, state: &state)
-            state.finalizePreparation()
 
-            entityRecords.append(EntityRecord(id: spawn.id, entity: entity))
-            entityStates.insert(state)
+            entityStates.insert(entity: entity, state: state)
         }
         updateCamera(delta: .infinity)
         frame.prepare()
@@ -145,22 +142,20 @@ public struct Game {
             delta: delta,
             input: input,
             level: level,
-            entities: entityStates,
             contacts: contacts
         )
 
-        for index in entityRecords.indices {
-            let entityID = entityRecords[index].id
-            var entity = entityRecords[index].entity
-
-            entityStates.update(entityID) { state in
+        entityStates.updateEach { entity, state in
                 entity.onUpdate(context: &context, state: &state)
-            }
-
-            entityRecords[index].entity = entity
         }
 
-        context.detectContacts()
+        let collisionSystem = CollisionSystem(
+            tilemap: level.tilemap,
+            entities: entityStates,
+            delta: delta
+        )
+        entityStates.applyMovement(collisionSystem: collisionSystem)
+        collisionSystem.detectContacts(into: contacts)
         contacts.end()
         dispatchCollisions(context: &context)
 
@@ -172,21 +167,12 @@ public struct Game {
     private mutating func dispatchCollisions(
         context: inout Context
     ) {
-        for index in entityRecords.indices {
-            let entityID = entityRecords[index].id
-            var entity = entityRecords[index].entity
-
-            for contact in contacts[entityID] {
-                entityStates.update(entityID) { state in
-                    entity.onCollision(
-                        context: &context,
-                        state: &state,
-                        contact: contact
-                    )
-                }
-            }
-
-            entityRecords[index].entity = entity
+        entityStates.updateEachWithContacts(contacts: contacts) { entity, state, contact in
+            entity.onCollision(
+                context: &context,
+                state: &state,
+                contact: contact
+            )
         }
     }
 
@@ -275,13 +261,10 @@ public struct Game {
     ) -> Int {
         var visibleEntityCount = 0
 
-        for record in entityRecords {
-            guard let state = entityStates[record.id],
-                  state.bounds.intersects(bounds),
+        entityStates.forEachState { state in
+            guard state.bounds.intersects(bounds),
                   let sprite = state.sprite
-            else {
-                continue
-            }
+            else { return }
 
             appendSprite(sprite, at: state.position)
             visibleEntityCount += 1
@@ -302,11 +285,7 @@ public struct Game {
             appendShape(collider.shape, in: collider.bounds, style: style, layer: 900)
         }
 
-        for record in entityRecords {
-            guard let state = entityStates[record.id] else {
-                continue
-            }
-
+        entityStates.forEachState { state in
             for collider in state.worldColliders where collider.bounds.intersects(bounds) {
                 appendShape(collider.shape, in: collider.bounds, style: style, layer: 900)
             }
@@ -388,37 +367,23 @@ extension Game {
         public let input: Input
         public let level: OldLevel
         let contacts: ContactState
-        private let collisionSystem: CollisionSystem
         fileprivate private(set) var sounds: [SoundID] = []
 
         init(
             delta: Double,
             input: Input,
             level: OldLevel,
-            entities: EntityStore,
             contacts: ContactState
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
             self.contacts = contacts
-            self.collisionSystem = CollisionSystem(
-                tilemap: level.tilemap,
-                entities: entities,
-                delta: delta
-            )
         }
 
         public mutating func play(sound: SoundID) {
             sounds.append(sound)
         }
 
-        public func move(state: inout EntityState, velocity: Vec2) {
-            collisionSystem.move(state: &state, velocity: velocity)
-        }
-
-        func detectContacts() {
-            collisionSystem.detectContacts(into: contacts)
-        }
     }
 }

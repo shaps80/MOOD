@@ -44,7 +44,7 @@ struct Player: Entity {
             delta: context.delta
         )
 
-        context.move(state: &state, velocity: velocity)
+        state.velocity = velocity
         state.sprite?.material = .sprite(
             timeline.animation.textureID,
             sourceRect: timeline.frame

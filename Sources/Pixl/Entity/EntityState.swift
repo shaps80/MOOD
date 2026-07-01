@@ -14,8 +14,8 @@ public struct EntityID: Hashable, Sendable, ExpressibleByIntegerLiteral {
 
 public struct EntityState: Equatable, Identifiable, Sendable {
     public let id: EntityID
-    public internal(set) var position: Vec2
-    public internal(set) var velocity: Vec2
+    public var position: Vec2
+    public var velocity: Vec2
     public var sprite: Sprite?
     public var colliders: [Collider]
 
@@ -31,16 +31,13 @@ public struct EntityState: Equatable, Identifiable, Sendable {
         self.colliders = colliders
     }
 
-    mutating func move(to position: Vec2, velocity: Vec2) {
-        self.position = position
-        self.velocity = velocity
-    }
-
-    mutating func finalizePreparation() {
-    }
-
     var colliderFrames: [Rect] {
         worldColliders.map(\.bounds)
+    }
+
+    internal mutating func move(to position: Vec2, velocity: Vec2) {
+        self.position = position
+        self.velocity = velocity
     }
 
     var worldColliders: [Collider] {
