@@ -13,7 +13,7 @@ extension Renderer {
     }
 
     private func installDocumentStyles(in document: JSValue) {
-        guard document.getElementById("mood-runtime-style").object == nil else { return }
+        guard document.getElementById("pixl-runtime-style").object == nil else { return }
         guard let style = document.createElement("style").object else {
             fatalError("Unable to create runtime style element")
         }
@@ -21,7 +21,7 @@ extension Renderer {
             fatalError("Missing document head")
         }
 
-        style.id = "mood-runtime-style"
+        style.id = "pixl-runtime-style"
         style.textContent = (
             """
             html,

@@ -15,7 +15,7 @@ public struct Vec2: Equatable, Sendable {
     /// let point = Vec2(x: 12, y: 20)
     /// let x = point.x
     /// ```
-    public let x: Double
+    public var x: Double
 
     /// The vertical component.
     ///
@@ -23,7 +23,7 @@ public struct Vec2: Equatable, Sendable {
     /// let point = Vec2(x: 12, y: 20)
     /// let y = point.y
     /// ```
-    public let y: Double
+    public var y: Double
 
     /// Creates a vector from horizontal and vertical components.
     ///
@@ -33,6 +33,11 @@ public struct Vec2: Equatable, Sendable {
     public init(x: Double, y: Double) {
         self.x = x
         self.y = y
+    }
+
+    public init(_ size: Double) {
+        x = size
+        y = size
     }
 
     /// A vector with both components set to zero.
@@ -54,6 +59,15 @@ public struct Vec2: Equatable, Sendable {
         x: 1,
         y: 1
     )
+}
+
+public extension Vec2 {
+    static func random(x: ClosedRange<Double>, y: ClosedRange<Double>) -> Vec2 {
+        .init(
+            x: Double.random(in: x),
+            y: Double.random(in: y)
+        )
+    }
 }
 
 public extension Vec2 {

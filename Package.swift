@@ -6,6 +6,12 @@ let package = Package(
     platforms: [
         .macOS(.v13)
     ],
+    products: [
+        .library(
+            name: "Pixl",
+            targets: ["Pixl"]
+        )
+    ],
     dependencies: [
         .package(
             url: "https://github.com/swiftwasm/JavaScriptKit.git",
@@ -41,6 +47,15 @@ let package = Package(
                     name: "PlatformWeb",
                     condition: .when(platforms: [.wasi])
                 ),
+                .target(
+                    name: "PlatformMac",
+                    condition: .when(platforms: [.macOS])
+                )
+            ]
+        ),
+        .executableTarget(
+            name: "Barrett",
+            dependencies: [
                 .target(
                     name: "PlatformMac",
                     condition: .when(platforms: [.macOS])

@@ -80,7 +80,7 @@ final class Runtime: NSObject {
         view.delegate = self
         view.preferredFramesPerSecond = max(1, Int(game.preferredFps.rounded()))
 
-        window.title = "MOOD"
+        window.title = game.title
         window.contentView = view
         window.contentAspectRatio = contentSize
         window.contentMinSize = NSSize(width: 320, height: 180)
@@ -100,7 +100,7 @@ final class Runtime: NSObject {
         let applicationMenuItem = NSMenuItem()
         let applicationMenu = NSMenu()
         let quitItem = NSMenuItem(
-            title: "Quit MOOD",
+            title: "Quit \(game.title)",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )

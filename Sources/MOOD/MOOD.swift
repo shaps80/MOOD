@@ -65,6 +65,7 @@ struct MOOD {
 
     private static var game: Game {
         .init(
+            "MOOD",
             size: size,
             interpolationMode: .nearest,
             preferredFPS: 60,

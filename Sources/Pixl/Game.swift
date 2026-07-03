@@ -1,6 +1,7 @@
 import Swift
 
 public struct Game {
+    public let title: String
     public let logicalResolution: Vec2
     public let interpolationMode: InterpolationMode
     public let preferredFps: Double
@@ -32,11 +33,13 @@ public struct Game {
     private(set) var renderStats = RenderStats()
 
     public init(
+        _ title: String,
         size: Vec2,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
         world: World
     ) {
+        self.title = title
         self.logicalResolution = size
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
@@ -89,6 +92,7 @@ public struct Game {
     }
 
     public init(
+        _ title: String,
         size: Vec2 ,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
@@ -98,6 +102,7 @@ public struct Game {
         sprites: [SpriteAsset],
         sounds: [SoundAsset]
     ) {
+        self.title = title
         self.logicalResolution = size
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
