@@ -1,10 +1,10 @@
 import Pixl
 import PlatformMac
 
-let size: Vec2 = .init(x: 800, y: 400)
+let size: Vec2 = .init(x: 1600, y: 900)
 
 struct Player: Entity {
-    private var controller: TopPlayerController = .slippery
+    private var controller: TopPlayerController = .default
 
     func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = .init(

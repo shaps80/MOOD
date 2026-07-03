@@ -63,6 +63,36 @@ public struct Input: Equatable, Sendable {
         self.reset = reset
     }
 
+    /// Movement intent as a vector.
+    ///
+    /// Diagonal input is not normalized, so `(1, 1)` has greater length than
+    /// either cardinal direction.
+    ///
+    /// ```swift
+    /// state.velocity = input.direction * speed
+    /// ```
+    public var direction: Vec2 {
+        Vec2(x: horizontal, y: vertical)
+    }
+
+    /// Movement intent as a normalized vector.
+    ///
+    /// Use this for constant-speed top-down movement where diagonals should not
+    /// move faster than cardinal directions.
+    ///
+    /// ```swift
+    /// state.velocity = input.normalizedDirection * speed
+    /// ```
+    public var normalizedDirection: Vec2 {
+        let length = (horizontal * horizontal + vertical * vertical).squareRoot()
+
+        guard length > 0 else {
+            return .zero
+        }
+
+        return Vec2(x: horizontal / length, y: vertical / length)
+    }
+
     /// Combines two input snapshots, clamping axes and merging pressed actions.
     ///
     /// Use this when multiple devices can drive the same player.

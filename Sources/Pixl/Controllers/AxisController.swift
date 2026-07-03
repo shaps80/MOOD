@@ -1,9 +1,17 @@
 import Swift
 
+/// One-dimensional acceleration and deceleration for axis-based movement.
 public struct AxisController: Equatable, Sendable {
+    /// Maximum speed reached when input is `-1` or `1`.
     public var maxSpeed: Double
+
+    /// Units per second used while accelerating toward input.
     public var acceleration: Double
+
+    /// Units per second used while returning to rest.
     public var deceleration: Double
+
+    /// Units per second used while changing direction.
     public var reverseDeceleration: Double
 
     public init(
@@ -18,6 +26,10 @@ public struct AxisController: Equatable, Sendable {
         self.reverseDeceleration = reverseDeceleration ?? deceleration
     }
 
+    /// Calculates the next velocity for a scalar input axis.
+    ///
+    /// `input` is usually `-1...1`, where negative and positive values move in
+    /// opposite directions.
     public func velocity(current: Double, input: Double, delta: Double) -> Double {
         guard input != 0 else {
             return move(current, toward: 0, by: deceleration * delta)
