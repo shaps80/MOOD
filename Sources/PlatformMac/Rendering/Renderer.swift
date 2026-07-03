@@ -542,7 +542,8 @@ final class Renderer {
         let textureRect = useFallbackTextureRect ? TextureRect.full : item.textureRect
 
         return ItemInstance(
-            rect: item.rect.uniform,
+            transform: item.transform.uniform,
+            rotation: item.transform.rotationUniform,
             textureRect: textureRect.uniform,
             color: item.color.uniform,
             // info.x is RenderItemKind. Shaders branch on this packed value.
@@ -792,7 +793,8 @@ private extension PreparedBatch {
 }
 
 private struct ItemInstance {
-    let rect: SIMD4<Float>
+    let transform: SIMD4<Float>
+    let rotation: SIMD4<Float>
     let textureRect: SIMD4<Float>
     let color: SIMD4<Float>
     let info: SIMD4<Float>
@@ -835,6 +837,28 @@ private extension Rect {
     }
 }
 
+private extension RenderTransform {
+    var uniform: SIMD4<Float> {
+        SIMD4(
+            Float(center.x),
+            Float(center.y),
+            Float(size.x),
+            Float(size.y)
+        )
+    }
+
+    var rotationUniform: SIMD4<Float> {
+        let components = sincos(rotation)
+
+        return SIMD4(
+            Float(components.cos),
+            Float(components.sin),
+            0,
+            0
+        )
+    }
+}
+
 private extension TextureRect {
     var uniform: SIMD4<Float> {
         SIMD4(
@@ -869,7 +893,8 @@ struct PresentVertexOut {
 };
 
 struct ItemInstance {
-    float4 rect;
+    float4 transform;
+    float4 rotation;
     float4 textureRect;
     float4 color;
     float4 info;
@@ -909,7 +934,12 @@ vertex ItemVertexOut itemVertex(
 ) {
     ItemInstance instance = instances[instanceID];
     float2 unitPosition = positions[vertexID];
-    float2 pixelPosition = instance.rect.xy + (unitPosition * instance.rect.zw);
+    float2 localPosition = (unitPosition - float2(0.5)) * instance.transform.zw;
+    float2 rotatedPosition = float2(
+        (localPosition.x * instance.rotation.x) - (localPosition.y * instance.rotation.y),
+        (localPosition.x * instance.rotation.y) + (localPosition.y * instance.rotation.x)
+    );
+    float2 pixelPosition = instance.transform.xy + rotatedPosition;
     float2 zeroToOne = pixelPosition / resolution;
     float2 clipSpace = (zeroToOne * 2.0) - 1.0;
 
@@ -917,8 +947,8 @@ vertex ItemVertexOut itemVertex(
     out.position = float4(clipSpace * float2(1.0, -1.0), 0.0, 1.0);
     out.texCoord = instance.textureRect.xy + (unitPosition * instance.textureRect.zw);
     out.color = instance.color;
-    out.localPosition = unitPosition * instance.rect.zw;
-    out.size = instance.rect.zw;
+    out.localPosition = unitPosition * instance.transform.zw;
+    out.size = instance.transform.zw;
     out.info = instance.info;
     out.line = instance.line;
     out.fillColor = instance.fillColor;

@@ -10,7 +10,8 @@ final class Renderer {
     private var positionBuffer: JSValue = .undefined
     private var instanceBuffer: JSValue = .undefined
     private var positionAttributeLocation: Int = 0
-    private var rectAttributeLocation: Int = 0
+    private var transformAttributeLocation: Int = 0
+    private var rotationAttributeLocation: Int = 0
     private var textureRectAttributeLocation: Int = 0
     private var colorAttributeLocation: Int = 0
     private var infoAttributeLocation: Int = 0
@@ -97,7 +98,8 @@ final class Renderer {
             type: gl.VERTEX_SHADER,
             source: """
             attribute vec2 a_position;
-            attribute vec4 a_rect;
+            attribute vec4 a_transform;
+            attribute vec4 a_rotation;
             attribute vec4 a_textureRect;
             attribute vec4 a_color;
             attribute vec4 a_info;
@@ -117,13 +119,18 @@ final class Renderer {
             varying vec4 v_flags;
 
             void main() {
-                vec2 pixelPosition = a_rect.xy + (a_position * a_rect.zw);
+                vec2 localPosition = (a_position - vec2(0.5)) * a_transform.zw;
+                vec2 rotatedPosition = vec2(
+                    (localPosition.x * a_rotation.x) - (localPosition.y * a_rotation.y),
+                    (localPosition.x * a_rotation.y) + (localPosition.y * a_rotation.x)
+                );
+                vec2 pixelPosition = a_transform.xy + rotatedPosition;
                 vec2 zeroToOne = pixelPosition / u_resolution;
                 vec2 clipSpace = (zeroToOne * 2.0) - 1.0;
                 v_texCoord = a_textureRect.xy + (a_position * a_textureRect.zw);
                 v_color = a_color;
-                v_localPosition = a_position * a_rect.zw;
-                v_size = a_rect.zw;
+                v_localPosition = a_position * a_transform.zw;
+                v_size = a_transform.zw;
                 v_info = a_info;
                 v_line = a_line;
                 v_fillColor = a_fillColor;
@@ -187,7 +194,8 @@ final class Renderer {
 
         shaderProgram = program
         positionAttributeLocation = Int(gl.getAttribLocation!(program, "a_position").number ?? 0)
-        rectAttributeLocation = Int(gl.getAttribLocation!(program, "a_rect").number ?? 0)
+        transformAttributeLocation = Int(gl.getAttribLocation!(program, "a_transform").number ?? 0)
+        rotationAttributeLocation = Int(gl.getAttribLocation!(program, "a_rotation").number ?? 0)
         textureRectAttributeLocation = Int(
             gl.getAttribLocation!(program, "a_textureRect").number ?? 0
         )
@@ -453,11 +461,16 @@ final class Renderer {
 
     private func appendItem(_ item: RenderItem, useFallbackTextureRect: Bool) {
         let textureRect = useFallbackTextureRect ? TextureRect.full : item.textureRect
+        let rotation = sincos(item.transform.rotation)
         itemData.append(contentsOf: [
-            Float(item.rect.origin.x),
-            Float(item.rect.origin.y),
-            Float(item.rect.size.x),
-            Float(item.rect.size.y),
+            Float(item.transform.center.x),
+            Float(item.transform.center.y),
+            Float(item.transform.size.x),
+            Float(item.transform.size.y),
+            Float(rotation.cos),
+            Float(rotation.sin),
+            0,
+            0,
             Float(textureRect.origin.x),
             Float(textureRect.origin.y),
             Float(textureRect.size.x),
@@ -574,14 +587,15 @@ final class Renderer {
         _ = gl.vertexAttribDivisor!(positionAttributeLocation, 0)
 
         _ = gl.bindBuffer!(gl.ARRAY_BUFFER, instanceBuffer)
-        configureItemAttribute(rectAttributeLocation, offset: 0, startIndex: startIndex)
-        configureItemAttribute(textureRectAttributeLocation, offset: 16, startIndex: startIndex)
-        configureItemAttribute(colorAttributeLocation, offset: 32, startIndex: startIndex)
-        configureItemAttribute(infoAttributeLocation, offset: 48, startIndex: startIndex)
-        configureItemAttribute(lineAttributeLocation, offset: 64, startIndex: startIndex)
-        configureItemAttribute(fillColorAttributeLocation, offset: 80, startIndex: startIndex)
-        configureItemAttribute(strokeColorAttributeLocation, offset: 96, startIndex: startIndex)
-        configureItemAttribute(flagsAttributeLocation, offset: 112, startIndex: startIndex)
+        configureItemAttribute(transformAttributeLocation, offset: 0, startIndex: startIndex)
+        configureItemAttribute(rotationAttributeLocation, offset: 16, startIndex: startIndex)
+        configureItemAttribute(textureRectAttributeLocation, offset: 32, startIndex: startIndex)
+        configureItemAttribute(colorAttributeLocation, offset: 48, startIndex: startIndex)
+        configureItemAttribute(infoAttributeLocation, offset: 64, startIndex: startIndex)
+        configureItemAttribute(lineAttributeLocation, offset: 80, startIndex: startIndex)
+        configureItemAttribute(fillColorAttributeLocation, offset: 96, startIndex: startIndex)
+        configureItemAttribute(strokeColorAttributeLocation, offset: 112, startIndex: startIndex)
+        configureItemAttribute(flagsAttributeLocation, offset: 128, startIndex: startIndex)
 
         _ = gl.uniform2f!(resolutionUniform, game.logicalResolution.x, game.logicalResolution.y)
         _ = gl.uniform1f!(aaWidthUniform, shapeAAWidth())
@@ -714,7 +728,7 @@ private enum PreparedBatch {
     )
 }
 
-private let itemStride = 32
+private let itemStride = 36
 private let itemStrideBytes = itemStride * MemoryLayout<Float>.stride
 
 private let webBlendShaderSource = """

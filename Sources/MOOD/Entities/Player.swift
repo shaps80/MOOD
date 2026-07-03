@@ -44,6 +44,7 @@ struct Player: Entity {
             delta: context.delta
         )
 
+        state.rotation += .degrees(180) * context.delta
         state.velocity = velocity
         state.sprite?.material = .sprite(
             timeline.animation.textureID,

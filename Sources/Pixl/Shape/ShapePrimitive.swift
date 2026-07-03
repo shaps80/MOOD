@@ -10,6 +10,7 @@ public enum ShapePrimitiveKind: Int, Equatable, Sendable {
 public struct ShapePrimitive: Equatable, Sendable {
     public var kind: ShapePrimitiveKind
     public var bounds: Rect
+    public var rotation: Angle = .zero
     public var radius: Double
     public var cornerStyle: RoundedCornerStyle
     public var lineStart: Vec2

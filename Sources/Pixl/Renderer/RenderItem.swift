@@ -8,14 +8,19 @@ import Swift
 ///
 /// ```swift
 /// let item = RenderItem.sprite(
-///     rect: rect,
+///     transform: transform,
 ///     textureRect: .full,
 ///     color: .white
 /// )
 /// ```
 public struct RenderItem: Equatable, Sendable {
-    /// Camera-adjusted, pixel-aligned item bounds.
-    public var rect: Rect
+    /// Camera-adjusted render transform.
+    public var transform: RenderTransform
+
+    /// Camera-adjusted, unrotated item bounds.
+    public var rect: Rect {
+        transform.rect
+    }
 
     /// Normalized texture coordinates. Shape items use `.full`.
     public var textureRect: TextureRect
@@ -41,7 +46,7 @@ public struct RenderItem: Equatable, Sendable {
     /// Creates a prepared render item.
     public init(
         kind: RenderItemKind,
-        rect: Rect,
+        transform: RenderTransform,
         textureRect: TextureRect = .full,
         color: Color = .clear,
         radius: Double = 0,
@@ -52,7 +57,7 @@ public struct RenderItem: Equatable, Sendable {
         strokeColor: Color = .clear,
         flags: Vec4 = Vec4(0, 0, 0, 0)
     ) {
-        self.rect = rect
+        self.transform = transform
         self.textureRect = textureRect
         self.color = color
         self.info = Vec4(Double(kind.rawValue), radius, strokeWidth, lineCap)
@@ -66,13 +71,13 @@ public struct RenderItem: Equatable, Sendable {
 public extension RenderItem {
     /// Creates a sprite item.
     static func sprite(
-        rect: Rect,
+        transform: RenderTransform,
         textureRect: TextureRect,
         color: Color
     ) -> RenderItem {
         RenderItem(
             kind: .sprite,
-            rect: rect,
+            transform: transform,
             textureRect: textureRect,
             color: color
         )
@@ -81,7 +86,7 @@ public extension RenderItem {
     /// Creates a shape item.
     static func shape(
         kind: RenderItemKind,
-        rect: Rect,
+        transform: RenderTransform,
         radius: Double,
         strokeWidth: Double,
         lineCap: Double,
@@ -92,7 +97,7 @@ public extension RenderItem {
     ) -> RenderItem {
         RenderItem(
             kind: kind,
-            rect: rect,
+            transform: transform,
             radius: radius,
             strokeWidth: strokeWidth,
             lineCap: lineCap,

@@ -271,7 +271,7 @@ public struct Game {
                   let sprite = state.sprite
             else { return }
 
-            appendSprite(sprite, at: state.position)
+            appendSprite(sprite, at: state.position, rotation: state.rotation)
             visibleEntityCount += 1
         }
 
@@ -297,9 +297,13 @@ public struct Game {
         }
     }
 
-    private mutating func appendSprite(_ sprite: Sprite, at position: Vec2) {
+    private mutating func appendSprite(
+        _ sprite: Sprite,
+        at position: Vec2,
+        rotation: Angle = .zero
+    ) {
         frame.commands.append(
-            .sprite(PositionedSprite(sprite: sprite, position: position))
+            .sprite(PositionedSprite(sprite: sprite, position: position, rotation: rotation))
         )
     }
 

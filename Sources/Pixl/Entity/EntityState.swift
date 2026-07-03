@@ -14,7 +14,20 @@ public struct EntityID: Hashable, Sendable, ExpressibleByIntegerLiteral {
 
 public struct EntityState: Equatable, Identifiable, Sendable {
     public let id: EntityID
+
+    /// The world-space center position for the entity.
     public var position: Vec2
+
+    /// The visual rotation for the entity.
+    ///
+    /// Rotation is clockwise in y-down coordinates. It affects rendering and
+    /// visual bounds, but collision remains axis-aligned for now.
+    ///
+    /// ```swift
+    /// state.rotation += .degrees(180) * context.delta
+    /// ```
+    public var rotation: Angle
+
     public var velocity: Vec2
     public var sprite: Sprite?
     public var colliders: [Collider]
@@ -26,6 +39,7 @@ public struct EntityState: Equatable, Identifiable, Sendable {
     public init(id: EntityID, colliders: [Collider]) {
         self.id = id
         self.position = .zero
+        self.rotation = .zero
         self.velocity = .zero
         self.sprite = nil
         self.colliders = colliders
@@ -58,6 +72,10 @@ public struct EntityState: Equatable, Identifiable, Sendable {
             return Rect(center: position, size: .zero)
         }
 
-        return Rect(center: position, size: sprite.naturalSize * sprite.scale)
+        return RenderTransform(
+            center: position,
+            size: sprite.naturalSize * sprite.scale,
+            rotation: rotation
+        ).rotatedBounds
     }
 }

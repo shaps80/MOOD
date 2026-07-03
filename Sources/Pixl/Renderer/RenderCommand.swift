@@ -60,11 +60,14 @@ private extension PositionedSprite {
             body(.sprite(self))
         case .shape(let shape, let size):
             let scaledSize = size * sprite.scale
+            let transform = RenderTransform(
+                center: position,
+                size: scaledSize,
+                rotation: self.transform.rotation
+            )
             let rect = Rect(
-                x: position.x - (scaledSize.x / 2),
-                y: position.y - (scaledSize.y / 2),
-                width: scaledSize.x,
-                height: scaledSize.y
+                center: transform.center,
+                size: transform.size
             )
             let path = shape.path(in: rect)
             let style = RenderStyle(
@@ -76,7 +79,14 @@ private extension PositionedSprite {
 
             path
                 .applying(style, layer: sprite.layer)
-                .forEachPrimitive(body)
+                .forEachPrimitive { primitive in
+                    guard case .shape(var shape) = primitive else {
+                        return
+                    }
+
+                    shape.rotation = transform.rotation
+                    body(.shape(shape))
+                }
         }
     }
 }

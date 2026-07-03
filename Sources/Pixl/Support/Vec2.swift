@@ -8,7 +8,7 @@ import Swift
 /// let spawn = Vec2(x: 32, y: 48)
 /// let velocity = Vec2(x: 90, y: 0)
 /// ```
-public struct Vec2: Equatable, Sendable {
+public struct Vec2: AdditiveArithmetic, Hashable, Codable, Sendable {
     /// The horizontal component.
     ///
     /// ```swift
@@ -71,6 +71,53 @@ public extension Vec2 {
 }
 
 public extension Vec2 {
+    /// Negates both vector components.
+    ///
+    /// ```swift
+    /// let left = -Vec2(x: 1, y: 0)
+    /// ```
+    static prefix func - (vector: Vec2) -> Vec2 {
+        Vec2(x: -vector.x, y: -vector.y)
+    }
+
+    /// Adds two vectors component-wise.
+    ///
+    /// ```swift
+    /// let point = Vec2(x: 10, y: 20) + Vec2(x: 4, y: 2)
+    /// ```
+    static func + (lhs: Vec2, rhs: Vec2) -> Vec2 {
+        Vec2(x: lhs.x + rhs.x, y: lhs.y + rhs.y)
+    }
+
+    /// Adds the right vector into the left vector.
+    ///
+    /// ```swift
+    /// var position = Vec2.zero
+    /// position += Vec2(x: 1, y: 0)
+    /// ```
+    static func += (lhs: inout Vec2, rhs: Vec2) {
+        lhs = lhs + rhs
+    }
+
+    /// Subtracts two vectors component-wise.
+    ///
+    /// ```swift
+    /// let offset = Vec2(x: 10, y: 20) - Vec2(x: 4, y: 2)
+    /// ```
+    static func - (lhs: Vec2, rhs: Vec2) -> Vec2 {
+        Vec2(x: lhs.x - rhs.x, y: lhs.y - rhs.y)
+    }
+
+    /// Subtracts the right vector from the left vector.
+    ///
+    /// ```swift
+    /// var position = Vec2(x: 10, y: 0)
+    /// position -= Vec2(x: 1, y: 0)
+    /// ```
+    static func -= (lhs: inout Vec2, rhs: Vec2) {
+        lhs = lhs - rhs
+    }
+
     static func * (lhs: Vec2, rhs: Vec2) -> Vec2 {
         Vec2(x: lhs.x * rhs.x, y: lhs.y * rhs.y)
     }

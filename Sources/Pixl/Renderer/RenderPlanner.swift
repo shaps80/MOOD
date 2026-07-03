@@ -4,8 +4,8 @@ import Swift
 ///
 /// This renderer does not own GPU resources and does not draw. It resolves
 /// shared render semantics so platform renderers cannot diverge on sprite
-/// sizing, centering, camera offset, pixel alignment, texture coordinates,
-/// colors, or shape packing.
+/// sizing, centering, camera offset, rotation, pixel alignment, texture
+/// coordinates, colors, or shape packing.
 ///
 /// ```swift
 /// var planner = RenderPlanner()
@@ -24,8 +24,8 @@ public struct RenderPlanner: Sendable {
     ///   - game: The game state containing sorted render batches.
     ///   - textureSizes: Loaded texture sizes keyed by texture ID. Platforms
     ///     provide this because only they know the real loaded texture size.
-    /// - Returns: A prepared frame with camera-adjusted rects, normalized UVs,
-    ///   resolved colors, and packed shape values.
+    /// - Returns: A prepared frame with camera-adjusted transforms, normalized
+    ///   UVs, resolved colors, and packed shape values.
     public mutating func prepareFrame(
         game: Game,
         textureSizes: [TextureID: Vec2]
@@ -90,11 +90,15 @@ public struct RenderPlanner: Sendable {
             return nil
         }
 
-        let origin = Vec2(
-            x: positionedSprite.position.x - game.camera.origin.x - (size.x / 2),
-            y: positionedSprite.position.y - game.camera.origin.y - (size.y / 2)
+        let rect = Rect(
+            center: positionedSprite.position - game.camera.origin,
+            size: size
+        ).integral
+        let transform = RenderTransform(
+            center: rect.center,
+            size: rect.size,
+            rotation: positionedSprite.transform.rotation
         )
-        let rect = Rect(origin: origin, size: size).integral
         let textureRect = TextureRect.normalized(
             sourceRect: sprite.sourceRect,
             textureSize: textureSize
@@ -104,7 +108,7 @@ public struct RenderPlanner: Sendable {
         )
 
         return .sprite(
-            rect: rect,
+            transform: transform,
             textureRect: textureRect,
             color: color
         )
@@ -116,7 +120,11 @@ public struct RenderPlanner: Sendable {
     ) -> RenderItem {
         .shape(
             kind: shape.kind.renderItemKind,
-            rect: renderRect(for: shape.bounds, game: game),
+            transform: renderTransform(
+                for: shape.bounds,
+                rotation: shape.rotation,
+                game: game
+            ),
             radius: shape.radius,
             strokeWidth: shape.strokeWidth,
             lineCap: shape.lineCap.renderValue,
@@ -137,14 +145,21 @@ public struct RenderPlanner: Sendable {
         )
     }
 
-    private func renderRect(for rect: Rect, game: Game) -> Rect {
-        Rect(
-            origin: Vec2(
-                x: rect.origin.x - game.camera.origin.x,
-                y: rect.origin.y - game.camera.origin.y
-            ),
+    private func renderTransform(
+        for rect: Rect,
+        rotation: Angle,
+        game: Game
+    ) -> RenderTransform {
+        let rect = Rect(
+            center: rect.center - game.camera.origin,
             size: rect.size
         ).integral
+
+        return RenderTransform(
+            center: rect.center,
+            size: rect.size,
+            rotation: rotation
+        )
     }
 }
 
