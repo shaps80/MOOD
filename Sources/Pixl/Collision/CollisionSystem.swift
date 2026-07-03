@@ -123,9 +123,15 @@ struct CollisionSystem {
                     let correction = axisCorrection ?? resolution.vector
                     position += correction
                     velocity = if let axisCorrection {
-                        velocity.resolved(afterAxisCorrection: axisCorrection)
+                        velocity.resolved(
+                            afterAxisCorrection: axisCorrection,
+                            friction: otherCollider.friction
+                        )
                     } else {
-                        velocity.sliding(along: resolution.normal)
+                        velocity.sliding(
+                            along: resolution.normal,
+                            friction: otherCollider.friction
+                        )
                     }
                     didResolve = true
                 }
@@ -301,20 +307,41 @@ private extension Collider {
 }
 
 private extension Vec2 {
-    func resolved(afterAxisCorrection correction: Vec2) -> Vec2 {
-        Vec2(
+    func resolved(afterAxisCorrection correction: Vec2, friction: Double) -> Vec2 {
+        let projected = Vec2(
             x: correction.x == 0 ? x : 0,
             y: correction.y == 0 ? y : 0
         )
+
+        return projected.applyingTangentialFriction(friction, originalSpeed: length)
     }
 
-    func sliding(along normal: Vec2) -> Vec2 {
+    func sliding(along normal: Vec2, friction: Double) -> Vec2 {
         let amount = dot(normal)
 
         guard amount < 0 else {
             return self
         }
 
-        return self - (normal * amount)
+        let projected = self - (normal * amount)
+
+        return projected.applyingTangentialFriction(friction, originalSpeed: length)
+    }
+
+    func applyingTangentialFriction(_ friction: Double, originalSpeed: Double) -> Vec2 {
+        guard let direction = normalized else {
+            return self
+        }
+
+        let friction = max(0, friction)
+        let projectedSpeed = length
+        let preservedSpeed = originalSpeed
+
+        if friction <= 1 {
+            let speed = preservedSpeed + ((projectedSpeed - preservedSpeed) * friction)
+            return direction * speed
+        }
+
+        return direction * max(0, projectedSpeed / friction)
     }
 }

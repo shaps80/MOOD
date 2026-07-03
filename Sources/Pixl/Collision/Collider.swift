@@ -40,6 +40,16 @@ public struct Collider: Equatable, Sendable {
     public var behaviour: Behaviour
     public var oneWay: OneWay?
     public var transform: Transform
+
+    /// Tangential drag applied when resolving blocking movement.
+    ///
+    /// `0` preserves more speed along the surface, `1` uses plain projection,
+    /// and values above `1` add extra slowdown.
+    ///
+    /// ```swift
+    /// Collider(bounds: rampBounds, layer: .world, mask: .player, friction: 0.25)
+    /// ```
+    public var friction: Double
     private var usesDefaultBounds: Bool
     var shapeFrame: Rect
     var rotation: Angle
@@ -53,6 +63,7 @@ public struct Collider: Equatable, Sendable {
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil,
         transform: Transform = .identity,
+        friction: Double = 1,
         usesDefaultBounds: Bool = false
     ) {
         self.bounds = bounds
@@ -62,6 +73,7 @@ public struct Collider: Equatable, Sendable {
         self.behaviour = behaviour
         self.oneWay = oneWay
         self.transform = transform
+        self.friction = friction
         self.usesDefaultBounds = usesDefaultBounds
         self.shapeFrame = bounds
         self.rotation = .zero
@@ -75,7 +87,8 @@ public struct Collider: Equatable, Sendable {
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil,
-        transform: Transform = .identity
+        transform: Transform = .identity,
+        friction: Double = 1
     ) {
         self.init(
             bounds: bounds,
@@ -84,7 +97,8 @@ public struct Collider: Equatable, Sendable {
             mask: mask,
             behaviour: behaviour,
             oneWay: oneWay,
-            transform: transform
+            transform: transform,
+            friction: friction
         )
     }
 
@@ -94,7 +108,8 @@ public struct Collider: Equatable, Sendable {
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil,
-        transform: Transform = .identity
+        transform: Transform = .identity,
+        friction: Double = 1
     ) {
         self.init(
             bounds: bounds,
@@ -103,7 +118,8 @@ public struct Collider: Equatable, Sendable {
             mask: mask,
             behaviour: behaviour,
             oneWay: oneWay,
-            transform: transform
+            transform: transform,
+            friction: friction
         )
     }
 
@@ -113,7 +129,8 @@ public struct Collider: Equatable, Sendable {
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil,
-        transform: Transform = .identity
+        transform: Transform = .identity,
+        friction: Double = 1
     ) {
         self.init(
             bounds: .zero,
@@ -123,6 +140,7 @@ public struct Collider: Equatable, Sendable {
             behaviour: behaviour,
             oneWay: oneWay,
             transform: transform,
+            friction: friction,
             usesDefaultBounds: true
         )
     }
@@ -132,7 +150,8 @@ public struct Collider: Equatable, Sendable {
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil,
-        transform: Transform = .identity
+        transform: Transform = .identity,
+        friction: Double = 1
     ) {
         self.init(
             bounds: .zero,
@@ -142,6 +161,7 @@ public struct Collider: Equatable, Sendable {
             behaviour: behaviour,
             oneWay: oneWay,
             transform: transform,
+            friction: friction,
             usesDefaultBounds: true
         )
     }

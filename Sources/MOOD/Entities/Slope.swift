@@ -11,7 +11,8 @@ struct Slope: Entity {
                 shape: .rect,
                 layer: .world,
                 mask: .player,
-                behaviour: .blocking
+                behaviour: .blocking,
+                friction: 1
             )
         ]
         state.sprite = Sprite(

@@ -8,7 +8,8 @@ struct Enemy: Entity {
             .init(
                 bounds: Rect(size: size),
                 layer: .enemy,
-                mask: .player
+                mask: .player,
+                behaviour: .trigger
             )
         ]
         state.sprite = Sprite(
