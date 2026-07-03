@@ -21,7 +21,7 @@ struct Player: Entity {
     }
 
     func onUpdate(context: inout Game.Context, state: inout EntityState) {
-        state.rotation = .degrees(1) * context.delta
+        state.rotation += .degrees(180) * context.delta
         state.velocity = controller.velocity(
             for: context.input,
             current: state.velocity,
