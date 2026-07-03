@@ -18,13 +18,13 @@ public extension Sprite {
         }
     }
 
-    /// The final visual size after applying sprite scale.
+    /// The final visual size after applying sprite transform scale.
     ///
     /// ```swift
     /// let drawSize = sprite.renderedSize(textureSize: loadedSize)
     /// ```
     func renderedSize(textureSize: Vec2? = nil) -> Vec2 {
-        naturalSize(textureSize: textureSize) * scale
+        naturalSize(textureSize: textureSize) * transform.scale
     }
 
     /// The sprite source rect, when this sprite draws a texture frame.

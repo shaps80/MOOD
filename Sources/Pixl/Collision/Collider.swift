@@ -29,17 +29,21 @@ import Swift
 /// ```
 ///
 /// Keeping bounds local makes the collider move with its owner automatically:
-/// update the entity position, then call `worldBounds(at:)` when collision
-/// code needs the absolute rect.
+/// update the owner transform, then collision code places the collider into
+/// world space for broad and narrow phase checks.
 public struct Collider: Equatable, Sendable {
-    /// Local-space AABB, relative to the owning entity or tile origin.
+    /// Local-space AABB before placement; broad-phase world AABB after placement.
     public var bounds: Rect
     public var shape: AnyShape
     public var layer: Layer
     public var mask: Layer.Mask
     public var behaviour: Behaviour
     public var oneWay: OneWay?
+    public var transform: Transform
     private var usesDefaultBounds: Bool
+    var shapeFrame: Rect
+    var rotation: Angle
+    var points: [Vec2]
 
     internal init(
         bounds: Rect,
@@ -48,6 +52,7 @@ public struct Collider: Equatable, Sendable {
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
         oneWay: OneWay? = nil,
+        transform: Transform = .identity,
         usesDefaultBounds: Bool = false
     ) {
         self.bounds = bounds
@@ -56,7 +61,11 @@ public struct Collider: Equatable, Sendable {
         self.mask = mask
         self.behaviour = behaviour
         self.oneWay = oneWay
+        self.transform = transform
         self.usesDefaultBounds = usesDefaultBounds
+        self.shapeFrame = bounds
+        self.rotation = .zero
+        self.points = []
     }
 
     public init<S: Shape>(
@@ -65,7 +74,8 @@ public struct Collider: Equatable, Sendable {
         layer: Layer,
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
-        oneWay: OneWay? = nil
+        oneWay: OneWay? = nil,
+        transform: Transform = .identity
     ) {
         self.init(
             bounds: bounds,
@@ -73,7 +83,8 @@ public struct Collider: Equatable, Sendable {
             layer: layer,
             mask: mask,
             behaviour: behaviour,
-            oneWay: oneWay
+            oneWay: oneWay,
+            transform: transform
         )
     }
 
@@ -82,7 +93,8 @@ public struct Collider: Equatable, Sendable {
         layer: Layer,
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
-        oneWay: OneWay? = nil
+        oneWay: OneWay? = nil,
+        transform: Transform = .identity
     ) {
         self.init(
             bounds: bounds,
@@ -90,7 +102,8 @@ public struct Collider: Equatable, Sendable {
             layer: layer,
             mask: mask,
             behaviour: behaviour,
-            oneWay: oneWay
+            oneWay: oneWay,
+            transform: transform
         )
     }
 
@@ -99,7 +112,8 @@ public struct Collider: Equatable, Sendable {
         layer: Layer,
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
-        oneWay: OneWay? = nil
+        oneWay: OneWay? = nil,
+        transform: Transform = .identity
     ) {
         self.init(
             bounds: .zero,
@@ -108,6 +122,7 @@ public struct Collider: Equatable, Sendable {
             mask: mask,
             behaviour: behaviour,
             oneWay: oneWay,
+            transform: transform,
             usesDefaultBounds: true
         )
     }
@@ -116,7 +131,8 @@ public struct Collider: Equatable, Sendable {
         layer: Layer,
         mask: Layer.Mask,
         behaviour: Behaviour = .blocking,
-        oneWay: OneWay? = nil
+        oneWay: OneWay? = nil,
+        transform: Transform = .identity
     ) {
         self.init(
             bounds: .zero,
@@ -125,45 +141,108 @@ public struct Collider: Equatable, Sendable {
             mask: mask,
             behaviour: behaviour,
             oneWay: oneWay,
+            transform: transform,
             usesDefaultBounds: true
         )
     }
 
-    /// Converts center-relative local bounds into world-space bounds at an owner position.
-    public func worldBounds(at position: Vec2) -> Rect {
-        bounds.translated(by: position)
-    }
-
-    public func placed(at position: Vec2) -> Collider {
+    func placed(at position: Vec2) -> Collider {
         var collider = self
-        collider.bounds = bounds.translated(by: position)
+        collider.shapeFrame = shapeFrame.translated(by: position)
+        collider.bounds = collider.shapeFrame.rotatedBounds(rotation)
+        collider.points = shape.collisionPoints(in: collider.shapeFrame)
         return collider
     }
 
-    public func scaled(by scale: Vec2) -> Collider {
-        var collider = self
-        collider.bounds = bounds.scaled(by: scale)
-        return collider
-    }
-
-    public func placed(at position: Vec2, scale: Vec2) -> Collider {
-        scaled(by: scale).placed(at: position)
-    }
-
-    public func placed(at position: Vec2, spriteSize: Vec2, scale: Vec2) -> Collider {
+    func placed(
+        in ownerTransform: Transform,
+        spriteSize: Vec2
+    ) -> Collider {
         var collider = self
         let localBounds = usesDefaultBounds ? Rect(size: spriteSize) : bounds
         let scaledOrigin = Vec2(
-            x: (localBounds.origin.x - (spriteSize.x / 2)) * scale.x,
-            y: (localBounds.origin.y - (spriteSize.y / 2)) * scale.y
+            x: localBounds.origin.x - (spriteSize.x / 2),
+            y: localBounds.origin.y - (spriteSize.y / 2)
         )
-        let scaledSize = localBounds.size * scale
+        let localFrame = Rect(origin: scaledOrigin, size: localBounds.size)
+        let matrix = TransformMatrix(ownerTransform)
+            .concatenated(with: TransformMatrix(transform))
+        let points = collider.shape.collisionPoints(in: localFrame)
+            .map { matrix.applying(to: $0) }
+        let worldTransform = ownerTransform.concatenated(with: transform)
 
-        collider.bounds = Rect(origin: scaledOrigin, size: scaledSize)
-            .translated(by: position)
+        collider.shapeFrame = Rect(
+            center: matrix.applying(to: localFrame.center),
+            size: localFrame.size * worldTransform.scale
+        )
+        collider.rotation = worldTransform.rotation
+        collider.bounds = Rect(enclosing: points)
+        collider.points = points
         collider.usesDefaultBounds = false
 
         return collider
+    }
+}
+
+extension Rect {
+    init(enclosing points: [Vec2]) {
+        guard let first = points.first else {
+            self = .zero
+            return
+        }
+
+        var minX = first.x
+        var maxX = first.x
+        var minY = first.y
+        var maxY = first.y
+
+        for point in points.dropFirst() {
+            minX = min(minX, point.x)
+            maxX = max(maxX, point.x)
+            minY = min(minY, point.y)
+            maxY = max(maxY, point.y)
+        }
+
+        self.init(
+            x: minX,
+            y: minY,
+            width: max(0, maxX - minX),
+            height: max(0, maxY - minY)
+        )
+    }
+
+    func rotatedBounds(_ rotation: Angle) -> Rect {
+        let corners = [
+            Vec2(x: minX, y: minY),
+            Vec2(x: maxX, y: minY),
+            Vec2(x: maxX, y: maxY),
+            Vec2(x: minX, y: maxY)
+        ]
+        let center = center
+        let rotated = corners.map { $0.rotated(around: center, by: rotation) }
+        let minX = rotated.map(\.x).min() ?? center.x
+        let maxX = rotated.map(\.x).max() ?? center.x
+        let minY = rotated.map(\.y).min() ?? center.y
+        let maxY = rotated.map(\.y).max() ?? center.y
+
+        return Rect(
+            x: minX,
+            y: minY,
+            width: max(0, maxX - minX),
+            height: max(0, maxY - minY)
+        )
+    }
+}
+
+extension Vec2 {
+    func rotated(around center: Vec2, by rotation: Angle) -> Vec2 {
+        let components = sincos(rotation)
+        let local = self - center
+
+        return Vec2(
+            x: center.x + (local.x * components.cos) - (local.y * components.sin),
+            y: center.y + (local.x * components.sin) + (local.y * components.cos)
+        )
     }
 }
 

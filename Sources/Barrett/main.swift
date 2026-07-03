@@ -14,14 +14,14 @@ struct Player: Entity {
             )
         )
         state.sprite?.tint = .blue
-        state.position = .init(
+        state.transform.position = .init(
             x: (size.x - 24) / 2,
             y: (size.y - 24) / 2
         )
     }
 
     func onUpdate(context: inout Game.Context, state: inout EntityState) {
-        state.rotation += .degrees(180) * context.delta
+        state.transform.rotation += .degrees(180) * context.delta
         state.velocity = controller.velocity(
             for: context.input,
             current: state.velocity,

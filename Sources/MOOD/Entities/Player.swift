@@ -38,14 +38,12 @@ struct Player: Entity {
             wasJumpPressed = input.jump
         }
 
-        let velocity = controller.velocity(
+        state.velocity = controller.velocity(
             for: input,
             current: state.velocity,
             delta: context.delta
         )
 
-        state.rotation += .degrees(180) * context.delta
-        state.velocity = velocity
         state.sprite?.material = .sprite(
             timeline.animation.textureID,
             sourceRect: timeline.frame

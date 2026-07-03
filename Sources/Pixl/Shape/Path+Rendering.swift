@@ -62,6 +62,7 @@ extension Path {
         return ShapePrimitive(
             kind: kind,
             bounds: bounds,
+            rotation: rotation,
             radius: radius,
             cornerStyle: cornerStyle,
             lineStart: .zero,
@@ -100,6 +101,7 @@ extension Path {
         return ShapePrimitive(
             kind: .line,
             bounds: bounds,
+            rotation: rotation,
             radius: 0,
             cornerStyle: .circular,
             lineStart: Vec2(

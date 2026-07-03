@@ -59,7 +59,7 @@ private extension PositionedSprite {
         case .sprite:
             body(.sprite(self))
         case .shape(let shape, let size):
-            let scaledSize = size * sprite.scale
+            let scaledSize = size * sprite.transform.scale
             let transform = RenderTransform(
                 center: position,
                 size: scaledSize,

@@ -30,6 +30,7 @@ public struct Path: Equatable, Sendable {
     var blendMode: BlendMode
     var opacity: Double
     var tint: Color
+    var rotation: Angle
 
     public init() {
         self.commands = []
@@ -39,6 +40,7 @@ public struct Path: Equatable, Sendable {
         self.blendMode = .normal
         self.opacity = 1
         self.tint = .white
+        self.rotation = .zero
     }
 
     public init(_ build: (inout Path) -> Void) {

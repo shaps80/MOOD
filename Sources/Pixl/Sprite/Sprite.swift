@@ -2,7 +2,7 @@ import Swift
 
 public struct Sprite: Equatable, Sendable {
     public var material: Material
-    public var scale: Vec2
+    public var transform: Transform
     public var layer: RenderLayer
     public var blendMode: BlendMode
     public var opacity: Double
@@ -10,14 +10,14 @@ public struct Sprite: Equatable, Sendable {
 
     public init(
         material: Material,
-        scale: Vec2 = .one,
+        transform: Transform = .identity,
         layer: RenderLayer = 0,
         blendMode: BlendMode = .normal,
         opacity: Double = 1,
         tint: Color = .white
     ) {
         self.material = material
-        self.scale = scale
+        self.transform = transform
         self.layer = layer
         self.blendMode = blendMode
         self.opacity = opacity

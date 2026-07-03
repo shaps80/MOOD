@@ -77,7 +77,7 @@ public struct Game {
             defer { id += 1 }
 
             var state = EntityState(id: .init(rawValue: id))
-            state.position = marker.position
+            state.transform.position = marker.position
             state.velocity = .zero
 
             var context = PreparationContext(level: level)
@@ -116,7 +116,7 @@ public struct Game {
 
             var state = EntityState(id: spawn.id)
 
-            state.position = spawn.position
+            state.transform.position = spawn.position
             state.velocity = .zero
 
             var context = PreparationContext(level: level)
@@ -247,11 +247,13 @@ public struct Game {
                         blendMode: tile.blendMode,
                         tint: tile.tint
                     ),
-                    at: Vec2(
+                    in: Transform(
+                        position: Vec2(
                             x: (Double(x) * level.tilemap.tileSize.x)
                                 + (level.tilemap.tileSize.x / 2),
                             y: (Double(y) * level.tilemap.tileSize.y)
                                 + (level.tilemap.tileSize.y / 2)
+                        )
                     )
                 )
                 visibleTileCount += 1
@@ -271,7 +273,7 @@ public struct Game {
                   let sprite = state.sprite
             else { return }
 
-            appendSprite(sprite, at: state.position, rotation: state.rotation)
+            appendSprite(sprite, in: state.transform)
             visibleEntityCount += 1
         }
 
@@ -287,33 +289,42 @@ public struct Game {
         )
 
         level.tilemap.colliderIndex.forEach(intersecting: bounds) { collider in
-            appendShape(collider.shape, in: collider.bounds, style: style, layer: 900)
+            appendShape(collider.shape, in: collider.shapeFrame, rotation: collider.rotation, style: style, layer: 900)
         }
 
         entityStates.forEachState { state in
             for collider in state.worldColliders where collider.bounds.intersects(bounds) {
-                appendShape(collider.shape, in: collider.bounds, style: style, layer: 900)
+                appendShape(collider.shape, in: collider.shapeFrame, rotation: collider.rotation, style: style, layer: 900)
             }
         }
     }
 
-    private mutating func appendSprite(
-        _ sprite: Sprite,
-        at position: Vec2,
-        rotation: Angle = .zero
-    ) {
+    private mutating func appendSprite(_ sprite: Sprite, in transform: Transform) {
+        let worldTransform = transform.concatenated(with: sprite.transform)
+        var sprite = sprite
+        sprite.transform = Transform(scale: worldTransform.scale)
+
         frame.commands.append(
-            .sprite(PositionedSprite(sprite: sprite, position: position, rotation: rotation))
+            .sprite(
+                PositionedSprite(
+                    sprite: sprite,
+                    position: worldTransform.position,
+                    rotation: worldTransform.rotation
+                )
+            )
         )
     }
 
     private mutating func appendShape<S: Shape>(
         _ shape: S,
         in rect: Rect,
+        rotation: Angle = .zero,
         style: RenderStyle,
         layer: RenderLayer
     ) {
-        appendPath(shape.path(in: rect), style: style, layer: layer)
+        var path = shape.path(in: rect)
+        path.rotation = rotation
+        appendPath(path, style: style, layer: layer)
     }
 
     private mutating func appendPath(

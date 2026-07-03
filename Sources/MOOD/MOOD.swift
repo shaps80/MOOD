@@ -41,6 +41,13 @@ extension World {
                             x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
                             y: level.spawnPoint.y
                         )
+                    ),
+                    .init(
+                        kind: Slope.kind,
+                        position: .init(
+                            x: level.spawnPoint.x + (level.tilemap.tileSize.x * 8),
+                            y: level.spawnPoint.y + (level.tilemap.tileSize.y * 3)
+                        )
                     )
                 ]
             ),
@@ -50,7 +57,8 @@ extension World {
         world.register(
             Player.self,
             Enemy.self,
-            Pickup.self
+            Pickup.self,
+            Slope.self
         )
 
         return world

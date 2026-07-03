@@ -15,18 +15,14 @@ public struct EntityID: Hashable, Sendable, ExpressibleByIntegerLiteral {
 public struct EntityState: Equatable, Identifiable, Sendable {
     public let id: EntityID
 
-    /// The world-space center position for the entity.
-    public var position: Vec2
-
-    /// The visual rotation for the entity.
+    /// The world-space entity transform.
     ///
-    /// Rotation is clockwise in y-down coordinates. It affects rendering and
-    /// visual bounds, but collision remains axis-aligned for now.
+    /// Child sprite and collider transforms are composed with this transform.
     ///
     /// ```swift
-    /// state.rotation += .degrees(180) * context.delta
+    /// state.transform.rotation += .degrees(180) * context.delta
     /// ```
-    public var rotation: Angle
+    public var transform: Transform
 
     public var velocity: Vec2
     public var sprite: Sprite?
@@ -38,8 +34,7 @@ public struct EntityState: Equatable, Identifiable, Sendable {
 
     public init(id: EntityID, colliders: [Collider]) {
         self.id = id
-        self.position = .zero
-        self.rotation = .zero
+        self.transform = .identity
         self.velocity = .zero
         self.sprite = nil
         self.colliders = colliders
@@ -50,32 +45,31 @@ public struct EntityState: Equatable, Identifiable, Sendable {
     }
 
     internal mutating func move(to position: Vec2, velocity: Vec2) {
-        self.position = position
+        self.transform.position = position
         self.velocity = velocity
     }
 
     var worldColliders: [Collider] {
         let spriteSize = sprite?.naturalSize ?? .zero
-        let spriteScale = sprite?.scale ?? Vec2(x: 1, y: 1)
 
         return colliders.map {
             $0.placed(
-                at: position,
-                spriteSize: spriteSize,
-                scale: spriteScale
+                in: transform,
+                spriteSize: spriteSize
             )
         }
     }
 
     public var bounds: Rect {
         guard let sprite else {
-            return Rect(center: position, size: .zero)
+            return Rect(center: transform.position, size: .zero)
         }
 
+        let worldTransform = transform.concatenated(with: sprite.transform)
         return RenderTransform(
-            center: position,
-            size: sprite.naturalSize * sprite.scale,
-            rotation: rotation
+            center: worldTransform.position,
+            size: sprite.naturalSize * worldTransform.scale,
+            rotation: worldTransform.rotation
         ).rotatedBounds
     }
 }

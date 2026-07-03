@@ -152,7 +152,34 @@ public extension Vec2 {
         )
     }
 
-    private var length: Double {
+    /// The Euclidean length of the vector.
+    ///
+    /// ```swift
+    /// let speed = velocity.length
+    /// ```
+    var length: Double {
         (x * x + y * y).squareRoot()
+    }
+
+    /// The unit-length vector in the same direction, or `nil` for zero vectors.
+    ///
+    /// ```swift
+    /// let direction = velocity.normalized
+    /// ```
+    var normalized: Vec2? {
+        guard length > 0 else {
+            return nil
+        }
+
+        return self * (1 / length)
+    }
+
+    /// Returns the dot product of two vectors.
+    ///
+    /// ```swift
+    /// let facingAmount = facing.dot(direction)
+    /// ```
+    func dot(_ other: Vec2) -> Double {
+        (x * other.x) + (y * other.y)
     }
 }
