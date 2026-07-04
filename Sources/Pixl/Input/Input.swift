@@ -46,6 +46,9 @@ public struct Input: Equatable, Sendable {
     /// Whether the debug toggle action is pressed.
     public let debug: Bool
 
+    /// Requested time scale, usually from number keys `1...9`.
+    public let timeScale: Double?
+
     /// Creates an input snapshot.
     ///
     /// Omitted values default to neutral axes and unpressed actions.
@@ -59,13 +62,15 @@ public struct Input: Equatable, Sendable {
         vertical: Double = 0,
         jump: Bool = false,
         reset: Bool = false,
-        debug: Bool = false
+        debug: Bool = false,
+        timeScale: Double? = nil
     ) {
         self.horizontal = horizontal
         self.vertical = vertical
         self.jump = jump
         self.reset = reset
         self.debug = debug
+        self.timeScale = timeScale
     }
 
     /// Movement intent as a vector.
@@ -113,7 +118,8 @@ public struct Input: Equatable, Sendable {
             vertical: clamp(vertical + other.vertical, min: -1, max: 1),
             jump: jump || other.jump,
             reset: reset || other.reset,
-            debug: debug || other.debug
+            debug: debug || other.debug,
+            timeScale: timeScale ?? other.timeScale
         )
     }
 }

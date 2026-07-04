@@ -14,7 +14,8 @@ final class KeyboardInput {
             vertical: verticalAxis,
             jump: isPressed("Space"),
             reset: isPressed("Escape"),
-            debug: isPressed("Backquote")
+            debug: isPressed("Backquote"),
+            timeScale: timeScale
         )
     }
 
@@ -96,10 +97,21 @@ final class KeyboardInput {
              "KeyW", "KeyA", "KeyS", "KeyD",
              "Space",
              "Backquote",
-             "Escape":
+             "Escape",
+             "Digit1", "Digit2", "Digit3",
+             "Digit4", "Digit5", "Digit6",
+             "Digit7", "Digit8", "Digit9":
             return true
         default:
             return false
         }
+    }
+
+    private var timeScale: Double? {
+        for value in 1...9 where isPressed("Digit\(value)") {
+            return Double(value)
+        }
+
+        return nil
     }
 }

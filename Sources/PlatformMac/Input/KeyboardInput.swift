@@ -12,7 +12,8 @@ final class KeyboardInput {
             vertical: verticalAxis,
             jump: isPressed(KeyCode.space),
             reset: isPressed(KeyCode.escape),
-            debug: isPressed(KeyCode.grave)
+            debug: isPressed(KeyCode.grave),
+            timeScale: timeScale
         )
     }
 
@@ -79,11 +80,28 @@ final class KeyboardInput {
              KeyCode.d,
              KeyCode.space,
              KeyCode.escape,
-             KeyCode.grave:
+             KeyCode.grave,
+             KeyCode.one,
+             KeyCode.two,
+             KeyCode.three,
+             KeyCode.four,
+             KeyCode.five,
+             KeyCode.six,
+             KeyCode.seven,
+             KeyCode.eight,
+             KeyCode.nine:
             return true
         default:
             return false
         }
+    }
+
+    private var timeScale: Double? {
+        for (keyCode, value) in KeyCode.timeScales where isPressed(keyCode) {
+            return value
+        }
+
+        return nil
     }
 }
 
@@ -95,8 +113,29 @@ private enum KeyCode {
     static let grave: UInt16 = 50
     static let escape: UInt16 = 53
     static let space: UInt16 = 49
+    static let one: UInt16 = 18
+    static let two: UInt16 = 19
+    static let three: UInt16 = 20
+    static let four: UInt16 = 21
+    static let five: UInt16 = 23
+    static let six: UInt16 = 22
+    static let seven: UInt16 = 26
+    static let eight: UInt16 = 28
+    static let nine: UInt16 = 25
     static let leftArrow: UInt16 = 123
     static let rightArrow: UInt16 = 124
     static let downArrow: UInt16 = 125
     static let upArrow: UInt16 = 126
+
+    static let timeScales: [(UInt16, Double)] = [
+        (one, 1),
+        (two, 2),
+        (three, 3),
+        (four, 4),
+        (five, 5),
+        (six, 6),
+        (seven, 7),
+        (eight, 8),
+        (nine, 9)
+    ]
 }

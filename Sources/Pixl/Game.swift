@@ -5,6 +5,11 @@ public struct Game {
     public let logicalResolution: Vec2
     public let interpolationMode: InterpolationMode
     public let preferredFps: Double
+    public var timeScale: Double {
+        didSet {
+            timeScale = Self.clampedTimeScale(timeScale)
+        }
+    }
     public private(set) var clearColor: Color = .white
     public var camera: Camera { cameraRig.camera }
     public var renderView: RenderView {
@@ -40,12 +45,14 @@ public struct Game {
         size: Vec2,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
+        timeScale: Double = 1,
         world: World
     ) {
         self.title = title
         self.logicalResolution = size
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
+        self.timeScale = Self.clampedTimeScale(timeScale)
         self.cameraRig = world.camera ?? .init(
             camera: .init(viewportSize: size),
             anchor: .entities([]),
@@ -88,6 +95,7 @@ public struct Game {
         size: Vec2 ,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
+        timeScale: Double = 1,
         level: OldLevel,
         camera: CameraRig,
         entities: [EntitySpawn],
@@ -98,6 +106,7 @@ public struct Game {
         self.logicalResolution = size
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
+        self.timeScale = Self.clampedTimeScale(timeScale)
         self.level = level
         self.cameraRig = camera
         self.spriteAssets = sprites
@@ -123,11 +132,18 @@ public struct Game {
             debugOptions.toggle(.colliders)
         }
 
+        if debugOptions.isEnabled,
+           let requestedTimeScale = input.timeScale {
+            timeScale = requestedTimeScale
+        }
+
+        let simulationDelta = delta * timeScale
+
         frame.prepare()
         contacts.begin()
 
         var context = Context(
-            delta: delta,
+            delta: simulationDelta,
             input: input,
             level: level,
             contacts: contacts
@@ -152,7 +168,7 @@ public struct Game {
         let collisionSystem = CollisionSystem(
             tilemap: level.tilemap,
             entities: entityStates,
-            delta: delta
+            delta: simulationDelta
         )
         entityStates.applyMovement(collisionSystem: collisionSystem)
         collisionSystem.detectContacts(into: contacts)
@@ -160,7 +176,7 @@ public struct Game {
         dispatchCollisions(context: &context)
         flushFrameEvents(from: &context)
 
-        updateCamera(delta: delta)
+        updateCamera(delta: simulationDelta)
         rebuildFrame()
     }
 
@@ -476,6 +492,22 @@ public struct Game {
 
             return state.convertToWorld(position)
         }
+    }
+}
+
+private extension Game {
+    static func clampedTimeScale(_ value: Double) -> Double {
+        guard value.isFinite else {
+            return 1
+        }
+
+        return max(value, .leastNonzeroMagnitude)
+    }
+}
+
+private extension DebugOptions {
+    var isEnabled: Bool {
+        !isEmpty
     }
 }
 
