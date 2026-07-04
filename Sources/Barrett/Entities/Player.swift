@@ -7,6 +7,12 @@ struct Player: Entity {
         deceleration: 4000
     )
     private var gun = Gun(roundsPerSecond: 10)
+    private var hasBomb = false
+    private var seenLevelUpToken: Int?
+    private var wasBombPressed = false
+    private var continuousFireDuration: Double = 0
+    private var didPlayEmpty = false
+    private let maxContinuousFireDuration: Double = 1
 
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = Sprite(
@@ -39,17 +45,91 @@ struct Player: Entity {
             y: 0
         )
 
-        if context.input.jump, gun.fire() {
-            context.spawn(
-                Bullet.self,
-                at: Vec2(
-                    x: (GameConfig.playerSize.x - GameConfig.bulletSize.x) / 2,
-                    y: -GameConfig.bulletSize.y
-                ),
-                in: .entity(state.id)
-            )
-            context.play(sound: .laser)
+        updateLevelUp(context: &context)
+        firePrimaryWeapon(context: &context, state: state)
+        fireBomb(context: &context, state: state)
+    }
+
+    private mutating func updateLevelUp(context: inout Game.Context) {
+        let levelUpToken = SpaceInvadersProgress.levelUpToken
+
+        guard let seenLevelUpToken else {
+            self.seenLevelUpToken = levelUpToken
+            return
         }
+
+        guard levelUpToken > seenLevelUpToken else {
+            return
+        }
+
+        self.seenLevelUpToken = levelUpToken
+        hasBomb = true
+        context.play(sound: .levelup)
+    }
+
+    private mutating func firePrimaryWeapon(
+        context: inout Game.Context,
+        state: EntityState
+    ) {
+        guard context.input.jump else {
+            continuousFireDuration = 0
+            didPlayEmpty = false
+            return
+        }
+
+        continuousFireDuration += context.delta
+
+        guard continuousFireDuration < maxContinuousFireDuration else {
+            if !didPlayEmpty {
+                context.play(sound: .empty)
+                didPlayEmpty = true
+            }
+
+            return
+        }
+
+        guard gun.fire() else {
+            return
+        }
+
+        context.spawn(
+            Bullet.self,
+            at: Vec2(
+                x: (GameConfig.playerSize.x - GameConfig.bulletSize.x) / 2,
+                y: -GameConfig.bulletSize.y
+            ),
+            in: .entity(state.id)
+        )
+        context.play(sound: .laser)
+    }
+
+    private mutating func fireBomb(
+        context: inout Game.Context,
+        state: EntityState
+    ) {
+        let bombPressed = context.input.vertical < -0.5
+
+        defer {
+            wasBombPressed = bombPressed
+        }
+
+        guard bombPressed,
+              !wasBombPressed,
+              hasBomb
+        else {
+            return
+        }
+
+        hasBomb = false
+        context.spawn(
+            Bomb.self,
+            at: Vec2(
+                x: (GameConfig.playerSize.x - GameConfig.bombSize.x) / 2,
+                y: -GameConfig.bombSize.y
+            ),
+            in: .entity(state.id)
+        )
+        context.play(sound: .boom)
     }
 
     mutating func onCollision(
@@ -63,7 +143,7 @@ struct Player: Entity {
             return
         }
 
+        context.play(sound: .gameover)
         context.restart()
     }
 }
-

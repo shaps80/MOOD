@@ -2,7 +2,7 @@ import Pixl
 
 struct InvaderWave: GameSystem {
     private var direction: Double = 1
-    private let speed: Double = 100
+    private let speed: Double = 75
     private let stepDown: Double = GameConfig.invaderSize.y
     private var rowByInvader: [EntityID: Int] = [:]
 

@@ -11,13 +11,14 @@ extension World {
             )
         )
 
-        world.register(Player.self, Bullet.self, Invader.self)
+        world.register(Player.self, Bullet.self, Bomb.self, Invader.self)
 
         world.level.assets = .init(
-            sounds: [.laser, .hit, .empty, .boom,  .gameover, .levelup]
+            sounds: [.laser, .hit, .empty, .boom, .gameover, .levelup, .win]
         )
 
         world.addSystem(InvaderWave(), phase: .update)
+        world.addSystem(InvaderProgress(), phase: .postCollision)
         world.addSystem(InvadersCamera(), phase: .postCollision)
 
         world.camera = .init(

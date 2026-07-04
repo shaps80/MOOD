@@ -6,6 +6,8 @@ enum GameConfig {
     static let playerSize = Vec2(48)
     static let bulletSize = Vec2(x: 8, y: 8)
     static let invaderSize = Vec2(48)
+    static let bombSize = bulletSize * 2
+    static let bombRadius: Double = invaderSize.x * 10
     static let playerStart = Vec2(x: 800, y: 820)
 
     static let playBounds = Rect(

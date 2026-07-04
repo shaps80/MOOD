@@ -57,14 +57,19 @@ struct Invader: Entity {
         }
 
         if contact.target.id != nil {
-            guard case .alive = life else {
-                return
-            }
-
-            life = .dying(elapsed: 0)
-            state.colliders.removeAll()
+            beginDying(state: &state)
         } else if contact.target.tile?.row == Int(GameConfig.resolution.y / GameConfig.tileSize.y) - 2 {
+            context.play(sound: .gameover)
             context.restart()
         }
+    }
+
+    private mutating func beginDying(state: inout EntityState) {
+        guard case .alive = life else {
+            return
+        }
+
+        life = .dying(elapsed: 0)
+        state.colliders.removeAll()
     }
 }

@@ -7,6 +7,7 @@ extension SoundID {
     public static let levelup: Self = "levelup"
     public static let gameover: Self = "gameover"
     public static let boom: Self = "boom"
+    public static let win: Self = "win"
 }
 
 extension SoundAsset {
@@ -38,5 +39,10 @@ extension SoundAsset {
     public static let boom: Self = .init(
         id: .boom,
         path: "assets/audio/boom.wav"
+    )
+
+    public static let win: Self = .init(
+        id: .win,
+        path: "assets/audio/win.wav"
     )
 }
