@@ -6,9 +6,7 @@ struct Player: Entity {
         acceleration: 4000,
         deceleration: 4000
     )
-    private var gun = Gun(roundsPerSecond: 10)
-    private var hasBomb = false
-    private var seenLevelUpToken: Int?
+    private var gun = Gun(roundsPerSecond: 15)
     private var wasBombPressed = false
     private var continuousFireDuration: Double = 0
     private var didPlayEmpty = false
@@ -21,7 +19,7 @@ struct Player: Entity {
                 size: GameConfig.playerSize
             ),
             layer: .player,
-            tint: .black
+            tint: .gray
         )
         state.colliders = [
             Collider(
@@ -45,26 +43,8 @@ struct Player: Entity {
             y: 0
         )
 
-        updateLevelUp(context: &context)
         firePrimaryWeapon(context: &context, state: state)
         fireBomb(context: &context, state: state)
-    }
-
-    private mutating func updateLevelUp(context: inout Game.Context) {
-        let levelUpToken = SpaceInvadersProgress.levelUpToken
-
-        guard let seenLevelUpToken else {
-            self.seenLevelUpToken = levelUpToken
-            return
-        }
-
-        guard levelUpToken > seenLevelUpToken else {
-            return
-        }
-
-        self.seenLevelUpToken = levelUpToken
-        hasBomb = true
-        context.play(sound: .levelup)
     }
 
     private mutating func firePrimaryWeapon(
@@ -115,12 +95,11 @@ struct Player: Entity {
 
         guard bombPressed,
               !wasBombPressed,
-              hasBomb
+              SpaceInvadersProgress.useBomb()
         else {
             return
         }
 
-        hasBomb = false
         context.spawn(
             Bomb.self,
             at: Vec2(
@@ -143,6 +122,7 @@ struct Player: Entity {
             return
         }
 
+        SpaceInvadersProgress.resetBombs()
         context.play(sound: .gameover)
         context.restart()
     }

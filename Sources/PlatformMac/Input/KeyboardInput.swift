@@ -128,14 +128,14 @@ private enum KeyCode {
     static let upArrow: UInt16 = 126
 
     static let timeScales: [(UInt16, Double)] = [
-        (one, 1),
-        (two, 2),
-        (three, 3),
-        (four, 4),
-        (five, 5),
-        (six, 6),
-        (seven, 7),
-        (eight, 8),
-        (nine, 9)
+        (one, 0.125),
+        (two, 0.25),
+        (three, 0.5),
+        (four, 0.75),
+        (five, 1),
+        (six, 1.24),
+        (seven, 1.5),
+        (eight, 2),
+        (nine, 4)
     ]
 }

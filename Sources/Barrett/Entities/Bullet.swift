@@ -2,20 +2,21 @@ import Pixl
 
 struct Bullet: Entity {
     private var vertical = AxisController(
-        maxSpeed: 2000,
+        maxSpeed: 3000,
         acceleration: 5000,
-        deceleration: 1000
+        deceleration: 500
     )
 
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = Sprite(
-            material: .shape(Rectangle(), size: GameConfig.bulletSize),
+            material: .shape(Capsule(), size: GameConfig.bulletSize),
             layer: .enemy,
             tint: .yellow
         )
         state.colliders = [
             Collider(
                 bounds: Rect(size: GameConfig.bulletSize),
+                shape: Capsule(),
                 layer: .bullet,
                 mask: .bulletContact,
                 behaviour: .trigger

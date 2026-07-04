@@ -10,7 +10,7 @@ public struct Game {
             timeScale = Self.clampedTimeScale(timeScale)
         }
     }
-    public private(set) var clearColor: Color = .white
+    public private(set) var clearColor: Color = .black
     public var camera: Camera { cameraRig.camera }
     var cameraTransform: Transform { cameraRig.resolvedTransform }
     public var renderView: RenderView {
@@ -166,10 +166,12 @@ public struct Game {
             level: level,
             entityStates: entityStates,
             contacts: contacts,
+            registeredSoundIDs: registeredSoundIDs,
             camera: context.camera
         )
         updateSystems(before: .postCollision, context: &systemContext)
         context.camera = systemContext.camera
+        flushFrameEvents(from: &systemContext)
         if systemContext.shouldRestart {
             context.restart()
         }
@@ -189,10 +191,12 @@ public struct Game {
             level: level,
             entityStates: entityStates,
             contacts: contacts,
+            registeredSoundIDs: registeredSoundIDs,
             camera: context.camera
         )
         updateSystems(from: .postCollision, context: &systemContext)
         context.camera = systemContext.camera
+        flushFrameEvents(from: &systemContext)
         if systemContext.shouldRestart {
             context.restart()
         }
@@ -440,6 +444,10 @@ public struct Game {
         applyLifecycleCommands(context.drainLifecycleCommands())
     }
 
+    private mutating func flushFrameEvents(from context: inout SystemContext) {
+        frame.sounds.append(contentsOf: context.drainSounds())
+    }
+
     private mutating func applyLifecycleCommands(_ commands: [LifecycleCommand]) {
         guard !commands.isEmpty else { return }
 
@@ -678,6 +686,8 @@ extension Game {
         public var camera: CameraRig
         private let entityStates: EntityStore
         private let contacts: ContactState
+        private let registeredSoundIDs: Set<SoundID>
+        private var sounds: [SoundID] = []
         fileprivate private(set) var shouldRestart = false
 
         init(
@@ -685,13 +695,24 @@ extension Game {
             level: OldLevel,
             entityStates: EntityStore,
             contacts: ContactState,
+            registeredSoundIDs: Set<SoundID>,
             camera: CameraRig
         ) {
             self.delta = max(delta, 0)
             self.level = level
             self.entityStates = entityStates
             self.contacts = contacts
+            self.registeredSoundIDs = registeredSoundIDs
             self.camera = camera
+        }
+
+        public mutating func play(sound: SoundID) {
+            guard registeredSoundIDs.contains(sound) else {
+                print("Pixl: Tried to play unregistered sound '\(sound.rawValue)'.")
+                return
+            }
+
+            sounds.append(sound)
         }
 
         public func ids<E: Entity>(kind: E.Type) -> [EntityID] {
@@ -730,6 +751,14 @@ extension Game {
 
         public mutating func restart() {
             shouldRestart = true
+        }
+
+        mutating func drainSounds() -> [SoundID] {
+            defer {
+                sounds.removeAll(keepingCapacity: true)
+            }
+
+            return sounds
         }
     }
 }

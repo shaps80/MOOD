@@ -13,7 +13,7 @@ struct Invader: Entity {
         state.sprite = Sprite(
             material: .shape(Circle(), size: GameConfig.invaderSize),
             layer: .enemy,
-            tint: .gray
+            tint: .white
         )
         state.colliders = [
             Collider(
@@ -38,7 +38,7 @@ struct Invader: Entity {
         let scale = 1 + (0.35 * pulse)
 
         state.transform.scale = Vec2(scale)
-        state.sprite?.tint = Int(progress * 6).isMultiple(of: 2) ? .white : .red
+        state.sprite?.tint = Int(progress * 6).isMultiple(of: 2) ? .red : .yellow
 
         if nextElapsed >= deathDuration {
             context.despawn(state.id)

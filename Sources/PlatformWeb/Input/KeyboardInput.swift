@@ -109,7 +109,7 @@ final class KeyboardInput {
 
     private var timeScale: Double? {
         for value in 1...9 where isPressed("Digit\(value)") {
-            return Double(value)
+            return Double(value * 0.25)
         }
 
         return nil
