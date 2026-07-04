@@ -147,14 +147,13 @@ public struct Game {
             delta: delta,
             input: input,
             level: level,
-            contacts: contacts,
-            frameEvents: frame.events
+            contacts: contacts
         )
 
         entityStates.updateEach { entity, state in
                 entity.onUpdate(context: &context, state: &state)
         }
-        flushLifecycleCommands()
+        flushFrameEvents(from: &context)
 
         let collisionSystem = CollisionSystem(
             tilemap: level.tilemap,
@@ -165,7 +164,7 @@ public struct Game {
         collisionSystem.detectContacts(into: contacts)
         contacts.end()
         dispatchCollisions(context: &context)
-        flushLifecycleCommands()
+        flushFrameEvents(from: &context)
 
         updateCamera(delta: delta)
         rebuildFrame()
@@ -184,7 +183,7 @@ public struct Game {
     }
 
     public mutating func drainSounds() -> [SoundID] {
-        frame.events.drainSounds()
+        frame.drainSounds()
     }
 
     private mutating func rebuildFrame() {
@@ -370,8 +369,9 @@ public struct Game {
         entityStates.bounds(for: id)
     }
 
-    private mutating func flushLifecycleCommands() {
-        applyLifecycleCommands(frame.events.drainLifecycleCommands())
+    private mutating func flushFrameEvents(from context: inout Context) {
+        frame.sounds.append(contentsOf: context.drainSounds())
+        applyLifecycleCommands(context.drainLifecycleCommands())
     }
 
     private mutating func applyLifecycleCommands(_ commands: [LifecycleCommand]) {
@@ -432,6 +432,11 @@ public struct Game {
 }
 
 extension Game {
+    enum LifecycleCommand {
+        case spawn(any Entity.Type, Vec2, CoordinateSpace)
+        case despawn(EntityID)
+    }
+
     public struct PreparationContext {
         public let level: OldLevel
 
@@ -445,24 +450,23 @@ extension Game {
         public let input: Input
         public let level: OldLevel
         let contacts: ContactState
-        private let frameEvents: FrameEvents
+        private var sounds: [SoundID] = []
+        private var lifecycleCommands: [LifecycleCommand] = []
 
         init(
             delta: Double,
             input: Input,
             level: OldLevel,
-            contacts: ContactState,
-            frameEvents: FrameEvents
+            contacts: ContactState
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
             self.contacts = contacts
-            self.frameEvents = frameEvents
         }
 
         public mutating func play(sound: SoundID) {
-            frameEvents.sounds.append(sound)
+            sounds.append(sound)
         }
 
         /// Queues an entity to be spawned after the current update or collision
@@ -481,7 +485,7 @@ extension Game {
             at position: Vec2,
             in coordinateSpace: CoordinateSpace = .world
         ) {
-            frameEvents.lifecycleCommands.append(.spawn(entityType, position, coordinateSpace))
+            lifecycleCommands.append(.spawn(entityType, position, coordinateSpace))
         }
 
         /// Queues an entity to be removed after the current update or collision
@@ -490,7 +494,23 @@ extension Game {
         /// Duplicate despawn requests for the same ID are ignored when the
         /// queued commands are applied.
         public mutating func despawn(_ id: EntityID) {
-            frameEvents.lifecycleCommands.append(.despawn(id))
+            lifecycleCommands.append(.despawn(id))
+        }
+
+        mutating func drainSounds() -> [SoundID] {
+            defer {
+                sounds.removeAll(keepingCapacity: true)
+            }
+
+            return sounds
+        }
+
+        mutating func drainLifecycleCommands() -> [LifecycleCommand] {
+            defer {
+                lifecycleCommands.removeAll(keepingCapacity: true)
+            }
+
+            return lifecycleCommands
         }
     }
 }
