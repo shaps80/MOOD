@@ -36,10 +36,10 @@ struct InvadersCamera: GameSystem {
 }
 
 private struct CameraShake {
-    private let duration: Double = 0.1
+    private let duration: Double = 0.2
     private let baseAmplitude: Double = 5
     private let baseRotation: Angle = .degrees(0.75)
-    private let baseFrequency: Double = 25
+    private let baseFrequency: Double = 35
 
     private var elapsed: Double = .infinity
     private var triggerCount: Int = 0

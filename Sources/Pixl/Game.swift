@@ -38,6 +38,7 @@ public struct Game {
     public let soundAssets: [SoundAsset]
     public let spriteAssets: [SpriteAsset]
 
+    private let registeredSoundIDs: Set<SoundID>
     private var frame = Frame()
     private(set) var renderBatches: [RenderBatch] = []
     private(set) var renderStats = RenderStats()
@@ -62,6 +63,7 @@ public struct Game {
 
         self.spriteAssets = world.assets.sprites
         self.soundAssets = world.assets.sounds
+        self.registeredSoundIDs = Set(world.assets.sounds.map(\.id))
         self.initialEntitySource = .markers(world.level.markers, world.registry)
         self.phases = world.phases
         self.initialSystems = world.systems
@@ -114,6 +116,7 @@ public struct Game {
         self.cameraRig = camera
         self.spriteAssets = sprites
         self.soundAssets = sounds
+        self.registeredSoundIDs = Set(sounds.map(\.id))
         self.initialEntitySource = .spawns(entities)
         self.phases = [.update, .postCollision]
         self.initialSystems = []
@@ -150,6 +153,7 @@ public struct Game {
             input: input,
             level: level,
             contacts: contacts,
+            registeredSoundIDs: registeredSoundIDs,
             camera: cameraRig
         )
 
@@ -589,6 +593,7 @@ extension Game {
         public let level: OldLevel
         public var camera: CameraRig
         let contacts: ContactState
+        private let registeredSoundIDs: Set<SoundID>
         private var sounds: [SoundID] = []
         private var lifecycleCommands: [LifecycleCommand] = []
 
@@ -597,16 +602,23 @@ extension Game {
             input: Input,
             level: OldLevel,
             contacts: ContactState,
+            registeredSoundIDs: Set<SoundID>,
             camera: CameraRig
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
             self.contacts = contacts
+            self.registeredSoundIDs = registeredSoundIDs
             self.camera = camera
         }
 
         public mutating func play(sound: SoundID) {
+            guard registeredSoundIDs.contains(sound) else {
+                print("Pixl: Tried to play unregistered sound '\(sound.rawValue)'.")
+                return
+            }
+
             sounds.append(sound)
         }
 
