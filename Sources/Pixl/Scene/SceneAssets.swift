@@ -8,4 +8,14 @@ public struct SceneAssets: Sendable {
         self.sprites = sprites
         self.sounds = sounds
     }
+
+    public init(sprites: [SpriteAsset]) {
+        self.sprites = sprites
+        self.sounds = []
+    }
+
+    public init(sounds: [SoundAsset]) {
+        self.sprites = []
+        self.sounds = sounds
+    }
 }
