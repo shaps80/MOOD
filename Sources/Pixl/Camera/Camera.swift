@@ -3,8 +3,9 @@ import Swift
 /// The resolved viewport in world space.
 ///
 /// `Camera` does not know why it is looking at a place. That decision belongs
-/// to `CameraRig`, which combines anchor, tracking, composition, constraints,
-/// and effects. Renderers consume only the final origin.
+/// to `CameraRig`, which combines anchor, tracking, constraints, and a
+/// presentation transform. Renderers consume the final origin plus that
+/// transform.
 ///
 /// Coordinate model:
 ///
@@ -27,7 +28,7 @@ import Swift
 /// Renderer contract:
 ///
 /// ```text
-/// screenPosition = worldPosition - camera.origin
+/// screenPosition = cameraTransform(worldPosition - camera.origin)
 /// ```
 public struct Camera: Equatable, Sendable {
     /// The top-left world coordinate visible through the viewport.

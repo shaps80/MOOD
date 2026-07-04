@@ -12,6 +12,7 @@ public struct Game {
     }
     public private(set) var clearColor: Color = .white
     public var camera: Camera { cameraRig.camera }
+    var cameraTransform: Transform { cameraRig.resolvedTransform }
     public var renderView: RenderView {
         RenderView(
             origin: camera.origin,
@@ -145,7 +146,8 @@ public struct Game {
             delta: simulationDelta,
             input: input,
             level: level,
-            contacts: contacts
+            contacts: contacts,
+            camera: cameraRig
         )
 
         entityStates.updateEach { entity, state in
@@ -173,6 +175,7 @@ public struct Game {
         collisionSystem.detectContacts(into: contacts)
         contacts.end()
         dispatchCollisions(context: &context)
+        cameraRig = context.camera
         flushFrameEvents(from: &context)
 
         updateCamera(delta: simulationDelta)
@@ -534,6 +537,7 @@ extension Game {
         public let delta: Double
         public let input: Input
         public let level: OldLevel
+        public var camera: CameraRig
         let contacts: ContactState
         private var sounds: [SoundID] = []
         private var lifecycleCommands: [LifecycleCommand] = []
@@ -542,12 +546,14 @@ extension Game {
             delta: Double,
             input: Input,
             level: OldLevel,
-            contacts: ContactState
+            contacts: ContactState,
+            camera: CameraRig
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
             self.contacts = contacts
+            self.camera = camera
         }
 
         public mutating func play(sound: SoundID) {

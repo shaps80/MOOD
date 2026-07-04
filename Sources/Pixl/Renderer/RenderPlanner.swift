@@ -90,14 +90,16 @@ public struct RenderPlanner: Sendable {
             return nil
         }
 
-        let rect = Rect(
-            center: positionedSprite.position - game.camera.origin,
-            size: size
-        ).integral
         let transform = RenderTransform(
+            center: positionedSprite.position,
+            size: size,
+            rotation: positionedSprite.transform.rotation
+        ).applyingCamera(game)
+        let rect = transform.rect.integral
+        let alignedTransform = RenderTransform(
             center: rect.center,
             size: rect.size,
-            rotation: positionedSprite.transform.rotation
+            rotation: transform.rotation
         )
         let textureRect = TextureRect.normalized(
             sourceRect: sprite.sourceRect,
@@ -108,7 +110,7 @@ public struct RenderPlanner: Sendable {
         )
 
         return .sprite(
-            transform: transform,
+            transform: alignedTransform,
             textureRect: textureRect,
             color: color
         )
@@ -118,21 +120,25 @@ public struct RenderPlanner: Sendable {
         for shape: ShapePrimitive,
         game: Game
     ) -> RenderItem {
-        .shape(
+        let transform = renderTransform(
+            for: shape.bounds,
+            rotation: shape.rotation,
+            game: game
+        )
+        let cameraScale = game.cameraTransform.scale
+        let scalarScale = (cameraScale.x.magnitude + cameraScale.y.magnitude) / 2
+
+        return .shape(
             kind: shape.kind.renderItemKind,
-            transform: renderTransform(
-                for: shape.bounds,
-                rotation: shape.rotation,
-                game: game
-            ),
-            radius: shape.radius,
-            strokeWidth: shape.strokeWidth,
+            transform: transform,
+            radius: shape.radius * scalarScale,
+            strokeWidth: shape.strokeWidth * scalarScale,
             lineCap: shape.lineCap.renderValue,
             line: Vec4(
-                shape.lineStart.x,
-                shape.lineStart.y,
-                shape.lineEnd.x,
-                shape.lineEnd.y
+                shape.lineStart.x * cameraScale.x,
+                shape.lineStart.y * cameraScale.y,
+                shape.lineEnd.x * cameraScale.x,
+                shape.lineEnd.y * cameraScale.y
             ),
             fillColor: shape.fillColor,
             strokeColor: shape.strokeColor,
@@ -150,15 +156,46 @@ public struct RenderPlanner: Sendable {
         rotation: Angle,
         game: Game
     ) -> RenderTransform {
-        let rect = Rect(
-            center: rect.center - game.camera.origin,
-            size: rect.size
-        ).integral
+        let transform = RenderTransform(
+            center: rect.center,
+            size: rect.size,
+            rotation: rotation
+        ).applyingCamera(game)
+        let rect = transform.rect.integral
 
         return RenderTransform(
             center: rect.center,
             size: rect.size,
-            rotation: rotation
+            rotation: transform.rotation
+        )
+    }
+}
+
+private extension RenderTransform {
+    func applyingCamera(_ game: Game) -> RenderTransform {
+        let camera = game.camera
+        let cameraTransform = game.cameraTransform
+        let viewportCenter = camera.viewportSize * 0.5
+        let localCenter = center - camera.origin - viewportCenter
+        let transformedCenter = viewportCenter
+            + (localCenter * cameraTransform.scale).rotated(by: cameraTransform.rotation)
+            + cameraTransform.position
+
+        return RenderTransform(
+            center: transformedCenter,
+            size: size * cameraTransform.scale,
+            rotation: rotation + cameraTransform.rotation
+        )
+    }
+}
+
+private extension Vec2 {
+    func rotated(by rotation: Angle) -> Vec2 {
+        let components = sincos(rotation)
+
+        return Vec2(
+            x: (x * components.cos) - (y * components.sin),
+            y: (x * components.sin) + (y * components.cos)
         )
     }
 }

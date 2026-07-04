@@ -31,6 +31,7 @@ struct Invader: Entity {
         }
 
         if contact.target.id != nil {
+            context.camera.shake()
             context.despawn(state.id)
         } else if contact.target.tile?.row == Int(GameConfig.resolution.y / GameConfig.tileSize.y) - 1 {
             context.restart()

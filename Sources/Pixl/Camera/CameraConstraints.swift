@@ -2,8 +2,8 @@ import Swift
 
 /// Restricts where the camera is allowed to move.
 ///
-/// Constraints operate on the base camera origin after anchor, composition, and
-/// tracking have chosen a desired origin.
+/// Constraints operate on the base camera origin after anchor and tracking have
+/// chosen a desired origin, before the presentation transform is applied.
 ///
 /// Resolution:
 ///
