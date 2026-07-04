@@ -38,6 +38,7 @@ struct Player: Entity {
             wasJumpPressed = input.jump
         }
 
+        state.colliders[0].transform.rotation = .degrees(45)
         state.velocity = controller.velocity(
             for: input,
             current: state.velocity,

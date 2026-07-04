@@ -4,12 +4,20 @@ import Swift
 ///
 /// `CollisionSystem` is intentionally separate from `EntityState`.
 ///
-/// - `EntityState` stores state: position, size, velocity, colliders.
+/// - `EntityState` stores state: transform, velocity, colliders.
 /// - `CollisionSystem` knows how to query colliders and resolve movement.
 ///
-/// Current broad phase is tile-grid based: only tile cells touched by the
-/// proposed bounds are checked. EntityState colliders are currently checked as a
-/// flat list because the active entity count is still small.
+/// Movement is resolved one axis at a time:
+///
+/// ```text
+/// 1. Try horizontal movement.
+/// 2. If blocked, clamp X to the obstacle edge and zero X velocity.
+/// 3. Try vertical movement from the resolved X position.
+/// 4. If blocked, clamp Y to the obstacle edge and zero Y velocity.
+/// ```
+///
+/// This is the pre-physics movement model, adapted to current transform-aware
+/// colliders.
 struct CollisionSystem {
     /// Collision-facing view of a tilemap.
     private let colliderIndex: Tilemap.ColliderIndex
@@ -38,18 +46,41 @@ struct CollisionSystem {
             return
         }
 
-        let proposedPosition = Vec2(
-            x: state.transform.position.x + (proposedVelocity.x * delta),
-            y: state.transform.position.y + (proposedVelocity.y * delta)
-        )
-        let resolution = resolveMovement(
+        var velocity = proposedVelocity
+        var position = state.transform.position
+
+        let horizontal = resolveHorizontalMovement(
             entityID: state.id,
-            from: state.transform.position,
-            to: proposedPosition,
-            state: state
+            state: state,
+            from: position,
+            distance: velocity.x * delta
+        )
+        position = Vec2(x: horizontal.value, y: position.y)
+
+        let vertical = resolveVerticalMovement(
+            entityID: state.id,
+            state: state,
+            from: position,
+            distance: velocity.y * delta
+        )
+        position = Vec2(x: position.x, y: vertical.value)
+
+        if horizontal.blocked {
+            velocity = Vec2(x: 0, y: velocity.y)
+        }
+
+        if vertical.blocked {
+            velocity = Vec2(x: velocity.x, y: 0)
+        }
+
+        resolveShapeContacts(
+            entityID: state.id,
+            state: state,
+            position: &position,
+            velocity: &velocity
         )
 
-        state.move(to: resolution.position, velocity: resolution.velocity)
+        state.move(to: position, velocity: velocity)
     }
 
     func detectContacts(into contacts: ContactState) {
@@ -59,8 +90,7 @@ struct CollisionSystem {
                       let otherColliderIndex,
                       otherEntityID != entityID,
                       collider.canCollide(with: other),
-                      collider.bounds.intersects(other.bounds),
-                      collider.collisionResolution(against: other) != nil
+                      collider.bounds.intersects(other.bounds)
                 else {
                     return
                 }
@@ -79,70 +109,116 @@ struct CollisionSystem {
         }
     }
 
-    private func resolveMovement(
+    /// Resolves X movement against any colliders touched by proposed bounds.
+    private func resolveHorizontalMovement(
         entityID: EntityID,
-        from previousPosition: Vec2,
-        to proposedPosition: Vec2,
-        state: EntityState
-    ) -> MovementResolution {
-        let delta = proposedPosition - previousPosition
-        var position = proposedPosition
-        var velocity = state.velocity
-        let maxIterations = 4
+        state: EntityState,
+        from position: Vec2,
+        distance: Double
+    ) -> AxisResolution {
+        guard distance != 0 else {
+            return AxisResolution(value: position.x, blocked: false)
+        }
 
-        for _ in 0..<maxIterations {
-            var didResolve = false
+        let proposedPosition = Vec2(x: position.x + distance, y: position.y)
+        var resolvedX = proposedPosition.x
+        var blocked = false
 
-            for collider in placedColliders(for: state, at: position) {
-                guard collider.behaviour == .blocking else {
-                    continue
-                }
+        let previousColliders = placedColliders(for: state, at: position)
+        let proposedColliders = placedColliders(for: state, at: proposedPosition)
 
-                let previousCollider = collider.placedForMovement(
-                    from: position,
-                    to: previousPosition
-                )
-
-                forEachCollider(intersecting: collider.bounds) { otherEntityID, _, otherCollider in
-                    guard otherEntityID != entityID,
-                          let resolution = canResolveMovement(
-                              collider,
-                              against: otherCollider,
-                              previousCollider: previousCollider,
-                              movement: delta
-                          )
-                    else {
-                        return
-                    }
-
-                    let axisCorrection = axisAlignedCorrection(
-                        collider,
-                        against: otherCollider,
-                        movement: delta
-                    )
-                    let correction = axisCorrection ?? resolution.vector
-                    position += correction
-                    velocity = if let axisCorrection {
-                        velocity.resolved(
-                            afterAxisCorrection: axisCorrection,
-                            friction: otherCollider.friction
-                        )
-                    } else {
-                        velocity.sliding(
-                            along: resolution.normal,
-                            friction: otherCollider.friction
-                        )
-                    }
-                    didResolve = true
-                }
+        for index in proposedColliders.indices {
+            let collider = proposedColliders[index]
+            guard collider.behaviour == .blocking else {
+                continue
             }
 
-            if !didResolve {
-                break
+            let previousBounds = previousColliders[index].bounds
+            let proposedBounds = collider.bounds
+
+            forEachCollider(intersecting: proposedBounds) { otherEntityID, _, otherCollider in
+                guard otherEntityID != entityID,
+                      canBlockMovement(
+                          collider,
+                          against: otherCollider,
+                          proposedBounds: proposedBounds
+                      ),
+                      shouldBlockHorizontalMovement(
+                          distance: distance,
+                          from: previousBounds,
+                          to: proposedBounds,
+                          other: otherCollider
+                      )
+                else {
+                    return
+                }
+
+                blocked = true
+                if distance > 0 {
+                    resolvedX = min(resolvedX, proposedPosition.x + otherCollider.bounds.minX - proposedBounds.maxX)
+                } else {
+                    resolvedX = max(resolvedX, proposedPosition.x + otherCollider.bounds.maxX - proposedBounds.minX)
+                }
             }
         }
 
-        return MovementResolution(position: position, velocity: velocity)
+        return AxisResolution(value: resolvedX, blocked: blocked)
+    }
+
+    /// Resolves Y movement after X has already been resolved.
+    private func resolveVerticalMovement(
+        entityID: EntityID,
+        state: EntityState,
+        from position: Vec2,
+        distance: Double
+    ) -> AxisResolution {
+        guard distance != 0 else {
+            return AxisResolution(value: position.y, blocked: false)
+        }
+
+        let proposedPosition = Vec2(x: position.x, y: position.y + distance)
+        var resolvedY = proposedPosition.y
+        var blocked = false
+
+        let previousColliders = placedColliders(for: state, at: position)
+        let proposedColliders = placedColliders(for: state, at: proposedPosition)
+
+        for index in proposedColliders.indices {
+            let collider = proposedColliders[index]
+            guard collider.behaviour == .blocking else {
+                continue
+            }
+
+            let previousBounds = previousColliders[index].bounds
+            let proposedBounds = collider.bounds
+
+            forEachCollider(intersecting: proposedBounds) { otherEntityID, _, otherCollider in
+                guard otherEntityID != entityID,
+                      canBlockMovement(
+                          collider,
+                          against: otherCollider,
+                          proposedBounds: proposedBounds
+                      ),
+                      shouldBlockVerticalMovement(
+                          distance: distance,
+                          from: previousBounds,
+                          to: proposedBounds,
+                          other: otherCollider
+                      )
+                else {
+                    return
+                }
+
+                blocked = true
+                if distance > 0 {
+                    resolvedY = min(resolvedY, proposedPosition.y + otherCollider.bounds.minY - proposedBounds.maxY)
+                } else {
+                    resolvedY = max(resolvedY, proposedPosition.y + otherCollider.bounds.maxY - proposedBounds.minY)
+                }
+            }
+        }
+
+        return AxisResolution(value: resolvedY, blocked: blocked)
     }
 
     private func forEachCollider(
@@ -162,111 +238,112 @@ struct CollisionSystem {
         }
     }
 
-    private func canResolveMovement(
+    private func canBlockMovement(
         _ collider: Collider,
         against other: Collider,
-        previousCollider: Collider,
-        movement: Vec2
-    ) -> CollisionResolution? {
-        guard other.behaviour == .blocking,
-              collider.canCollide(with: other),
-              collider.bounds.intersects(other.bounds),
-              shouldBlockMovement(
-                  movement: movement,
-                  from: previousCollider,
-                  to: collider,
-                  other: other
-              )
-        else {
-            return nil
-        }
-
-        return collider.collisionResolution(against: other)
+        proposedBounds: Rect
+    ) -> Bool {
+        collider.isAxisAligned
+            && other.isAxisAligned
+            && other.behaviour == .blocking
+            && collider.canCollide(with: other)
+            && proposedBounds.intersects(other.bounds)
     }
 
-    private func axisAlignedCorrection(
-        _ collider: Collider,
-        against other: Collider,
-        movement: Vec2
-    ) -> Vec2? {
-        guard collider.isAxisAligned, other.isAxisAligned else {
-            return nil
-        }
+    private func resolveShapeContacts(
+        entityID: EntityID,
+        state: EntityState,
+        position: inout Vec2,
+        velocity: inout Vec2
+    ) {
+        let maxIterations = 2
 
-        let horizontal: Vec2?
-        if movement.x > 0 {
-            horizontal = Vec2(x: other.bounds.minX - collider.bounds.maxX, y: 0)
-        } else if movement.x < 0 {
-            horizontal = Vec2(x: other.bounds.maxX - collider.bounds.minX, y: 0)
-        } else {
-            horizontal = nil
-        }
+        for _ in 0..<maxIterations {
+            var didResolve = false
 
-        let vertical: Vec2?
-        if movement.y > 0 {
-            vertical = Vec2(x: 0, y: other.bounds.minY - collider.bounds.maxY)
-        } else if movement.y < 0 {
-            vertical = Vec2(x: 0, y: other.bounds.maxY - collider.bounds.minY)
-        } else {
-            vertical = nil
-        }
+            for collider in placedColliders(for: state, at: position) {
+                guard collider.behaviour == .blocking else {
+                    continue
+                }
 
-        switch (horizontal, vertical) {
-        case (.some(let horizontal), .some(let vertical)):
-            return horizontal.length <= vertical.length ? horizontal : vertical
-        case (.some(let horizontal), .none):
-            return horizontal
-        case (.none, .some(let vertical)):
-            return vertical
-        case (.none, .none):
-            return nil
+                forEachCollider(intersecting: collider.bounds) { otherEntityID, _, otherCollider in
+                    guard otherEntityID != entityID,
+                          shouldResolveShapeContact(collider, against: otherCollider),
+                          let resolution = collider.collisionResolution(against: otherCollider)
+                    else {
+                        return
+                    }
+
+                    position += resolution.vector
+                    velocity = velocity.sliding(along: resolution.normal)
+                    didResolve = true
+                }
+            }
+
+            if !didResolve {
+                break
+            }
         }
     }
 
-    private func shouldBlockMovement(
-        movement: Vec2,
-        from previousCollider: Collider,
-        to proposedCollider: Collider,
+    private func shouldResolveShapeContact(
+        _ collider: Collider,
+        against other: Collider
+    ) -> Bool {
+        guard !collider.isAxisAligned || !other.isAxisAligned else {
+            return false
+        }
+
+        return other.behaviour == .blocking
+            && other.oneWay == nil
+            && collider.canCollide(with: other)
+            && collider.bounds.intersects(other.bounds)
+    }
+
+    private func shouldBlockHorizontalMovement(
+        distance: Double,
+        from previousBounds: Rect,
+        to proposedBounds: Rect,
         other: Collider
     ) -> Bool {
         guard let oneWay = other.oneWay else {
             return true
         }
 
-        if !previousCollider.isAxisAligned || !proposedCollider.isAxisAligned || !other.isAxisAligned {
-            assertionFailure("One-way colliders only support axis-aligned collision.")
+        let margin = oneWay.margin
+
+        if distance > 0 {
+            return oneWay.face == .left
+                && previousBounds.maxX <= other.bounds.minX + margin
+                && proposedBounds.maxX >= other.bounds.minX
+        } else {
+            return oneWay.face == .right
+                && previousBounds.minX >= other.bounds.maxX - margin
+                && proposedBounds.minX <= other.bounds.maxX
+        }
+    }
+
+    private func shouldBlockVerticalMovement(
+        distance: Double,
+        from previousBounds: Rect,
+        to proposedBounds: Rect,
+        other: Collider
+    ) -> Bool {
+        guard let oneWay = other.oneWay else {
             return true
         }
 
         let margin = oneWay.margin
-        let previousBounds = previousCollider.bounds
-        let proposedBounds = proposedCollider.bounds
 
-        if movement.x > 0 {
-            if oneWay.face == .left,
-               previousBounds.maxX <= other.bounds.minX + margin,
-               proposedBounds.maxX >= other.bounds.minX {
-                return true
-            }
-        } else if movement.x < 0 {
-            if oneWay.face == .right,
-               previousBounds.minX >= other.bounds.maxX - margin,
-               proposedBounds.minX <= other.bounds.maxX {
-                return true
-            }
-        }
-
-        if movement.y > 0 {
+        if distance > 0 {
             return oneWay.face == .top
                 && previousBounds.maxY <= other.bounds.minY + margin
                 && proposedBounds.maxY >= other.bounds.minY
-        } else if movement.y < 0 {
+        } else {
             return oneWay.face == .bottom
                 && previousBounds.minY >= other.bounds.maxY - margin
                 && proposedBounds.minY <= other.bounds.maxY
         }
-
-        return false
     }
 
     private func placedColliders(for state: EntityState, at position: Vec2) -> [Collider] {
@@ -277,15 +354,16 @@ struct CollisionSystem {
         return state.colliders.map {
             $0.placed(
                 in: transform,
-                spriteSize: spriteSize,
+                spriteSize: spriteSize
             )
         }
     }
 }
 
-private struct MovementResolution {
-    let position: Vec2
-    let velocity: Vec2
+/// Result of resolving movement along one axis.
+private struct AxisResolution {
+    let value: Double
+    let blocked: Bool
 }
 
 private extension Collider {
@@ -296,52 +374,16 @@ private extension Collider {
     var isAxisAligned: Bool {
         rotation.radians.magnitude < 0.000001
     }
-
-    func placedForMovement(from currentPosition: Vec2, to previousPosition: Vec2) -> Collider {
-        var collider = self
-        let offset = previousPosition - currentPosition
-        collider.shapeFrame = shapeFrame.translated(by: offset)
-        collider.bounds = collider.shapeFrame.rotatedBounds(rotation)
-        return collider
-    }
 }
 
 private extension Vec2 {
-    func resolved(afterAxisCorrection correction: Vec2, friction: Double) -> Vec2 {
-        let projected = Vec2(
-            x: correction.x == 0 ? x : 0,
-            y: correction.y == 0 ? y : 0
-        )
-
-        return projected.applyingTangentialFriction(friction, originalSpeed: length)
-    }
-
-    func sliding(along normal: Vec2, friction: Double) -> Vec2 {
+    func sliding(along normal: Vec2) -> Vec2 {
         let amount = dot(normal)
 
         guard amount < 0 else {
             return self
         }
 
-        let projected = self - (normal * amount)
-
-        return projected.applyingTangentialFriction(friction, originalSpeed: length)
-    }
-
-    func applyingTangentialFriction(_ friction: Double, originalSpeed: Double) -> Vec2 {
-        guard let direction = normalized else {
-            return self
-        }
-
-        let friction = max(0, friction)
-        let projectedSpeed = length
-        let preservedSpeed = originalSpeed
-
-        if friction <= 1 {
-            let speed = preservedSpeed + ((projectedSpeed - preservedSpeed) * friction)
-            return direction * speed
-        }
-
-        return direction * max(0, projectedSpeed / friction)
+        return self - (normal * amount)
     }
 }
