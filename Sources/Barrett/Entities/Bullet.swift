@@ -1,6 +1,11 @@
 import Pixl
 
 struct Bullet: Entity {
+    private var horizontal = AxisController(
+        maxSpeed: 120,
+        acceleration: 0,
+        deceleration: 180
+    )
     private var vertical = AxisController(
         maxSpeed: 3000,
         acceleration: 5000,
@@ -26,7 +31,11 @@ struct Bullet: Entity {
 
     mutating func onUpdate(context: inout Game.Context, state: inout EntityState) {
         state.velocity = Vec2(
-            x: 0,
+            x: horizontal.velocity(
+                current: state.velocity.x,
+                input: 0,
+                delta: context.delta
+            ),
             y: vertical.velocity(
                 current: state.velocity.y,
                 input: -1,

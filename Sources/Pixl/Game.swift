@@ -152,8 +152,10 @@ public struct Game {
             delta: simulationDelta,
             input: input,
             level: level,
+            entityStates: entityStates,
             contacts: contacts,
             registeredSoundIDs: registeredSoundIDs,
+            screenOrigin: renderView.bounds.origin,
             camera: cameraRig
         )
 
@@ -441,55 +443,51 @@ public struct Game {
 
     private mutating func flushFrameEvents(from context: inout Context) {
         frame.sounds.append(contentsOf: context.drainSounds())
-        applyLifecycleCommands(context.drainLifecycleCommands())
+        applyLifecycleBatch(context.drainLifecycleBatch())
     }
 
     private mutating func flushFrameEvents(from context: inout SystemContext) {
         frame.sounds.append(contentsOf: context.drainSounds())
     }
 
-    private mutating func applyLifecycleCommands(_ commands: [LifecycleCommand]) {
-        guard !commands.isEmpty else { return }
+    private mutating func applyLifecycleBatch(_ batch: LifecycleBatch) {
+        guard !batch.commands.isEmpty
+                || !batch.pendingSpawns.isEmpty
+                || !batch.stateUpdates.isEmpty
+        else { return }
 
-        if commands.containsRestart {
+        if batch.commands.containsRestart {
             restart()
             return
         }
 
         var despawned = Set<EntityID>()
 
-        for command in commands {
+        for command in batch.commands {
             guard case .despawn(let id) = command,
                   despawned.insert(id).inserted
             else {
                 continue
             }
 
-            entityStates.remove(id)
+            if batch.pendingSpawns[id] != nil {
+                entityStates.releaseReserved(id)
+            } else {
+                entityStates.remove(id)
+            }
         }
 
-        for command in commands {
-            guard case .spawn(let entityType, let position, let coordinateSpace) = command,
-                  let worldPosition = resolve(position, in: coordinateSpace)
-            else {
+        for (id, state) in batch.stateUpdates where !despawned.contains(id) {
+            entityStates[id] = state
+        }
+
+        for id in batch.pendingSpawnOrder where !despawned.contains(id) {
+            guard let spawn = batch.pendingSpawns[id] else {
                 continue
             }
 
-            spawn(entityType, topLeft: worldPosition)
+            entityStates.insert(entity: spawn.entity, state: spawn.state)
         }
-    }
-
-    private mutating func spawn(_ entityType: any Entity.Type, topLeft position: Vec2) {
-        var entity = entityType.init()
-        let id = entityStates.allocateID()
-        var state = EntityState(id: id)
-        state.velocity = .zero
-
-        var context = PreparationContext(level: level)
-        entity.prepare(context: &context, state: &state)
-        state.moveTopLeft(to: position)
-
-        entityStates.insert(entity: entity, state: state)
     }
 
     private mutating func restart() {
@@ -541,22 +539,6 @@ public struct Game {
         entityStates.insert(entity: entity, state: state)
     }
 
-    private func resolve(_ position: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2? {
-        switch coordinateSpace {
-        case .world:
-            return position
-
-        case .screen:
-            return renderView.bounds.origin + position
-
-        case .entity(let id):
-            guard let state = entityStates[id] else {
-                return nil
-            }
-
-            return state.convertToWorld(position)
-        }
-    }
 }
 
 private extension Game {
@@ -581,8 +563,20 @@ extension Game {
         case spawns([EntitySpawn])
     }
 
+    struct PendingSpawn {
+        let id: EntityID
+        var entity: any Entity
+        var state: EntityState
+    }
+
+    struct LifecycleBatch {
+        var pendingSpawnOrder: [EntityID]
+        var pendingSpawns: [EntityID: PendingSpawn]
+        var stateUpdates: [EntityID: EntityState]
+        var commands: [LifecycleCommand]
+    }
+
     enum LifecycleCommand {
-        case spawn(any Entity.Type, Vec2, CoordinateSpace)
         case despawn(EntityID)
         case restart
     }
@@ -600,25 +594,56 @@ extension Game {
         public let input: Input
         public let level: OldLevel
         public var camera: CameraRig
+        private let entityStates: EntityStore
         let contacts: ContactState
         private let registeredSoundIDs: Set<SoundID>
+        private let screenOrigin: Vec2
         private var sounds: [SoundID] = []
+        private var pendingSpawnOrder: [EntityID] = []
+        private var pendingSpawns: [EntityID: PendingSpawn] = [:]
+        private var stateUpdates: [EntityID: EntityState] = [:]
         private var lifecycleCommands: [LifecycleCommand] = []
 
         init(
             delta: Double,
             input: Input,
             level: OldLevel,
+            entityStates: EntityStore,
             contacts: ContactState,
             registeredSoundIDs: Set<SoundID>,
+            screenOrigin: Vec2,
             camera: CameraRig
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
+            self.entityStates = entityStates
             self.contacts = contacts
             self.registeredSoundIDs = registeredSoundIDs
+            self.screenOrigin = screenOrigin
             self.camera = camera
+        }
+
+        public subscript(id: EntityID) -> EntityState? {
+            get {
+                pendingSpawns[id]?.state
+                    ?? stateUpdates[id]
+                    ?? entityStates[id]
+            }
+            set {
+                guard let newValue else {
+                    pendingSpawns[id] = nil
+                    lifecycleCommands.append(.despawn(id))
+                    return
+                }
+
+                if var pendingSpawn = pendingSpawns[id] {
+                    pendingSpawn.state = newValue
+                    pendingSpawns[id] = pendingSpawn
+                } else {
+                    stateUpdates[id] = newValue
+                }
+            }
         }
 
         public mutating func play(sound: SoundID) {
@@ -641,12 +666,32 @@ extension Game {
         /// context.spawn(Bullet.self, at: Vec2(x: 120, y: 40))
         /// context.spawn(Bullet.self, at: Vec2(x: 0, y: -24), in: .entity(playerID))
         /// ```
+        @discardableResult
         public mutating func spawn<E: Entity>(
             _ entityType: E.Type,
             at position: Vec2,
             in coordinateSpace: CoordinateSpace = .world
-        ) {
-            lifecycleCommands.append(.spawn(entityType, position, coordinateSpace))
+        ) -> EntityID {
+            let id = entityStates.reserveID()
+            var entity = entityType.init()
+            var state = EntityState(id: id)
+            state.velocity = .zero
+
+            var context = PreparationContext(level: level)
+            entity.prepare(context: &context, state: &state)
+
+            if let worldPosition = resolve(position, in: coordinateSpace) {
+                state.moveTopLeft(to: worldPosition)
+            }
+
+            pendingSpawnOrder.append(id)
+            pendingSpawns[id] = PendingSpawn(
+                id: id,
+                entity: entity,
+                state: state
+            )
+
+            return id
         }
 
         /// Queues an entity to be removed after the current update or collision
@@ -671,12 +716,37 @@ extension Game {
             return sounds
         }
 
-        mutating func drainLifecycleCommands() -> [LifecycleCommand] {
+        mutating func drainLifecycleBatch() -> LifecycleBatch {
             defer {
+                pendingSpawnOrder.removeAll(keepingCapacity: true)
+                pendingSpawns.removeAll(keepingCapacity: true)
+                stateUpdates.removeAll(keepingCapacity: true)
                 lifecycleCommands.removeAll(keepingCapacity: true)
             }
 
-            return lifecycleCommands
+            return LifecycleBatch(
+                pendingSpawnOrder: pendingSpawnOrder,
+                pendingSpawns: pendingSpawns,
+                stateUpdates: stateUpdates,
+                commands: lifecycleCommands
+            )
+        }
+
+        private func resolve(_ position: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2? {
+            switch coordinateSpace {
+            case .world:
+                return position
+
+            case .screen:
+                return screenOrigin + position
+
+            case .entity(let id):
+                guard let state = self[id] else {
+                    return nil
+                }
+
+                return state.convertToWorld(position)
+            }
         }
     }
 

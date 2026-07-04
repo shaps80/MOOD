@@ -1,14 +1,24 @@
 import Swift
 
 public struct EntityID: Hashable, Sendable, ExpressibleByIntegerLiteral {
-    public let rawValue: Int
+    public let index: Int
+    public let generation: Int
+
+    public var rawValue: Int {
+        index
+    }
+
+    public init(index: Int, generation: Int = 0) {
+        self.index = index
+        self.generation = generation
+    }
 
     public init(rawValue: Int) {
-        self.rawValue = rawValue
+        self.init(index: rawValue)
     }
 
     public init(integerLiteral value: Int) {
-        rawValue = value
+        self.init(rawValue: value)
     }
 }
 

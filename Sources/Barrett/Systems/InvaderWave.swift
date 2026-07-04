@@ -3,6 +3,8 @@ import Pixl
 struct InvaderWave: GameSystem {
     private var direction: Double = 1
     private let speed: Double = 80
+    private var speedScale: Double = 1
+    private let stepDownSpeedMultiplier: Double = 1.1
     private let stepDown: Double = GameConfig.invaderSize.y
     private var rowByInvader: [EntityID: Int] = [:]
 
@@ -40,6 +42,7 @@ struct InvaderWave: GameSystem {
 
         if shouldStepDown {
             direction *= -1
+            speedScale *= stepDownSpeedMultiplier
         }
 
         for rowIndex in rowIDs.keys.sorted() {
@@ -92,6 +95,6 @@ struct InvaderWave: GameSystem {
         let value = sin(.radians(seed * 12.9898)) * 43758.5453123
         let unit = value - value.rounded(.down)
 
-        return speed * (0.75 + (unit * 0.5))
+        return speed * speedScale * (0.75 + (unit * 0.5))
     }
 }

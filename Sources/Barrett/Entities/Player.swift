@@ -72,7 +72,7 @@ struct Player: Entity {
             return
         }
 
-        context.spawn(
+        let bulletID = context.spawn(
             Bullet.self,
             at: Vec2(
                 x: (GameConfig.playerSize.x - GameConfig.bulletSize.x) / 2,
@@ -80,6 +80,8 @@ struct Player: Entity {
             ),
             in: .entity(state.id)
         )
+
+        context[bulletID]?.velocity.x = state.velocity.x * 0.25
         context.play(sound: .laser)
     }
 
