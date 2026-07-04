@@ -81,7 +81,7 @@ struct Player: Entity {
             in: .entity(state.id)
         )
 
-        context[bulletID]?.velocity.x = -state.velocity.x * 0.05
+        context[bulletID]?.velocity.x = -state.velocity.x * 0.15
         context.play(sound: .laser)
     }
 
@@ -111,7 +111,7 @@ struct Player: Entity {
             in: .entity(state.id)
         )
 
-        context[id]?.velocity.x = -state.velocity.x * 0.1
+        context[id]?.velocity.x = -state.velocity.x * 0.2
         context.play(sound: .boom)
     }
 

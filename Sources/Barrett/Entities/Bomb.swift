@@ -6,6 +6,11 @@ struct Bomb: Entity {
         case exploding(elapsed: Double)
     }
 
+    private var horizontal = AxisController(
+        maxSpeed: 120,
+        acceleration: 0,
+        deceleration: 140
+    )
     private var vertical = AxisController(
         maxSpeed: 300,
         acceleration: 2000,
@@ -35,7 +40,11 @@ struct Bomb: Entity {
         switch mode {
         case .traveling:
             state.velocity = Vec2(
-                x: 0,
+                x: horizontal.velocity(
+                    current: state.velocity.x,
+                    input: 0,
+                    delta: context.delta
+                ),
                 y: vertical.velocity(
                     current: state.velocity.y,
                     input: -1,
