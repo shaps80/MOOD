@@ -59,6 +59,10 @@ let package = Package(
                 .target(
                     name: "PlatformMac",
                     condition: .when(platforms: [.macOS])
+                ),
+                .target(
+                    name: "PlatformWeb",
+                    condition: .when(platforms: [.wasi])
                 )
             ]
         )

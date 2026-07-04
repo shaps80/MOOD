@@ -1,5 +1,4 @@
 import Pixl
-import PlatformMac
 
 private var game: Pixl.Game {
     .init(
@@ -9,4 +8,10 @@ private var game: Pixl.Game {
     )
 }
 
+#if os(macOS)
+import PlatformMac
 PlatformMac.run(game: game)
+#else
+import PlatformWeb
+PlatformWeb.run(game: game)
+#endif

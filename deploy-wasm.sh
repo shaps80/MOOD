@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CONFIGURATION="release"
-PRODUCT="MOOD"
+PRODUCT="Barrett"
 SDK="swift-6.3.2-RELEASE_wasm"
 PACKAGE_DIR=".build/deploy-wasm/package"
 DIST_DIR="dist"
