@@ -1,7 +1,7 @@
 import Pixl
 
 enum GameConfig {
-    static let resolution = Vec2(x: 1600, y: 900)
+    static let resolution = Vec2(x: 1600, y: 1000)
     static let tileSize = Vec2(16)
     static let playerSize = Vec2(48)
     static let bulletSize = Vec2(x: 8, y: 8)

@@ -15,7 +15,7 @@ struct Player: Entity {
                 size: GameConfig.playerSize
             ),
             layer: .player,
-            tint: .blue
+            tint: .black
         )
         state.colliders = [
             Collider(

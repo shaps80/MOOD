@@ -45,8 +45,8 @@ struct Bullet: Entity {
 
         context.despawn(state.id)
 
-        if let target = contact.target.id {
-            context.despawn(target)
+        if contact.target.id != nil {
+            context.play(sound: .hit)
         }
     }
 }
