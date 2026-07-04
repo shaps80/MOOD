@@ -2,10 +2,14 @@ import Pixl
 
 struct InvadersCamera: GameSystem {
     private var shake = CameraShake()
+    private var shakeCooldown: Double = 0
 
     mutating func update(context: inout Game.SystemContext) {
-        if didHitInvader(context: context) {
+        shakeCooldown = max(shakeCooldown - context.delta, 0)
+
+        if shakeCooldown == 0, didHitInvader(context: context) {
             shake.trigger()
+            shakeCooldown = 1
         }
 
         context.camera.transform = shake.update(delta: context.delta)

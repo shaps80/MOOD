@@ -2,9 +2,9 @@ import Pixl
 
 struct Player: Entity {
     private var horizontal = AxisController(
-        maxSpeed: 320,
-        acceleration: 1800,
-        deceleration: 2200
+        maxSpeed: 1000,
+        acceleration: 4000,
+        deceleration: 4000
     )
     private var gun = Gun(roundsPerSecond: 10)
 

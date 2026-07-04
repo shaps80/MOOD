@@ -31,10 +31,14 @@ extension World {
 
     private static var invaderMarkers: [SpawnMarker] {
         var markers: [SpawnMarker] = []
-        let columns = 10
-        let rows = 4
-        let spacing = Vec2(x: 42, y: 32)
-        let origin = Vec2(x: 112, y: 56)
+        let columns = 18
+        let rows = 6
+        let spacing = Vec2(x: 78, y: 62)
+        let formationWidth = Double(columns - 1) * spacing.x
+        let origin = Vec2(
+            x: (GameConfig.resolution.x - formationWidth) / 2,
+            y: 88
+        )
 
         for row in 0..<rows {
             for column in 0..<columns {

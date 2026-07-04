@@ -13,7 +13,7 @@ struct Invader: Entity {
                 layer: .invader,
                 mask: .invaderContact,
                 behaviour: .trigger
-            )
+            ),
         ]
     }
 
