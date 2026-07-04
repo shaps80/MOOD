@@ -56,10 +56,10 @@ final class Runtime {
 
         while accumulatedTime >= fixedTimeStep {
             game.update(delta: fixedTimeStep, input: inputState)
+            audio.playSounds(game.drainSounds())
             accumulatedTime -= fixedTimeStep
         }
 
-        audio.playSounds(game.drainSounds())
         renderer.draw(game: game)
 
         requestNextFrame()

@@ -129,11 +129,9 @@ final class Runtime: NSObject {
 
         while accumulatedTime >= fixedTimeStep {
             game.update(delta: fixedTimeStep, input: inputState)
-
+            audio.playSounds(game.drainSounds())
             accumulatedTime -= fixedTimeStep
         }
-
-        audio.playSounds(game.drainSounds())
 
         guard let gameView else { return }
 

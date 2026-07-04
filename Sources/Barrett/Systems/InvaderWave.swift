@@ -4,7 +4,7 @@ struct InvaderWave: GameSystem {
     private var direction: Double = 1
     private let speed: Double = 80
     private var speedScale: Double = 1
-    private let stepDownSpeedMultiplier: Double = 1.1
+    private let stepDownSpeedMultiplier: Double = 1.25
     private let stepDown: Double = GameConfig.invaderSize.y
     private var rowByInvader: [EntityID: Int] = [:]
 
@@ -43,6 +43,7 @@ struct InvaderWave: GameSystem {
         if shouldStepDown {
             direction *= -1
             speedScale *= stepDownSpeedMultiplier
+            speedScale = min(speedScale, 2.5)
         }
 
         for rowIndex in rowIDs.keys.sorted() {

@@ -81,7 +81,7 @@ struct Player: Entity {
             in: .entity(state.id)
         )
 
-        context[bulletID]?.velocity.x = state.velocity.x * 0.25
+        context[bulletID]?.velocity.x = -state.velocity.x * 0.05
         context.play(sound: .laser)
     }
 
@@ -102,7 +102,7 @@ struct Player: Entity {
             return
         }
 
-        context.spawn(
+        let id = context.spawn(
             Bomb.self,
             at: Vec2(
                 x: (GameConfig.playerSize.x - GameConfig.bombSize.x) / 2,
@@ -110,6 +110,8 @@ struct Player: Entity {
             ),
             in: .entity(state.id)
         )
+
+        context[id]?.velocity.x = -state.velocity.x * 0.1
         context.play(sound: .boom)
     }
 

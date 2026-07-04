@@ -36,8 +36,8 @@ extension World {
 
     private static var invaderMarkers: [SpawnMarker] {
         var markers: [SpawnMarker] = []
-        let columns = 18
-        let rows = 6
+        let columns = 17
+        let rows = 8
         let spacing = Vec2(x: 78, y: 62)
         let formationWidth = Double(columns - 1) * spacing.x
         let origin = Vec2(
