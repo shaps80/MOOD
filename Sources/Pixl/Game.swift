@@ -161,6 +161,7 @@ public struct Game {
             delta: context.delta,
             level: level,
             entityStates: entityStates,
+            contacts: contacts,
             camera: context.camera
         )
         updateSystems(before: .postCollision, context: &systemContext)
@@ -183,6 +184,7 @@ public struct Game {
             delta: context.delta,
             level: level,
             entityStates: entityStates,
+            contacts: contacts,
             camera: context.camera
         )
         updateSystems(from: .postCollision, context: &systemContext)
@@ -663,17 +665,20 @@ extension Game {
         public let level: OldLevel
         public var camera: CameraRig
         private let entityStates: EntityStore
+        private let contacts: ContactState
         fileprivate private(set) var shouldRestart = false
 
         init(
             delta: Double,
             level: OldLevel,
             entityStates: EntityStore,
+            contacts: ContactState,
             camera: CameraRig
         ) {
             self.delta = max(delta, 0)
             self.level = level
             self.entityStates = entityStates
+            self.contacts = contacts
             self.camera = camera
         }
 
@@ -683,6 +688,10 @@ extension Game {
 
         public func bounds(for id: EntityID) -> Rect? {
             entityStates.bounds(for: id)
+        }
+
+        public func contacts(for id: EntityID) -> [Contact] {
+            contacts[id]
         }
 
         public func bounds(for ids: [EntityID]) -> Rect? {

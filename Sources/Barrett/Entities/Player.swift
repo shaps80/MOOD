@@ -14,7 +14,7 @@ struct Player: Entity {
                 RoundedRectangle(cornerRadius: 8),
                 size: GameConfig.playerSize
             ),
-            layer: .entity,
+            layer: .player,
             tint: .blue
         )
         state.colliders = [
@@ -39,18 +39,17 @@ struct Player: Entity {
             y: 0
         )
 
-        guard context.input.jump, gun.fire() else {
-            return
+        if context.input.jump, gun.fire() {
+            context.spawn(
+                Bullet.self,
+                at: Vec2(
+                    x: (GameConfig.playerSize.x - GameConfig.bulletSize.x) / 2,
+                    y: -GameConfig.bulletSize.y
+                ),
+                in: .entity(state.id)
+            )
+            context.play(sound: .laser)
         }
-
-        context.spawn(
-            Bullet.self,
-            at: Vec2(
-                x: (GameConfig.playerSize.x - GameConfig.bulletSize.x) / 2,
-                y: -GameConfig.bulletSize.y
-            ),
-            in: .entity(state.id)
-        )
     }
 
     mutating func onCollision(

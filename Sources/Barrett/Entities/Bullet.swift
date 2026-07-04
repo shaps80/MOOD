@@ -4,7 +4,7 @@ struct Bullet: Entity {
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = Sprite(
             material: .shape(Rectangle(), size: GameConfig.bulletSize),
-            layer: .entity,
+            layer: .enemy,
             tint: .yellow
         )
         state.colliders = [

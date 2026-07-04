@@ -4,7 +4,7 @@ struct Invader: Entity {
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = Sprite(
             material: .shape(Capsule(), size: GameConfig.invaderSize),
-            layer: .entity,
+            layer: .enemy,
             tint: .red
         )
         state.colliders = [
@@ -31,8 +31,9 @@ struct Invader: Entity {
         }
 
         if contact.target.id != nil {
+            context.play(sound: .hit)
             context.despawn(state.id)
-        } else if contact.target.tile?.row == Int(GameConfig.resolution.y / GameConfig.tileSize.y) - 1 {
+        } else if contact.target.tile?.row == Int(GameConfig.resolution.y / GameConfig.tileSize.y) - 2 {
             context.restart()
         }
     }

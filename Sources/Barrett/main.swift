@@ -5,7 +5,7 @@ private var game: Pixl.Game {
     .init(
         "Retro Invaders",
         size: GameConfig.resolution,
-        world: .spaceInvaders,
+        world: .spaceInvaders
     )
 }
 

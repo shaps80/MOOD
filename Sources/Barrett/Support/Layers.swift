@@ -21,5 +21,6 @@ extension Collider.Layer.Mask {
 
 extension RenderLayer {
     static let world: Self = 100
-    static let entity: Self = 200
+    static let enemy: Self = 200
+    static let player: Self = 300
 }

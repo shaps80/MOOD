@@ -117,9 +117,9 @@ public struct World: Scene {
 }
 
 public struct Level {
-    public let assets: SceneAssets
-    public let tilemap: Tilemap?
-    public let markers: [SpawnMarker]
+    public var assets: SceneAssets
+    public var tilemap: Tilemap?
+    public var markers: [SpawnMarker]
 
     public init(
         assets: SceneAssets,

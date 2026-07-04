@@ -13,6 +13,9 @@ extension World {
 
         world.register(Player.self, Bullet.self, Invader.self)
         world.addSystem(InvaderWave(), phase: .update)
+        world.addSystem(InvadersCamera(), phase: .postCollision)
+        world.level.assets = .init(sprites: [], sounds: [.laser])
+
         world.camera = .init(
             camera: .init(viewportSize: GameConfig.resolution),
             anchor: .point(
