@@ -85,10 +85,8 @@ struct CollisionSystem {
 
     func detectContacts(into contacts: ContactState) {
         entities.forEachCollider { entityID, colliderIndex, collider in
-            forEachCollider(intersecting: collider.bounds) { otherEntityID, otherColliderIndex, other in
-                guard let otherEntityID,
-                      let otherColliderIndex,
-                      otherEntityID != entityID,
+            forEachCollider(intersecting: collider.bounds) { reference, other in
+                guard reference.entityID != entityID,
                       collider.canCollide(with: other),
                       collider.bounds.intersects(other.bounds)
                 else {
@@ -100,10 +98,7 @@ struct CollisionSystem {
                         id: entityID,
                         collider: colliderIndex
                     ),
-                    target: Contact.Endpoint(
-                        id: otherEntityID,
-                        collider: otherColliderIndex
-                    )
+                    target: reference.target
                 )
             }
         }
@@ -136,8 +131,8 @@ struct CollisionSystem {
             let previousBounds = previousColliders[index].bounds
             let proposedBounds = collider.bounds
 
-            forEachCollider(intersecting: proposedBounds) { otherEntityID, _, otherCollider in
-                guard otherEntityID != entityID,
+            forEachCollider(intersecting: proposedBounds) { reference, otherCollider in
+                guard reference.entityID != entityID,
                       canBlockMovement(
                           collider,
                           against: otherCollider,
@@ -192,8 +187,8 @@ struct CollisionSystem {
             let previousBounds = previousColliders[index].bounds
             let proposedBounds = collider.bounds
 
-            forEachCollider(intersecting: proposedBounds) { otherEntityID, _, otherCollider in
-                guard otherEntityID != entityID,
+            forEachCollider(intersecting: proposedBounds) { reference, otherCollider in
+                guard reference.entityID != entityID,
                       canBlockMovement(
                           collider,
                           against: otherCollider,
@@ -223,10 +218,10 @@ struct CollisionSystem {
 
     private func forEachCollider(
         intersecting bounds: Rect,
-        _ body: (EntityID?, Int?, Collider) -> Void
+        _ body: (ColliderReference, Collider) -> Void
     ) {
-        colliderIndex.forEach(intersecting: bounds) { collider in
-            body(nil, nil, collider)
+        colliderIndex.forEach(intersecting: bounds) { tile, collider in
+            body(.tile(tile), collider)
         }
 
         entities.forEachCollider { entityID, colliderIndex, collider in
@@ -234,7 +229,7 @@ struct CollisionSystem {
                 return
             }
 
-            body(entityID, colliderIndex, collider)
+            body(.entity(entityID, colliderIndex), collider)
         }
     }
 
@@ -266,8 +261,8 @@ struct CollisionSystem {
                     continue
                 }
 
-                forEachCollider(intersecting: collider.bounds) { otherEntityID, _, otherCollider in
-                    guard otherEntityID != entityID,
+                forEachCollider(intersecting: collider.bounds) { reference, otherCollider in
+                    guard reference.entityID != entityID,
                           shouldResolveShapeContact(collider, against: otherCollider),
                           let resolution = collider.collisionResolution(against: otherCollider)
                     else {
@@ -364,6 +359,33 @@ struct CollisionSystem {
 private struct AxisResolution {
     let value: Double
     let blocked: Bool
+}
+
+private enum ColliderReference {
+    case entity(EntityID, Int)
+    case tile(Contact.TileEndpoint)
+
+    var entityID: EntityID? {
+        guard case .entity(let id, _) = self else {
+            return nil
+        }
+
+        return id
+    }
+
+    var target: Contact.Target {
+        switch self {
+        case .entity(let id, let collider):
+            return .entity(
+                Contact.Endpoint(
+                    id: id,
+                    collider: collider
+                )
+            )
+        case .tile(let endpoint):
+            return .tile(endpoint)
+        }
+    }
 }
 
 private extension Collider {

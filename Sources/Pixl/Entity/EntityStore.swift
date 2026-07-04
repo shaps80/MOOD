@@ -74,6 +74,17 @@ final class EntityStore {
         body(&states[index])
     }
 
+    func ids(kind: EntityKind) -> [EntityID] {
+        var ids: [EntityID] = []
+        ids.reserveCapacity(states.count)
+
+        for index in entities.indices where type(of: entities[index]).kind == kind {
+            ids.append(states[index].id)
+        }
+
+        return ids
+    }
+
     func updateEach(
         _ body: (inout any Entity, inout EntityState) -> Void
     ) {

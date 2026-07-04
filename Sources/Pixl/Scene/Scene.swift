@@ -5,10 +5,11 @@ public protocol Scene {
 }
 
 public struct World: Scene {
-    public let level: Level
-    public let camera: CameraRig?
+    public var level: Level
+    public var camera: CameraRig?
     public var assets: SceneAssets { level.assets }
     internal private(set) var registry: EntityRegistry = .init()
+    internal private(set) var systems: [any GameSystem] = []
 
     public init(level: Level, camera: CameraRig? = nil) {
         self.level = level
@@ -19,6 +20,10 @@ public struct World: Scene {
         entities.forEach {
             registry.register($0)
         }
+    }
+
+    public mutating func addSystem(_ system: any GameSystem) {
+        systems.append(system)
     }
 }
 

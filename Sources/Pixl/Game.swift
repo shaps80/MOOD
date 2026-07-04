@@ -18,7 +18,10 @@ public struct Game {
     }
 
     private let level: OldLevel
+    private let initialEntitySource: InitialEntitySource
+    private let initialSystems: [any GameSystem]
     private var entityStates: EntityStore = .init()
+    private var systems: [any GameSystem]
     private let contacts = ContactState()
     private var cameraRig: CameraRig
     private var wasResetPressed = false
@@ -50,6 +53,9 @@ public struct Game {
 
         self.spriteAssets = world.assets.sprites
         self.soundAssets = world.assets.sounds
+        self.initialEntitySource = .markers(world.level.markers, world.registry)
+        self.initialSystems = world.systems
+        self.systems = world.systems
 
         if let tilemap = world.level.tilemap {
             self.level = .init(
@@ -71,21 +77,7 @@ public struct Game {
             )
         }
 
-        var id: Int = 0
-        for marker in world.level.markers {
-            guard var entity = world.registry.make(kind: marker.kind) else { continue }
-            defer { id += 1 }
-
-            var state = EntityState(id: .init(rawValue: id))
-            state.transform.position = marker.position
-            state.velocity = .zero
-
-            var context = PreparationContext(level: level)
-            entity.prepare(context: &context, state: &state)
-
-            entityStates.insert(entity: entity, state: state)
-        }
-
+        loadInitialEntities()
         updateCamera(delta: .infinity)
         frame.prepare()
         rebuildFrame()
@@ -110,20 +102,11 @@ public struct Game {
         self.cameraRig = camera
         self.spriteAssets = sprites
         self.soundAssets = sounds
+        self.initialEntitySource = .spawns(entities)
+        self.initialSystems = []
+        self.systems = []
 
-        for spawn in entities {
-            var entity = spawn.entity
-
-            var state = EntityState(id: spawn.id)
-
-            state.transform.position = spawn.position
-            state.velocity = .zero
-
-            var context = PreparationContext(level: level)
-            entity.prepare(context: &context, state: &state)
-
-            entityStates.insert(entity: entity, state: state)
-        }
+        loadInitialEntities()
         updateCamera(delta: .infinity)
         frame.prepare()
         rebuildFrame()
@@ -153,7 +136,18 @@ public struct Game {
         entityStates.updateEach { entity, state in
                 entity.onUpdate(context: &context, state: &state)
         }
-        flushFrameEvents(from: &context)
+
+        var systemContext = SystemContext(
+            delta: context.delta,
+            level: level,
+            entityStates: entityStates
+        )
+        for index in systems.indices {
+            systems[index].update(context: &systemContext)
+        }
+        if systemContext.shouldRestart {
+            context.restart()
+        }
 
         let collisionSystem = CollisionSystem(
             tilemap: level.tilemap,
@@ -377,6 +371,11 @@ public struct Game {
     private mutating func applyLifecycleCommands(_ commands: [LifecycleCommand]) {
         guard !commands.isEmpty else { return }
 
+        if commands.containsRestart {
+            restart()
+            return
+        }
+
         var despawned = Set<EntityID>()
 
         for command in commands {
@@ -413,6 +412,55 @@ public struct Game {
         entityStates.insert(entity: entity, state: state)
     }
 
+    private mutating func restart() {
+        entityStates = EntityStore()
+        systems = initialSystems
+        contacts.reset()
+        loadInitialEntities()
+    }
+
+    private mutating func loadInitialEntities() {
+        switch initialEntitySource {
+        case .markers(let markers, let registry):
+            var id: Int = 0
+            for marker in markers {
+                guard let entity = registry.make(kind: marker.kind) else { continue }
+                defer { id += 1 }
+
+                insertInitialEntity(
+                    entity: entity,
+                    id: EntityID(rawValue: id),
+                    position: marker.position
+                )
+            }
+
+        case .spawns(let spawns):
+            for spawn in spawns {
+                insertInitialEntity(
+                    entity: spawn.entity,
+                    id: spawn.id,
+                    position: spawn.position
+                )
+            }
+        }
+    }
+
+    private mutating func insertInitialEntity(
+        entity: any Entity,
+        id: EntityID,
+        position: Vec2
+    ) {
+        var entity = entity
+        var state = EntityState(id: id)
+        state.transform.position = position
+        state.velocity = .zero
+
+        var context = PreparationContext(level: level)
+        entity.prepare(context: &context, state: &state)
+
+        entityStates.insert(entity: entity, state: state)
+    }
+
     private func resolve(_ position: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2? {
         switch coordinateSpace {
         case .world:
@@ -432,9 +480,15 @@ public struct Game {
 }
 
 extension Game {
+    private enum InitialEntitySource {
+        case markers([SpawnMarker], EntityRegistry)
+        case spawns([EntitySpawn])
+    }
+
     enum LifecycleCommand {
         case spawn(any Entity.Type, Vec2, CoordinateSpace)
         case despawn(EntityID)
+        case restart
     }
 
     public struct PreparationContext {
@@ -497,6 +551,11 @@ extension Game {
             lifecycleCommands.append(.despawn(id))
         }
 
+        /// Queues the game to restart from its initial entities and systems.
+        public mutating func restart() {
+            lifecycleCommands.append(.restart)
+        }
+
         mutating func drainSounds() -> [SoundID] {
             defer {
                 sounds.removeAll(keepingCapacity: true)
@@ -512,5 +571,80 @@ extension Game {
 
             return lifecycleCommands
         }
+    }
+
+    public struct SystemContext {
+        public let delta: Double
+        public let level: OldLevel
+        private let entityStates: EntityStore
+        fileprivate private(set) var shouldRestart = false
+
+        init(delta: Double, level: OldLevel, entityStates: EntityStore) {
+            self.delta = max(delta, 0)
+            self.level = level
+            self.entityStates = entityStates
+        }
+
+        public func ids<E: Entity>(kind: E.Type) -> [EntityID] {
+            entityStates.ids(kind: kind.kind)
+        }
+
+        public func bounds(for id: EntityID) -> Rect? {
+            entityStates.bounds(for: id)
+        }
+
+        public func bounds(for ids: [EntityID]) -> Rect? {
+            var unionBounds: Rect?
+
+            for id in ids {
+                guard let bounds = entityStates.bounds(for: id) else {
+                    continue
+                }
+
+                unionBounds = unionBounds.map { $0.union(bounds) } ?? bounds
+            }
+
+            return unionBounds
+        }
+
+        public func move(_ ids: [EntityID], by offset: Vec2) {
+            for id in ids {
+                entityStates.update(id) { state in
+                    state.transform.position += offset
+                }
+            }
+        }
+
+        public mutating func restart() {
+            shouldRestart = true
+        }
+    }
+}
+
+private extension Array where Element == Game.LifecycleCommand {
+    var containsRestart: Bool {
+        contains {
+            guard case .restart = $0 else {
+                return false
+            }
+
+            return true
+        }
+    }
+}
+
+private extension Rect {
+    func union(_ other: Rect) -> Rect {
+        let minX = min(minX, other.minX)
+        let minY = min(minY, other.minY)
+        let maxX = max(maxX, other.maxX)
+        let maxY = max(maxY, other.maxY)
+
+        return Rect(
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        )
     }
 }

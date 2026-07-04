@@ -67,6 +67,15 @@ extension Tilemap {
         /// For a 32x32 player and 16x16 tiles, this usually checks around
         /// 4-9 cells instead of every tile in the map.
         func forEach(intersecting bounds: Rect, _ body: (Collider) -> Void) {
+            forEach(intersecting: bounds) { _, collider in
+                body(collider)
+            }
+        }
+
+        func forEach(
+            intersecting bounds: Rect,
+            _ body: (Contact.TileEndpoint, Collider) -> Void
+        ) {
             guard let range = tilemap.tileRange(intersecting: bounds) else {
                 return
             }
@@ -83,8 +92,14 @@ extension Tilemap {
                         y: Double(y) * tilemap.tileSize.y
                     )
 
-                    for collider in tile.colliders {
+                    for index in tile.colliders.indices {
+                        let collider = tile.colliders[index]
                         body(
+                            Contact.TileEndpoint(
+                                column: x,
+                                row: y,
+                                collider: index
+                            ),
                             collider.placed(
                                 at: tileOrigin
                             )
@@ -95,6 +110,12 @@ extension Tilemap {
         }
 
         func forEach(_ body: (Collider) -> Void) {
+            forEach { _, collider in
+                body(collider)
+            }
+        }
+
+        func forEach(_ body: (Contact.TileEndpoint, Collider) -> Void) {
             for y in 0..<tilemap.rows {
                 for x in 0..<tilemap.columns {
                     guard let tile = tilemap.tile(x: x, y: y),
@@ -107,8 +128,14 @@ extension Tilemap {
                         y: Double(y) * tilemap.tileSize.y
                     )
 
-                    for collider in tile.colliders {
+                    for index in tile.colliders.indices {
+                        let collider = tile.colliders[index]
                         body(
+                            Contact.TileEndpoint(
+                                column: x,
+                                row: y,
+                                collider: index
+                            ),
                             collider.placed(
                                 at: tileOrigin
                             )

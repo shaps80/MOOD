@@ -14,7 +14,13 @@ final class ContactState {
         contactsByEntity.removeAll(keepingCapacity: true)
     }
 
-    func record(source: Contact.Endpoint, target: Contact.Endpoint) {
+    func reset() {
+        previousKeys.removeAll(keepingCapacity: true)
+        currentKeys.removeAll(keepingCapacity: true)
+        contactsByEntity.removeAll(keepingCapacity: true)
+    }
+
+    func record(source: Contact.Endpoint, target: Contact.Target) {
         let key = Contact.Key(source: source, target: target)
         guard currentKeys.insert(key).inserted else {
             return
