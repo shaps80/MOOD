@@ -25,9 +25,10 @@ public struct Game {
 
     private let level: OldLevel
     private let initialEntitySource: InitialEntitySource
-    private let initialSystems: [any GameSystem]
+    private let phases: [Phase]
+    private let initialSystems: [RegisteredSystem]
     private var entityStates: EntityStore = .init()
-    private var systems: [any GameSystem]
+    private var systems: [RegisteredSystem]
     private let contacts = ContactState()
     private var cameraRig: CameraRig
     private var wasResetPressed = false
@@ -62,6 +63,7 @@ public struct Game {
         self.spriteAssets = world.assets.sprites
         self.soundAssets = world.assets.sounds
         self.initialEntitySource = .markers(world.level.markers, world.registry)
+        self.phases = world.phases
         self.initialSystems = world.systems
         self.systems = world.systems
 
@@ -113,6 +115,7 @@ public struct Game {
         self.spriteAssets = sprites
         self.soundAssets = sounds
         self.initialEntitySource = .spawns(entities)
+        self.phases = [.update, .postCollision]
         self.initialSystems = []
         self.systems = []
 
@@ -157,11 +160,11 @@ public struct Game {
         var systemContext = SystemContext(
             delta: context.delta,
             level: level,
-            entityStates: entityStates
+            entityStates: entityStates,
+            camera: context.camera
         )
-        for index in systems.indices {
-            systems[index].update(context: &systemContext)
-        }
+        updateSystems(before: .postCollision, context: &systemContext)
+        context.camera = systemContext.camera
         if systemContext.shouldRestart {
             context.restart()
         }
@@ -175,6 +178,19 @@ public struct Game {
         collisionSystem.detectContacts(into: contacts)
         contacts.end()
         dispatchCollisions(context: &context)
+
+        systemContext = SystemContext(
+            delta: context.delta,
+            level: level,
+            entityStates: entityStates,
+            camera: context.camera
+        )
+        updateSystems(from: .postCollision, context: &systemContext)
+        context.camera = systemContext.camera
+        if systemContext.shouldRestart {
+            context.restart()
+        }
+
         cameraRig = context.camera
         flushFrameEvents(from: &context)
 
@@ -191,6 +207,38 @@ public struct Game {
                 state: &state,
                 contact: contact
             )
+        }
+    }
+
+    private mutating func updateSystems(
+        before boundary: Phase,
+        context: inout SystemContext
+    ) {
+        for phase in phases {
+            guard phase != boundary else { return }
+            updateSystems(in: phase, context: &context)
+        }
+    }
+
+    private mutating func updateSystems(
+        from boundary: Phase,
+        context: inout SystemContext
+    ) {
+        guard let boundaryIndex = phases.firstIndex(of: boundary) else {
+            return
+        }
+
+        for phase in phases[boundaryIndex...] {
+            updateSystems(in: phase, context: &context)
+        }
+    }
+
+    private mutating func updateSystems(
+        in phase: Phase,
+        context: inout SystemContext
+    ) {
+        for index in systems.indices where systems[index].phase == phase {
+            systems[index].system.update(context: &context)
         }
     }
 
@@ -613,13 +661,20 @@ extension Game {
     public struct SystemContext {
         public let delta: Double
         public let level: OldLevel
+        public var camera: CameraRig
         private let entityStates: EntityStore
         fileprivate private(set) var shouldRestart = false
 
-        init(delta: Double, level: OldLevel, entityStates: EntityStore) {
+        init(
+            delta: Double,
+            level: OldLevel,
+            entityStates: EntityStore,
+            camera: CameraRig
+        ) {
             self.delta = max(delta, 0)
             self.level = level
             self.entityStates = entityStates
+            self.camera = camera
         }
 
         public func ids<E: Entity>(kind: E.Type) -> [EntityID] {
@@ -667,21 +722,5 @@ private extension Array where Element == Game.LifecycleCommand {
 
             return true
         }
-    }
-}
-
-private extension Rect {
-    func union(_ other: Rect) -> Rect {
-        let minX = min(minX, other.minX)
-        let minY = min(minY, other.minY)
-        let maxX = max(maxX, other.maxX)
-        let maxY = max(maxY, other.maxY)
-
-        return Rect(
-            x: minX,
-            y: minY,
-            width: maxX - minX,
-            height: maxY - minY
-        )
     }
 }

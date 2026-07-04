@@ -12,7 +12,7 @@ extension World {
         )
 
         world.register(Player.self, Bullet.self, Invader.self)
-        world.addSystem(InvaderWave())
+        world.addSystem(InvaderWave(), phase: .update)
         world.camera = .init(
             camera: .init(viewportSize: GameConfig.resolution),
             anchor: .point(

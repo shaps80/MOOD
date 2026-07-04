@@ -64,9 +64,6 @@ public struct CameraRig: Equatable, Sendable {
     /// Movement limits applied before the presentation transform.
     public var constraints: CameraConstraints
 
-    private var activeShakes: [ActiveCameraShake] = []
-    private var shakeTransform: Transform = .identity
-
     /// Creates a camera rig.
     ///
     /// - Parameters:
@@ -89,25 +86,6 @@ public struct CameraRig: Equatable, Sendable {
         self.constraints = constraints ?? .init(bounds: nil)
     }
 
-    /// Starts a transient camera shake.
-    ///
-    /// Shake is layered on top of `transform` and decays during `update`.
-    public mutating func shake(_ shake: CameraShake = .init()) {
-        guard shake.duration > 0,
-              shake.frequency > 0,
-              shake.amplitude > 0 || shake.rotation.radians.magnitude > 0
-        else {
-            return
-        }
-
-        activeShakes.append(
-            ActiveCameraShake(
-                shake: shake,
-                phase: Double(activeShakes.count) * 1.61803398875
-            )
-        )
-    }
-
     /// Resolves the camera for the current frame.
     ///
     /// `anchorBounds` is supplied by game state so Pixl can stay independent of
@@ -118,8 +96,6 @@ public struct CameraRig: Equatable, Sendable {
     /// - Parameter delta: Elapsed simulation time for this update.
     /// - Parameter anchorBounds: Looks up world-space bounds for an entity ID.
     public mutating func update(delta: Double, anchorBounds: (EntityID) -> Rect?) {
-        updateShake(delta: delta)
-
         guard let anchorCenter = anchor.center(anchorBounds: anchorBounds) else {
             return
         }
@@ -140,44 +116,6 @@ public struct CameraRig: Equatable, Sendable {
     }
 
     var resolvedTransform: Transform {
-        transform.concatenated(with: shakeTransform)
+        transform
     }
-
-    private mutating func updateShake(delta: Double) {
-        guard delta.isFinite, delta > 0 else {
-            shakeTransform = .identity
-            return
-        }
-
-        var offset = Vec2.zero
-        var rotation = Angle.zero
-
-        for index in activeShakes.indices.reversed() {
-            activeShakes[index].elapsed += delta
-
-            let active = activeShakes[index]
-            let progress = min(active.elapsed / active.shake.duration, 1)
-            let fade = 1 - progress
-
-            if progress >= 1 {
-                activeShakes.remove(at: index)
-                continue
-            }
-
-            let wave = (active.elapsed * active.shake.frequency * .pi * 2) + active.phase
-            offset += Vec2(
-                x: sin(.radians(wave)) * active.shake.amplitude * fade,
-                y: cos(.radians((wave * 1.37) + active.phase)) * active.shake.amplitude * 0.65 * fade
-            )
-            rotation += active.shake.rotation * (sin(.radians((wave * 0.73) + active.phase)) * fade)
-        }
-
-        shakeTransform = Transform(position: offset, rotation: rotation)
-    }
-}
-
-private struct ActiveCameraShake: Equatable, Sendable {
-    var shake: CameraShake
-    var elapsed: Double = 0
-    var phase: Double
 }

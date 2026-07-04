@@ -25,4 +25,3 @@ struct InvaderWave: GameSystem {
         context.move(invaders, by: movement)
     }
 }
-

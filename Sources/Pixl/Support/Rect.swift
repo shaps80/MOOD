@@ -217,3 +217,20 @@ public extension Rect {
         )
     }
 }
+
+public extension Rect {
+    func union(_ other: Rect) -> Rect {
+        let minX = min(minX, other.minX)
+        let minY = min(minY, other.minY)
+        let maxX = max(maxX, other.maxX)
+        let maxY = max(maxY, other.maxY)
+
+        return Rect(
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        )
+    }
+}
+
