@@ -3,7 +3,7 @@ import PlatformMac
 
 private var game: Pixl.Game {
     .init(
-        "Barrett",
+        "Retro Invaders",
         size: GameConfig.resolution,
         world: .spaceInvaders,
     )

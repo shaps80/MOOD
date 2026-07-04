@@ -3,7 +3,7 @@ import Pixl
 struct InvaderWave: GameSystem {
     private var direction: Double = 1
     private let speed: Double = 52
-    private let stepDown: Double = 14
+    private let stepDown: Double = 16
 
     mutating func update(context: inout Game.SystemContext) {
         let invaders = context.ids(kind: Invader.self)
