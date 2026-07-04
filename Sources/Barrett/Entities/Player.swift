@@ -12,6 +12,10 @@ struct Player: Entity {
     private var didPlayEmpty = false
     private let maxContinuousFireDuration: Double = 1
 
+    private var recoilTime: Double = 0
+    private var recoilDuration: Double = 0.05
+    private var recoilDistance: Double = 4
+
     mutating func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = Sprite(
             material: .shape(
@@ -43,13 +47,15 @@ struct Player: Entity {
             y: 0
         )
 
-        firePrimaryWeapon(context: &context, state: state)
+        updateRecoil(context: context, state: &state)
+
+        firePrimaryWeapon(context: &context, state: &state)
         fireBomb(context: &context, state: state)
     }
 
     private mutating func firePrimaryWeapon(
         context: inout Game.Context,
-        state: EntityState
+        state: inout EntityState
     ) {
         guard context.input.jump else {
             continuousFireDuration = 0
@@ -83,6 +89,8 @@ struct Player: Entity {
 
         context[bulletID]?.velocity.x = -state.velocity.x * 0.15
         context.play(sound: .laser)
+        recoilTime = recoilDuration
+        recoilDistance = 5
     }
 
     private mutating func fireBomb(
@@ -113,6 +121,8 @@ struct Player: Entity {
 
         context[id]?.velocity.x = -state.velocity.x * 0.2
         context.play(sound: .boom)
+        recoilTime = recoilDuration
+        recoilDistance = 2
     }
 
     mutating func onCollision(
@@ -129,5 +139,22 @@ struct Player: Entity {
         SpaceInvadersProgress.resetBombs()
         context.play(sound: .gameover)
         context.restart()
+    }
+
+    private mutating func updateRecoil(
+        context: Game.Context,
+        state: inout EntityState
+    ) {
+        guard recoilTime > 0 else {
+            state.sprite?.transform.position.y = 0
+            return
+        }
+
+        recoilTime = max(recoilTime - context.delta, 0)
+
+        let progress = 1 - (recoilTime / recoilDuration)
+        let kick = sin(.degrees(progress * 180)) * recoilDistance
+
+        state.sprite?.transform.position.y = kick
     }
 }

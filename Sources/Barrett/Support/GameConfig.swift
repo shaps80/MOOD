@@ -8,7 +8,7 @@ enum GameConfig {
     static let invaderSize = Vec2(48)
     static let bombSize = Vec2(24)
     static let bombRadius: Double = invaderSize.x * 3
-    static let playerStart = Vec2(x: resolution.x / 2, y: resolution.y - 48)
+    static let playerStart = Vec2(x: resolution.x / 2, y: resolution.y - 96)
 
     static let playBounds = Rect(
         x: tileSize.x,
