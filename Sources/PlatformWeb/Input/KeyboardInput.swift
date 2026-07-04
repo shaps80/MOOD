@@ -13,7 +13,8 @@ final class KeyboardInput {
             horizontal: horizontalAxis,
             vertical: verticalAxis,
             jump: isPressed("Space"),
-            reset: isPressed("Escape")
+            reset: isPressed("Escape"),
+            debug: isPressed("Backquote")
         )
     }
 
@@ -94,6 +95,7 @@ final class KeyboardInput {
         case "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
              "KeyW", "KeyA", "KeyS", "KeyD",
              "Space",
+             "Backquote",
              "Escape":
             return true
         default:

@@ -1,10 +1,21 @@
 import Pixl
 import PlatformMac
 
-let size: Vec2 = .init(x: 1600, y: 900)
+let size: Vec2 = .init(x: 640, y: 320)
 
 struct Player: Entity {
-    private var controller: TopPlayerController = .default
+    private var controller: TopPlayerController = .init(
+        horizontal: AxisController(
+            maxSpeed: 300,
+            acceleration: 1000,
+            deceleration: 1000
+        ),
+        vertical: AxisController(
+            maxSpeed: 300,
+            acceleration: 1000,
+            deceleration: 1000
+        )
+    )
 
     func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = .init(
@@ -21,7 +32,12 @@ struct Player: Entity {
     }
 
     func onUpdate(context: inout Game.Context, state: inout EntityState) {
-        state.transform.rotation += .degrees(180) * context.delta
+        if context.input.jump {
+            state.transform.rotation += .degrees(
+                180 * context.input.direction.x
+            ) * context.delta
+        }
+
         state.velocity = controller.velocity(
             for: context.input,
             current: state.velocity,

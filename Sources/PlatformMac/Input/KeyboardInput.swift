@@ -11,7 +11,8 @@ final class KeyboardInput {
             horizontal: horizontalAxis,
             vertical: verticalAxis,
             jump: isPressed(KeyCode.space),
-            reset: isPressed(KeyCode.escape)
+            reset: isPressed(KeyCode.escape),
+            debug: isPressed(KeyCode.grave)
         )
     }
 
@@ -77,7 +78,8 @@ final class KeyboardInput {
              KeyCode.s,
              KeyCode.d,
              KeyCode.space,
-             KeyCode.escape:
+             KeyCode.escape,
+             KeyCode.grave:
             return true
         default:
             return false
@@ -90,6 +92,7 @@ private enum KeyCode {
     static let s: UInt16 = 1
     static let d: UInt16 = 2
     static let w: UInt16 = 13
+    static let grave: UInt16 = 50
     static let escape: UInt16 = 53
     static let space: UInt16 = 49
     static let leftArrow: UInt16 = 123

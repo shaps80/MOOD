@@ -132,10 +132,10 @@ public struct Game {
     public mutating func update(delta: Double, input: Input) {
         defer {
             wasResetPressed = input.reset
-            wasDebugTogglePressed = input.jump
+            wasDebugTogglePressed = input.debug
         }
 
-        if input.jump && !wasDebugTogglePressed {
+        if input.debug && !wasDebugTogglePressed {
             debugOptions.toggle(.visibility)
             debugOptions.toggle(.colliders)
         }

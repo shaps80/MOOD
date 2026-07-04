@@ -43,6 +43,9 @@ public struct Input: Equatable, Sendable {
     /// ```
     public let reset: Bool
 
+    /// Whether the debug toggle action is pressed.
+    public let debug: Bool
+
     /// Creates an input snapshot.
     ///
     /// Omitted values default to neutral axes and unpressed actions.
@@ -55,12 +58,14 @@ public struct Input: Equatable, Sendable {
         horizontal: Double = 0,
         vertical: Double = 0,
         jump: Bool = false,
-        reset: Bool = false
+        reset: Bool = false,
+        debug: Bool = false
     ) {
         self.horizontal = horizontal
         self.vertical = vertical
         self.jump = jump
         self.reset = reset
+        self.debug = debug
     }
 
     /// Movement intent as a vector.
@@ -107,7 +112,8 @@ public struct Input: Equatable, Sendable {
             horizontal: clamp(horizontal + other.horizontal, min: -1, max: 1),
             vertical: clamp(vertical + other.vertical, min: -1, max: 1),
             jump: jump || other.jump,
-            reset: reset || other.reset
+            reset: reset || other.reset,
+            debug: debug || other.debug
         )
     }
 }
