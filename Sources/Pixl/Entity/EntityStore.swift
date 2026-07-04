@@ -4,6 +4,7 @@ final class EntityStore {
     private var entities: [any Entity] = []
     private var states: [EntityState] = []
     private var indicesByID: [EntityID: Int] = [:]
+    private var nextEntityID: Int = 0
 
     private(set) subscript(id: EntityID) -> EntityState? {
         get {
@@ -37,6 +38,29 @@ final class EntityStore {
         indicesByID[state.id] = entities.count
         entities.append(entity)
         states.append(state)
+        reserveID(after: state.id)
+    }
+
+    func remove(_ id: EntityID) {
+        guard let index = indicesByID[id] else {
+            return
+        }
+
+        entities.remove(at: index)
+        states.remove(at: index)
+        rebuildIndices()
+    }
+
+    func allocateID() -> EntityID {
+        while indicesByID[EntityID(rawValue: nextEntityID)] != nil {
+            nextEntityID += 1
+        }
+
+        defer {
+            nextEntityID += 1
+        }
+
+        return EntityID(rawValue: nextEntityID)
     }
 
     func update(
@@ -111,5 +135,9 @@ final class EntityStore {
         for index in entities.indices {
             indicesByID[states[index].id] = index
         }
+    }
+
+    private func reserveID(after id: EntityID) {
+        nextEntityID = max(nextEntityID, id.rawValue + 1)
     }
 }

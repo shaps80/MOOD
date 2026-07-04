@@ -147,12 +147,14 @@ public struct Game {
             delta: delta,
             input: input,
             level: level,
-            contacts: contacts
+            contacts: contacts,
+            frameEvents: frame.events
         )
 
         entityStates.updateEach { entity, state in
                 entity.onUpdate(context: &context, state: &state)
         }
+        flushLifecycleCommands()
 
         let collisionSystem = CollisionSystem(
             tilemap: level.tilemap,
@@ -163,9 +165,9 @@ public struct Game {
         collisionSystem.detectContacts(into: contacts)
         contacts.end()
         dispatchCollisions(context: &context)
+        flushLifecycleCommands()
 
         updateCamera(delta: delta)
-        frame.sounds.append(contentsOf: context.sounds)
         rebuildFrame()
     }
 
@@ -182,11 +184,7 @@ public struct Game {
     }
 
     public mutating func drainSounds() -> [SoundID] {
-        defer {
-            frame.sounds.removeAll(keepingCapacity: true)
-        }
-
-        return frame.sounds
+        frame.events.drainSounds()
     }
 
     private mutating func rebuildFrame() {
@@ -371,6 +369,66 @@ public struct Game {
     private func entityBounds(for id: EntityID) -> Rect? {
         entityStates.bounds(for: id)
     }
+
+    private mutating func flushLifecycleCommands() {
+        applyLifecycleCommands(frame.events.drainLifecycleCommands())
+    }
+
+    private mutating func applyLifecycleCommands(_ commands: [LifecycleCommand]) {
+        guard !commands.isEmpty else { return }
+
+        var despawned = Set<EntityID>()
+
+        for command in commands {
+            guard case .despawn(let id) = command,
+                  despawned.insert(id).inserted
+            else {
+                continue
+            }
+
+            entityStates.remove(id)
+        }
+
+        for command in commands {
+            guard case .spawn(let entityType, let position, let coordinateSpace) = command,
+                  let worldPosition = resolve(position, in: coordinateSpace)
+            else {
+                continue
+            }
+
+            spawn(entityType, topLeft: worldPosition)
+        }
+    }
+
+    private mutating func spawn(_ entityType: any Entity.Type, topLeft position: Vec2) {
+        var entity = entityType.init()
+        let id = entityStates.allocateID()
+        var state = EntityState(id: id)
+        state.velocity = .zero
+
+        var context = PreparationContext(level: level)
+        entity.prepare(context: &context, state: &state)
+        state.moveTopLeft(to: position)
+
+        entityStates.insert(entity: entity, state: state)
+    }
+
+    private func resolve(_ position: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2? {
+        switch coordinateSpace {
+        case .world:
+            return position
+
+        case .screen:
+            return renderView.bounds.origin + position
+
+        case .entity(let id):
+            guard let state = entityStates[id] else {
+                return nil
+            }
+
+            return state.convertToWorld(position)
+        }
+    }
 }
 
 extension Game {
@@ -387,23 +445,52 @@ extension Game {
         public let input: Input
         public let level: OldLevel
         let contacts: ContactState
-        fileprivate private(set) var sounds: [SoundID] = []
+        private let frameEvents: FrameEvents
 
         init(
             delta: Double,
             input: Input,
             level: OldLevel,
-            contacts: ContactState
+            contacts: ContactState,
+            frameEvents: FrameEvents
         ) {
             self.delta = max(delta, 0)
             self.input = input
             self.level = level
             self.contacts = contacts
+            self.frameEvents = frameEvents
         }
 
         public mutating func play(sound: SoundID) {
-            sounds.append(sound)
+            frameEvents.sounds.append(sound)
         }
 
+        /// Queues an entity to be spawned after the current update or collision
+        /// phase finishes.
+        ///
+        /// The position is resolved from the supplied coordinate space into a
+        /// world-space top-left point for the spawned entity. Spawned entities
+        /// receive a Pixl-assigned unique ID.
+        ///
+        /// ```swift
+        /// context.spawn(Bullet.self, at: Vec2(x: 120, y: 40))
+        /// context.spawn(Bullet.self, at: Vec2(x: 0, y: -24), in: .entity(playerID))
+        /// ```
+        public mutating func spawn<E: Entity>(
+            _ entityType: E.Type,
+            at position: Vec2,
+            in coordinateSpace: CoordinateSpace = .world
+        ) {
+            frameEvents.lifecycleCommands.append(.spawn(entityType, position, coordinateSpace))
+        }
+
+        /// Queues an entity to be removed after the current update or collision
+        /// phase finishes.
+        ///
+        /// Duplicate despawn requests for the same ID are ignored when the
+        /// queued commands are applied.
+        public mutating func despawn(_ id: EntityID) {
+            frameEvents.lifecycleCommands.append(.despawn(id))
+        }
     }
 }

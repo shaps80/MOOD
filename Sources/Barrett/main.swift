@@ -1,9 +1,26 @@
 import Pixl
 import PlatformMac
 
-let size: Vec2 = .init(x: 640, y: 320)
+let resolution: Vec2 = .init(x: 640, y: 320)
+
+struct Enemy: Entity {
+    static let size: Double = 24
+
+    func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
+        state.sprite = .init(
+            material: .shape(
+                Circle(),
+                size: .init(Self.size)
+            ),
+            tint: .red
+        )
+    }
+
+    func onUpdate(context: inout Game.Context, state: inout EntityState) { }
+}
 
 struct Player: Entity {
+    static let size: Double = 24
     private var controller: TopPlayerController = .init(
         horizontal: AxisController(
             maxSpeed: 300,
@@ -16,22 +33,23 @@ struct Player: Entity {
             deceleration: 1000
         )
     )
+    private var spawnedEnemy: Bool = false
 
     func prepare(context: inout Game.PreparationContext, state: inout EntityState) {
         state.sprite = .init(
             material: .shape(
                 RoundedRectangle(cornerRadius: 10),
-                size: .init(24)
+                size: .init(Self.size)
             )
         )
         state.sprite?.tint = .blue
         state.transform.position = .init(
-            x: (size.x - 24) / 2,
-            y: (size.y - 24) / 2
+            x: (resolution.x - Self.size) / 2,
+            y: (resolution.y - Self.size) / 2
         )
     }
 
-    func onUpdate(context: inout Game.Context, state: inout EntityState) {
+    mutating func onUpdate(context: inout Game.Context, state: inout EntityState) {
         if context.input.jump {
             state.transform.rotation += .degrees(
                 180 * context.input.direction.x
@@ -68,7 +86,7 @@ private var world: World {
 }
 
 private var game: Pixl.Game {
-    .init("Barrett", size: size, world: world)
+    .init("Barrett", size: resolution, world: world)
 }
 
 PlatformMac.run(game: game)

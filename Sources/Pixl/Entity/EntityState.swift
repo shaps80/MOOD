@@ -49,6 +49,11 @@ public struct EntityState: Equatable, Identifiable, Sendable {
         self.velocity = velocity
     }
 
+    internal mutating func moveTopLeft(to origin: Vec2) {
+        let offset = origin - bounds.origin
+        transform.position += offset
+    }
+
     var worldColliders: [Collider] {
         let spriteSize = sprite?.naturalSize ?? .zero
 
@@ -71,5 +76,17 @@ public struct EntityState: Equatable, Identifiable, Sendable {
             size: sprite.naturalSize * worldTransform.scale,
             rotation: worldTransform.rotation
         ).rotatedBounds
+    }
+
+    /// Converts an entity-space point into world space.
+    ///
+    /// Entity-space coordinates use the entity's current top-left bounds origin.
+    /// An input of `.zero` returns the entity's top-left world point.
+    ///
+    /// ```swift
+    /// let above = state.convertToWorld(Vec2(x: 0, y: -24))
+    /// ```
+    internal func convertToWorld(_ point: Vec2) -> Vec2 {
+        bounds.origin + point
     }
 }
