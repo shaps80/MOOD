@@ -16,11 +16,10 @@ extension Collider.Layer.Mask {
     static let playerMovement: Self = [.world]
     static let playerContact: Self = [.world, .invader]
     static let bulletContact: Self = [.world, .invader]
-    static let invaderContact: Self = [.bullet, .player]
+    static let invaderContact: Self = [.world, .bullet, .player]
 }
 
 extension RenderLayer {
     static let world: Self = 100
     static let entity: Self = 200
 }
-

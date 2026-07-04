@@ -132,8 +132,7 @@ public struct Game {
             debugOptions.toggle(.colliders)
         }
 
-        if debugOptions.isEnabled,
-           let requestedTimeScale = input.timeScale {
+        if let requestedTimeScale = input.timeScale {
             timeScale = requestedTimeScale
         }
 
