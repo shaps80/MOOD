@@ -35,9 +35,6 @@ let package = Package(
             name: "PlatformMac",
             dependencies: [
                 "Pixl"
-            ],
-            resources: [
-                .copy("../../Game/assets")
             ]
         ),
         .executableTarget(
@@ -51,6 +48,9 @@ let package = Package(
                     name: "PlatformMac",
                     condition: .when(platforms: [.macOS])
                 )
+            ],
+            resources: [
+                .copy("Resources/assets")
             ]
         ),
         .executableTarget(
@@ -64,6 +64,9 @@ let package = Package(
                     name: "PlatformWeb",
                     condition: .when(platforms: [.wasi])
                 )
+            ],
+            resources: [
+                .copy("Resources/assets")
             ]
         )
     ],

@@ -2,18 +2,18 @@
 set -euo pipefail
 
 CONFIGURATION="release"
-PRODUCT="Sandbox"
+PRODUCT="Invaders"
 SDK="swift-6.3.2-RELEASE_wasm"
 PACKAGE_DIR=".build/deploy-wasm/package"
-DIST_DIR="dist"
-ASSETS_DIR="Game/assets"
-ZIP_PATH="Pixl.zip"
+HOST_MODULE_CACHE_DIR=".build/arm64-apple-macosx/debug/ModuleCache"
+DIST_DIR=".dist"
+ZIP_PATH="${PRODUCT}.zip"
 ARGS=()
 
 write_index_html() {
   local output_path="$1"
 
-  cat > "${output_path}" <<'HTML'
+  cat > "${output_path}" <<HTML
 <!doctype html>
 <html lang="en">
 <head>
@@ -32,13 +32,40 @@ write_index_html() {
 HTML
 }
 
-copy_assets() {
-  if [[ ! -d "${ASSETS_DIR}" ]]; then
-    return
-  fi
+copy_target_resources() {
+  local resource_paths=()
 
-  mkdir -p "${DIST_DIR}/assets"
-  cp -R "${ASSETS_DIR}/." "${DIST_DIR}/assets/"
+  while IFS= read -r resource_path; do
+    resource_paths+=("${resource_path}")
+  done < <(
+    swiftly run swift package dump-package | python3 -c '
+import json
+import pathlib
+import sys
+
+data = json.load(sys.stdin)
+product = sys.argv[1]
+root = pathlib.Path(data["packageKind"]["root"][0])
+
+for target in data["targets"]:
+    if target["name"] != product:
+        continue
+
+    target_path = root / (target.get("path") or f"Sources/{product}")
+    for resource in target.get("resources", []):
+        print((target_path / resource["path"]).resolve())
+    break
+' "${PRODUCT}"
+  )
+
+  for resource_path in "${resource_paths[@]}"; do
+    if [[ ! -e "${resource_path}" ]]; then
+      echo "Missing resource: ${resource_path}" >&2
+      exit 1
+    fi
+
+    cp -R "${resource_path}" "${DIST_DIR}/"
+  done
 }
 
 while (($#)); do
@@ -55,6 +82,18 @@ while (($#)); do
       CONFIGURATION="${1#--configuration=}"
       shift
       ;;
+    -p|--product)
+      PRODUCT="${2:-Sandbox}"
+      shift 2
+      ;;
+    -p=*)
+      PRODUCT="${1#-p=}"
+      shift
+      ;;
+    --product=*)
+      PRODUCT="${1#--product=}"
+      shift
+      ;;
     *)
       ARGS+=("$1")
       shift
@@ -62,7 +101,7 @@ while (($#)); do
   esac
 done
 
-rm -rf "${PACKAGE_DIR}" "${DIST_DIR}" "${ZIP_PATH}" "Pixl-itch.zip"
+rm -rf "${PACKAGE_DIR}" "${HOST_MODULE_CACHE_DIR}" "${DIST_DIR}" "${ZIP_PATH}" "${PRODUCT}-itch.zip"
 mkdir -p "${PACKAGE_DIR}" "${DIST_DIR}"
 
 if ((${#ARGS[@]})); then
@@ -96,7 +135,7 @@ npx --yes esbuild "${PACKAGE_DIR}/index.js" \
   --outfile="${DIST_DIR}/pixl.js"
 
 cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
-copy_assets
+copy_target_resources
 write_index_html "${DIST_DIR}/index.html"
 
 (

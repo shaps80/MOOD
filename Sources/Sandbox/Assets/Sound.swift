@@ -7,6 +7,6 @@ extension SoundID {
 extension SoundAsset {
     public static let jump: Self = .init(
         id: .jump,
-        path: "assets/audio/jump.wav"
+        path: "assets/sounds/jump.wav"
     )
 }

@@ -4,6 +4,7 @@ set -euo pipefail
 PORT=9999
 URL="http://127.0.0.1:${PORT}/"
 CONFIGURATION="release"
+DIST_DIR=".dist"
 ARGS=()
 
 while (($#)); do
@@ -40,5 +41,4 @@ echo "Configuration: ${CONFIGURATION}"
 echo
 echo "Press Ctrl-C to stop."
 
-cd dist
-python3 -m http.server "${PORT}"
+python3 -m http.server "${PORT}" --directory "${DIST_DIR}"

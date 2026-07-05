@@ -26,12 +26,6 @@ final class AssetResolver {
     private func makeSearchRoots() -> [URL] {
         var roots = [URL]()
 
-        if let resourceURL = Bundle.module.resourceURL {
-            roots.append(resourceURL)
-        }
-
-        roots.append(Bundle.module.bundleURL)
-
         if let resourceURL = Bundle.main.resourceURL {
             roots.append(resourceURL)
         }
@@ -52,7 +46,33 @@ final class AssetResolver {
             )
         }
 
+        let directRoots = roots
+        for root in directRoots {
+            roots.append(contentsOf: resourceBundleRoots(near: root))
+        }
+
         return expandedAncestorRoots(from: roots)
+    }
+
+    private func resourceBundleRoots(near root: URL) -> [URL] {
+        guard let children = try? fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil
+        ) else {
+            return []
+        }
+
+        var roots = [URL]()
+
+        for child in children where child.pathExtension == "bundle" {
+            if let resourceURL = Bundle(url: child)?.resourceURL {
+                roots.append(resourceURL)
+            }
+
+            roots.append(child)
+        }
+
+        return roots
     }
 
     private func expandedAncestorRoots(from roots: [URL]) -> [URL] {

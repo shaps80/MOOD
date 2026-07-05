@@ -13,36 +13,36 @@ extension SoundID {
 extension SoundAsset {
     public static let hit: Self = .init(
         id: .hit,
-        path: "assets/audio/hit.wav"
+        path: "assets/sounds/hit.wav"
     )
 
     public static let laser: Self = .init(
         id: .laser,
-        path: "assets/audio/laser.wav"
+        path: "assets/sounds/laser.wav"
     )
 
     public static let empty: Self = .init(
         id: .empty,
-        path: "assets/audio/empty.wav"
+        path: "assets/sounds/empty.wav"
     )
 
     public static let levelup: Self = .init(
         id: .levelup,
-        path: "assets/audio/levelup.wav"
+        path: "assets/sounds/levelup.wav"
     )
 
     public static let gameover: Self = .init(
         id: .gameover,
-        path: "assets/audio/gameover.wav"
+        path: "assets/sounds/gameover.wav"
     )
 
     public static let boom: Self = .init(
         id: .boom,
-        path: "assets/audio/boom.wav"
+        path: "assets/sounds/boom.wav"
     )
 
     public static let win: Self = .init(
         id: .win,
-        path: "assets/audio/win.wav"
+        path: "assets/sounds/win.wav"
     )
 }

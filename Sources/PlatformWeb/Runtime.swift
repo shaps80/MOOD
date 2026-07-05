@@ -30,6 +30,7 @@ final class Runtime {
     }
 
     func start() {
+        configureDocumentTitle()
         renderer.configure()
         renderer.loadSpriteTextures(game.spriteAssets)
         audio.configure()
@@ -44,6 +45,12 @@ final class Runtime {
         }
 
         requestNextFrame()
+    }
+
+    private func configureDocumentTitle() {
+        guard let document = JSObject.global.document.object else { return }
+
+        document.title = .string(game.title)
     }
 
     private func renderFrame(timestampMilliseconds: Double) {
