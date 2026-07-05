@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${ROOT_DIR}"
+
+CONFIGURATION="release"
+SDK="swift-6.3.2-RELEASE_wasm"
+TARGET="${1:-Pixl}"
+
+swiftly run swift build   --scratch-path ".build/wasm-${TARGET}"   --swift-sdk "${SDK}"   --target "${TARGET}"   -c "${CONFIGURATION}"

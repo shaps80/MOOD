@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${ROOT_DIR}"
+
+CONFIGURATION="release"
+PRODUCT="${1:?Usage: ./.scripts/_package-web <product>}"
+SDK="swift-6.3.2-RELEASE_wasm"
+PACKAGE_DIR=".build/deploy-wasm/package"
+HOST_MODULE_CACHE_DIR=".build/arm64-apple-macosx/debug/ModuleCache"
+WASM_MODULE_CACHE_DIR=".build/wasm32-unknown-wasip1/${CONFIGURATION}/ModuleCache"
+DIST_DIR=".dist"
+
+write_index_html() {
+  local output_path="$1"
+
+  cat > "${output_path}" <<HTML
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${PRODUCT}</title>
+</head>
+<body>
+  <script type="module">
+    import { init } from "./pixl.js";
+
+    init();
+  </script>
+</body>
+</html>
+HTML
+}
+
+copy_target_resources() {
+  local resource_paths=()
+
+  while IFS= read -r resource_path; do
+    resource_paths+=("${resource_path}")
+  done < <(
+    swiftly run swift package dump-package | python3 -c '
+import json
+import pathlib
+import sys
+
+data = json.load(sys.stdin)
+product = sys.argv[1]
+root = pathlib.Path(data["packageKind"]["root"][0])
+
+for target in data["targets"]:
+    if target["name"] != product:
+        continue
+
+    target_path = root / (target.get("path") or f"Sources/{product}")
+    for resource in target.get("resources", []):
+        print((target_path / resource["path"]).resolve())
+    break
+' "${PRODUCT}"
+  )
+
+  for resource_path in "${resource_paths[@]}"; do
+    if [[ ! -e "${resource_path}" ]]; then
+      echo "Missing resource: ${resource_path}" >&2
+      exit 1
+    fi
+
+    cp -R "${resource_path}" "${DIST_DIR}/"
+  done
+}
+
+rm -rf "${PACKAGE_DIR}" "${HOST_MODULE_CACHE_DIR}" "${WASM_MODULE_CACHE_DIR}" "${DIST_DIR}"
+mkdir -p "${PACKAGE_DIR}" "${DIST_DIR}"
+
+swiftly run swift package   --swift-sdk "${SDK}"   --allow-writing-to-package-directory   js   --product "${PRODUCT}"   -c "${CONFIGURATION}"   --debug-info-format none   --output "${PACKAGE_DIR}"
+
+npm install --prefix "${PACKAGE_DIR}" --omit=dev
+npx --yes esbuild "${PACKAGE_DIR}/index.js"   --bundle   --format=esm   --minify   --platform=browser   --legal-comments=none   --outfile="${DIST_DIR}/pixl.js"
+
+cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
+copy_target_resources
+write_index_html "${DIST_DIR}/index.html"
+
+echo
+echo "Pixl browser package built."
+echo "Product: ${PRODUCT}"
+echo "Configuration: ${CONFIGURATION}"
+echo "Dist: ${DIST_DIR}/"
