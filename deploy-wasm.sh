@@ -2,13 +2,17 @@
 set -euo pipefail
 
 CONFIGURATION="release"
-PRODUCT="Invaders"
+PRODUCT=""
 SDK="swift-6.3.2-RELEASE_wasm"
 PACKAGE_DIR=".build/deploy-wasm/package"
 HOST_MODULE_CACHE_DIR=".build/arm64-apple-macosx/debug/ModuleCache"
+WASM_MODULE_CACHE_DIR=".build/wasm32-unknown-wasip1/${CONFIGURATION}/ModuleCache"
 DIST_DIR=".dist"
-ZIP_PATH="${PRODUCT}.zip"
 ARGS=()
+
+usage() {
+  echo "Usage: ./deploy-wasm.sh <product> [-c configuration] [swift package js args...]" >&2
+}
 
 write_index_html() {
   local output_path="$1"
@@ -83,7 +87,7 @@ while (($#)); do
       shift
       ;;
     -p|--product)
-      PRODUCT="${2:-Sandbox}"
+      PRODUCT="${2:-}"
       shift 2
       ;;
     -p=*)
@@ -94,14 +98,35 @@ while (($#)); do
       PRODUCT="${1#--product=}"
       shift
       ;;
-    *)
+    --)
+      shift
+      ARGS+=("$@")
+      break
+      ;;
+    -*)
       ARGS+=("$1")
+      shift
+      ;;
+    *)
+      if [[ -z "${PRODUCT}" ]]; then
+        PRODUCT="$1"
+      else
+        ARGS+=("$1")
+      fi
       shift
       ;;
   esac
 done
 
-rm -rf "${PACKAGE_DIR}" "${HOST_MODULE_CACHE_DIR}" "${DIST_DIR}" "${ZIP_PATH}" "${PRODUCT}-itch.zip"
+if [[ -z "${PRODUCT}" ]]; then
+  usage
+  exit 64
+fi
+
+ZIP_PATH="${PRODUCT}.zip"
+WASM_MODULE_CACHE_DIR=".build/wasm32-unknown-wasip1/${CONFIGURATION}/ModuleCache"
+
+rm -rf "${PACKAGE_DIR}" "${HOST_MODULE_CACHE_DIR}" "${WASM_MODULE_CACHE_DIR}" "${DIST_DIR}" "${ZIP_PATH}" "${PRODUCT}-itch.zip"
 mkdir -p "${PACKAGE_DIR}" "${DIST_DIR}"
 
 if ((${#ARGS[@]})); then
@@ -145,6 +170,7 @@ write_index_html "${DIST_DIR}/index.html"
 
 echo
 echo "Pixl Wasm package built."
+echo "Product: ${PRODUCT}"
 echo "Configuration: ${CONFIGURATION}"
 echo "Dist: ${DIST_DIR}/"
 echo "Itch upload: ${ZIP_PATH}"
