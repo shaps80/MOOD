@@ -34,7 +34,7 @@ else
 fi
 
 echo
-echo "MOOD running at:"
+echo "Pixl running at:"
 echo "${URL}"
 echo "Configuration: ${CONFIGURATION}"
 echo

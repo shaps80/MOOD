@@ -2,12 +2,12 @@
 set -euo pipefail
 
 CONFIGURATION="release"
-PRODUCT="Barrett"
+PRODUCT="Sandbox"
 SDK="swift-6.3.2-RELEASE_wasm"
 PACKAGE_DIR=".build/deploy-wasm/package"
 DIST_DIR="dist"
 ASSETS_DIR="Game/assets"
-ZIP_PATH="MOOD.zip"
+ZIP_PATH="Pixl.zip"
 ARGS=()
 
 write_index_html() {
@@ -19,11 +19,11 @@ write_index_html() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MOOD</title>
+  <title>${PRODUCT}</title>
 </head>
 <body>
   <script type="module">
-    import { init } from "./mood.js";
+    import { init } from "./pixl.js";
 
     init();
   </script>
@@ -62,7 +62,7 @@ while (($#)); do
   esac
 done
 
-rm -rf "${PACKAGE_DIR}" "${DIST_DIR}" "${ZIP_PATH}" "MOOD-itch.zip"
+rm -rf "${PACKAGE_DIR}" "${DIST_DIR}" "${ZIP_PATH}" "Pixl-itch.zip"
 mkdir -p "${PACKAGE_DIR}" "${DIST_DIR}"
 
 if ((${#ARGS[@]})); then
@@ -93,7 +93,7 @@ npx --yes esbuild "${PACKAGE_DIR}/index.js" \
   --minify \
   --platform=browser \
   --legal-comments=none \
-  --outfile="${DIST_DIR}/mood.js"
+  --outfile="${DIST_DIR}/pixl.js"
 
 cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
 copy_assets
@@ -105,7 +105,7 @@ write_index_html "${DIST_DIR}/index.html"
 )
 
 echo
-echo "MOOD Wasm package built."
+echo "Pixl Wasm package built."
 echo "Configuration: ${CONFIGURATION}"
 echo "Dist: ${DIST_DIR}/"
 echo "Itch upload: ${ZIP_PATH}"

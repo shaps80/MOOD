@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MOOD",
+    name: "Pixl",
     platforms: [
         .macOS(.v13)
     ],
@@ -41,7 +41,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "MOOD",
+            name: "Sandbox",
             dependencies: [
                 .target(
                     name: "PlatformWeb",
@@ -54,7 +54,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "Barrett",
+            name: "Invaders",
             dependencies: [
                 .target(
                     name: "PlatformMac",

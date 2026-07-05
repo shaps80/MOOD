@@ -1,4 +1,4 @@
-MOOD
+Pixl
 
 A small retro 2D game built in Swift, targeting the browser first, while preserving the ability to port to native platforms later.
 
@@ -41,7 +41,7 @@ The game is always the primary artifact.
 
 ⸻
 
-2. Can It Run MOOD?
+2. Can It Run on Pixl?
 
 The inspiration is Doom.
 
@@ -51,11 +51,11 @@ Because of its portability.
 
 The guiding question becomes:
 
-Can it run MOOD?
+Can it run on Pixl?
 
 rather than:
 
-How much of MOOD needs to be rewritten?
+How much of Pixl needs to be rewritten?
 
 A new platform should require a new adapter, not a new game.
 
@@ -229,11 +229,11 @@ For itch.io packaging, prefer:
 This creates:
 
 * `dist/index.html`
-* `dist/mood.js`
-* `dist/MOOD.wasm`
-* `MOOD.zip`
+* `dist/pixl.js`
+* `dist/pixl.wasm`
+* `Pixl.zip`
 
-Upload `MOOD.zip` to itch.io. The zip has `index.html` at the root and contains the JS/Wasm files locally, without CDN imports.
+Upload `Pixl.zip` to itch.io. The zip has `index.html` at the root and contains the JS/Wasm files locally, without CDN imports.
 
 `deploy-wasm.sh` intentionally does the boring packaging path first: PackageToJS without `--use-cdn`, npm install for the generated package dependencies, bundle to one browser module, copy the Wasm file, generate `index.html`, then zip `dist/`.
 
@@ -348,7 +348,7 @@ PlatformWeb is specifically the browser/Wasm adapter.
 
 It is allowed to depend on Wasm/browser-only packages such as JavaScriptKit.
 
-Do not require PlatformWeb, MOOD, or the whole package to build in Xcode or with the default macOS host toolchain.
+Do not require PlatformWeb, Pixl, or the whole package to build in Xcode or with the default macOS host toolchain.
 
 The required validation split is:
 
@@ -377,11 +377,13 @@ Repository Structure
 
 Initial structure:
 
-MOOD/
+Pixl/
 ├── Game/
 ├── Sources/Pixl/
 ├── Sources/PlatformWeb/
-└── Sources/MOOD/
+└── Sources/Sandbox/
+└── Sources/Invaders/
+└── Sources/... other games
 
 This structure exists to reinforce separation between gameplay and platform concerns.
 
@@ -503,13 +505,13 @@ and then be able to run the existing Pixl.
 
 The question should always be:
 
-Can it run MOOD?
+Can it run on Pixl?
 
 ⸻
 
 Definition of Success
 
-A player can open a browser, launch MOOD, and play a complete game built primarily to learn game development rather than engine development.
+A player can open a browser, launch Pixl, and play a complete game built primarily to learn game development rather than engine development.
 
 If future opportunities emerge naturally:
 

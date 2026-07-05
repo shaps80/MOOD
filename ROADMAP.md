@@ -10,7 +10,7 @@ Status: Done
 
 Question answered:
 
-Can it run MOOD?
+Can it run on Pixl?
 
 ## Milestone 1 - Rendering
 
@@ -24,7 +24,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD render and be distributed?
+Can Pixl render and be distributed?
 
 ## Milestone 2 - Input
 
@@ -36,7 +36,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD interact?
+Can Pixl interact?
 
 ## Milestone 3 - Assets
 
@@ -48,7 +48,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD load content?
+Can Pixl load content?
 
 ## Milestone 4 - Sprites
 
@@ -60,7 +60,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD display game art?
+Can Pixl display game art?
 
 ## Milestone 4.5 - Native Debug Platform
 
@@ -75,7 +75,7 @@ Status: Done
 
 Question answered:
 
-Can another platform run MOOD without a Pixl rewrite?
+Can another platform run Pixl without a Pixl rewrite?
 
 ## Milestone 5 - World
 
@@ -93,7 +93,7 @@ World support establishes tile maps, collision, spawn placement, and player move
 
 Question answered:
 
-Can MOOD support a playable environment?
+Can Pixl support a playable environment?
 
 ## Milestone 6 - Camera
 
@@ -105,7 +105,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD present worlds larger than the viewport?
+Can Pixl present worlds larger than the viewport?
 
 ## Milestone 7 - Render Commands
 
@@ -119,7 +119,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD describe what to draw before each platform decides how to draw it?
+Can Pixl describe what to draw before each platform decides how to draw it?
 
 ## Milestone 8 - Visibility & Render Ordering
 
@@ -133,7 +133,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD keep render work bounded by what the player can see while preserving draw order?
+Can Pixl keep render work bounded by what the player can see while preserving draw order?
 
 ## Milestone 9 - Render Batching
 
@@ -147,7 +147,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD reduce draw calls without changing visual ordering or increasing platform rewrite cost?
+Can Pixl reduce draw calls without changing visual ordering or increasing platform rewrite cost?
 
 ## Milestone 9.5 - Shape Rendering
 
@@ -164,7 +164,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD use simple dynamic shapes as first-class game visuals without bypassing sprite lifecycle, visibility, ordering, or platform portability?
+Can Pixl use simple dynamic shapes as first-class game visuals without bypassing sprite lifecycle, visibility, ordering, or platform portability?
 
 ## Milestone 10 - Collision Filtering & Interactions
 
@@ -177,7 +177,7 @@ Status: Done
 
 Question answered:
 
-Can MOOD distinguish blocking collisions from gameplay overlaps?
+Can Pixl distinguish blocking collisions from gameplay overlaps?
 
 ## Milestone 10.5 - Entities and Testing
 
@@ -188,13 +188,13 @@ Status: In Progress
 - [x] Route update, collision, and sprite rendering through unified entity records
 - [x] Keep level/tile geometry separate from entity lifecycle
 - [x] Rename GameCore to Pixl
-- [x] Move MOOD-specific entities, levels, IDs, and layers into the MOOD target
-- [x] Let MOOD construct Pixl.Game from level, camera, and entity spawn data
+- [x] Move Pixl-specific entities, levels, IDs, and layers into the Pixl target
+- [x] Let Pixl construct Pixl.Game from level, camera, and entity spawn data
 - [ ] Camera anchor animates between 2 entities
 
 Question answered:
 
-Can MOOD add a new game entity without adding new per-type game loop paths?
+Can Pixl add a new game entity without adding new per-type game loop paths?
 
 ## Milestone 11 - Swift Tooling Review
 
@@ -206,7 +206,7 @@ Status: Not Started
 
 Question answered:
 
-Can MOOD's project tooling grow toward editor workflows?
+Can Pixl's project tooling grow toward editor workflows?
 
 ## Backlog
 

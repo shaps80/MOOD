@@ -65,34 +65,27 @@ extension World {
     }
 }
 
-@main
-struct MOOD {
-    private static var size: Vec2 {
-        .init(x: 800, y: 400)
-    }
+private var size: Vec2 {
+    .init(x: 800, y: 400)
+}
 
-    private static var game: Game {
-        .init(
-            "MOOD",
-            size: size,
-            interpolationMode: .nearest,
-            preferredFPS: 60,
-            world: .makeDefault(size: size)
-        )
-    }
+private var game: Game {
+    .init(
+        "Pixl",
+        size: size,
+        clearColor: .white,
+        interpolationMode: .nearest,
+        preferredFPS: 60,
+        world: .makeDefault(size: size)
+    )
+}
 
 #if os(macOS)
-    @MainActor
-    static func main() {
-        PlatformMac.run(game: game)
-    }
+    import PlatformMac
+    PlatformMac.run(game: game)
+#elseif os(WASI)
+    import PlatformWeb
+    PlatformWeb.run(game: game)
 #else
-    static func main() {
-#if os(WASI)
-        PlatformWeb.run(game: game)
-#else
-        print("This platform is not currently supported!")
+    print("This platform is not currently supported!")
 #endif
-    }
-#endif
-}

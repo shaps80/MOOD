@@ -10,7 +10,7 @@ public struct Game {
             timeScale = Self.clampedTimeScale(timeScale)
         }
     }
-    public private(set) var clearColor: Color = .black
+    public private(set) var clearColor: Color
     public var camera: Camera { cameraRig.camera }
     var cameraTransform: Transform { cameraRig.resolvedTransform }
     public var renderView: RenderView {
@@ -46,6 +46,7 @@ public struct Game {
     public init(
         _ title: String,
         size: Vec2,
+        clearColor: Color = .black,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
         timeScale: Double = 1,
@@ -53,6 +54,7 @@ public struct Game {
     ) {
         self.title = title
         self.logicalResolution = size
+        self.clearColor = clearColor
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
         self.timeScale = Self.clampedTimeScale(timeScale)
@@ -97,7 +99,8 @@ public struct Game {
 
     public init(
         _ title: String,
-        size: Vec2 ,
+        size: Vec2,
+        clearColor: Color = .black,
         interpolationMode: InterpolationMode = .nearest,
         preferredFPS: Double = 60,
         timeScale: Double = 1,
@@ -109,6 +112,7 @@ public struct Game {
     ) {
         self.title = title
         self.logicalResolution = size
+        self.clearColor = clearColor
         self.interpolationMode = interpolationMode
         self.preferredFps = preferredFPS
         self.timeScale = Self.clampedTimeScale(timeScale)
