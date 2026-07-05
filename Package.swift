@@ -1,5 +1,6 @@
 // swift-tools-version: 6.3
 import PackageDescription
+import CompilerPluginSupport
 
 let package = Package(
     name: "Pixl",
@@ -10,16 +11,42 @@ let package = Package(
         .library(
             name: "Pixl",
             targets: ["Pixl"]
+        ),
+        .library(
+            name: "PixlStore",
+            targets: ["PixlStore"]
         )
     ],
     dependencies: [
         .package(
             url: "https://github.com/swiftwasm/JavaScriptKit.git",
             from: "0.55.0"
+        ),
+        .package(
+            url: "https://github.com/swiftlang/swift-syntax.git",
+            from: "603.0.2"
         )
     ],
     targets: [
         .target(name: "Pixl"),
+        .target(
+            name: "PixlStore",
+            dependencies: ["PixlStoreMacros"]
+        ),
+        .macro(
+            name: "PixlStoreMacros",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+            ]
+        ),
+        .testTarget(
+            name: "PixlStoreTests",
+            dependencies: [
+                "PixlStore",
+                "PixlStoreMacros"
+            ]
+        ),
         .target(
             name: "PlatformWeb",
             dependencies: [

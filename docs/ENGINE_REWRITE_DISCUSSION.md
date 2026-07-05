@@ -1,6 +1,6 @@
 # Engine Rewrite Discussion Tracker
 
-Purpose: capture design discussions before rewriting the engine. This document is discussion and capture only. Code changes are out of scope unless explicitly requested later. Entire discussion should be considered a learning exercise and discussed with that context. Teach me.
+Purpose: capture design discussions before rewriting the engine. This document is discussion and capture only. Code changes are out of scope unless explicitly requested later. Entire discussion should be considered a learning exercise and discussed with that context. Teach me. DO NOT reference existing code during any discussion. I want fresh perspective.
 
 Each section should be treated in isolation. For every topic, capture:
 
@@ -15,7 +15,6 @@ Each section should be treated in isolation. For every topic, capture:
 
 ## Progress
 
-- [ ] 2. Entity storage, iteration, and ownership model
 - [ ] 3. High-performance 2D collision, physics, and physics bodies
 - [ ] 4. Particle system design
 - [ ] 5. Engine API, scene/level representation, and editor responsibilities
@@ -25,29 +24,7 @@ Each section should be treated in isolation. For every topic, capture:
 ## Completed References
 
 - [1. Engine Loop](<1. Engine Loop.md>)
-
-## 2. Entity Storage, Iteration, and Ownership Model
-
-Status: Not started
-
-### Initial Scope
-
-Confirm `EntityStore` performance characteristics, intrusive/free-list design, ID generation behavior, iteration cost, mutation behavior during iteration, and whether the model is appropriate for a more capable engine.
-
-### Parallelism/GPU Considerations
-
-Pending discussion.
-
-### Decisions
-
-- Pending.
-
-### Completion Criteria
-
-- [ ] Current entity model understood.
-- [ ] Desired storage model chosen or narrowed.
-- [ ] Mutation/lifetime rules captured.
-- [ ] Parallelism/GPU stance captured.
+- [2. Entities](<2. Entities.md>)
 
 ## 3. High-Performance 2D Collision, Physics, and Physics Bodies
 

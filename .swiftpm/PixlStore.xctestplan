@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "6E5FE224-5C73-4031-86F2-8E971F8FFF22",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "performanceAntipatternCheckerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "PixlStoreTests",
+        "name" : "PixlStoreTests"
+      }
+    }
+  ],
+  "version" : 1
+}
