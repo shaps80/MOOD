@@ -17,8 +17,12 @@ let package = Package(
             targets: ["PixlStore"]
         ),
         .library(
-            name: "PixlLib",
-            targets: ["PixlLib"]
+            name: "PixlBackend",
+            targets: ["PixlBackend"]
+        ),
+        .library(
+            name: "PixlMetalBackend",
+            targets: ["PixlMetalBackend"]
         ),
     ],
     dependencies: [
@@ -33,7 +37,11 @@ let package = Package(
     ],
     targets: [
         .target(name: "Pixl"),
-        .target(name: "PixlLib"),
+        .target(name: "PixlBackend"),
+        .target(
+            name: "PixlMetalBackend",
+            dependencies: ["PixlBackend"]
+        ),
         .target(
             name: "PixlStore",
             dependencies: ["PixlStoreMacros"]
