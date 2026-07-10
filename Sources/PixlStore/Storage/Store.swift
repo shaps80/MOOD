@@ -24,8 +24,36 @@ public final class Store {
     private var nextEntityIndex = 0
     private var entityLocations: [EntityID: EntityLocation] = [:]
     private var stores: [StoreKey: AnyObject] = [:]
+    private var resolvedTypesByID: [ObjectIdentifier: PixlResolvedType] = [:]
 
     public init() {}
+
+    public convenience init(for types: [any PixlStoreSchemaType.Type]) {
+        self.init()
+        register(types)
+    }
+
+    public func register(_ types: [any PixlStoreSchemaType.Type]) {
+        for type in types {
+            let properties = type.pixlSchemaMetadata.map { property in
+                PixlResolvedProperty(
+                    name: property.name,
+                    valueType: property.valueType,
+                    storageKind: property.valueType is any _PixlComponentType.Type ? .component : .value,
+                    hasDefaultValue: property.hasDefaultValue
+                )
+            }
+
+            resolvedTypesByID[ObjectIdentifier(type)] = PixlResolvedType(
+                type: type,
+                properties: properties
+            )
+        }
+    }
+
+    public func resolvedType(for type: any PixlStoreSchemaType.Type) -> PixlResolvedType? {
+        resolvedTypesByID[ObjectIdentifier(type)]
+    }
 
     public func beginFrame() {
         currentFrameID &+= 1

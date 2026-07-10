@@ -2,6 +2,26 @@ import XCTest
 import PixlStore
 
 final class PixlStoreBehaviorTests: XCTestCase {
+    func testStoreRegistrationResolvesEntityComponentProperties() {
+        let world = Store(for: [
+            Transform.self,
+            Player.self,
+            Enemy.self,
+            Bullet.self
+        ])
+
+        let player = world.resolvedType(for: Player.self)
+        XCTAssertEqual(player?.properties.count, 2)
+        XCTAssertEqual(player?.properties[0].name, "transform")
+        XCTAssertEqual(player?.properties[0].storageKind, .component)
+        XCTAssertEqual(player?.properties[1].name, "health")
+        XCTAssertEqual(player?.properties[1].storageKind, .value)
+        XCTAssertTrue(player?.properties[1].hasDefaultValue == true)
+
+        let transform = world.resolvedType(for: Transform.self)
+        XCTAssertEqual(transform?.properties.map(\.storageKind), [.value, .value])
+    }
+
     func testSpawnReturnsLiveEntityAndMutationsWriteToColumns() {
         let world = Store()
         world.beginFrame()

@@ -160,6 +160,17 @@ extension ComponentMacro: PeerMacro {
 }
 
 extension ComponentMacro: ExtensionMacro {
+    private static func schemaMetadataLines(properties: [VariableDeclSyntax]) -> String {
+        properties.compactMap { property -> String? in
+            guard let label = property.label,
+                  let type = property.typeName
+            else { return nil }
+
+            let hasDefaultValue = property.initializerExpression == nil ? "false" : "true"
+            return "PixlPropertyMetadata(name: \"\(label)\", valueType: \(type).self, hasDefaultValue: \(hasDefaultValue))"
+        }.joined(separator: ",\n            ")
+    }
+
     public static func expansion(
         of node: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
@@ -168,11 +179,18 @@ extension ComponentMacro: ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         guard let name = declaration.nominalName else { return [] }
+        let metadata = schemaMetadataLines(properties: declaration.storedProperties)
 
         let frameComponent: DeclSyntax = """
-        extension \(type.trimmed): FrameComponent, _PixlComponentType {
+        extension \(type.trimmed): FrameComponent, _PixlComponentType, PixlStoreSchemaType {
             public typealias _PixlSchema = \(raw: name)Schema
             public typealias _PixlGroup = \(raw: name)Group
+
+            public static var pixlSchemaMetadata: [PixlPropertyMetadata] {
+                [
+                    \(raw: metadata)
+                ]
+            }
         }
         """
         return frameComponent.as(ExtensionDeclSyntax.self).map { [$0] } ?? []

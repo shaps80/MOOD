@@ -1,7 +1,7 @@
 @attached(member, names: arbitrary)
 @attached(memberAttribute)
 @attached(peer, names: suffixed(Schema), suffixed(Group))
-@attached(extension, conformances: FrameEntity, _PixlEntityType, names: named(_PixlSchema), named(_PixlGroup), named(_pixlCreateComponents), named(_pixlDestroyComponents))
+@attached(extension, conformances: FrameEntity, _PixlEntityType, PixlStoreSchemaType, names: named(_PixlSchema), named(_PixlGroup), named(_pixlCreateComponents), named(_pixlDestroyComponents), named(pixlSchemaMetadata))
 public macro Entity() = #externalMacro(
     module: "PixlStoreMacros",
     type: "EntityMacro"
@@ -10,7 +10,7 @@ public macro Entity() = #externalMacro(
 @attached(member, names: arbitrary)
 @attached(memberAttribute)
 @attached(peer, names: suffixed(Schema), suffixed(Group))
-@attached(extension, conformances: FrameComponent, _PixlComponentType, names: named(_PixlSchema), named(_PixlGroup))
+@attached(extension, conformances: FrameComponent, _PixlComponentType, PixlStoreSchemaType, names: named(_PixlSchema), named(_PixlGroup), named(pixlSchemaMetadata))
 public macro Component() = #externalMacro(
     module: "PixlStoreMacros",
     type: "ComponentMacro"

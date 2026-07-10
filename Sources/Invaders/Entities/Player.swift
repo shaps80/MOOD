@@ -6,7 +6,7 @@ struct Player: Entity {
         acceleration: 4000,
         deceleration: 4000
     )
-    private var gun = Gun(roundsPerSecond: 15)
+    private var gun = Gun(roundsPerSecond: 25)
     private var wasBombPressed = false
     private var continuousFireDuration: Double = 0
     private var didPlayEmpty = false

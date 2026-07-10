@@ -64,9 +64,11 @@ extension EntityMacro: MemberAttributeMacro {
               property.typeName != nil
         else { return [] }
 
+        let owner = property.initializerExpression == nil ? "entityComponent" : "entityValue"
+
         return [
             """
-            @_PixlStored(schema: "\(raw: name)Schema", group: "\(raw: name)Group", column: "\(raw: label)", owner: "entity")
+            @_PixlStored(schema: "\(raw: name)Schema", group: "\(raw: name)Group", column: "\(raw: label)", owner: "\(raw: owner)")
             """
         ]
     }
@@ -148,6 +150,17 @@ extension EntityMacro: PeerMacro {
 }
 
 extension EntityMacro {
+    private static func schemaMetadataLines(properties: [VariableDeclSyntax]) -> String {
+        properties.compactMap { property -> String? in
+            guard let label = property.label,
+                  let type = property.typeName
+            else { return nil }
+
+            let hasDefaultValue = property.initializerExpression == nil ? "false" : "true"
+            return "PixlPropertyMetadata(name: \"\(label)\", valueType: \(type).self, hasDefaultValue: \(hasDefaultValue))"
+        }.joined(separator: ",\n            ")
+    }
+
     private static func componentCreateLines(properties: [VariableDeclSyntax]) -> String {
         properties.compactMap { property -> String? in
             guard let label = property.label,
@@ -178,13 +191,20 @@ extension EntityMacro: ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         guard let name = declaration.nominalName else { return [] }
+        let metadata = schemaMetadataLines(properties: declaration.storedProperties)
         let create = componentCreateLines(properties: declaration.storedProperties)
         let destroy = componentDestroyLines(properties: declaration.storedProperties)
 
         let extensionSyntax: DeclSyntax = """
-        extension \(type.trimmed): FrameEntity, _PixlEntityType {
+        extension \(type.trimmed): FrameEntity, _PixlEntityType, PixlStoreSchemaType {
             public typealias _PixlSchema = \(raw: name)Schema
             public typealias _PixlGroup = \(raw: name)Group
+
+            public static var pixlSchemaMetadata: [PixlPropertyMetadata] {
+                [
+                    \(raw: metadata)
+                ]
+            }
 
             public static func _pixlCreateComponents(storage: Store, row: Int) {
                 let entityStore = storage._pixlStore(_PixlSchema.self, _PixlGroup.self)

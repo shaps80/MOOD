@@ -58,11 +58,36 @@ extension StoredPropertyMacro: AccessorMacro {
             ]
         }
 
+        if owner == "entityValue" {
+            return [
+                initializer,
+                entityValueGetter(column: column),
+                entityValueSetter(column: column)
+            ]
+        }
+
         return [
             initializer,
             entityGetter(column: column, type: type),
             entitySetter(column: column)
         ]
+    }
+
+    private static func entityValueGetter(column: String) -> AccessorDeclSyntax {
+        """
+        get {
+            _$entityStore.columns.\(raw: column).values[_$row]
+        }
+        """
+    }
+
+    private static func entityValueSetter(column: String) -> AccessorDeclSyntax {
+        """
+        nonmutating set {
+            _$storage.assertWritableFrame(_$frameID)
+            _$entityStore.columns.\(raw: column).values[_$row] = newValue
+        }
+        """
     }
 
     private static func entityGetter(column: String, type: String) -> AccessorDeclSyntax {
