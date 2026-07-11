@@ -2,11 +2,11 @@ import Metal
 import PixlPlatform
 
 final class MetalDevice: Device {
-    private let device: MTLDevice
-    private let textures: ResourcePool<MTLTexture>
+    let metalDevice: MTLDevice
+    let textures: ResourcePool<MTLTexture>
 
     init(device: MTLDevice, textureCapacity: UInt32) {
-        self.device = device
+        metalDevice = device
         textures = ResourcePool(capacity: textureCapacity)
     }
 
@@ -18,7 +18,7 @@ final class MetalDevice: Device {
     func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture {
         let metalDescriptor = descriptor.metalDescriptor
 
-        guard let metalTexture = device.makeTexture(descriptor: metalDescriptor) else {
+        guard let metalTexture = metalDevice.makeTexture(descriptor: metalDescriptor) else {
             throw DeviceError.resourceCreationFailed(.texture)
         }
 
@@ -30,7 +30,7 @@ final class MetalDevice: Device {
     }
 
     func makeQueue() throws(DeviceError) -> any Queue {
-        guard let queue = device.makeCommandQueue() else {
+        guard let queue = metalDevice.makeCommandQueue() else {
             throw DeviceError.commandQueueCreationFailed
         }
 

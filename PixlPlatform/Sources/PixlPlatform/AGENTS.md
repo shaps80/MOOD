@@ -47,18 +47,22 @@ Implemented/decided so far:
 - `Texture` is an opaque backend resource handle plus immutable `TextureDescriptor`.
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
+- `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
+- `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
+- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. `Pixl.Game` inherits it, so game packages use `Pixl.Game` rather than this protocol directly.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
 - `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.
-- `PixlMetalPlatform.run()` is the single public macOS runtime entry point. It owns the temporary AppKit/MTKView window harness and its Metal device; `Pixl.run()` reaches it through Pixl's macOS-conditioned platform dependency.
+- `PixlMetalPlatform.run(_:)` is the single public macOS runtime entry point. It owns the AppKit/MTKView window runtime and its Metal device; `Pixl.run(_:)` reaches it through Pixl's macOS-conditioned platform dependency.
+- `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 Next likely smallest step:
 
-- Connect the displayed MTKView's current drawable to the clear-only submission path, then design the smallest drawable/surface acquisition and presentation boundary. Avoid adding shaders, draw commands, bind groups, or pipelines before that works.
+- Run the Game package and verify the visible red clear. Avoid adding shaders, draw commands, bind groups, or pipelines before that works.
 
 ## Naming
 

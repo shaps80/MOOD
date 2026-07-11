@@ -8,6 +8,7 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 
 | PixlPlatform | Metal | WebGPU | Vulkan | DirectX 12 |
 | --- | --- | --- | --- | --- |
+| `Platform` | Metal runtime plus `MTKView` | browser runtime plus canvas context | window/swapchain runtime | window/swapchain runtime |
 | `Device` | `MTLDevice` | `GPUDevice` | `VkDevice` | `ID3D12Device` |
 | `Queue` | `MTLCommandQueue` | `GPUQueue` | `VkQueue` | `ID3D12CommandQueue` |
 | `CommandBuffer` | `MTLCommandBuffer` | `GPUCommandBuffer` / `GPUCommandEncoder` | `VkCommandBuffer` | `ID3D12GraphicsCommandList` |
@@ -44,6 +45,9 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 `CommandBuffer`
 : A recorded unit of GPU work submitted to a queue. Contains render passes, compute passes, copies, or other encoded commands.
 
+`Platform`
+: Platform-facing frame boundary. Acquires a frame-scoped drawable, provides GPU device access, submits a frame, and presents the result.
+
 ## Resources
 
 `Buffer`
@@ -51,6 +55,9 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 
 `Texture`
 : GPU image resource. Used for sampled images, render targets, depth buffers, storage textures, and intermediate frame data.
+
+`Drawable`
+: Frame-scoped presentable texture acquired from a platform surface. It is consumed when presented and cannot be retained for a later frame.
 
 `Sampler`
 : Rules for reading texture data, such as filtering, address modes, mip behavior, and comparison behavior.

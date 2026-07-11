@@ -1,4 +1,5 @@
 import Metal
+import QuartzCore
 import PixlPlatform
 
 final class MetalQueue: Queue {
@@ -11,6 +12,13 @@ final class MetalQueue: Queue {
     }
 
     func submit(_ frame: Frame) throws(QueueError) {
+        try submit(frame, presenting: nil)
+    }
+
+    func submit(
+        _ frame: Frame,
+        presenting drawable: (any CAMetalDrawable)?
+    ) throws(QueueError) {
         guard let commandBuffer = queue.makeCommandBuffer() else {
             throw QueueError.commandBufferCreationFailed
         }
@@ -22,6 +30,10 @@ final class MetalQueue: Queue {
             case .compute:
                 throw QueueError.unsupportedPass
             }
+        }
+
+        if let drawable {
+            commandBuffer.present(drawable)
         }
 
         commandBuffer.commit()

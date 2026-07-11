@@ -25,6 +25,10 @@ let package = Package(
             dependencies: [
                 "PixlGraphics",
                 .product(
+                    name: "PixlPlatform",
+                    package: "PixlPlatform"
+                ),
+                .product(
                     name: "PixlMetalPlatform",
                     package: "PixlPlatform",
                     condition: .when(platforms: [.macOS])

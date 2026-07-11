@@ -1,18 +1,22 @@
 @preconcurrency import AppKit
 @preconcurrency import MetalKit
+import PixlPlatform
 
 @MainActor
 final class Runtime: NSObject {
     private let device: MTLDevice
+    private let game: any PlatformGame
+    private var platform: MetalPlatform?
     private var window: NSWindow?
     private var gameView: GameView?
 
-    override init() {
+    init(game: any PlatformGame) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not available")
         }
 
         self.device = device
+        self.game = game
         super.init()
     }
 
@@ -51,6 +55,8 @@ final class Runtime: NSObject {
 
         view.delegate = self
         view.preferredFramesPerSecond = 60
+
+        platform = MetalPlatform(view: view)
 
         window.title = "Pixl"
         window.contentView = view
@@ -91,7 +97,15 @@ final class Runtime: NSObject {
 extension Runtime: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
-    func draw(in view: MTKView) {}
+    func draw(in view: MTKView) {
+        guard let platform else { return }
+
+        do {
+            try game.render(on: platform)
+        } catch {
+            fatalError("Game rendering failed: \(error)")
+        }
+    }
 }
 
 extension Runtime: NSWindowDelegate {
