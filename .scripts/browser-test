@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PACKAGE_DIR="${ROOT_DIR}/PixlBackend"
+PRODUCT="PixlBackendBrowserTestRunner"
+SDK="swift-6.3.2-RELEASE_wasm"
+CONFIGURATION="release"
+BUILD_DIR="${PACKAGE_DIR}/.build/browser-test"
+PACKAGE_OUTPUT_DIR="${BUILD_DIR}/package"
+DIST_DIR="${BUILD_DIR}/dist"
+
+if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
+  echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
+  exit 1
+fi
+
+case "${1:-}" in
+  chrome)
+    BROWSER="Google Chrome"
+    DEFAULT_PORT=9998
+    ;;
+  safari)
+    BROWSER="Safari"
+    DEFAULT_PORT=9997
+    ;;
+  *)
+    echo "Usage: ./.scripts/browser-test <chrome|safari>" >&2
+    exit 1
+    ;;
+esac
+
+PORT="${PORT:-${DEFAULT_PORT}}"
+URL="http://127.0.0.1:${PORT}/"
+
+if [[ ! -d "/Applications/${BROWSER}.app" ]]; then
+  echo "error: ${BROWSER} is not installed in /Applications" >&2
+  exit 1
+fi
+
+cd "${PACKAGE_DIR}"
+rm -rf "${BUILD_DIR}"
+mkdir -p "${PACKAGE_OUTPUT_DIR}" "${DIST_DIR}"
+
+swiftly run swift package \
+  --swift-sdk "${SDK}" \
+  --allow-writing-to-package-directory \
+  js \
+  --product "${PRODUCT}" \
+  -c "${CONFIGURATION}" \
+  --debug-info-format none \
+  --output "${PACKAGE_OUTPUT_DIR}"
+
+npm install --prefix "${PACKAGE_OUTPUT_DIR}" --omit=dev
+npx --yes esbuild "${PACKAGE_OUTPUT_DIR}/index.js" \
+  --bundle \
+  --format=esm \
+  --minify \
+  --platform=browser \
+  --legal-comments=none \
+  --outfile="${DIST_DIR}/pixl-backend-browser-tests.js"
+
+cp "${PACKAGE_OUTPUT_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
+
+cat > "${DIST_DIR}/index.html" <<HTML
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PixlBackend Browser Tests</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    body { margin: 0; padding: 32px; background: #111; color: #e8e8e8; }
+    main { max-width: 900px; margin: 0 auto; }
+    #status { color: #9bd; }
+    #results { white-space: pre-wrap; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>PixlBackend ResourcePool Browser Tests</h1>
+    <p id="status">Loading…</p>
+    <pre id="results"></pre>
+  </main>
+  <script type="module">
+    import { init } from "./pixl-backend-browser-tests.js";
+    init();
+  </script>
+</body>
+</html>
+HTML
+
+echo
+echo "PixlBackend browser test ready."
+echo "Browser: ${BROWSER}"
+echo "URL: ${URL}"
+echo "Warm-up: 1 second idle + one discarded suite"
+echo
+echo "Press Ctrl-C to stop the local server."
+
+open -a "${BROWSER}" "${URL}"
+python3 -m http.server "${PORT}" --directory "${DIST_DIR}"

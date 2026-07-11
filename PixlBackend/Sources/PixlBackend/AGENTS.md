@@ -91,6 +91,8 @@ The `PixlBackend` target enables provider-side aggressive cross-module optimizat
 
 Resource-pool checks and benchmarks have one platform-neutral source of truth in `PixlBackendTestSupport`. The XCTest target is a native/Xcode adapter. Run `../.scripts/test` from this package, or `.scripts/test` from the repository root, for the release comparison: native first, then WASM/WASI through the Swift SDK and WasmKit. Pass `native` or `wasm` to run one side only.
 
+For real browser measurements, run `.scripts/browser-test chrome` or `.scripts/browser-test safari` from the repository root. The browser runner waits one second, runs one complete discarded warm-up suite, then renders the measured report in the selected browser. Treat those results as the Web performance authority; WasmKit is a fast local portability and regression baseline, not a browser-performance proxy.
+
 The library should support platform-agnostic CPU-side profiling from the beginning:
 
 - per-frame timings

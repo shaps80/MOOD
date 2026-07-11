@@ -26,6 +26,16 @@ let package = Package(
             name: "PixlBackendTestRunner",
             targets: ["PixlBackendTestRunner"]
         ),
+        .executable(
+            name: "PixlBackendBrowserTestRunner",
+            targets: ["PixlBackendBrowserTestRunner"]
+        ),
+    ],
+    dependencies: [
+        .package(
+            url: "https://github.com/swiftwasm/JavaScriptKit.git",
+            from: "0.55.0"
+        )
     ],
     targets: [
         .target(
@@ -44,6 +54,17 @@ let package = Package(
         .executableTarget(
             name: "PixlBackendTestRunner",
             dependencies: ["PixlBackendTestSupport"]
+        ),
+        .executableTarget(
+            name: "PixlBackendBrowserTestRunner",
+            dependencies: [
+                "PixlBackendTestSupport",
+                .product(
+                    name: "JavaScriptKit",
+                    package: "JavaScriptKit",
+                    condition: .when(platforms: [.wasi])
+                )
+            ]
         ),
         .testTarget(
             name: "PixlBackendTests",
