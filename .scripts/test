@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PACKAGE_DIR="${ROOT_DIR}/PixlBackend"
+
+if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
+  echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
+  exit 1
+fi
+
+MODE="${1:-all}"
+CONFIGURATION="release"
+PRODUCT="PixlBackendTestRunner"
+SDK="swift-6.3.2-RELEASE_wasm"
+
+run_native() {
+  echo
+  echo "=== Native ==="
+  swiftly run swift run \
+    --package-path "${PACKAGE_DIR}" \
+    --scratch-path "${PACKAGE_DIR}/.build/test-native" \
+    -c "${CONFIGURATION}" \
+    "${PRODUCT}"
+}
+
+run_wasm() {
+  echo
+  echo "=== WASM ==="
+  swiftly run swift run \
+    --package-path "${PACKAGE_DIR}" \
+    --scratch-path "${PACKAGE_DIR}/.build/test-wasm" \
+    --swift-sdk "${SDK}" \
+    -c "${CONFIGURATION}" \
+    "${PRODUCT}"
+}
+
+case "${MODE}" in
+  all)
+    run_native
+    run_wasm
+    ;;
+  native)
+    run_native
+    ;;
+  wasm)
+    run_wasm
+    ;;
+  *)
+    echo "Usage: ./.scripts/test [all|native|wasm]" >&2
+    exit 1
+    ;;
+esac

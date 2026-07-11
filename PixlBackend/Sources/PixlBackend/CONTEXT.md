@@ -64,10 +64,12 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 ## Resource Ownership
 
 `ResourceID`
-: An opaque 64-bit generational handle split evenly between a 32-bit direct slot index and 32-bit generation. Generation zero is reserved; live slots begin at generation one.
+: An opaque 64-bit generational handle split evenly between a 32-bit direct slot index and 32-bit generation. Generation zero is reserved; live slots begin at generation one. A phantom-tagged handle was measured and rejected because carrying an additional generic tag through `ResourcePool` regressed release lookup performance by roughly 55% across the package module boundary.
 
 `ResourcePool`
-: Package-level, fixed-capacity storage shared by platform backends. It uses manually managed contiguous slot and value buffers, direct-index lookup, generation validation, and an intrusive free list. Insert, lookup, update, and removal are O(1), and no allocation occurs after initialization. A slot is permanently retired rather than allowing its generation to wrap. Pools are single-owner and contain no internal synchronization.
+: Package-level, fixed-capacity `ResourcePool<Value>` storage shared by platform backends. It uses manually managed contiguous slot and value buffers, direct-index lookup, generation validation, and an intrusive free list. Insert, lookup, update, and removal are O(1), and no allocation occurs after initialization. A slot is permanently retired rather than allowing its generation to wrap. Pools are single-owner and contain no internal synchronization.
+
+Release builds of the `PixlBackend` provider target enable Swift's aggressive cross-module optimization mode. This serializes package-private implementations so ordinary optimized consumers such as `PixlMetalBackend` can specialize generic pool operations for concrete native resource types. Keep the setting release-only: debug builds prioritize diagnostics and iteration speed.
 
 ## Shaders and Pipelines
 
