@@ -1,24 +1,6 @@
 import Swift
 import PixlBackend
 
-// Reference baseline — 2026-07-11
-// Swift 6.3.2, release configuration with provider-side aggressive CMO.
-// 150,000 resources; lookup/update tests use 100 measured iterations.
-//
-// arm64 macOS:
-// Cold start lifecycle:                       ~0.656 ms
-// Sequential lookup:                          ~0.108 ms (~0.72 ns/op)
-// Random-order lookup:                        ~0.197 ms (~1.31 ns/op)
-// In-place update:                            ~0.088 ms (~0.59 ns/op)
-// Churn (150k removes + 150k inserts), warm:  ~0.284 ms
-//
-// WASM/WASI via WasmKit:
-// Cold start lifecycle:                       ~29.800 ms
-// Sequential lookup:                          ~2.395 ms (~15.96 ns/op)
-// Random-order lookup:                        ~2.629 ms (~17.52 ns/op)
-// In-place update:                            ~2.554 ms (~17.02 ns/op)
-// Churn (150k removes + 150k inserts), warm:  ~20.250 ms
-
 package struct ResourcePoolBenchmarkReport: Sendable {
     package let coldStart: BenchmarkResult
     package let sequentialLookup: BenchmarkResult

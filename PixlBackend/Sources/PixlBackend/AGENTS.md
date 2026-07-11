@@ -93,6 +93,8 @@ Resource-pool checks and benchmarks have one platform-neutral source of truth in
 
 For real browser measurements, run `.scripts/browser-test chrome` or `.scripts/browser-test safari` from the repository root. The browser runner waits one second, runs one complete discarded warm-up suite, then renders the measured report in the selected browser. Treat those results as the Web performance authority; WasmKit is a fast local portability and regression baseline, not a browser-performance proxy.
 
+Accepted performance baselines belong in `PERF.md` beside this file and `CONTEXT.md`, not as comments in test source. When the user mentions profiling, performance measurements, benchmark results, or baselines, read `PERF.md` before reasoning about or running profiling work. Update it only with accepted recorded results, and keep each record explicit about the system being profiled, workload, runtime, toolchain, and warm-up method.
+
 The library should support platform-agnostic CPU-side profiling from the beginning:
 
 - per-frame timings

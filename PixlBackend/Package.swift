@@ -40,7 +40,7 @@ let package = Package(
     targets: [
         .target(
             name: "PixlBackend",
-            exclude: ["AGENTS.md", "CONTEXT.md"],
+            exclude: ["AGENTS.md", "CONTEXT.md", "PERF.md"],
             swiftSettings: releaseCrossModuleOptimization
         ),
         .target(
