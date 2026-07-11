@@ -31,20 +31,20 @@ final class Runtime {
 
     func start() {
         configureDocumentTitle()
-        renderer.configure()
-        renderer.loadSpriteTextures(game.spriteAssets)
         audio.configure()
         audio.loadSoundBuffers(game.soundAssets)
         keyboardInput.startListening()
-        touchInput.startListening(on: renderer.canvas)
-
-        animationFrameCallback = JSClosure { arguments in
-            let timestampMilliseconds = arguments.first?.number ?? 0
-            self.renderFrame(timestampMilliseconds: timestampMilliseconds)
-            return .undefined
+        renderer.configure { [weak self] in
+            guard let self else { return }
+            self.renderer.loadSpriteTextures(self.game.spriteAssets)
+            self.touchInput.startListening(on: self.renderer.canvas)
+            self.animationFrameCallback = JSClosure { arguments in
+                let timestampMilliseconds = arguments.first?.number ?? 0
+                self.renderFrame(timestampMilliseconds: timestampMilliseconds)
+                return .undefined
+            }
+            self.requestNextFrame()
         }
-
-        requestNextFrame()
     }
 
     private func configureDocumentTitle() {

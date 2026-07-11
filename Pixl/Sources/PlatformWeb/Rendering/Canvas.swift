@@ -68,7 +68,7 @@ extension Renderer {
     }
 
     func syncCanvasWithGameResolution(game: Game) {
-        guard let canvas, let gl else { return }
+        guard let canvas, device != nil else { return }
         let displaySize = canvasDisplaySize(game: game)
 
         guard displaySize != lastCanvasDisplaySize else {
@@ -86,7 +86,7 @@ extension Renderer {
         canvas.style.imageRendering = .string("auto")
         canvas.style.width = .string("\(displaySize.displayWidth)px")
         canvas.style.height = .string("\(displaySize.displayHeight)px")
-        _ = gl.viewport!(0, 0, displaySize.backingWidth, displaySize.backingHeight)
+        configureCanvasContext()
         lastCanvasDisplaySize = displaySize
     }
 

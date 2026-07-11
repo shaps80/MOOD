@@ -22,31 +22,31 @@ let package = Package(
             url: "https://github.com/swiftwasm/JavaScriptKit.git",
             from: "0.55.0"
         ),
-        .package(
-            url: "https://github.com/swiftlang/swift-syntax.git",
-            from: "603.0.2"
-        )
+//        .package(
+//            url: "https://github.com/swiftlang/swift-syntax.git",
+//            from: "603.0.2"
+//        )
     ],
     targets: [
         .target(name: "Pixl"),
         .target(
-            name: "PixlStore",
-            dependencies: ["PixlStoreMacros"]
+            name: "PixlStore"
+//            dependencies: ["PixlStoreMacros"]
         ),
-        .macro(
-            name: "PixlStoreMacros",
-            dependencies: [
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
-            ]
-        ),
-        .testTarget(
-            name: "PixlStoreTests",
-            dependencies: [
-                "PixlStore",
-                "PixlStoreMacros"
-            ]
-        ),
+//        .macro(
+//            name: "PixlStoreMacros",
+//            dependencies: [
+//                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+//                .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+//            ]
+//        ),
+//        .testTarget(
+//            name: "PixlStoreTests",
+//            dependencies: [
+//                "PixlStore",
+//                "PixlStoreMacros"
+//            ]
+//        ),
         .target(
             name: "PlatformWeb",
             dependencies: [

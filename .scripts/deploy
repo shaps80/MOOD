@@ -3,7 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "${ROOT_DIR}"
+PACKAGE_DIR="${ROOT_DIR}/Pixl"
+
+if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
+  echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
+  exit 1
+fi
+
+cd "${PACKAGE_DIR}"
 
 PRODUCT="${1:?Usage: ./.scripts/deploy <product>}"
 DIST_DIR=".dist"

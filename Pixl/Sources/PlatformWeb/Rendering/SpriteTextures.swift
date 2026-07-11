@@ -10,21 +10,27 @@ extension Renderer {
     }
 
     private func loadSpriteTexture(_ spriteAsset: SpriteAsset) {
-        guard let gl else { return }
+        guard device != nil else { return }
 
         let image = JSObject.global.Image.object!.new()
-        let texture = gl.createTexture!()
-
         let loadClosure = JSClosure { [weak self] _ in
-            guard let self, let gl = self.gl else { return .undefined }
-
-            _ = gl.bindTexture!(gl.TEXTURE_2D, texture)
-            self.configureTextureParameters(gl)
-            _ = gl.texImage2D!(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+            guard let self, let device = self.device else { return .undefined }
+            let width = image.width.number ?? 0
+            let height = image.height.number ?? 0
+            let texture = device.createTexture!(object(
+                "label", spriteAsset.path,
+                "size", object("width", width, "height", height, "depthOrArrayLayers", 1),
+                "format", "rgba8unorm",
+                "usage", gpuTextureUsageTextureBinding | gpuTextureUsageCopyDst | gpuTextureUsageRenderAttachment
+            )).object!
+            _ = device.queue.copyExternalImageToTexture(
+                object("source", image), object("texture", texture),
+                object("width", width, "height", height, "depthOrArrayLayers", 1)
+            )
             self.spriteTextures[spriteAsset.id] = texture
             self.spriteTextureSizes[spriteAsset.id] = Vec2(
-                x: image.width.number ?? 0,
-                y: image.height.number ?? 0
+                x: width,
+                y: height
             )
 
             return .undefined
@@ -42,21 +48,5 @@ extension Renderer {
         spriteImages[spriteAsset.id] = image
         spriteLoadClosures[spriteAsset.id] = loadClosure
         spriteErrorClosures[spriteAsset.id] = errorClosure
-    }
-
-    private func configureTextureParameters(_ gl: JSObject) {
-        let filter: JSValue
-
-        switch interpolationMode {
-        case .linear:
-            filter = gl.LINEAR
-        case .nearest:
-            filter = gl.NEAREST
-        }
-
-        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
-        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
-        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-        _ = gl.texParameteri!(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     }
 }
