@@ -1,10 +1,10 @@
 import Swift
 
 public protocol Queue {
-    func submit(_ frame: Frame) throws
+    func submit(_ frame: Frame) throws(QueueError)
 }
 
-public enum QueueError: Error {
+public enum QueueError: Error, Hashable, Sendable {
     case commandBufferCreationFailed
     case encoderCreationFailed
     case invalidResource

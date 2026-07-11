@@ -51,15 +51,13 @@ Implemented/decided so far:
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalBackend` has begun as the first concrete backend target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
-
-Current code note:
-
-- `MetalDevice.makeTexture` uses typed throws: `throws(DeviceError)`.
-- Check whether `Device.makeTexture` should also be updated to `throws(DeviceError)` if it has not already been changed when resuming.
+- `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
+- `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.
+- Metal implementation types and protocol witnesses remain internal. Keep the public API in `PixlBackend`; expose only the smallest deliberate construction boundary needed by consumers later.
 
 Next likely smallest step:
 
-- Execute a clear-only render pass in `PixlMetalBackend`: take a `Frame`, encode the first render pass against its `ColorAttachment`, apply load/store actions, and prove the target can be cleared. Avoid adding shaders, draw commands, bind groups, or pipelines before this works.
+- Prove clear-only submission through PixlGraphics' testing setup, then design the smallest drawable/surface acquisition and presentation boundary. Avoid adding shaders, draw commands, bind groups, or pipelines before that works.
 
 ## Naming
 

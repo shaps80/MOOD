@@ -47,3 +47,38 @@ extension TextureDescriptor {
         return metalDescriptor
     }
 }
+
+extension LoadAction {
+    var metalLoadAction: MTLLoadAction {
+        switch self {
+        case .load:
+            return .load
+        case .clear:
+            return .clear
+        case .discard:
+            return .dontCare
+        }
+    }
+}
+
+extension StoreAction {
+    var metalStoreAction: MTLStoreAction {
+        switch self {
+        case .store:
+            return .store
+        case .discard:
+            return .dontCare
+        }
+    }
+}
+
+extension Color {
+    var metalClearColor: MTLClearColor {
+        MTLClearColor(
+            red: Double(red),
+            green: Double(green),
+            blue: Double(blue),
+            alpha: Double(alpha)
+        )
+    }
+}

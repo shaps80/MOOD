@@ -1,21 +1,21 @@
 import Metal
 import PixlBackend
 
-public final class MetalDevice: Device {
+final class MetalDevice: Device {
     private let device: MTLDevice
     private let textures: ResourcePool<MTLTexture>
 
-    public init(device: MTLDevice, textureCapacity: UInt32) {
+    init(device: MTLDevice, textureCapacity: UInt32) {
         self.device = device
         textures = ResourcePool(capacity: textureCapacity)
     }
 
-    public convenience init?(textureCapacity: UInt32) {
+    convenience init?(textureCapacity: UInt32) {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
         self.init(device: device, textureCapacity: textureCapacity)
     }
 
-    public func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture {
+    func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture {
         let metalDescriptor = descriptor.metalDescriptor
 
         guard let metalTexture = device.makeTexture(descriptor: metalDescriptor) else {
@@ -27,5 +27,13 @@ public final class MetalDevice: Device {
         }
 
         return Texture(id: id, descriptor: descriptor)
+    }
+
+    func makeQueue() throws(DeviceError) -> any Queue {
+        guard let queue = device.makeCommandQueue() else {
+            throw DeviceError.commandQueueCreationFailed
+        }
+
+        return MetalQueue(queue: queue, textures: textures)
     }
 }
