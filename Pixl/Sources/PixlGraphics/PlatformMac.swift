@@ -17,5 +17,4 @@ public enum PlatformMac {
     }
 }
 
-PlatformMac.run()
 #endif

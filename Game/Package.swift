@@ -2,19 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "PixlGraphics",
+    name: "Game",
     platforms: [
         .macOS(.v13)
     ],
     dependencies: [
-        .package(path: "../PixlPlatform")
+        .package(path: "../Pixl")
     ],
     targets: [
         .executableTarget(
-            name: "PixlGraphics",
-            dependencies: [
-                "PixlPlatform"
-            ]
+            name: "Game",
+            dependencies: ["Pixl"]
         )
     ],
     swiftLanguageModes: [.v6]
