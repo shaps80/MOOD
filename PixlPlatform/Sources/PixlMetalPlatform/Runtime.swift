@@ -19,17 +19,20 @@ final class Runtime: NSObject {
         super.init()
     }
 
+    @MainActor
     func start() {
         configureApplication()
         configureWindow()
     }
 
+    @MainActor
     private func configureApplication() {
         let application = NSApplication.shared
         application.setActivationPolicy(.regular)
         application.mainMenu = makeMainMenu()
     }
 
+    @MainActor
     private func configureWindow() {
         let contentSize = NSSize(
             width: CGFloat(640),
@@ -73,6 +76,7 @@ final class Runtime: NSObject {
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
+    @MainActor
     private func makeMainMenu() -> NSMenu {
         let mainMenu = NSMenu()
         let applicationMenuItem = NSMenuItem()
