@@ -51,7 +51,8 @@ final class Runtime: NSObject {
         let contentRect = NSRect(origin: .zero, size: contentSize)
         let view = GameView(
             frame: contentRect,
-            device: device
+            device: device,
+            drawableFormat: renderSettings.drawableFormat
         )
         var styleMask: NSWindow.StyleMask = [
             .titled,

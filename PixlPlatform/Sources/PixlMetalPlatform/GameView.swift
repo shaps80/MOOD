@@ -1,16 +1,18 @@
 @preconcurrency import AppKit
 @preconcurrency import MetalKit
+import PixlPlatform
 
 final class GameView: MTKView {
     init(
         frame frameRect: NSRect,
-        device: MTLDevice
+        device: MTLDevice,
+        drawableFormat: PixelFormat
     ) {
         super.init(frame: frameRect, device: device)
 
         autoResizeDrawable = true
         clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        colorPixelFormat = .bgra8Unorm
+        colorPixelFormat = drawableFormat.metalPixelFormat
         framebufferOnly = true
         isPaused = false
         enableSetNeedsDisplay = false
