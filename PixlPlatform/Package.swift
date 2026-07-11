@@ -34,6 +34,10 @@ let package = Package(
             name: "PixlPlatformBrowserTestRunner",
             targets: ["PixlPlatformBrowserTestRunner"]
         ),
+        .executable(
+            name: "PixlMetalPlatformBenchmarkRunner",
+            targets: ["PixlMetalPlatformBenchmarkRunner"]
+        ),
     ],
     dependencies: [
         .package(
@@ -71,6 +75,19 @@ let package = Package(
                     condition: .when(platforms: [.wasi])
                 )
             ],
+            swiftSettings: defaultNonisolated
+        ),
+        .target(
+            name: "PixlMetalPlatformBenchmarkSupport",
+            dependencies: [
+                "PixlPlatform",
+                "PixlPlatformTestSupport"
+            ],
+            swiftSettings: defaultNonisolated
+        ),
+        .executableTarget(
+            name: "PixlMetalPlatformBenchmarkRunner",
+            dependencies: ["PixlMetalPlatformBenchmarkSupport"],
             swiftSettings: defaultNonisolated
         ),
         .testTarget(

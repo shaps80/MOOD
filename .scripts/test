@@ -36,6 +36,16 @@ run_wasm() {
     "${PRODUCT}"
 }
 
+run_metal() {
+  echo
+  echo "=== Metal ==="
+  swiftly run swift run \
+    --package-path "${PACKAGE_DIR}" \
+    --scratch-path "${PACKAGE_DIR}/.build/test-metal" \
+    -c "${CONFIGURATION}" \
+    PixlMetalPlatformBenchmarkRunner
+}
+
 case "${MODE}" in
   all)
     run_native
@@ -47,8 +57,11 @@ case "${MODE}" in
   wasm)
     run_wasm
     ;;
+  metal)
+    run_metal
+    ;;
   *)
-    echo "Usage: ./.scripts/test [all|native|wasm]" >&2
+    echo "Usage: ./.scripts/test [all|native|wasm|metal]" >&2
     exit 1
     ;;
 esac
