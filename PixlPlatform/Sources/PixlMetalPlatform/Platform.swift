@@ -1,7 +1,7 @@
 import MetalKit
 import PixlPlatform
 
-final class MetalPlatform: Platform {
+final class MetalPlatform: @MainActor Platform {
     private let metalDevice: MetalDevice
     private let queue: MetalQueue
     private let view: MTKView
@@ -9,6 +9,7 @@ final class MetalPlatform: Platform {
 
     var device: any Device { metalDevice }
 
+    @MainActor
     init(view: MTKView) {
         guard let nativeDevice = view.device else {
             fatalError("MTKView requires an MTLDevice")
@@ -24,6 +25,7 @@ final class MetalPlatform: Platform {
         self.view = view
     }
 
+    @MainActor
     func drawable() -> Drawable? {
         guard let drawable = view.currentDrawable,
               let format = drawable.texture.pixelFormat.pixlPixelFormat,

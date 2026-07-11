@@ -39,7 +39,7 @@ The first vertical slice is intentionally small: describe a frame with ordered p
 
 Implemented/decided so far:
 
-- `Frame` owns ordered `[Pass]`.
+- `Frame` owns reusable fixed-capacity contiguous `Pass` storage. Runtime resets it each redraw; game code records through `append`; platform backends iterate it directly.
 - `Pass` currently supports `.render(RenderPass)` and `.compute(ComputePass)`.
 - `RenderPass` owns a `ColorAttachment`.
 - `ColorAttachment` owns `RenderTarget`, `LoadAction`, and `StoreAction`.
@@ -49,7 +49,7 @@ Implemented/decided so far:
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
-- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. It produces a full `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
+- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. It records into the runtime-owned `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
@@ -61,10 +61,6 @@ Implemented/decided so far:
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 ## Review Progress
-
-Status: open
-
-Status: resolved — `Frame` is one reusable fixed-capacity contiguous pass arena. Runtime resets it each redraw, game code records through `append`, and platform backends iterate it directly.
 
 Status: open
 
@@ -95,6 +91,8 @@ Keep `context.md` updated when vocabulary decisions change.
 ## Performance and Profiling
 
 Performance is a first-class design constraint.
+
+Pixl and PixlPlatform targets default to Swift 6 nonisolated code with `.defaultIsolation(nil)`. Concrete platform targets add actor isolation only where their native UI APIs require it; do not impose a platform UI actor on the portable `PixlPlatform` contract.
 
 The `PixlPlatform` target enables provider-side aggressive cross-module optimization with `-enable-cmo-everything` in release builds. This serializes its package-private implementations so ordinary optimized consumers such as `PixlMetalPlatform` can specialize hot generic code such as `ResourcePool<Value>`. Do not combine it with `-cross-module-optimization`; that selects a less aggressive serialization mode and restores generic calls. Add the setting to another provider target only when that target gains hot cross-module implementation code.
 
