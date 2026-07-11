@@ -4,19 +4,18 @@ import Pixl
 struct Game: Pixl.Game {
     func render(
         on platform: any Platform,
-        output: RenderTarget
-    ) throws -> Frame {
-        Frame(
-            passes: [
-                .render(
-                    RenderPass(
-                        ColorAttachment(
-                            target: output,
-                            loadAction: .clear(.red)
-                        )
+        output: RenderTarget,
+        frame: borrowing Frame
+    ) throws {
+        frame.append(
+            .render(
+                RenderPass(
+                    ColorAttachment(
+                        target: output,
+                        loadAction: .clear(.red)
                     )
                 )
-            ]
+            )
         )
     }
 }

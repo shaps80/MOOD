@@ -3,8 +3,9 @@ import Swift
 public protocol PlatformGame {
     func render(
         on platform: any Platform,
-        output: RenderTarget
-    ) throws -> Frame
+        output: RenderTarget,
+        frame: borrowing Frame
+    ) throws
 }
 
 public protocol Platform: AnyObject {
@@ -13,7 +14,7 @@ public protocol Platform: AnyObject {
     func drawable() -> Drawable?
 
     func present(
-        _ frame: Frame,
+        _ frame: borrowing Frame,
         to drawable: consuming Drawable
     ) throws(PlatformError)
 

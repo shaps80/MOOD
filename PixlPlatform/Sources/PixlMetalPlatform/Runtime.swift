@@ -3,7 +3,10 @@
 import PixlPlatform
 
 final class Runtime: NSObject {
+    private static let framePassCapacity: UInt32 = 64
+
     private let device: MTLDevice
+    private let frame: Frame
     private let game: any PlatformGame
     private var platform: MetalPlatform?
     private var window: NSWindow?
@@ -15,6 +18,7 @@ final class Runtime: NSObject {
         }
 
         self.device = device
+        frame = Frame(passCapacity: Self.framePassCapacity)
         self.game = game
         super.init()
     }
@@ -106,9 +110,11 @@ extension Runtime: MTKViewDelegate {
         do {
             guard let drawable = platform.drawable() else { return }
 
-            let frame = try game.render(
+            frame.reset()
+            try game.render(
                 on: platform,
-                output: RenderTarget(texture: drawable.texture)
+                output: RenderTarget(texture: drawable.texture),
+                frame: frame
             )
 
             try platform.present(frame, to: consume drawable)

@@ -62,17 +62,9 @@ Implemented/decided so far:
 
 ## Review Progress
 
-Status: resolved — the runtime owns drawable acquisition and presentation. `Game` receives the drawable-derived final `RenderTarget`, builds the complete frame graph, and returns its `Frame`; it never owns or releases the drawable. Direct low-level users can explicitly call `Platform.discard(_:)` after acquiring a drawable; no normal runtime path calls it yet.
-
-A `Drawable` acquired but never presented occupies a fixed pool slot. Three dropped drawables will eventually make `drawable()` return `nil`. Later, add an explicit discard/release path or a scoped acquisition API.
-
 Status: open
 
-`@MainActor Platform` is correct for MTKView/drawable acquisition today, but also pins frame construction and Metal encoding to the main thread. Fine for this slice; revisit when parallel encoding matters.
-
-Status: open
-
-The demo constructs `Frame(passes: [...])` every redraw, so it allocates an `Array` per frame. Fine for proving the stack, but it conflicts with your preallocated hot-path direction and should be removed before real rendering work.
+Status: resolved — `Frame` is one reusable fixed-capacity contiguous pass arena. Runtime resets it each redraw, game code records through `append`, and platform backends iterate it directly.
 
 Status: open
 

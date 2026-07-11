@@ -11,25 +11,31 @@ final class MetalQueue: Queue {
         self.textures = textures
     }
 
-    func submit(_ frame: Frame) throws(QueueError) {
+    func submit(_ frame: borrowing Frame) throws(QueueError) {
         try submit(frame, presenting: nil)
     }
 
     func submit(
-        _ frame: Frame,
+        _ frame: borrowing Frame,
         presenting drawable: (any CAMetalDrawable)?
     ) throws(QueueError) {
         guard let commandBuffer = queue.makeCommandBuffer() else {
             throw QueueError.commandBufferCreationFailed
         }
 
-        for pass in frame.passes {
+        var index: UInt32 = 0
+
+        while index < frame.passCount {
+            let pass = frame[index]
+
             switch pass {
             case .render(let renderPass):
                 try encode(renderPass, into: commandBuffer)
             case .compute:
                 throw QueueError.unsupportedPass
             }
+
+            index += 1
         }
 
         if let drawable {

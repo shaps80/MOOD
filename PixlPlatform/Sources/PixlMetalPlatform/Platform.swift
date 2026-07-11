@@ -53,7 +53,7 @@ final class MetalPlatform: Platform {
     }
 
     func present(
-        _ frame: Frame,
+        _ frame: borrowing Frame,
         to drawable: consuming Drawable
     ) throws(PlatformError) {
         let drawableID = drawable.id
