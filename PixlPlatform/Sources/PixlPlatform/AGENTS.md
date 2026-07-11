@@ -57,14 +57,8 @@ Implemented/decided so far:
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
 - `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.
 - `PixlMetalPlatform.run(_:)` is the single public macOS runtime entry point. It owns the AppKit/MTKView window runtime and its Metal device; `Pixl.run(_:)` reaches it through Pixl's macOS-conditioned platform dependency.
-- `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles.
+- `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles. The capacities come from game-provided `RenderSettings` at startup.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
-
-## Review Progress
-
-Status: open
-
-The `256` texture-pool capacity is now a hidden runtime policy. It’s safe and fixed-cost, but eventually should become deliberate runtime configuration.
 
 ## Naming
 

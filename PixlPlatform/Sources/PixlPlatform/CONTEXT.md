@@ -142,6 +142,9 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 `Frame`
 : Platform-agnostic description of GPU work for one frame. Contains ordered passes and enough metadata for profiling.
 
+`RenderSettings`
+: Startup-only fixed capacities for a platform runtime's reusable render storage: frame passes, textures, and drawables. `Game` supplies these with a default implementation; they are not read in the frame loop.
+
 Frame pass
 : Either a render pass, compute pass, or copy pass. Ordering is significant because later passes may consume resources produced by earlier passes.
 

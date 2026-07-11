@@ -5,17 +5,20 @@ final class MetalPlatform: @MainActor Platform {
     private let metalDevice: MetalDevice
     private let queue: MetalQueue
     private let view: MTKView
-    private let drawables = ResourcePool<any CAMetalDrawable>(capacity: 3)
+    private let drawables: ResourcePool<any CAMetalDrawable>
 
     var device: any Device { metalDevice }
 
     @MainActor
-    init(view: MTKView) {
+    init(view: MTKView, renderSettings: RenderSettings) {
         guard let nativeDevice = view.device else {
             fatalError("MTKView requires an MTLDevice")
         }
 
-        let metalDevice = MetalDevice(device: nativeDevice, textureCapacity: 256)
+        let metalDevice = MetalDevice(
+            device: nativeDevice,
+            textureCapacity: renderSettings.textureCapacity
+        )
         guard let commandQueue = nativeDevice.makeCommandQueue() else {
             fatalError("Metal command queue creation failed")
         }
@@ -23,6 +26,7 @@ final class MetalPlatform: @MainActor Platform {
         self.metalDevice = metalDevice
         queue = MetalQueue(queue: commandQueue, textures: metalDevice.textures)
         self.view = view
+        drawables = ResourcePool(capacity: renderSettings.drawableCapacity)
     }
 
     @MainActor

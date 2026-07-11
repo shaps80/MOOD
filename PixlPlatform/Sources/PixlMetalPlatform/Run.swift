@@ -3,9 +3,12 @@
 import PixlPlatform
 
 @MainActor
-public func run(_ game: any PlatformGame) {
+public func run(
+    _ game: any PlatformGame,
+    renderSettings: RenderSettings
+) {
     let application = NSApplication.shared
-    let runtime: Runtime = .init(game: game)
+    let runtime: Runtime = .init(game: game, renderSettings: renderSettings)
 
     runtime.start()
 

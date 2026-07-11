@@ -3,23 +3,23 @@
 import PixlPlatform
 
 final class Runtime: NSObject {
-    private static let framePassCapacity: UInt32 = 64
-
     private let device: MTLDevice
     private let frame: Frame
     private let game: any PlatformGame
+    private let renderSettings: RenderSettings
     private var platform: MetalPlatform?
     private var window: NSWindow?
     private var gameView: GameView?
 
-    init(game: any PlatformGame) {
+    init(game: any PlatformGame, renderSettings: RenderSettings) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not available")
         }
 
         self.device = device
-        frame = Frame(passCapacity: Self.framePassCapacity)
+        frame = Frame(passCapacity: renderSettings.framePassCapacity)
         self.game = game
+        self.renderSettings = renderSettings
         super.init()
     }
 
@@ -62,7 +62,7 @@ final class Runtime: NSObject {
         view.delegate = self
         view.preferredFramesPerSecond = 60
 
-        platform = MetalPlatform(view: view)
+        platform = MetalPlatform(view: view, renderSettings: renderSettings)
 
         window.title = "Pixl"
         window.contentView = view
