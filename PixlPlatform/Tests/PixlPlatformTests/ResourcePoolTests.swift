@@ -1,6 +1,6 @@
 #if canImport(XCTest)
 import XCTest
-import PixlBackendTestSupport
+import PixlPlatformTestSupport
 
 final class ResourcePoolTests: XCTestCase {
     func testCorrectness() throws {

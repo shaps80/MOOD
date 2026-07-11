@@ -1,5 +1,5 @@
 import Metal
-import PixlBackend
+import PixlPlatform
 
 final class MetalDevice: Device {
     private let device: MTLDevice

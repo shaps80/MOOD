@@ -1,4 +1,4 @@
-import PixlBackend
+import PixlPlatform
 
 #if os(macOS)
 @preconcurrency import AppKit

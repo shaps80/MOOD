@@ -1,12 +1,12 @@
-# PixlBackend GPU Vocabulary
+# PixlPlatform GPU Vocabulary
 
-PixlBackend's lowest graphics layer is a modern, platform-agnostic GPU abstraction aligned closely with Metal, WebGPU, Vulkan, and DirectX 12 style APIs. It is not a legacy OpenGL/WebGL-style abstraction.
+PixlPlatform's lowest graphics layer is a modern, platform-agnostic GPU abstraction aligned closely with Metal, WebGPU, Vulkan, and DirectX 12 style APIs. It is not a legacy OpenGL/WebGL-style abstraction.
 
-## Backend Mapping
+## Platform Mapping
 
 Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later targets used to keep naming honest.
 
-| PixlBackend | Metal | WebGPU | Vulkan | DirectX 12 |
+| PixlPlatform | Metal | WebGPU | Vulkan | DirectX 12 |
 | --- | --- | --- | --- | --- |
 | `Device` | `MTLDevice` | `GPUDevice` | `VkDevice` | `ID3D12Device` |
 | `Queue` | `MTLCommandQueue` | `GPUQueue` | `VkQueue` | `ID3D12CommandQueue` |
@@ -69,7 +69,7 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 `ResourcePool`
 : Package-level, fixed-capacity `ResourcePool<Value>` storage shared by platform backends. It uses manually managed contiguous slot and value buffers, direct-index lookup, generation validation, and an intrusive free list. Insert, lookup, update, and removal are O(1), and no allocation occurs after initialization. A slot is permanently retired rather than allowing its generation to wrap. Pools are single-owner and contain no internal synchronization.
 
-Release builds of the `PixlBackend` provider target enable Swift's aggressive cross-module optimization mode. This serializes package-private implementations so ordinary optimized consumers such as `PixlMetalBackend` can specialize generic pool operations for concrete native resource types. Keep the setting release-only: debug builds prioritize diagnostics and iteration speed.
+Release builds of the `PixlPlatform` provider target enable Swift's aggressive cross-module optimization mode. This serializes package-private implementations so ordinary optimized consumers such as `PixlMetalPlatform` can specialize generic pool operations for concrete native resource types. Keep the setting release-only: debug builds prioritize diagnostics and iteration speed.
 
 ## Shaders and Pipelines
 

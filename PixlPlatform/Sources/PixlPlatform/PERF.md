@@ -1,12 +1,12 @@
 # Performance Baselines
 
-These are reference measurements for detecting material `PixlBackend` performance regressions. They are not hard pass/fail thresholds: compare new results with the baseline from the same runtime and similar hardware conditions.
+These are reference measurements for detecting material `PixlPlatform` performance regressions. They are not hard pass/fail thresholds: compare new results with the baseline from the same runtime and similar hardware conditions.
 
 ## Current profiling record
 
 This document represents the last accepted profiling record for `ResourcePool` specifically, recorded on 2026-07-11. It does not describe whole-backend, rendering, GPU, frame-time, or game performance.
 
-Every runtime executed the same platform-neutral suite from `PixlBackendTestSupport`:
+Every runtime executed the same platform-neutral suite from `PixlPlatformTestSupport`:
 
 - Cold start lifecycle: allocate a fixed pool, insert 150,000 resources, update every resource, then remove every resource.
 - Sequential lookup: look up all 150,000 live resources in slot order and accumulate a checksum.
@@ -19,7 +19,7 @@ The native record used the release standalone runner on arm64 macOS. The WasmKit
 ## ResourcePool methodology
 
 - Swift 6.3.2, release configuration.
-- Provider-side aggressive cross-module optimization is enabled for `PixlBackend`.
+- Provider-side aggressive cross-module optimization is enabled for `PixlPlatform`.
 - 150,000 live `UInt64` resources.
 - Lookup and update workloads use 100 measured iterations.
 - Cold lifecycle and remove/reinsert churn use 10 measured iterations.

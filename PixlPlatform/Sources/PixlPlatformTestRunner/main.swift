@@ -1,8 +1,8 @@
 import Swift
-import PixlBackendTestSupport
+import PixlPlatformTestSupport
 
 @main
-struct PixlBackendTestRunner {
+struct PixlPlatformTestRunner {
     static func main() throws {
         try ResourcePoolSuite.runChecks()
         print("ResourcePool checks passed.")

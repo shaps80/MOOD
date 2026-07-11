@@ -1,5 +1,5 @@
 import Metal
-import PixlBackend
+import PixlPlatform
 
 final class MetalQueue: Queue {
     private let queue: MTLCommandQueue

@@ -7,13 +7,13 @@ let package = Package(
         .macOS(.v13)
     ],
     dependencies: [
-        .package(path: "../PixlBackend")
+        .package(path: "../PixlPlatform")
     ],
     targets: [
         .executableTarget(
             name: "PixlGraphics",
             dependencies: [
-                "PixlBackend"
+                "PixlPlatform"
             ]
         )
     ],

@@ -1,5 +1,5 @@
 import Metal
-import PixlBackend
+import PixlPlatform
 
 extension PixelFormat {
     var metalPixelFormat: MTLPixelFormat {

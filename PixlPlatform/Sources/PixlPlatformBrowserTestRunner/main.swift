@@ -1,10 +1,10 @@
 #if os(WASI)
 import JavaScriptKit
-import PixlBackendTestSupport
+import PixlPlatformTestSupport
 import Swift
 
 @main
-struct PixlBackendBrowserTestRunner {
+struct PixlPlatformBrowserTestRunner {
     static func main() {
         let runtime = BrowserBenchmarkRuntime()
         BrowserBenchmarkRuntime.retained = runtime
@@ -71,8 +71,8 @@ private final class BrowserBenchmarkRuntime {
         setResults(text)
 
         let global = JSObject.global
-        global.pixlBackendTestReport = .string(text)
-        global.pixlBackendTestComplete = .boolean(true)
+        global.pixlPlatformTestReport = .string(text)
+        global.pixlPlatformTestComplete = .boolean(true)
     }
 
     private func finishFailure(_ error: Error) {
@@ -81,8 +81,8 @@ private final class BrowserBenchmarkRuntime {
         setResults(text)
 
         let global = JSObject.global
-        global.pixlBackendTestReport = .string(text)
-        global.pixlBackendTestComplete = .boolean(false)
+        global.pixlPlatformTestReport = .string(text)
+        global.pixlPlatformTestComplete = .boolean(false)
         _ = global.console.error(text)
     }
 
@@ -156,9 +156,9 @@ private final class BrowserBenchmarkRuntime {
 import Swift
 
 @main
-struct PixlBackendBrowserTestRunner {
+struct PixlPlatformBrowserTestRunner {
     static func main() {
-        print("PixlBackendBrowserTestRunner must run in a browser WASM build.")
+        print("PixlPlatformBrowserTestRunner must run in a browser WASM build.")
     }
 }
 #endif

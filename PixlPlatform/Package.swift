@@ -9,26 +9,26 @@ let releaseCrossModuleOptimization: [SwiftSetting] = [
 ]
 
 let package = Package(
-    name: "PixlBackend",
+    name: "PixlPlatform",
     platforms: [
         .macOS(.v13)
     ],
     products: [
         .library(
-            name: "PixlBackend",
-            targets: ["PixlBackend"]
+            name: "PixlPlatform",
+            targets: ["PixlPlatform"]
         ),
         .library(
-            name: "PixlMetalBackend",
-            targets: ["PixlMetalBackend"]
+            name: "PixlMetalPlatform",
+            targets: ["PixlMetalPlatform"]
         ),
         .executable(
-            name: "PixlBackendTestRunner",
-            targets: ["PixlBackendTestRunner"]
+            name: "PixlPlatformTestRunner",
+            targets: ["PixlPlatformTestRunner"]
         ),
         .executable(
-            name: "PixlBackendBrowserTestRunner",
-            targets: ["PixlBackendBrowserTestRunner"]
+            name: "PixlPlatformBrowserTestRunner",
+            targets: ["PixlPlatformBrowserTestRunner"]
         ),
     ],
     dependencies: [
@@ -39,26 +39,26 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PixlBackend",
+            name: "PixlPlatform",
             exclude: ["AGENTS.md", "CONTEXT.md", "PERF.md"],
             swiftSettings: releaseCrossModuleOptimization
         ),
         .target(
-            name: "PixlMetalBackend",
-            dependencies: ["PixlBackend"]
+            name: "PixlMetalPlatform",
+            dependencies: ["PixlPlatform"]
         ),
         .target(
-            name: "PixlBackendTestSupport",
-            dependencies: ["PixlBackend"]
+            name: "PixlPlatformTestSupport",
+            dependencies: ["PixlPlatform"]
         ),
         .executableTarget(
-            name: "PixlBackendTestRunner",
-            dependencies: ["PixlBackendTestSupport"]
+            name: "PixlPlatformTestRunner",
+            dependencies: ["PixlPlatformTestSupport"]
         ),
         .executableTarget(
-            name: "PixlBackendBrowserTestRunner",
+            name: "PixlPlatformBrowserTestRunner",
             dependencies: [
-                "PixlBackendTestSupport",
+                "PixlPlatformTestSupport",
                 .product(
                     name: "JavaScriptKit",
                     package: "JavaScriptKit",
@@ -67,8 +67,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "PixlBackendTests",
-            dependencies: ["PixlBackendTestSupport"]
+            name: "PixlPlatformTests",
+            dependencies: ["PixlPlatformTestSupport"]
         )
     ],
     swiftLanguageModes: [.v6]

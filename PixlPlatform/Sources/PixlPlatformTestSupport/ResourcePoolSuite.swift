@@ -1,5 +1,5 @@
 import Swift
-import PixlBackend
+import PixlPlatform
 
 package struct ResourcePoolBenchmarkReport: Sendable {
     package let coldStart: BenchmarkResult

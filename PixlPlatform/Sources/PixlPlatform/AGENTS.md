@@ -1,6 +1,6 @@
-# PixlBackend Agent Notes
+# PixlPlatform Agent Notes
 
-PixlBackend is a platform-agnostic Swift library for the lowest graphics/GPU layer of Pixl. It should define Swift-only types and protocols that can later be implemented by Metal, WebGPU, Vulkan, and DirectX 12 backends.
+PixlPlatform is the platform-agnostic API boundary for Pixl. Its current surface is the lowest graphics/GPU layer, expressed as Swift-only types and protocols implemented by platform targets such as Metal, WebGPU, Vulkan, and DirectX 12.
 
 ## Collaboration Rules
 
@@ -49,11 +49,11 @@ Implemented/decided so far:
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
-- `PixlMetalBackend` has begun as the first concrete backend target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
+- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
 - `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.
-- Metal implementation types and protocol witnesses remain internal. Keep the public API in `PixlBackend`; expose only the smallest deliberate construction boundary needed by consumers later.
+- Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 Next likely smallest step:
 
@@ -85,9 +85,9 @@ Keep `context.md` updated when vocabulary decisions change.
 
 Performance is a first-class design constraint.
 
-The `PixlBackend` target enables provider-side aggressive cross-module optimization with `-enable-cmo-everything` in release builds. This serializes its package-private implementations so ordinary optimized consumers such as `PixlMetalBackend` can specialize hot generic code such as `ResourcePool<Value>`. Do not combine it with `-cross-module-optimization`; that selects a less aggressive serialization mode and restores generic calls. Add the setting to another provider target only when that target gains hot cross-module implementation code.
+The `PixlPlatform` target enables provider-side aggressive cross-module optimization with `-enable-cmo-everything` in release builds. This serializes its package-private implementations so ordinary optimized consumers such as `PixlMetalPlatform` can specialize hot generic code such as `ResourcePool<Value>`. Do not combine it with `-cross-module-optimization`; that selects a less aggressive serialization mode and restores generic calls. Add the setting to another provider target only when that target gains hot cross-module implementation code.
 
-Resource-pool checks and benchmarks have one platform-neutral source of truth in `PixlBackendTestSupport`. The XCTest target is a native/Xcode adapter. Run `../.scripts/test` from this package, or `.scripts/test` from the repository root, for the release comparison: native first, then WASM/WASI through the Swift SDK and WasmKit. Pass `native` or `wasm` to run one side only.
+Resource-pool checks and benchmarks have one platform-neutral source of truth in `PixlPlatformTestSupport`. The XCTest target is a native/Xcode adapter. Run `../.scripts/test` from this package, or `.scripts/test` from the repository root, for the release comparison: native first, then WASM/WASI through the Swift SDK and WasmKit. Pass `native` or `wasm` to run one side only.
 
 For real browser measurements, run `.scripts/browser-test chrome` or `.scripts/browser-test safari` from the repository root. The browser runner waits one second, runs one complete discarded warm-up suite, then renders the measured report in the selected browser. Treat those results as the Web performance authority; WasmKit is a fast local portability and regression baseline, not a browser-performance proxy.
 
