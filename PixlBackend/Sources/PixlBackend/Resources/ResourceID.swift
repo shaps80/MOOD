@@ -1,9 +1,17 @@
 import Swift
 
-public struct ResourceID: Hashable, Sendable {
-    public let rawValue: UInt64
+package struct ResourceID: Hashable, Sendable {
+    package let rawValue: UInt64
 
-    package init(_ rawValue: UInt64) {
-        self.rawValue = rawValue
+    package var index: UInt32 {
+        UInt32(truncatingIfNeeded: rawValue)
+    }
+
+    package var generation: UInt32 {
+        UInt32(truncatingIfNeeded: rawValue >> 32)
+    }
+
+    package init(index: UInt32, generation: UInt32) {
+        rawValue = UInt64(index) | UInt64(generation) << 32
     }
 }

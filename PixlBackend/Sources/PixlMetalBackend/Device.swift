@@ -3,16 +3,16 @@ import PixlBackend
 
 public final class MetalDevice: Device {
     private let device: MTLDevice
-    private var nextResourceID: UInt64 = 1
-    private var textures: [ResourceID: MTLTexture] = [:]
+    private let textures: ResourcePool<MTLTexture>
 
-    public init(device: MTLDevice) {
+    public init(device: MTLDevice, textureCapacity: UInt32) {
         self.device = device
+        textures = ResourcePool(capacity: textureCapacity)
     }
 
-    public convenience init?() {
+    public convenience init?(textureCapacity: UInt32) {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
-        self.init(device: device)
+        self.init(device: device, textureCapacity: textureCapacity)
     }
 
     public func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture {
@@ -22,10 +22,10 @@ public final class MetalDevice: Device {
             throw DeviceError.resourceCreationFailed(.texture)
         }
 
-        let id = ResourceID(nextResourceID)
-        nextResourceID += 1
+        guard let id = textures.insert(metalTexture) else {
+            throw DeviceError.resourceCreationFailed(.texture)
+        }
 
-        textures[id] = metalTexture
         return Texture(id: id, descriptor: descriptor)
     }
 }

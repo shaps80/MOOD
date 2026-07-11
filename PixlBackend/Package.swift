@@ -22,6 +22,10 @@ let package = Package(
             name: "PixlMetalBackend",
             dependencies: ["PixlBackend"]
         ),
+        .testTarget(
+            name: "PixlBackendTests",
+            dependencies: ["PixlBackend"]
+        )
     ],
     swiftLanguageModes: [.v6]
 )

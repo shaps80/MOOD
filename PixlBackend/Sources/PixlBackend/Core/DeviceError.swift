@@ -6,7 +6,3 @@ public enum DeviceError: Error, Hashable, Sendable {
     case unsupportedTextureUsage(TextureUsage)
     case invalidTextureDescriptor(TextureDescriptor)
 }
-
-public enum ResourceKind: Hashable, Sendable {
-    case texture
-}

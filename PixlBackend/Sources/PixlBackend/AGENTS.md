@@ -49,8 +49,8 @@ Implemented/decided so far:
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
-- `PixlMetalBackend` has begun as the first concrete backend target. It owns `MetalDevice`, a resource ID counter, and a `[ResourceID: MTLTexture]` table.
-- `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, stores the created `MTLTexture`, and returns package-minted `Texture`.
+- `PixlMetalBackend` has begun as the first concrete backend target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
+- `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 
 Current code note:
 

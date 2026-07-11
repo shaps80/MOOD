@@ -1,8 +1,12 @@
-//
-//  File.swift
-//  Pixl
-//
-//  Created by Shaps Benkau on 10/07/2026.
-//
+import Swift
 
-import Foundation
+public protocol Queue {
+    func submit(_ frame: Frame) throws
+}
+
+public enum QueueError: Error {
+    case commandBufferCreationFailed
+    case encoderCreationFailed
+    case invalidResource
+    case unsupportedPass
+}

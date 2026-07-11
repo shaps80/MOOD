@@ -61,6 +61,14 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 `TextureUsage`
 : Declares intended texture roles, such as sampled, render attachment, storage, copy source, and copy destination.
 
+## Resource Ownership
+
+`ResourceID`
+: An opaque 64-bit generational handle split evenly between a 32-bit direct slot index and 32-bit generation. Generation zero is reserved; live slots begin at generation one.
+
+`ResourcePool`
+: Package-level, fixed-capacity storage shared by platform backends. It uses manually managed contiguous slot and value buffers, direct-index lookup, generation validation, and an intrusive free list. Insert, lookup, update, and removal are O(1), and no allocation occurs after initialization. A slot is permanently retired rather than allowing its generation to wrap. Pools are single-owner and contain no internal synchronization.
+
 ## Shaders and Pipelines
 
 `ShaderLibrary`
