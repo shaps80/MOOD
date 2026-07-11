@@ -6,12 +6,17 @@ final class Runtime: NSObject {
     private let device: MTLDevice
     private let frame: Frame
     private let game: any PlatformGame
+    private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
     private var platform: MetalPlatform?
     private var window: NSWindow?
     private var gameView: GameView?
 
-    init(game: any PlatformGame, renderSettings: RenderSettings) {
+    init(
+        game: any PlatformGame,
+        gameSettings: GameSettings,
+        renderSettings: RenderSettings
+    ) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not available")
         }
@@ -19,6 +24,7 @@ final class Runtime: NSObject {
         self.device = device
         frame = Frame(passCapacity: renderSettings.framePassCapacity)
         self.game = game
+        self.gameSettings = gameSettings
         self.renderSettings = renderSettings
         super.init()
     }
@@ -39,35 +45,37 @@ final class Runtime: NSObject {
     @MainActor
     private func configureWindow() {
         let contentSize = NSSize(
-            width: CGFloat(640),
-            height: CGFloat(320)
+            width: CGFloat(gameSettings.resolution.width),
+            height: CGFloat(gameSettings.resolution.height)
         )
         let contentRect = NSRect(origin: .zero, size: contentSize)
         let view = GameView(
             frame: contentRect,
             device: device
         )
+        var styleMask: NSWindow.StyleMask = [
+            .titled,
+            .closable,
+            .miniaturizable
+        ]
+        if gameSettings.isResizable {
+            styleMask.insert(.resizable)
+        }
+
         let window = NSWindow(
             contentRect: contentRect,
-            styleMask: [
-                .titled,
-                .closable,
-                .miniaturizable,
-                .resizable
-            ],
+            styleMask: styleMask,
             backing: .buffered,
             defer: false
         )
 
         view.delegate = self
-        view.preferredFramesPerSecond = 60
+        view.preferredFramesPerSecond = gameSettings.preferredFps
 
         platform = MetalPlatform(view: view, renderSettings: renderSettings)
 
-        window.title = "Pixl"
+        window.title = gameSettings.title
         window.contentView = view
-        window.contentAspectRatio = contentSize
-        window.contentMinSize = NSSize(width: 320, height: 180)
         window.delegate = self
 
         window.center()

@@ -44,7 +44,6 @@ let package = Package(
     targets: [
         .target(
             name: "PixlPlatform",
-            exclude: ["AGENTS.md", "CONTEXT.md", "PERF.md"],
             swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .target(
