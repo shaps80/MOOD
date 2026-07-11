@@ -8,6 +8,10 @@ let releaseCrossModuleOptimization: [SwiftSetting] = [
     )
 ]
 
+let defaultNonisolated: [SwiftSetting] = [
+    .defaultIsolation(nil)
+]
+
 let package = Package(
     name: "PixlPlatform",
     platforms: [
@@ -41,19 +45,22 @@ let package = Package(
         .target(
             name: "PixlPlatform",
             exclude: ["AGENTS.md", "CONTEXT.md", "PERF.md"],
-            swiftSettings: releaseCrossModuleOptimization
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .target(
             name: "PixlMetalPlatform",
-            dependencies: ["PixlPlatform"]
+            dependencies: ["PixlPlatform"],
+            swiftSettings: defaultNonisolated
         ),
         .target(
             name: "PixlPlatformTestSupport",
-            dependencies: ["PixlPlatform"]
+            dependencies: ["PixlPlatform"],
+            swiftSettings: defaultNonisolated
         ),
         .executableTarget(
             name: "PixlPlatformTestRunner",
-            dependencies: ["PixlPlatformTestSupport"]
+            dependencies: ["PixlPlatformTestSupport"],
+            swiftSettings: defaultNonisolated
         ),
         .executableTarget(
             name: "PixlPlatformBrowserTestRunner",
@@ -64,11 +71,13 @@ let package = Package(
                     package: "JavaScriptKit",
                     condition: .when(platforms: [.wasi])
                 )
-            ]
+            ],
+            swiftSettings: defaultNonisolated
         ),
         .testTarget(
             name: "PixlPlatformTests",
-            dependencies: ["PixlPlatformTestSupport"]
+            dependencies: ["PixlPlatformTestSupport"],
+            swiftSettings: defaultNonisolated
         )
     ],
     swiftLanguageModes: [.v6]

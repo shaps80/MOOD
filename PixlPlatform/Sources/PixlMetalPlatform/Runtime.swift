@@ -2,7 +2,6 @@
 @preconcurrency import MetalKit
 import PixlPlatform
 
-@MainActor
 final class Runtime: NSObject {
     private let device: MTLDevice
     private let game: any PlatformGame
@@ -101,7 +100,14 @@ extension Runtime: MTKViewDelegate {
         guard let platform else { return }
 
         do {
-            try game.render(on: platform)
+            guard let drawable = platform.drawable() else { return }
+
+            let frame = try game.render(
+                on: platform,
+                output: RenderTarget(texture: drawable.texture)
+            )
+
+            try platform.present(frame, to: consume drawable)
         } catch {
             fatalError("Game rendering failed: \(error)")
         }

@@ -2,22 +2,21 @@ import Pixl
 
 @main
 struct Game: Pixl.Game {
-    func render(on platform: any Platform) throws {
-        guard let drawable = platform.drawable() else { return }
-
-        let frame = Frame(
+    func render(
+        on platform: any Platform,
+        output: RenderTarget
+    ) throws -> Frame {
+        Frame(
             passes: [
                 .render(
                     RenderPass(
                         ColorAttachment(
-                            target: .init(texture: drawable.texture),
+                            target: output,
                             loadAction: .clear(.red)
                         )
                     )
                 )
             ]
         )
-
-        try platform.present(frame, to: consume drawable)
     }
 }

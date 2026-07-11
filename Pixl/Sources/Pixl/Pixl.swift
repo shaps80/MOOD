@@ -6,13 +6,10 @@ import PixlMetalPlatform
 
 public protocol Game: PlatformGame {
     init()
-
-    @MainActor
     static func main()
 }
 
 extension Game {
-    @MainActor
     public static func main() {
 #if canImport(PixlMetalPlatform)
         PixlMetalPlatform.run(Self())

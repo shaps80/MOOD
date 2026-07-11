@@ -49,7 +49,7 @@ Implemented/decided so far:
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
-- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. `Pixl.Game` inherits it, so game packages use `Pixl.Game` rather than this protocol directly.
+- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. It produces a full `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
@@ -60,9 +60,23 @@ Implemented/decided so far:
 - `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
-Next likely smallest step:
+## Review Progress
 
-- Run the Game package and verify the visible red clear. Avoid adding shaders, draw commands, bind groups, or pipelines before that works.
+Status: resolved — the runtime owns drawable acquisition and presentation. `Game` receives the drawable-derived final `RenderTarget`, builds the complete frame graph, and returns its `Frame`; it never owns or releases the drawable. Direct low-level users can explicitly call `Platform.discard(_:)` after acquiring a drawable; no normal runtime path calls it yet.
+
+A `Drawable` acquired but never presented occupies a fixed pool slot. Three dropped drawables will eventually make `drawable()` return `nil`. Later, add an explicit discard/release path or a scoped acquisition API.
+
+Status: open
+
+`@MainActor Platform` is correct for MTKView/drawable acquisition today, but also pins frame construction and Metal encoding to the main thread. Fine for this slice; revisit when parallel encoding matters.
+
+Status: open
+
+The demo constructs `Frame(passes: [...])` every redraw, so it allocates an `Array` per frame. Fine for proving the stack, but it conflicts with your preallocated hot-path direction and should be removed before real rendering work.
+
+Status: open
+
+The `256` texture-pool capacity is now a hidden runtime policy. It’s safe and fixed-cost, but eventually should become deliberate runtime configuration.
 
 ## Naming
 

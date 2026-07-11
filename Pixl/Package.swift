@@ -1,6 +1,10 @@
 // swift-tools-version: 6.3
 import PackageDescription
 
+let defaultNonisolated: [SwiftSetting] = [
+    .defaultIsolation(nil)
+]
+
 let package = Package(
     name: "Pixl",
     platforms: [
@@ -18,7 +22,8 @@ let package = Package(
     targets: [
         .target(
             name: "PixlGraphics",
-            dependencies: ["PixlPlatform"]
+            dependencies: ["PixlPlatform"],
+            swiftSettings: defaultNonisolated
         ),
         .target(
             name: "Pixl",
@@ -33,7 +38,8 @@ let package = Package(
                     package: "PixlPlatform",
                     condition: .when(platforms: [.macOS])
                 )
-            ]
+            ],
+            swiftSettings: defaultNonisolated
         )
     ],
     swiftLanguageModes: [.v6]

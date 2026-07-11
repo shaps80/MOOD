@@ -1,11 +1,12 @@
 import Swift
 
 public protocol PlatformGame {
-    @MainActor
-    func render(on platform: any Platform) throws
+    func render(
+        on platform: any Platform,
+        output: RenderTarget
+    ) throws -> Frame
 }
 
-@MainActor
 public protocol Platform: AnyObject {
     var device: any Device { get }
 
@@ -15,6 +16,8 @@ public protocol Platform: AnyObject {
         _ frame: Frame,
         to drawable: consuming Drawable
     ) throws(PlatformError)
+
+    func discard(_ drawable: consuming Drawable)
 }
 
 public enum PlatformError: Error, Hashable, Sendable {

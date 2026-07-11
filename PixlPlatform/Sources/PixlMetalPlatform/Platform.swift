@@ -1,7 +1,6 @@
 import MetalKit
 import PixlPlatform
 
-@MainActor
 final class MetalPlatform: Platform {
     private let metalDevice: MetalDevice
     private let queue: MetalQueue
@@ -61,8 +60,7 @@ final class MetalPlatform: Platform {
         let textureID = drawable.texture.id
 
         defer {
-            _ = drawables.remove(drawableID)
-            _ = metalDevice.textures.remove(textureID)
+            release(drawableID: drawableID, textureID: textureID)
         }
 
         do {
@@ -76,5 +74,14 @@ final class MetalPlatform: Platform {
         } catch {
             throw PlatformError.invalidDrawable
         }
+    }
+
+    func discard(_ drawable: consuming Drawable) {
+        release(drawableID: drawable.id, textureID: drawable.texture.id)
+    }
+
+    private func release(drawableID: ResourceID, textureID: ResourceID) {
+        _ = drawables.remove(drawableID)
+        _ = metalDevice.textures.remove(textureID)
     }
 }
