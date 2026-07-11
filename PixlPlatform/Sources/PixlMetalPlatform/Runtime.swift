@@ -56,6 +56,7 @@ final class Runtime: NSObject {
         window.contentView = view
         window.contentAspectRatio = contentSize
         window.contentMinSize = NSSize(width: 320, height: 180)
+        window.delegate = self
 
         window.center()
         window.makeKeyAndOrderFront(nil)
@@ -85,19 +86,12 @@ final class Runtime: NSObject {
         return mainMenu
     }
 
-    private var lastFrameTime: CFTimeInterval?
-    private var accumulatedTime = 0.0
-    private var fixedTimeStep: Double { 1.0 / 60 }
-    private var frame = 0
 }
 
 extension Runtime: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
-    func draw(in view: MTKView) {
-        print("Frame \(frame)")
-        frame += 1
-    }
+    func draw(in view: MTKView) {}
 }
 
 extension Runtime: NSWindowDelegate {

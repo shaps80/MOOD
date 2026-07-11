@@ -53,11 +53,12 @@ Implemented/decided so far:
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
 - `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.
+- `PixlMetalPlatform.run()` is the single public macOS runtime entry point. It owns the temporary AppKit/MTKView window harness and its Metal device; `Pixl.run()` reaches it through Pixl's macOS-conditioned platform dependency.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 Next likely smallest step:
 
-- Prove clear-only submission through PixlGraphics' testing setup, then design the smallest drawable/surface acquisition and presentation boundary. Avoid adding shaders, draw commands, bind groups, or pipelines before that works.
+- Connect the displayed MTKView's current drawable to the clear-only submission path, then design the smallest drawable/surface acquisition and presentation boundary. Avoid adding shaders, draw commands, bind groups, or pipelines before that works.
 
 ## Naming
 
