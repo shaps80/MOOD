@@ -1,5 +1,5 @@
 @_exported import PixlPlatform
-import PixlGraphics
+@_exported import PixlGraphics
 
 #if canImport(PixlMetalPlatform)
 import PixlMetalPlatform

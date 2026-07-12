@@ -7,4 +7,7 @@ public enum DeviceError: Error, Hashable, Sendable {
     case unsupportedFormat(PixelFormat)
     case unsupportedTextureUsage(TextureUsage)
     case invalidTextureDescriptor(TextureDescriptor)
+    case invalidRenderPipelineDescriptor
+    case shaderFunctionNotFound(String)
+    case renderPipelineCreationFailed
 }

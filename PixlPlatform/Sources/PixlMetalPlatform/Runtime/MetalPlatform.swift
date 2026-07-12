@@ -8,7 +8,7 @@ final class MetalPlatform: @MainActor Platform {
     private let drawables: ResourcePool<any CAMetalDrawable>
 
     var device: any Device { metalDevice }
-    let shaders: ShaderRegistry
+    var shaders: ShaderRegistry { metalDevice.shaders }
 
     @MainActor
     init(view: MTKView, renderSettings: RenderSettings) {
@@ -19,6 +19,7 @@ final class MetalPlatform: @MainActor Platform {
         let metalDevice = MetalDevice(
             device: nativeDevice,
             bufferCapacity: renderSettings.bufferCapacity,
+            pipelineCapacity: renderSettings.pipelineCapacity,
             textureCapacity: renderSettings.textureCapacity
         )
         guard let commandQueue = nativeDevice.makeCommandQueue() else {
@@ -26,8 +27,12 @@ final class MetalPlatform: @MainActor Platform {
         }
 
         self.metalDevice = metalDevice
-        shaders = ShaderRegistry(device: metalDevice)
-        queue = MetalQueue(queue: commandQueue, textures: metalDevice.textures)
+        queue = MetalQueue(
+            queue: commandQueue,
+            buffers: metalDevice.buffers,
+            pipelines: metalDevice.pipelines,
+            textures: metalDevice.textures
+        )
         self.view = view
         drawables = ResourcePool(capacity: renderSettings.drawableCapacity)
     }

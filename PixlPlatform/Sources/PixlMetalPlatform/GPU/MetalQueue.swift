@@ -4,10 +4,19 @@ import PixlPlatform
 
 final class MetalQueue: Queue {
     private let queue: MTLCommandQueue
+    private let buffers: ResourcePool<MTLBuffer>
+    private let pipelines: ResourcePool<MetalRenderPipeline>
     private let textures: ResourcePool<MTLTexture>
 
-    init(queue: MTLCommandQueue, textures: ResourcePool<MTLTexture>) {
+    init(
+        queue: MTLCommandQueue,
+        buffers: ResourcePool<MTLBuffer>,
+        pipelines: ResourcePool<MetalRenderPipeline>,
+        textures: ResourcePool<MTLTexture>
+    ) {
         self.queue = queue
+        self.buffers = buffers
+        self.pipelines = pipelines
         self.textures = textures
     }
 
@@ -30,7 +39,7 @@ final class MetalQueue: Queue {
 
             switch pass {
             case .render(let renderPass):
-                try encode(renderPass, into: commandBuffer)
+                try encode(renderPass, from: frame, into: commandBuffer)
             case .compute:
                 throw QueueError.unsupportedPass
             }
@@ -47,6 +56,7 @@ final class MetalQueue: Queue {
 
     private func encode(
         _ pass: RenderPass,
+        from frame: borrowing Frame,
         into commandBuffer: MTLCommandBuffer
     ) throws(QueueError) {
         let attachment = pass.colorAttachment
@@ -70,6 +80,31 @@ final class MetalQueue: Queue {
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
             throw QueueError.encoderCreationFailed
+        }
+
+        var drawIndex = pass.drawStart
+        let drawEnd = pass.drawStart + pass.drawCount
+        while drawIndex < drawEnd {
+            let draw = frame[draw: drawIndex]
+
+            guard buffers.withValue(for: draw.vertexBuffer.id, { buffer in
+                encoder.setVertexBuffer(buffer.pointee, offset: 0, index: 0)
+                return true
+            }) == true else {
+                throw QueueError.invalidResource
+            }
+            guard pipelines.withValue(for: draw.pipeline.id, { pipeline in
+                encoder.setRenderPipelineState(pipeline.pointee.state)
+                encoder.drawPrimitives(
+                    type: pipeline.pointee.topology,
+                    vertexStart: 0,
+                    vertexCount: Int(draw.vertexCount)
+                )
+                return true
+            }) == true else {
+                throw QueueError.invalidResource
+            }
+            drawIndex += 1
         }
 
         encoder.endEncoding()

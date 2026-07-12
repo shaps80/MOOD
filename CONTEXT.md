@@ -98,6 +98,9 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 `RenderPipeline`
 : Compiled render configuration. Combines shader functions, vertex layout, attachment formats, blending, depth/stencil behavior, and primitive topology.
 
+`DrawCommand`
+: A non-indexed draw using one render pipeline and one vertex buffer. Frame-owned fixed-capacity command storage keeps recording allocation-free; additional buffer/index/binding forms can extend this primitive.
+
 `VertexLayout`
 : Fixed-capacity vertex-input description. Owns ordered vertex-buffer layouts and vertex attributes without `Array` storage. Games define the byte layout of their own vertex structs; PixlPlatform does not impose a `Vertex` protocol or concrete vertex type.
 
@@ -158,10 +161,10 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 ## Frame Shape
 
 `Frame`
-: Platform-agnostic description of GPU work for one frame. Contains ordered passes and enough metadata for profiling.
+: Platform-agnostic description of GPU work for one frame. Contains ordered passes plus fixed-capacity draw-command storage and enough metadata for profiling.
 
 `RenderSettings`
-: Startup-only render configuration: drawable pixel format plus fixed capacities for reusable frame-pass, texture, and drawable storage. `Game` supplies these with a default implementation; they are not read in the frame loop.
+: Startup-only render configuration: drawable pixel format plus fixed capacities for reusable frame-pass, draw-command, buffer, render-pipeline, texture, and drawable storage. `Game` supplies these with a default implementation; they are not read in the frame loop.
 
 `GameSettings`
 : Startup-only game-window settings: title, initial resolution, resizability, and preferred frame rate. `Game` supplies these with a default implementation.

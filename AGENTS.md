@@ -40,6 +40,7 @@ The first vertical slice is intentionally small: describe a frame with ordered p
 Implemented/decided so far:
 
 - `Frame` owns reusable fixed-capacity contiguous `Pass` storage. Runtime resets it each redraw; game code records through `append`; platform backends iterate it directly.
+- `Frame.beginRenderPass` returns a value-type encoder that appends to its fixed-capacity draw-command storage. This keeps per-frame draw recording allocation-free; draw commands for a pass must be recorded contiguously.
 - `VertexLayout` owns fixed-capacity contiguous vertex-buffer and attribute descriptions. It defines GPU byte layout only; games retain ownership of their vertex Swift types and bytes.
 - `Pass` currently supports `.render(RenderPass)` and `.compute(ComputePass)`.
 - `RenderPass` owns a `ColorAttachment`.
@@ -49,17 +50,18 @@ Implemented/decided so far:
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
 - `Buffer` follows the same opaque-handle model as `Texture`. `Device.makeBuffer` supports fixed-size allocation or a synchronous copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
 - `Shader` owns immutable compiled shader bytes; `ShaderLibrary` is an opaque backend-native reference object created from it. Shader libraries are retained by normal object lifetime, not a resource pool or `RenderSettings` capacity. `PixlShaderPlugin` lives in PixlPlatform and currently attaches to PixlGraphics to generate its built-in shader resource; future Game-authored shader resources can attach the same plugin to their Game target.
-- `ShaderCatalogue.default` is PixlGraphics' generated built-in shader and Pixl registers it automatically before `PlatformGame` initialization. Generated `Shaders.vertex` and `Shaders.fragment` are game-facing entry-point values. `Platform.shaders` is the platform-owned `ShaderRegistry`; games append their own shaders from `init(on:)` without managing shader-library lifetime or platform resource loading.
+- `ShaderCatalogue.default` is PixlGraphics' generated built-in shader and Pixl registers it automatically before `PlatformGame` initialization. Generated `Shaders.vertex` and `Shaders.fragment` are game-facing entry-point values. `Platform.shaders` is the platform-owned `ShaderRegistry`; games append their own shaders from `init(platform:)` without managing shader-library lifetime or platform resource loading.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
-- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. Its throwing `init(on:)` runs after the concrete platform and built-in shaders exist, allowing games to create immutable startup resources without optional storage. It records into the runtime-owned `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
+- `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. Its throwing `init(platform:)` runs after the concrete platform and built-in shaders exist, allowing games to create immutable startup resources without optional storage. It records into the runtime-owned `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity `ResourcePool<MTLBuffer>` and `ResourcePool<MTLTexture>` storage whose capacities are supplied explicitly at initialization.
+- `MetalDevice` also owns fixed-capacity `ResourcePool<MetalRenderPipeline>` storage. Public `RenderPipeline` is an opaque `ResourceID` handle, so draw encoding resolves native state directly without existential storage or per-draw type casts.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
-- `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.
+- `MetalQueue.submit` resolves render targets, pipelines, and vertex buffers for ordered render passes, then encodes Metal primitive draws and commits the command buffer.
 - `PixlMetalPlatform.run(_:)` is the single public macOS runtime entry point. It owns the AppKit/MTKView window runtime and its Metal device; `Pixl.run(_:)` reaches it through Pixl's macOS-conditioned platform dependency.
 - `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles. The capacities come from game-provided `RenderSettings` at startup.
 - `GameSettings` configures startup window/runtime values such as title, initial resolution, resizability, and preferred frame rate. `Game` supplies it with a default implementation.
