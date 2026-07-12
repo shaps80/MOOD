@@ -11,11 +11,13 @@ struct PixlShaderGenerator {
         let outputDirectory = URL(fileURLWithPath: arguments[outputIndex + 1])
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
-        let sourceURL = outputDirectory.appending(path: "PixlBuiltIn.metal")
-        let airURL = outputDirectory.appending(path: "PixlBuiltIn.air")
-        let libraryURL = outputDirectory.appending(path: "PixlBuiltIn.metallib")
+        let sourceURL = outputDirectory.appending(path: "PixlGraphics.metal")
+        let airURL = outputDirectory.appending(path: "PixlGraphics.air")
+        let libraryURL = outputDirectory.appending(path: "PixlGraphics.metallib")
+        let registryURL = outputDirectory.appending(path: "ShaderCatalogue.swift")
 
         try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        try registrySource.write(to: registryURL, atomically: true, encoding: .utf8)
         defer {
             try? FileManager.default.removeItem(at: sourceURL)
             try? FileManager.default.removeItem(at: airURL)
@@ -48,6 +50,28 @@ struct PixlShaderGenerator {
 
     fragment float4 pixlFragment(VertexOutput input [[stage_in]]) {
         return input.color;
+    }
+    """
+
+    private static let registrySource = """
+    import Foundation
+    import PixlPlatform
+
+    public enum ShaderCatalogue {
+        public static var `default`: Shader {
+            guard let url = Bundle.module.url(
+                forResource: "PixlGraphics",
+                withExtension: "metallib"
+            ) else {
+                fatalError("Generated PixlGraphics shader library is missing")
+            }
+
+            guard let data = try? Data(contentsOf: url) else {
+                fatalError("Generated PixlGraphics shader library could not be read")
+            }
+
+            return data.withUnsafeBytes { Shader(copying: $0) }
+        }
     }
     """
 

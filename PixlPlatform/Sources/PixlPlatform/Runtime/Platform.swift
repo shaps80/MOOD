@@ -1,7 +1,15 @@
 import Swift
 
 public protocol PlatformGame {
-    mutating func setup(on platform: any Platform) throws
+    static var defaultShaders: Shader { get }
+    static var gameSettings: GameSettings { get }
+    static var renderSettings: RenderSettings { get }
+
+    init()
+
+    func prepare(
+        on platform: any Platform
+    ) throws
 
     func render(
         on platform: any Platform,
@@ -11,11 +19,12 @@ public protocol PlatformGame {
 }
 
 public extension PlatformGame {
-    mutating func setup(on platform: any Platform) throws {}
+    func prepare(on platform: any Platform) throws {}
 }
 
 public protocol Platform: AnyObject {
     var device: any Device { get }
+    var shaders: ShaderRegistry { get }
 
     func drawable() -> Drawable?
 

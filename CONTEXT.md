@@ -86,6 +86,12 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 `Shader`
 : Owned immutable bytes loaded from a generated game shader resource. `Shader` keeps resource loading and byte ownership outside platform implementations while avoiding Foundation or bundle APIs in PixlPlatform.
 
+`ShaderCatalogue`
+: PixlGraphics-owned namespace for built-in `Shader` values. `ShaderCatalogue.default` is registered automatically by Pixl before game preparation.
+
+`ShaderRegistry`
+: Platform-owned registry that creates and retains backend shader libraries. Games append their own generated shaders during `PlatformGame.prepare(on:)`; games do not own backend shader-library lifetime.
+
 `ShaderFunction`
 : A specific shader entry point, such as a vertex, fragment, or compute function.
 

@@ -1,15 +1,19 @@
 @_exported import PixlPlatform
+import PixlGraphics
 
 #if canImport(PixlMetalPlatform)
 import PixlMetalPlatform
 #endif
 
 public protocol Game: PlatformGame {
-    init()
-    static var gameSettings: GameSettings { get }
-    static var renderSettings: RenderSettings { get }
     @MainActor
     static func main()
+}
+
+public extension Game {
+    static public var defaultShaders: Shader {
+        ShaderCatalogue.default
+    }
 }
 
 extension Game {
@@ -18,11 +22,7 @@ extension Game {
     @MainActor
     public static func main() {
 #if canImport(PixlMetalPlatform)
-        PixlMetalPlatform.run(
-            Self(),
-            gameSettings: Self.gameSettings,
-            renderSettings: Self.renderSettings
-        )
+        PixlMetalPlatform.run(Self.self)
 #else
         fatalError("No Pixl platform is available for this build")
 #endif

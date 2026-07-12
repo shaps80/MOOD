@@ -23,7 +23,10 @@ let package = Package(
         .target(
             name: "PixlGraphics",
             dependencies: ["PixlPlatform"],
-            swiftSettings: defaultNonisolated
+            swiftSettings: defaultNonisolated,
+            plugins: [
+                .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
+            ]
         ),
         .target(
             name: "Pixl",

@@ -5,9 +5,10 @@ import PixlPlatform
 final class Runtime: NSObject {
     private let device: MTLDevice
     private let frame: Frame
-    private var game: any PlatformGame
+    private let game: any PlatformGame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
+    private let prepare: (any Platform) throws -> Void
     private var platform: MetalPlatform?
     private var window: NSWindow?
     private var gameView: GameView?
@@ -15,7 +16,8 @@ final class Runtime: NSObject {
     init(
         game: any PlatformGame,
         gameSettings: GameSettings,
-        renderSettings: RenderSettings
+        renderSettings: RenderSettings,
+        prepare: @escaping (any Platform) throws -> Void
     ) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not available")
@@ -26,6 +28,7 @@ final class Runtime: NSObject {
         self.game = game
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings
+        self.prepare = prepare
         super.init()
     }
 
@@ -76,9 +79,10 @@ final class Runtime: NSObject {
         platform = MetalPlatform(view: view, renderSettings: renderSettings)
 
         do {
-            try game.setup(on: platform!)
+            try prepare(platform!)
+            try game.prepare(on: platform!)
         } catch {
-            fatalError("Game setup failed: \(error)")
+            fatalError("Game preparation failed: \(error)")
         }
 
         window.title = gameSettings.title
