@@ -30,6 +30,11 @@ final class Condition: @unchecked Sendable {
     }
 
     @inline(__always)
+    func signal() {
+        precondition(pixl_condition_signal(handle) == 0)
+    }
+
+    @inline(__always)
     func broadcast() {
         precondition(pixl_condition_broadcast(handle) == 0)
     }

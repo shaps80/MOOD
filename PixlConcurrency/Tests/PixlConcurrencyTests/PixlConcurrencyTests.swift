@@ -101,6 +101,20 @@ final class PixlConcurrencyTests: XCTestCase {
         XCTAssertTrue(context.values.allSatisfy { $0 == 100 })
     }
 
+    func testExecutionGroupReleasesPersistentWorkers() {
+        weak var releasedGroup: ExecutionGroup<CoverageProgram>?
+
+        do {
+            let group = ExecutionGroup<CoverageProgram>(
+                topology: nil,
+                settings: .init(laneCount: .fixed(4))
+            )
+            releasedGroup = group
+        }
+
+        XCTAssertNil(releasedGroup)
+    }
+
     func testRepeatedPhaseBarriers() {
         let laneCount = 8
         let group = ExecutionGroup<PhaseProgram>(

@@ -18,7 +18,7 @@ struct Game: Pixl.Game {
 
     static var gameSettings: GameSettings {
         .init(
-            title: "Testing",
+            title: "Pixl",
             resolution: .init(
                 width: 800,
                 height: 400

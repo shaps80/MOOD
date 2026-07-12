@@ -1,6 +1,13 @@
 // swift-tools-version: 6.3
 import PackageDescription
 
+let releaseCrossModuleOptimization: [SwiftSetting] = [
+    .unsafeFlags(
+        ["-enable-cmo-everything"],
+        .when(configuration: .release)
+    )
+]
+
 let package = Package(
     name: "PixlConcurrency",
     platforms: [
@@ -28,7 +35,9 @@ let package = Package(
                 "PixlConcurrencyC",
                 .product(name: "Atomics", package: "swift-atomics")
             ],
-            swiftSettings: [.defaultIsolation(nil)]
+            swiftSettings: releaseCrossModuleOptimization + [
+                .defaultIsolation(nil)
+            ]
         ),
         .target(
             name: "PixlConcurrencyC",

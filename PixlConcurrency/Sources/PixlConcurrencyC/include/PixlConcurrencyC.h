@@ -20,6 +20,7 @@ void pixl_condition_destroy(pixl_condition_t *condition);
 int pixl_condition_lock(pixl_condition_t *condition);
 int pixl_condition_unlock(pixl_condition_t *condition);
 int pixl_condition_wait(pixl_condition_t *condition);
+int pixl_condition_signal(pixl_condition_t *condition);
 int pixl_condition_broadcast(pixl_condition_t *condition);
 
 void pixl_topology_query(

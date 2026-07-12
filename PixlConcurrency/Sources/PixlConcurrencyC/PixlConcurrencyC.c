@@ -89,6 +89,11 @@ int pixl_condition_wait(pixl_condition_t *condition) {
     ) ? 0 : -1;
 }
 
+int pixl_condition_signal(pixl_condition_t *condition) {
+    WakeConditionVariable(&condition->condition);
+    return 0;
+}
+
 int pixl_condition_broadcast(pixl_condition_t *condition) {
     WakeAllConditionVariable(&condition->condition);
     return 0;
@@ -197,6 +202,10 @@ int pixl_condition_unlock(pixl_condition_t *condition) {
 
 int pixl_condition_wait(pixl_condition_t *condition) {
     return pthread_cond_wait(&condition->condition, &condition->mutex);
+}
+
+int pixl_condition_signal(pixl_condition_t *condition) {
+    return pthread_cond_signal(&condition->condition);
 }
 
 int pixl_condition_broadcast(pixl_condition_t *condition) {

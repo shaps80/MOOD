@@ -1,103 +1,154 @@
-import Swift
+import Atomics
 
 package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
-    package let laneCount: Int
+    package var laneCount: Int { state.laneCount }
 
-    private let condition = Condition()
-    private let barrier: LaneBarrier
+    private let state: ExecutionState<Program>
     private var workers: [Thread] = []
-    private var context: Program.Context?
-    private var remaining = 0
-    private var readyCount = 0
-    private var generation = 0
-    private var isRunning = false
-    private var isStopping = false
 
     package init(
         topology: ExecutionTopology? = nil,
         settings: ExecutionSettings = .init()
     ) {
-        laneCount = settings.resolvedLaneCount(for: topology ?? .current)
-        barrier = LaneBarrier(participantCount: laneCount)
+        let laneCount = settings.resolvedLaneCount(for: topology ?? .current)
+        state = ExecutionState(laneCount: laneCount)
         workers.reserveCapacity(max(0, laneCount - 1))
 
         for index in 1..<laneCount {
-            let worker = Thread { [self] in workerLoop(index: index) }
+            let state = state
+            let worker = Thread {
+                state.workerLoop(index: index)
+            }
             workers.append(worker)
             worker.start()
         }
 
-        condition.lock()
-        while readyCount < laneCount - 1 { condition.wait() }
-        condition.unlock()
+        state.waitUntilReady()
     }
 
     deinit {
-        condition.lock()
-        isStopping = true
-        generation &+= 1
-        condition.broadcast()
-        condition.unlock()
-
+        state.stop()
         for worker in workers {
             worker.join()
         }
     }
 
     package func run(_ context: Program.Context) {
-        condition.lock()
-        precondition(!isRunning, "ExecutionGroup does not support concurrent runs")
-        isRunning = true
-        self.context = context
-        remaining = laneCount - 1
-        generation &+= 1
-        condition.broadcast()
-        condition.unlock()
+        state.run(context)
+    }
+}
 
-        Program.execute(
-            context,
-            on: Lane(index: 0, count: laneCount, barrier: barrier)
-        )
+private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
+    let laneCount: Int
 
-        condition.lock()
-        while remaining > 0 { condition.wait() }
-        self.context = nil
-        isRunning = false
-        condition.unlock()
+    private let workCondition = Condition()
+    private let completionCondition = Condition()
+    private let barrier: LaneBarrier
+    private var context: Unmanaged<Program.Context>?
+    private let remaining = ManagedAtomic<Int>(0)
+    private let isRunning = ManagedAtomic<Bool>(false)
+    private var readyCount = 0
+    private var workGeneration = 0
+    private var completionGeneration = 0
+    private var isStopping = false
+
+    init(laneCount: Int) {
+        self.laneCount = laneCount
+        barrier = LaneBarrier(participantCount: laneCount)
     }
 
-    private func workerLoop(index: Int) {
+    func waitUntilReady() {
+        workCondition.lock()
+        while readyCount < laneCount - 1 { workCondition.wait() }
+        workCondition.unlock()
+    }
+
+    func stop() {
+        workCondition.lock()
+        isStopping = true
+        workGeneration &+= 1
+        workCondition.broadcast()
+        workCondition.unlock()
+    }
+
+    func run(_ context: Program.Context) {
+        let acquiredRun = isRunning.compareExchange(
+            expected: false,
+            desired: true,
+            ordering: .acquiringAndReleasing
+        ).exchanged
+        precondition(acquiredRun, "ExecutionGroup does not support concurrent runs")
+        defer { isRunning.store(false, ordering: .releasing) }
+
+        let leaderLane = Lane(index: 0, count: laneCount, barrier: barrier)
+        guard laneCount > 1 else {
+            Program.execute(context, on: leaderLane)
+            return
+        }
+
+        completionCondition.lock()
+        let expectedCompletion = completionGeneration
+        completionCondition.unlock()
+
+        remaining.store(laneCount - 1, ordering: .relaxed)
+
+        workCondition.lock()
+        self.context = .passUnretained(context)
+        workGeneration &+= 1
+        workCondition.broadcast()
+        workCondition.unlock()
+
+        Program.execute(context, on: leaderLane)
+
+        completionCondition.lock()
+        while completionGeneration == expectedCompletion {
+            completionCondition.wait()
+        }
+        completionCondition.unlock()
+
+        workCondition.lock()
+        self.context = nil
+        workCondition.unlock()
+    }
+
+    func workerLoop(index: Int) {
         var observedGeneration = 0
 
-        condition.lock()
+        workCondition.lock()
         readyCount += 1
-        condition.broadcast()
-        condition.unlock()
+        workCondition.broadcast()
+        workCondition.unlock()
 
         while true {
-            condition.lock()
-            while generation == observedGeneration && !isStopping {
-                condition.wait()
+            workCondition.lock()
+            while workGeneration == observedGeneration && !isStopping {
+                workCondition.wait()
             }
             guard !isStopping else {
-                condition.unlock()
+                workCondition.unlock()
                 return
             }
 
-            observedGeneration = generation
+            observedGeneration = workGeneration
             let context = context
-            condition.unlock()
+            workCondition.unlock()
 
             guard let context else { continue }
             Program.execute(
-                context,
+                context.takeUnretainedValue(),
                 on: Lane(index: index, count: laneCount, barrier: barrier)
             )
 
-            condition.lock()
-            remaining -= 1
-            if remaining == 0 { condition.broadcast() }
-            condition.unlock()
+            let previousRemaining = remaining.loadThenWrappingDecrement(
+                ordering: .acquiringAndReleasing
+            )
+            precondition(previousRemaining > 0)
+            if previousRemaining == 1 {
+                completionCondition.lock()
+                completionGeneration &+= 1
+                completionCondition.signal()
+                completionCondition.unlock()
+            }
         }
     }
 }

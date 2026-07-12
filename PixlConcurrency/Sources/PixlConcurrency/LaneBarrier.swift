@@ -1,11 +1,23 @@
 import Atomics
 
 final class LaneBarrier: @unchecked Sendable {
+    private static let spinCount = 1_000
+
     private let participantCount: Int
-    private let arrivalCount = ManagedAtomic<Int>(0)
-    private let generation = ManagedAtomic<Int>(0)
-    private let parkedWaiterCount = ManagedAtomic<Int>(0)
+    private let atomicStorage = BarrierAtomicStorage()
     private let parkCondition = Condition()
+
+    private var arrivalCount: UnsafeAtomic<Int> {
+        atomicStorage.arrivalCount
+    }
+
+    private var generation: UnsafeAtomic<Int> {
+        atomicStorage.generation
+    }
+
+    private var parkedWaiterCount: UnsafeAtomic<Int> {
+        atomicStorage.parkedWaiterCount
+    }
 
     init(participantCount: Int) {
         precondition(participantCount > 0)
@@ -32,7 +44,7 @@ final class LaneBarrier: @unchecked Sendable {
             return
         }
 
-        for _ in 0..<2_000 {
+        for _ in 0..<Self.spinCount {
             if generation.load(ordering: .acquiring) != currentGeneration {
                 return
             }

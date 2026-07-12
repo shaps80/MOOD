@@ -1,7 +1,7 @@
 import PixlConcurrencyC
 
 enum Topology {
-    static var current: ExecutionTopology {
+    static let current: ExecutionTopology = {
         var availableCount: Int32 = 1
         var performanceCount: Int32 = 0
         pixl_topology_query(&availableCount, &performanceCount)
@@ -12,5 +12,5 @@ enum Topology {
                 ? Int(performanceCount)
                 : nil
         )
-    }
+    }()
 }
