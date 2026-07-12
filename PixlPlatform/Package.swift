@@ -38,6 +38,10 @@ let package = Package(
             name: "PixlMetalPlatformBenchmarkRunner",
             targets: ["PixlMetalPlatformBenchmarkRunner"]
         ),
+        .plugin(
+            name: "PixlShaderPlugin",
+            targets: ["PixlShaderPlugin"]
+        ),
     ],
     dependencies: [
         .package(
@@ -54,6 +58,14 @@ let package = Package(
             name: "PixlMetalPlatform",
             dependencies: ["PixlPlatform"],
             swiftSettings: defaultNonisolated
+        ),
+        .executableTarget(
+            name: "PixlShaderGenerator"
+        ),
+        .plugin(
+            name: "PixlShaderPlugin",
+            capability: .buildTool(),
+            dependencies: ["PixlShaderGenerator"]
         ),
         .target(
             name: "PixlPlatformTestSupport",

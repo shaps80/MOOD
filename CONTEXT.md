@@ -81,7 +81,10 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 ## Shaders and Pipelines
 
 `ShaderLibrary`
-: Collection of compiled shader functions available to the backend.
+: Opaque backend-native library object. It is created from an owned `Shader` and retained directly by game or pipeline lifetime; it is not a pooled resource.
+
+`Shader`
+: Owned immutable bytes loaded from a generated game shader resource. `Shader` keeps resource loading and byte ownership outside platform implementations while avoiding Foundation or bundle APIs in PixlPlatform.
 
 `ShaderFunction`
 : A specific shader entry point, such as a vertex, fragment, or compute function.

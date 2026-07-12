@@ -48,6 +48,7 @@ Implemented/decided so far:
 - `Texture` is an opaque backend resource handle plus immutable `TextureDescriptor`.
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
 - `Buffer` follows the same opaque-handle model as `Texture`. `Device.makeBuffer` supports fixed-size allocation or a synchronous copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
+- `Shader` owns immutable compiled shader bytes; `ShaderLibrary` is an opaque backend-native reference object created from it. Shader libraries are retained by normal object lifetime, not a resource pool or `RenderSettings` capacity. `PixlShaderPlugin` lives in PixlPlatform but attaches only to Game targets that opt in; generated shaders belong to the Game resource namespace.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.

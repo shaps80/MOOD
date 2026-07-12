@@ -6,6 +6,9 @@ public protocol Device {
         copying bytes: UnsafeRawBufferPointer,
         usage: BufferUsage
     ) throws(DeviceError) -> Buffer
+
+    func makeShaderLibrary(_ shader: borrowing Shader) throws(DeviceError) -> any ShaderLibrary
+
     func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture
     func makeQueue() throws(DeviceError) -> any Queue
 }

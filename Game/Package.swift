@@ -7,12 +7,16 @@ let package = Package(
         .macOS(.v13)
     ],
     dependencies: [
-        .package(path: "../Pixl")
+        .package(path: "../Pixl"),
+        .package(path: "../PixlPlatform")
     ],
     targets: [
         .executableTarget(
             name: "Game",
-            dependencies: ["Pixl"]
+            dependencies: ["Pixl"],
+            plugins: [
+                .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
+            ]
         )
     ],
     swiftLanguageModes: [.v6]

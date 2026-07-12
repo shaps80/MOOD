@@ -5,7 +5,7 @@ import PixlPlatform
 final class Runtime: NSObject {
     private let device: MTLDevice
     private let frame: Frame
-    private let game: any PlatformGame
+    private var game: any PlatformGame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
     private var platform: MetalPlatform?
@@ -74,6 +74,12 @@ final class Runtime: NSObject {
         view.preferredFramesPerSecond = gameSettings.preferredFps
 
         platform = MetalPlatform(view: view, renderSettings: renderSettings)
+
+        do {
+            try game.setup(on: platform!)
+        } catch {
+            fatalError("Game setup failed: \(error)")
+        }
 
         window.title = gameSettings.title
         window.contentView = view

@@ -1,11 +1,17 @@
 import Swift
 
 public protocol PlatformGame {
+    mutating func setup(on platform: any Platform) throws
+
     func render(
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame
     ) throws
+}
+
+public extension PlatformGame {
+    mutating func setup(on platform: any Platform) throws {}
 }
 
 public protocol Platform: AnyObject {

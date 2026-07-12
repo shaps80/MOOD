@@ -1,3 +1,5 @@
+import Dispatch
+import Foundation
 import Metal
 import PixlPlatform
 
@@ -16,7 +18,10 @@ final class MetalDevice: Device {
         textures = ResourcePool(capacity: textureCapacity)
     }
 
-    convenience init?(bufferCapacity: UInt32, textureCapacity: UInt32) {
+    convenience init?(
+        bufferCapacity: UInt32,
+        textureCapacity: UInt32
+    ) {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
         self.init(
             device: device,
@@ -66,6 +71,21 @@ final class MetalDevice: Device {
         }
 
         return Buffer(id: id, descriptor: descriptor)
+    }
+
+    func makeShaderLibrary(_ shader: borrowing Shader) throws(DeviceError) -> any ShaderLibrary {
+        let library: MTLLibrary
+
+        do {
+            library = try shader.withUnsafeBytes {
+                try metalDevice.makeLibrary(data: DispatchData(bytes: $0))
+            }
+        } catch {
+            throw DeviceError.resourceCreationFailed(.shader)
+        }
+
+        print("PixlMetalPlatform loaded shader functions: \(library.functionNames)")
+        return MetalShaderLibrary(library: library)
     }
 
     func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture {

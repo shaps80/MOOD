@@ -1,0 +1,69 @@
+import Foundation
+
+@main
+struct PixlShaderGenerator {
+    static func main() throws {
+        let arguments = CommandLine.arguments
+        guard let outputIndex = arguments.firstIndex(of: "--output"),
+              arguments.indices.contains(outputIndex + 1)
+        else { throw ShaderGeneratorError.missingOutputDirectory }
+
+        let outputDirectory = URL(fileURLWithPath: arguments[outputIndex + 1])
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let sourceURL = outputDirectory.appending(path: "PixlBuiltIn.metal")
+        let airURL = outputDirectory.appending(path: "PixlBuiltIn.air")
+        let libraryURL = outputDirectory.appending(path: "PixlBuiltIn.metallib")
+
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        defer {
+            try? FileManager.default.removeItem(at: sourceURL)
+            try? FileManager.default.removeItem(at: airURL)
+        }
+
+        try run("metal", ["-c", sourceURL.path(), "-o", airURL.path()])
+        try run("metallib", [airURL.path(), "-o", libraryURL.path()])
+    }
+
+    private static let source = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexOutput {
+        float4 position [[position]];
+        float4 color;
+    };
+
+    vertex VertexOutput pixlVertex(uint vertexID [[vertex_id]]) {
+        constexpr float2 positions[3] = {
+            float2(0.0, 0.5), float2(-0.5, -0.5), float2(0.5, -0.5)
+        };
+        constexpr float4 colors[3] = {
+            float4(1.0, 0.0, 0.0, 1.0),
+            float4(0.0, 1.0, 0.0, 1.0),
+            float4(0.0, 0.0, 1.0, 1.0)
+        };
+        return { float4(positions[vertexID], 0.0, 1.0), colors[vertexID] };
+    }
+
+    fragment float4 pixlFragment(VertexOutput input [[stage_in]]) {
+        return input.color;
+    }
+    """
+
+    private static func run(_ tool: String, _ arguments: [String]) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        process.arguments = [tool] + arguments
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw ShaderGeneratorError.toolFailed(tool)
+        }
+    }
+}
+
+private enum ShaderGeneratorError: Error {
+    case missingOutputDirectory
+    case toolFailed(String)
+}
