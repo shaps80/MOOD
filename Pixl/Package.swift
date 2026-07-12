@@ -18,6 +18,13 @@ let defaultNonisolated: [SwiftSetting] = [
     .defaultIsolation(nil)
 ]
 
+let releaseCrossModuleOptimization: [SwiftSetting] = [
+    .unsafeFlags(
+        ["-cross-module-optimization"],
+        .when(configuration: .release)
+    )
+]
+
 let package = Package(
     name: "Pixl",
     platforms: [
@@ -47,25 +54,30 @@ let package = Package(
                 "Pixl2D",
                 "Pixl3D"
             ],
-            swiftSettings: defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .target(
             name: "Pixl2D",
             dependencies: dependencies,
-            swiftSettings: defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .target(
             name: "Pixl3D",
             dependencies: dependencies,
-            swiftSettings: defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .target(
             name: "PixlGraphics",
             dependencies: ["PixlPlatform"],
-            swiftSettings: defaultNonisolated,
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated,
             plugins: [
                 .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
             ]
+        ),
+        .testTarget(
+            name: "PixlTests",
+            dependencies: ["Pixl"],
+            swiftSettings: defaultNonisolated
         ),
     ],
     swiftLanguageModes: [.v6]

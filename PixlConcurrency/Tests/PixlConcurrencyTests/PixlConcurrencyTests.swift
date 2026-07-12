@@ -1,5 +1,4 @@
-import Foundation
-import XCTest
+import Testing
 @testable import PixlConcurrency
 
 private final class CoverageContext: @unchecked Sendable {
@@ -70,24 +69,30 @@ private enum PhaseProgram: LaneProgram {
     }
 }
 
-final class PixlConcurrencyTests: XCTestCase {
-    func testStaticRangesCoverEveryElementExactlyOnce() {
+@Suite("PixlConcurrency")
+struct PixlConcurrencyTests {
+    @Test
+    func staticRangesCoverEveryElementExactlyOnce() {
         verifyCoverage(dynamic: false, count: 10_003, laneCount: 7)
     }
 
-    func testDynamicChunksCoverEveryElementExactlyOnce() {
+    @Test
+    func dynamicChunksCoverEveryElementExactlyOnce() {
         verifyCoverage(dynamic: true, count: 10_003, laneCount: 7)
     }
 
-    func testSingleLaneExecution() {
+    @Test
+    func singleLaneExecution() {
         verifyCoverage(dynamic: true, count: 1_003, laneCount: 1)
     }
 
-    func testMoreLanesThanElements() {
+    @Test
+    func moreLanesThanElements() {
         verifyCoverage(dynamic: true, count: 3, laneCount: 8)
     }
 
-    func testRepeatedRunsReusePersistentWorkers() {
+    @Test
+    func repeatedRunsReusePersistentWorkers() {
         let group = ExecutionGroup<CoverageProgram>(
             topology: nil,
             settings: .init(laneCount: .fixed(4))
@@ -98,10 +103,11 @@ final class PixlConcurrencyTests: XCTestCase {
             group.run(context)
         }
 
-        XCTAssertTrue(context.values.allSatisfy { $0 == 100 })
+        #expect(context.values.allSatisfy { $0 == 100 })
     }
 
-    func testExecutionGroupReleasesPersistentWorkers() {
+    @Test
+    func executionGroupReleasesPersistentWorkers() {
         weak var releasedGroup: ExecutionGroup<CoverageProgram>?
 
         do {
@@ -112,10 +118,11 @@ final class PixlConcurrencyTests: XCTestCase {
             releasedGroup = group
         }
 
-        XCTAssertNil(releasedGroup)
+        #expect(releasedGroup == nil)
     }
 
-    func testRepeatedPhaseBarriers() {
+    @Test
+    func repeatedPhaseBarriers() {
         let laneCount = 8
         let group = ExecutionGroup<PhaseProgram>(
             topology: nil,
@@ -125,20 +132,22 @@ final class PixlConcurrencyTests: XCTestCase {
 
         group.run(context)
 
-        XCTAssertTrue(context.values.allSatisfy { $0 == 32 })
+        #expect(context.values.allSatisfy { $0 == 32 })
     }
 
-    func testAutomaticSettingsPreferPerformanceProcessors() {
+    @Test
+    func automaticSettingsPreferPerformanceProcessors() {
         let topology = ExecutionTopology(
             availableProcessorCount: 14,
             performanceProcessorCount: 10
         )
         let group = ExecutionGroup<CoverageProgram>(topology: topology)
 
-        XCTAssertEqual(group.laneCount, 10)
+        #expect(group.laneCount == 10)
     }
 
-    func testExplicitSettingsRemainAuthoritative() {
+    @Test
+    func explicitSettingsRemainAuthoritative() {
         let topology = ExecutionTopology(
             availableProcessorCount: 14,
             performanceProcessorCount: 10
@@ -148,27 +157,30 @@ final class PixlConcurrencyTests: XCTestCase {
             settings: .init(laneCount: .fixed(1))
         )
 
-        XCTAssertEqual(group.laneCount, 1)
+        #expect(group.laneCount == 1)
     }
 
-    func testEmptyCursorHasNoWork() {
+    @Test
+    func emptyCursorHasNoWork() {
         let cursor = WorkCursor(count: 0, chunkSize: 8)
 
-        XCTAssertNil(cursor.claim())
+        #expect(cursor.claim() == nil)
         cursor.reset()
-        XCTAssertNil(cursor.claim())
+        #expect(cursor.claim() == nil)
     }
 
-    func testCursorHandlesNonDivisibleTail() {
+    @Test
+    func cursorHandlesNonDivisibleTail() {
         let cursor = WorkCursor(count: 10, chunkSize: 4)
 
-        XCTAssertEqual(cursor.claim(), 0..<4)
-        XCTAssertEqual(cursor.claim(), 4..<8)
-        XCTAssertEqual(cursor.claim(), 8..<10)
-        XCTAssertNil(cursor.claim())
+        #expect(cursor.claim() == 0..<4)
+        #expect(cursor.claim() == 4..<8)
+        #expect(cursor.claim() == 8..<10)
+        #expect(cursor.claim() == nil)
     }
 
-    func testCursorHonorsChunkAlignment() {
+    @Test
+    func cursorHonorsChunkAlignment() {
         let cursor = WorkCursor(
             count: 1_003,
             laneCount: 7,
@@ -176,19 +188,20 @@ final class PixlConcurrencyTests: XCTestCase {
             alignment: 8
         )
 
-        XCTAssertEqual(cursor.chunkSize % 8, 0)
+        #expect(cursor.chunkSize % 8 == 0)
         while let range = cursor.claim() {
-            XCTAssertEqual(range.lowerBound % 8, 0)
-            XCTAssertLessThanOrEqual(range.upperBound, cursor.count)
+            #expect(range.lowerBound % 8 == 0)
+            #expect(range.upperBound <= cursor.count)
         }
     }
 
-    func testCursorArithmeticAtIntegerBoundary() {
+    @Test
+    func cursorArithmeticAtIntegerBoundary() {
         let cursor = WorkCursor(count: .max, chunkSize: .max - 1)
 
-        XCTAssertEqual(cursor.claim(), 0..<(Int.max - 1))
-        XCTAssertEqual(cursor.claim(), (Int.max - 1)..<Int.max)
-        XCTAssertNil(cursor.claim())
+        #expect(cursor.claim() == 0..<(Int.max - 1))
+        #expect(cursor.claim() == (Int.max - 1)..<Int.max)
+        #expect(cursor.claim() == nil)
     }
 
     private func verifyCoverage(dynamic: Bool, count: Int, laneCount: Int) {
@@ -204,6 +217,6 @@ final class PixlConcurrencyTests: XCTestCase {
 
         group.run(context)
 
-        XCTAssertTrue(context.values.allSatisfy { $0 == 1 })
+        #expect(context.values.allSatisfy { $0 == 1 })
     }
 }

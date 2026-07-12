@@ -3,6 +3,13 @@ import PackageDescription
 
 let releaseCrossModuleOptimization: [SwiftSetting] = [
     .unsafeFlags(
+        ["-cross-module-optimization"],
+        .when(configuration: .release)
+    )
+]
+
+let releaseFullCrossModuleOptimization: [SwiftSetting] = [
+    .unsafeFlags(
         ["-enable-cmo-everything"],
         .when(configuration: .release)
     )
@@ -55,12 +62,12 @@ let package = Package(
     targets: [
         .target(
             name: "PixlPlatform",
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            swiftSettings: releaseFullCrossModuleOptimization + defaultNonisolated
         ),
         .target(
             name: "PixlMetalPlatform",
             dependencies: ["PixlPlatform"],
-            swiftSettings: defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .executableTarget(
             name: "PixlShaderGenerator"

@@ -80,7 +80,8 @@ struct Game: Pixl.Game {
     func render(
         on platform: any Platform,
         output: RenderTarget,
-        frame: borrowing Frame
+        frame: borrowing Frame,
+        time: RenderTime
     ) throws {
         let pass = frame.beginRenderPass(
             RenderPass(

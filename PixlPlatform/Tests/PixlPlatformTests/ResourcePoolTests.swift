@@ -1,14 +1,10 @@
-#if canImport(XCTest)
-import XCTest
+import Testing
 import PixlPlatformTestSupport
 
-final class ResourcePoolTests: XCTestCase {
-    func testCorrectness() throws {
+@Suite("ResourcePool")
+struct ResourcePoolTests {
+    @Test
+    func correctness() throws {
         try ResourcePoolSuite.runChecks()
     }
-
-    func testPerformance() {
-        ResourcePoolSuite.runBenchmarks().printResults()
-    }
 }
-#endif
