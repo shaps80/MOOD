@@ -35,6 +35,7 @@ This file tracks architectural work across sessions. It records direction and de
 
 - [ ] Design a Ryan-style multi-core-by-default lane model rather than a conventional generic job system.
 - [ ] Define persistent lane-group lifetime, lane index/count, barriers, range partitioning, and narrow execution.
+- [x] Run one shared nonmutating `Game` through persistent lanes for fixed and variable updates; game-owned partitioned storage and lane barriers determine parallel workflow.
 - [x] Keep `PixlConcurrency` portable and independent of `PixlMetalPlatform` or another concrete platform.
 - [ ] Decide the portable worker launch/parking backend only when the lane model requires it; add Swift Atomics only when an atomic primitive is implemented.
 - [ ] Prefer explicit ownership, dependencies, and deterministic synchronization over task-per-entity or allocation-heavy scheduling.

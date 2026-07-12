@@ -1,12 +1,12 @@
 import Atomics
 
-package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
-    package var laneCount: Int { state.laneCount }
+public final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
+    public var laneCount: Int { state.laneCount }
 
     private let state: ExecutionState<Program>
     private var workers: [Thread] = []
 
-    package init(
+    public init(
         topology: ExecutionTopology? = nil,
         settings: ExecutionSettings = .init()
     ) {
@@ -33,9 +33,10 @@ package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
         }
     }
 
-    package func run(_ context: Program.Context) {
+    public func run(_ context: Program.Context) {
         state.run(context)
     }
+
 }
 
 private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {

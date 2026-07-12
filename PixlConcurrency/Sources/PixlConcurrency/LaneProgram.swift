@@ -1,6 +1,6 @@
 import Swift
 
-package protocol LaneProgram: SendableMetatype {
+public protocol LaneProgram: SendableMetatype {
     associatedtype Context: AnyObject, Sendable
 
     static func execute(_ context: Context, on lane: Lane)

@@ -1,11 +1,11 @@
 import Swift
 
-package struct Lane: Sendable {
-    package let index: Int
-    package let count: Int
+public struct Lane: Sendable {
+    public let index: Int
+    public let count: Int
     private let barrier: LaneBarrier
 
-    package var isLeader: Bool { index == 0 }
+    public var isLeader: Bool { index == 0 }
 
     init(index: Int, count: Int, barrier: LaneBarrier) {
         self.index = index
@@ -13,7 +13,7 @@ package struct Lane: Sendable {
         self.barrier = barrier
     }
 
-    package func partition(count itemCount: Int) -> Range<Int> {
+    public func partition(count itemCount: Int) -> Range<Int> {
         precondition(itemCount >= 0)
 
         let baseCount = itemCount / count
@@ -27,7 +27,7 @@ package struct Lane: Sendable {
         cursor.claim()
     }
 
-    package func synchronize() {
+    public func synchronize() {
         barrier.synchronize()
     }
 }

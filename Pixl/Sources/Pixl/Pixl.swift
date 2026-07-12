@@ -1,5 +1,6 @@
 @_exported import PixlPlatform
 @_exported import PixlGraphics
+@_exported import PixlConcurrency
 
 #if canImport(PixlMetalPlatform)
 import PixlMetalPlatform
@@ -21,9 +22,9 @@ public extension Game {
         .default
     }
 
-    mutating func fixedUpdate(_ time: FixedTime) {}
+    func fixedUpdate(_ time: FixedTime, lane: Lane) {}
 
-    mutating func update(_ time: UpdateTime) { }
+    func update(_ time: UpdateTime, lane: Lane) { }
 
     @MainActor
     static func main() {

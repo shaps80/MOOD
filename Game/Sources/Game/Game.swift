@@ -3,6 +3,11 @@ import Pixl
 
 @main
 struct Game: Pixl.Game {
+    private final class State: @unchecked Sendable {
+        var rotation: Float = 0
+        var metricsElapsed = 0.0
+    }
+
     private struct Vertex {
         let position: SIMD2<Float>
         let color: SIMD4<Float>
@@ -28,7 +33,7 @@ struct Game: Pixl.Game {
 
     private let vertexBuffer: Buffer
     private let pipeline: RenderPipeline
-    private var rotation: Float = 0
+    private let state = State()
 
     static var gameSettings: GameSettings {
         .init(
@@ -41,8 +46,9 @@ struct Game: Pixl.Game {
         )
     }
 
-    mutating func update(_ time: UpdateTime) {
-        rotation = Float(time.elapsedSeconds)
+    func update(_ time: UpdateTime, lane: Lane) {
+        guard lane.isLeader else { return }
+        state.rotation = Float(time.elapsedSeconds)
     }
 
     init(platform: any Platform) throws {
@@ -96,7 +102,7 @@ struct Game: Pixl.Game {
         )
     }
 
-    mutating func render(
+    func render(
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame,
@@ -112,17 +118,16 @@ struct Game: Pixl.Game {
         )
         pass.setRenderPipeline(pipeline)
         pass.setVertexBuffer(vertexBuffer, index: 0)
-        pass.setVertexBytes(of: Transform(rotation: rotation), index: 1)
+        pass.setVertexBytes(of: Transform(rotation: state.rotation), index: 1)
         pass.drawPrimitives(.triangle, vertexCount: 3)
 
         logMetrics(metrics: time.metrics)
     }
 
-    private var metricsElapsed = 0.0
-    private mutating func logMetrics(metrics: PerformanceMetrics) {
-        metricsElapsed += metrics.frameTimeSeconds
-        guard metricsElapsed >= 5 else { return }
-        metricsElapsed.formTruncatingRemainder(dividingBy: 5)
+    private func logMetrics(metrics: PerformanceMetrics) {
+        state.metricsElapsed += metrics.frameTimeSeconds
+        guard state.metricsElapsed >= 5 else { return }
+        state.metricsElapsed.formTruncatingRemainder(dividingBy: 5)
         print(metrics.summary)
     }
 }

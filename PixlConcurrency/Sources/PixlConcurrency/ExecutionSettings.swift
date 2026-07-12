@@ -1,14 +1,14 @@
 import Swift
 
-package struct ExecutionSettings: Hashable, Sendable {
-    package enum LaneCount: Hashable, Sendable {
+public struct ExecutionSettings: Hashable, Sendable {
+    public enum LaneCount: Hashable, Sendable {
         case automatic
         case fixed(Int)
     }
 
-    package var laneCount: LaneCount
+    public var laneCount: LaneCount
 
-    package init(laneCount: LaneCount = .automatic) {
+    public init(laneCount: LaneCount = .automatic) {
         self.laneCount = laneCount
     }
 
