@@ -48,6 +48,7 @@ struct Game: Pixl.Game {
                 stride: UInt64(MemoryLayout<Vertex>.stride)
             )
         )
+
         vertexLayout.append(
             .init(
                 location: 0,
@@ -56,6 +57,7 @@ struct Game: Pixl.Game {
                 offset: 0
             )
         )
+
         vertexLayout.append(
             .init(
                 location: 1,

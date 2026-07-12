@@ -8,6 +8,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Add `Pixl2D` and `Pixl3D` targets above shared `PixlGraphics` infrastructure.
 - [x] Scaffold package-internal, platform-agnostic `PixlExec` target for the lane-based execution layer.
 - [x] Add isolated macOS XCTest coverage target for `PixlExec`; performance coverage follows with the first lane primitives.
+- [x] Prototype static lane programs, balanced ranges, leader-only work, and reusable barriers; retain the API direction but reject the initial condition-variable barrier.
 - [x] Validate the first Metal path with compiled shaders, a GPU-only vertex buffer, a render pipeline, and a visible triangle.
 - [x] Establish explicit buffer memory intent: GPU-only, CPU-visible, and GPU-to-CPU.
 

@@ -15,7 +15,10 @@ let defaultNonisolated: [SwiftSetting] = [
 let package = Package(
     name: "PixlPlatform",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13),
+        .iOS(.v15),
+        .tvOS(.v15),
+        .visionOS(.v2)
     ],
     products: [
         .library(

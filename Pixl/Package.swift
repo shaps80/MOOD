@@ -21,24 +21,23 @@ let defaultNonisolated: [SwiftSetting] = [
 let package = Package(
     name: "Pixl",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13),
+        .iOS(.v15),
+        .tvOS(.v15),
+        .visionOS(.v2)
     ],
     products: [
         .library(
             name: "Pixl",
             targets: ["Pixl"]
-        ),
-        .library(
-            name: "Pixl2D",
-            targets: ["Pixl2D"]
-        ),
-        .library(
-            name: "Pixl3D",
-            targets: ["Pixl3D"]
         )
     ],
     dependencies: [
-        .package(path: "../PixlPlatform")
+        .package(path: "../PixlPlatform"),
+        .package(
+            url: "https://github.com/apple/swift-atomics.git",
+            from: "1.3.0"
+        )
     ],
     targets: [
         .target(
@@ -52,6 +51,13 @@ let package = Package(
         ),
         .target(
             name: "PixlExec",
+            dependencies: [
+                .product(
+                    name: "PixlPlatform",
+                    package: "PixlPlatform"
+                ),
+                .product(name: "Atomics", package: "swift-atomics")
+            ],
             swiftSettings: defaultNonisolated
         ),
         .target(
