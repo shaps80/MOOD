@@ -90,7 +90,7 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 : PixlGraphics-owned namespace for built-in `Shader` values. `ShaderCatalogue.default` is registered automatically by Pixl before game initialization.
 
 `ShaderRegistry`
-: Platform-owned registry that creates and retains backend shader libraries. Games append their own generated shaders during `PlatformGame.prepare(on:)`; games do not own backend shader-library lifetime.
+: Platform-owned registry that creates and retains backend shader libraries. Built-in shaders are registered before game initialization; games may append their own generated shaders from `init(platform:)` and do not own backend shader-library lifetime.
 
 `ShaderFunction`
 : A specific shader entry point, such as a vertex, fragment, or compute function. It carries its originating `Shader` and entry-point name; backends resolve the registered shader to their native library.

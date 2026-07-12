@@ -44,7 +44,9 @@ swiftly run swift test -c release --filter PixlConcurrencyPerformanceTests
 
 XCTest also records CPU time, retired instructions, and physical memory for each run. Wall time remains the primary comparison here because CPU scheduling and whole-process peak memory vary with test order. Hot runs allocate no steady per-run library storage.
 
-## ResourcePool
+## ResourcePool — historical record
+
+The custom native, WasmKit, browser, and Metal benchmark runners used for this record have been removed. ResourcePool correctness now lives directly in Swift Testing; native performance coverage lives directly in XCTest. Preserve these numbers only as historical context, not as a currently reproducible benchmark matrix.
 
 The following represents the last accepted profiling record for `ResourcePool` specifically, recorded on 2026-07-12 with provider-side aggressive CMO restored.
 
@@ -82,7 +84,7 @@ The native record used the release standalone runner on arm64 macOS. The WasmKit
 
 Recorded on 2026-07-12 using 256 distinct real `MTLTexture` objects. The suite performs 524,288 sequential or deterministic-random resolutions, matching the attachment-assignment shape in `MetalQueue.encode`. It separately measures pool resolution, direct Metal attachment binding, their combined path, transient drawable churn, and single-texture replacement.
 
-Command:
+Historical command (target removed):
 
 ```sh
 swiftly run swift run -c release PixlMetalPlatformBenchmarkRunner
@@ -148,8 +150,4 @@ From the repository root:
 
 ```sh
 ./.scripts/test
-./.scripts/test native
-./.scripts/test wasm
-./.scripts/browser-test chrome
-./.scripts/browser-test safari
 ```

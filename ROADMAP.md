@@ -6,8 +6,8 @@ This file tracks architectural work across sessions. It records direction and de
 
 - [x] Separate dimension-agnostic `PixlPlatform` GPU layer from higher-level graphics APIs.
 - [x] Add `Pixl2D` and `Pixl3D` targets above shared `PixlGraphics` infrastructure.
-- [x] Scaffold package-internal, platform-agnostic `PixlExec` target for the lane-based execution layer.
-- [x] Add isolated macOS XCTest coverage target for `PixlExec`; performance coverage follows with the first lane primitives.
+- [x] Extract the platform-agnostic lane-based execution layer into the standalone `PixlConcurrency` sibling package.
+- [x] Add native performance coverage and native/WASM Swift Testing correctness coverage for `PixlConcurrency`.
 - [x] Prototype static lane programs, balanced ranges, leader-only work, and reusable barriers; retain the API direction but reject the initial condition-variable barrier.
 - [x] Validate the first Metal path with compiled shaders, a GPU-only vertex buffer, a render pipeline, and a visible triangle.
 - [x] Establish explicit buffer memory intent: GPU-only, CPU-visible, and GPU-to-CPU.
@@ -31,7 +31,7 @@ This file tracks architectural work across sessions. It records direction and de
 
 - [ ] Design a Ryan-style multi-core-by-default lane model rather than a conventional generic job system.
 - [ ] Define persistent lane-group lifetime, lane index/count, barriers, range partitioning, and narrow execution.
-- [ ] Keep `PixlExec` portable and package-internal; do not make it depend on `PixlMetalPlatform` or another concrete platform.
+- [x] Keep `PixlConcurrency` portable and independent of `PixlMetalPlatform` or another concrete platform.
 - [ ] Decide the portable worker launch/parking backend only when the lane model requires it; add Swift Atomics only when an atomic primitive is implemented.
 - [ ] Prefer explicit ownership, dependencies, and deterministic synchronization over task-per-entity or allocation-heavy scheduling.
 - [ ] Decide which work can run concurrently: simulation systems, culling, batching, asset processing, and render preparation.
@@ -58,6 +58,7 @@ This file tracks architectural work across sessions. It records direction and de
 
 ## Graphics Follow-up
 
+- [ ] Prove dynamic per-frame data by rotating the existing triangle without changing backend-specific Game code. Design uniform binding plus reusable frame upload-ring lifetime first; do not recreate immutable buffers each frame.
 - [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
 - [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
