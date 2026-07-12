@@ -1,28 +1,11 @@
-import Foundation
 import Pixl
 import Pixl2D
-
-private final class PartitionedValues: LanePartitioned, @unchecked Sendable {
-    var values: [Int]
-    var count: Int { values.count }
-
-    init(count: Int) {
-        values = Array(repeating: 0, count: count)
-    }
-
-    func withUnsafeMutableElements<Result>(
-        _ body: (UnsafeMutableBufferPointer<Int>) throws -> Result
-    ) rethrows -> Result {
-        try values.withUnsafeMutableBufferPointer { elements in
-            try body(elements)
-        }
-    }
-}
 
 @main
 struct Game: Pixl.Game {
     private final class State: @unchecked Sendable {
         var rotation: Double = 0
+        var previousRotation: Double = 0
         var metricsElapsed = 0.0
     }
 
@@ -45,7 +28,6 @@ struct Game: Pixl.Game {
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
-            preferredFps: 60,
             resolution: .init(
                 width: 800,
                 height: 400
@@ -57,14 +39,7 @@ struct Game: Pixl.Game {
         state.rotation = time.elapsedSeconds
     }
 
-    private let values: PartitionedValues
-
     init(platform: any Platform) throws {
-        values = PartitionedValues(count: 100)
-        for index in values.values.indices {
-            values.values[index] = index
-        }
-
         var triangle = Triangle(
             first: .init(position: .init(0, 0.5), color: .init(1, 0, 0, 1)),
             second: .init(position: .init(-0.5, -0.5), color: .init(0, 1, 0, 1)),
