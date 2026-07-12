@@ -40,6 +40,7 @@ The first vertical slice is intentionally small: describe a frame with ordered p
 Implemented/decided so far:
 
 - `Frame` owns reusable fixed-capacity contiguous `Pass` storage. Runtime resets it each redraw; game code records through `append`; platform backends iterate it directly.
+- `VertexLayout` owns fixed-capacity contiguous vertex-buffer and attribute descriptions. It defines GPU byte layout only; games retain ownership of their vertex Swift types and bytes.
 - `Pass` currently supports `.render(RenderPass)` and `.compute(ComputePass)`.
 - `RenderPass` owns a `ColorAttachment`.
 - `ColorAttachment` owns `RenderTarget`, `LoadAction`, and `StoreAction`.

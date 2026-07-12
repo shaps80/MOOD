@@ -89,6 +89,15 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 `RenderPipeline`
 : Compiled render configuration. Combines shader functions, vertex layout, attachment formats, blending, depth/stencil behavior, and primitive topology.
 
+`VertexLayout`
+: Fixed-capacity vertex-input description. Owns ordered vertex-buffer layouts and vertex attributes without `Array` storage. Games define the byte layout of their own vertex structs; PixlPlatform does not impose a `Vertex` protocol or concrete vertex type.
+
+`VertexBufferLayout`
+: One vertex-buffer stream: buffer index, byte stride, and whether data advances per vertex or per instance.
+
+`VertexAttribute`
+: One shader vertex-input location: source buffer index, byte offset, and `VertexFormat`.
+
 `ComputePipeline`
 : Compiled compute configuration. Combines a compute shader function with the binding layout needed for dispatch.
 
