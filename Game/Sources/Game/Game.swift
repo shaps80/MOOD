@@ -9,18 +9,8 @@ struct Game: Pixl.Game {
         var metricsElapsed = 0.0
     }
 
-    private struct Vertex {
-        let position: SIMD2<Float>
-        let color: SIMD4<Float>
-    }
-
-    private struct Triangle {
-        let first: Vertex
-        let second: Vertex
-        let third: Vertex
-    }
-
-    private let vertexBuffer: Buffer
+    private let triangle: Triangle
+    private let quad: Quad
     private let pipeline: RenderPipeline
     private let state = State()
     private let camera = OrthographicCamera()
@@ -40,43 +30,21 @@ struct Game: Pixl.Game {
     }
 
     init(platform: any Platform) throws {
-        var triangle = Triangle(
-            first: .init(position: .init(0, 0.5), color: .init(1, 0, 0, 1)),
-            second: .init(position: .init(-0.5, -0.5), color: .init(0, 1, 0, 1)),
-            third: .init(position: .init(0.5, -0.5), color: .init(0, 0, 1, 1))
-        )
-
-        vertexBuffer = try withUnsafeBytes(of: &triangle) {
-            try platform.device.makeBuffer(
-                copying: $0,
-                usage: .vertex,
-                memory: .gpuOnly
-            )
-        }
-
-        let vertexLayout = VertexLayout(bufferCapacity: 1, attributeCapacity: 2)
-        vertexLayout.append(
-            .init(
-                bufferIndex: 0,
-                stride: UInt64(MemoryLayout<Vertex>.stride)
+        triangle = try Triangle(
+            device: platform.device,
+            colors: (
+                .red,
+                .init(red: 0, green: 1, blue: 0),
+                .init(red: 0, green: 0, blue: 1)
             )
         )
-
-        vertexLayout.append(
-            .init(
-                location: 0,
-                bufferIndex: 0,
-                format: .float32x2,
-                offset: 0
-            )
-        )
-
-        vertexLayout.append(
-            .init(
-                location: 1,
-                bufferIndex: 0,
-                format: .float32x4,
-                offset: UInt64(MemoryLayout<Vertex>.offset(of: \.color)!)
+        quad = try Quad(
+            device: platform.device,
+            colors: (
+                .init(red: 1, green: 1, blue: 0),
+                .init(red: 0, green: 1, blue: 1),
+                .init(red: 1, green: 0, blue: 1),
+                .white
             )
         )
 
@@ -84,7 +52,7 @@ struct Game: Pixl.Game {
             .init(
                 vertex: Shaders.vertex,
                 fragment: Shaders.fragment,
-                vertexLayout: vertexLayout,
+                vertexLayout: Triangle.makeVertexLayout(),
                 colorFormat: Self.renderSettings.drawableFormat
             )
         )
@@ -105,12 +73,20 @@ struct Game: Pixl.Game {
             )
         )
         pass.setRenderPipeline(pipeline)
-        pass.setVertexBuffer(vertexBuffer, index: 0)
         pass.setVertexBytes(
-            of: camera.projection(for: output).rotated(by: state.rotation),
+            of: camera.projection(for: output)
+                .translated(by: .init(x: -0.75, y: 0))
+                .rotated(by: state.rotation),
             index: 1
         )
-        pass.drawPrimitives(.triangle, vertexCount: 3)
+        triangle.draw(on: pass)
+        pass.setVertexBytes(
+            of: camera.projection(for: output)
+                .translated(by: .init(x: 0.75, y: 0))
+                .rotated(by: -state.rotation),
+            index: 1
+        )
+        quad.draw(on: pass)
 
         logMetrics(metrics: time.metrics)
     }

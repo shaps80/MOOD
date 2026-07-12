@@ -45,4 +45,18 @@ public struct Transform2D: BitwiseCopyable, Sendable {
             translation: translation
         )
     }
+
+    /// Returns this transform followed by a world-space translation.
+    ///
+    /// - Parameter offset: World-space displacement applied after the current
+    ///   linear transform.
+    public func translated(by offset: Vec2) -> Self {
+        let xOffset = Float(offset.x)
+        let yOffset = Float(offset.y)
+        return .init(
+            x: x,
+            y: y,
+            translation: translation + (x * xOffset) + (y * yOffset)
+        )
+    }
 }

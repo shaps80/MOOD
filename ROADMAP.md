@@ -68,6 +68,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Revalidate the static triangle through the refocused `PixlPlatform` and `PixlMetalPlatform` API before adapting the WebGPU backend.
 - [x] Adapt `PixlWasmPlatform` to the accepted Metal-first portable command interface; keep WebGPU bind-group/pipeline-layout machinery private to the adapter.
 - [x] Prove dynamic per-frame data by rotating the existing triangle without backend-specific Game code through fixed-capacity `setVertexBytes` recording; do not recreate immutable buffers each frame.
+- [x] Add y-up aspect-correct `OrthographicCamera` and reusable immutable coloured `Triangle` and indexed `Quad` primitives in `Pixl2D`.
 - [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
 - [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
