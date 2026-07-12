@@ -16,7 +16,7 @@ public extension Vec2 {
     /// ```swift
     /// let origin = Vec2.one
     /// ```
-    public static let one: Self = .init(
+    static let one: Self = .init(
         x: 1,
         y: 1
     )
