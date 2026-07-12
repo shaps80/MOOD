@@ -41,6 +41,7 @@ Implemented/decided so far:
 
 - `Frame` owns reusable fixed-capacity contiguous `Pass` storage. Runtime resets it each redraw; game code records through `append`; platform backends iterate it directly.
 - `Frame.beginRenderPass` returns a value-type encoder that appends to its fixed-capacity draw-command storage. This keeps per-frame draw recording allocation-free; draw commands for a pass must be recorded contiguously.
+- `PixlExec` is a package-internal, platform-agnostic target reserved for Pixl's lane-based multi-core execution layer. Do not expose it to games or make it depend on concrete platform targets unless that direction is explicitly revisited.
 - `VertexLayout` owns fixed-capacity contiguous vertex-buffer and attribute descriptions. It defines GPU byte layout only; games retain ownership of their vertex Swift types and bytes.
 - `Pass` currently supports `.render(RenderPass)` and `.compute(ComputePass)`.
 - `RenderPass` owns a `ColorAttachment`.
@@ -88,6 +89,8 @@ Concrete names are currently represented by the file names in this folder.
 Read `context.md` before making or proposing changes to this layer. It contains the agreed vocabulary and backend mapping table.
 
 Keep `context.md` updated when vocabulary decisions change.
+
+Read `ROADMAP.md` for cross-session architectural workstreams and unresolved decision gates. Keep milestone progress there rather than turning `AGENTS.md` into a task list.
 
 ## Performance and Profiling
 

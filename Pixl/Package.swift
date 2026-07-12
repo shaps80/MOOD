@@ -44,9 +44,14 @@ let package = Package(
         .target(
             name: "Pixl",
             dependencies: [
+                "PixlExec",
                 "Pixl2D",
                 "Pixl3D"
             ],
+            swiftSettings: defaultNonisolated
+        ),
+        .target(
+            name: "PixlExec",
             swiftSettings: defaultNonisolated
         ),
         .target(
@@ -66,6 +71,11 @@ let package = Package(
             plugins: [
                 .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
             ]
+        ),
+        .testTarget(
+            name: "PixlExecTests",
+            dependencies: ["PixlExec"],
+            swiftSettings: defaultNonisolated
         ),
     ],
     swiftLanguageModes: [.v6]
