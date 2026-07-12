@@ -13,14 +13,26 @@ public struct Buffer: Hashable, Sendable {
 public struct BufferDescriptor: Hashable, Sendable {
     public let size: UInt64
     public let usage: BufferUsage
+    public let memory: BufferMemory
 
-    public init(size: UInt64, usage: BufferUsage) {
+    public init(
+        size: UInt64,
+        usage: BufferUsage,
+        memory: BufferMemory
+    ) {
         precondition(size > 0, "Buffer size must be greater than zero")
         precondition(!usage.isEmpty, "Buffer usage must not be empty")
 
         self.size = size
         self.usage = usage
+        self.memory = memory
     }
+}
+
+public enum BufferMemory: Hashable, Sendable {
+    case gpuOnly
+    case cpuVisible
+    case gpuToCPU
 }
 
 public struct BufferUsage: OptionSet, Hashable, Sendable {

@@ -51,7 +51,7 @@ Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later tar
 ## Resources
 
 `Buffer`
-: Opaque raw GPU-visible memory with immutable `BufferDescriptor` metadata. Created through `Device`, stored by a backend, and used for vertices, indices, uniforms, storage data, staging, or copies depending on `BufferUsage`.
+: Opaque raw GPU-visible memory with immutable `BufferDescriptor` metadata. Its explicit `BufferMemory` intent is `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU`; creation and transfer policy are backend-owned. Created through `Device`, stored by a backend, and used for vertices, indices, uniforms, storage data, staging, or copies depending on `BufferUsage`.
 
 `Texture`
 : GPU image resource. Used for sampled images, render targets, depth buffers, storage textures, and intermediate frame data.

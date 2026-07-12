@@ -48,7 +48,7 @@ Implemented/decided so far:
 - `RenderTarget` is a texture view shape: texture plus mip level and array layer. It is not a `screen` enum.
 - `Texture` is an opaque backend resource handle plus immutable `TextureDescriptor`.
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
-- `Buffer` follows the same opaque-handle model as `Texture`. `Device.makeBuffer` supports fixed-size allocation or a synchronous copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
+- `Buffer` follows the same opaque-handle model as `Texture`. `BufferMemory` requires explicit `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU` intent. `Device.makeBuffer` supports fixed-size allocation or an initial copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
 - `Shader` owns immutable compiled shader bytes; `ShaderLibrary` is an opaque backend-native reference object created from it. Shader libraries are retained by normal object lifetime, not a resource pool or `RenderSettings` capacity. `PixlShaderPlugin` lives in PixlPlatform and currently attaches to PixlGraphics to generate its built-in shader resource; future Game-authored shader resources can attach the same plugin to their Game target.
 - `ShaderCatalogue.default` is PixlGraphics' generated built-in shader and Pixl registers it automatically before `PlatformGame` initialization. Generated `Shaders.vertex` and `Shaders.fragment` are game-facing entry-point values. `Platform.shaders` is the platform-owned `ShaderRegistry`; games append their own shaders from `init(platform:)` without managing shader-library lifetime or platform resource loading.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
@@ -57,7 +57,7 @@ Implemented/decided so far:
 - `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. Its throwing `init(platform:)` runs after the concrete platform and built-in shaders exist, allowing games to create immutable startup resources without optional storage. It records into the runtime-owned `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
-- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity `ResourcePool<MTLBuffer>` and `ResourcePool<MTLTexture>` storage whose capacities are supplied explicitly at initialization.
+- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity `ResourcePool<MTLBuffer>` and `ResourcePool<MTLTexture>` storage whose capacities are supplied explicitly at initialization. `.gpuOnly` initial buffer data uses a private Metal buffer plus staging/blit upload; `.cpuVisible` and `.gpuToCPU` currently use shared storage.
 - `MetalDevice` also owns fixed-capacity `ResourcePool<MetalRenderPipeline>` storage. Public `RenderPipeline` is an opaque `ResourceID` handle, so draw encoding resolves native state directly without existential storage or per-draw type casts.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
@@ -133,4 +133,4 @@ Compute output should be able to feed later render passes in the same frame.
 
 ## Open Design Decisions
 
-- Before adding buffer writes, copy commands, or render-pass buffer binding: define portable buffer memory/upload semantics (`cpuVisible` versus `gpuOnly`), then map Metal shared/private/managed storage deliberately. Do not let the current internal `.storageModeShared` allocation policy become an accidental public contract.
+- Before adding buffer writes or copies, design reusable frame upload-ring and readback lifetimes. Do not add a naïve generic write API that allocates staging buffers or synchronizes CPU/GPU work per call.

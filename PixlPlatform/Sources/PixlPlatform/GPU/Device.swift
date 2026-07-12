@@ -6,7 +6,8 @@ public protocol Device {
     func makeBuffer(_ descriptor: BufferDescriptor) throws(DeviceError) -> Buffer
     func makeBuffer(
         copying bytes: UnsafeRawBufferPointer,
-        usage: BufferUsage
+        usage: BufferUsage,
+        memory: BufferMemory
     ) throws(DeviceError) -> Buffer
 
     func makeShaderLibrary(_ shader: borrowing Shader) throws(DeviceError) -> any ShaderLibrary

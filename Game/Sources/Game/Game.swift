@@ -34,7 +34,11 @@ struct Game: Pixl.Game {
         )
 
         vertexBuffer = try withUnsafeBytes(of: &triangle) {
-            try platform.device.makeBuffer(copying: $0, usage: .vertex)
+            try platform.device.makeBuffer(
+                copying: $0,
+                usage: .vertex,
+                memory: .gpuOnly
+            )
         }
 
         let vertexLayout = VertexLayout(bufferCapacity: 1, attributeCapacity: 2)

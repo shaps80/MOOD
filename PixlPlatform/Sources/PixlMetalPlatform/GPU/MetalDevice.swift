@@ -5,6 +5,7 @@ import PixlPlatform
 
 final class MetalDevice: Device {
     let metalDevice: MTLDevice
+    private let uploadQueue: MTLCommandQueue
     let buffers: ResourcePool<MTLBuffer>
     let pipelines: ResourcePool<MetalRenderPipeline>
     let textures: ResourcePool<MTLTexture>
@@ -16,7 +17,12 @@ final class MetalDevice: Device {
         pipelineCapacity: UInt32,
         textureCapacity: UInt32
     ) {
+        guard let uploadQueue = device.makeCommandQueue() else {
+            fatalError("Metal command queue creation failed")
+        }
+
         metalDevice = device
+        self.uploadQueue = uploadQueue
         buffers = ResourcePool(capacity: bufferCapacity)
         pipelines = ResourcePool(capacity: pipelineCapacity)
         textures = ResourcePool(capacity: textureCapacity)
@@ -40,7 +46,7 @@ final class MetalDevice: Device {
         guard let length = Int(exactly: descriptor.size),
               let metalBuffer = metalDevice.makeBuffer(
                   length: length,
-                  options: .storageModeShared
+                  options: descriptor.memory.metalResourceOptions
               )
         else {
             throw DeviceError.resourceCreationFailed(.buffer)
@@ -55,21 +61,32 @@ final class MetalDevice: Device {
 
     func makeBuffer(
         copying bytes: UnsafeRawBufferPointer,
-        usage: BufferUsage
+        usage: BufferUsage,
+        memory: BufferMemory
     ) throws(DeviceError) -> Buffer {
         let descriptor = BufferDescriptor(
             size: UInt64(bytes.count),
-            usage: usage
+            usage: usage.union(.copyDestination),
+            memory: memory
         )
 
-        guard let baseAddress = bytes.baseAddress,
-              let metalBuffer = metalDevice.makeBuffer(
-                  bytes: baseAddress,
-                  length: bytes.count,
-                  options: .storageModeShared
-              )
-        else {
-            throw DeviceError.resourceCreationFailed(.buffer)
+        let metalBuffer: MTLBuffer
+
+        switch memory {
+        case .gpuOnly:
+            metalBuffer = try makePrivateBuffer(copying: bytes)
+
+        case .cpuVisible, .gpuToCPU:
+            guard let baseAddress = bytes.baseAddress,
+                  let buffer = metalDevice.makeBuffer(
+                      bytes: baseAddress,
+                      length: bytes.count,
+                      options: memory.metalResourceOptions
+                  )
+            else {
+                throw DeviceError.resourceCreationFailed(.buffer)
+            }
+            metalBuffer = buffer
         }
 
         guard let id = buffers.insert(metalBuffer) else {
@@ -77,6 +94,42 @@ final class MetalDevice: Device {
         }
 
         return Buffer(id: id, descriptor: descriptor)
+    }
+
+    private func makePrivateBuffer(
+        copying bytes: UnsafeRawBufferPointer
+    ) throws(DeviceError) -> MTLBuffer {
+        guard let baseAddress = bytes.baseAddress,
+              let staging = metalDevice.makeBuffer(
+                  bytes: baseAddress,
+                  length: bytes.count,
+                  options: .storageModeShared
+              ),
+              let destination = metalDevice.makeBuffer(
+                  length: bytes.count,
+                  options: .storageModePrivate
+              ),
+              let commandBuffer = uploadQueue.makeCommandBuffer(),
+              let blit = commandBuffer.makeBlitCommandEncoder()
+        else {
+            throw DeviceError.resourceCreationFailed(.buffer)
+        }
+
+        blit.copy(
+            from: staging,
+            sourceOffset: 0,
+            to: destination,
+            destinationOffset: 0,
+            size: bytes.count
+        )
+        blit.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        guard commandBuffer.status == .completed else {
+            throw DeviceError.resourceCreationFailed(.buffer)
+        }
+        return destination
     }
 
     func makeShaderLibrary(_ shader: borrowing Shader) throws(DeviceError) -> any ShaderLibrary {
