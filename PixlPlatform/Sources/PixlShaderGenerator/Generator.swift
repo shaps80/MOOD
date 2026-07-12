@@ -43,9 +43,10 @@ struct PixlShaderGenerator {
 
     vertex VertexOutput pixlVertex(
         VertexInput input [[stage_in]],
-        constant float2x2 &transform [[buffer(1)]]
+        constant float3x3 &transform [[buffer(1)]]
     ) {
-        return { float4(transform * input.position, 0.0, 1.0), input.color };
+        float3 position = transform * float3(input.position, 1.0);
+        return { float4(position.xy, 0.0, 1.0), input.color };
     }
 
     fragment float4 pixlFragment(VertexOutput input [[stage_in]]) {
@@ -91,12 +92,13 @@ struct PixlShaderGenerator {
         }
 
         @group(0) @binding(0)
-        var<uniform> transform: mat2x2f;
+        var<uniform> transform: mat3x3f;
 
         @vertex
         fn pixlVertex(input: VertexInput) -> VertexOutput {
             var output: VertexOutput;
-            output.position = vec4f(transform * input.position, 0.0, 1.0);
+            let position = transform * vec3f(input.position, 1.0);
+            output.position = vec4f(position.xy, 0.0, 1.0);
             output.color = input.color;
             return output;
         }

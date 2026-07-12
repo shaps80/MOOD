@@ -23,7 +23,7 @@ public extension Vec2 {
 }
 
 public extension Vec2 {
-    static func random(x: ClosedRange<Double>, y: ClosedRange<Double>) -> Vec2 {
+    static func random(x: ClosedRange<Double>, y: ClosedRange<Double>) -> Self {
         .init(
             x: Double.random(in: x),
             y: Double.random(in: y)
@@ -32,7 +32,7 @@ public extension Vec2 {
 }
 
 public extension Vec2 {
-    func moving(toward target: Vec2, by distance: Double) -> Vec2 {
+    func moving(toward target: Self, by distance: Double) -> Self {
         guard distance > 0 else { return self }
 
         let delta = Vec2(

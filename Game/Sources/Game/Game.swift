@@ -1,5 +1,6 @@
 import Foundation
 import Pixl
+import Pixl2D
 
 private final class PartitionedValues: LanePartitioned, @unchecked Sendable {
     var values: [Int]
@@ -36,21 +37,10 @@ struct Game: Pixl.Game {
         let third: Vertex
     }
 
-    private struct Transform {
-        let x: SIMD2<Float>
-        let y: SIMD2<Float>
-
-        init(rotation: Float) {
-            let cosine = cos(rotation)
-            let sine = sin(rotation)
-            x = SIMD2(cosine, sine)
-            y = SIMD2(-sine, cosine)
-        }
-    }
-
     private let vertexBuffer: Buffer
     private let pipeline: RenderPipeline
     private let state = State()
+    private let camera = OrthographicCamera(halfHeight: 1)
 
     static var gameSettings: GameSettings {
         .init(
@@ -141,7 +131,10 @@ struct Game: Pixl.Game {
         )
         pass.setRenderPipeline(pipeline)
         pass.setVertexBuffer(vertexBuffer, index: 0)
-        pass.setVertexBytes(of: Transform(rotation: state.rotation), index: 1)
+        pass.setVertexBytes(
+            of: camera.projection(for: output).rotated(by: state.rotation),
+            index: 1
+        )
         pass.drawPrimitives(.triangle, vertexCount: 3)
 
         logMetrics(metrics: time.metrics)
