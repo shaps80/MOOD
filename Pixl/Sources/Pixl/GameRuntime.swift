@@ -15,10 +15,15 @@ final class GameRuntime<G: Game>: PlatformGame {
 
     private var game: G
     private var loop: Loop
+    private var latestMetrics: PerformanceMetrics = .zero
+    private var metricsCollector: PerformanceMetricsCollector
 
     init(platform: any Platform) throws {
         game = try G(platform: platform)
         loop = Loop(settings: G.loopSettings)
+        metricsCollector = .init(
+            preferredFramesPerSecond: G.gameSettings.preferredFps
+        )
     }
 
     func render(
@@ -26,7 +31,9 @@ final class GameRuntime<G: Game>: PlatformGame {
         output: RenderTarget,
         frame: borrowing Frame
     ) throws {
-        let schedule = loop.advance(to: .now)
+        let frameStart = ContinuousClock.now
+        let schedule = loop.advance(to: frameStart)
+        let gameStart = ContinuousClock.now
 
         var index: UInt32 = 0
         while index < schedule.fixedUpdateCount {
@@ -43,12 +50,31 @@ final class GameRuntime<G: Game>: PlatformGame {
         }
 
         game.update(schedule.updateTime)
+        let gameEnd = ContinuousClock.now
 
         try game.render(
             on: platform,
             output: output,
             frame: frame,
-            time: schedule.renderTime
+            time: RenderTime(
+                frameIndex: schedule.renderTime.frameIndex,
+                interpolation: schedule.renderTime.interpolation,
+                metrics: latestMetrics
+            )
         )
+
+        let renderEnd = ContinuousClock.now
+        latestMetrics = metricsCollector.record(
+            frameIndex: schedule.renderTime.frameIndex,
+            frameTimeSeconds: schedule.frameTimeSeconds,
+            cpuGameSeconds: Self.seconds(gameEnd - gameStart),
+            cpuRenderSeconds: Self.seconds(renderEnd - gameEnd)
+        )
+    }
+
+    private static func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) * 1e-18
     }
 }

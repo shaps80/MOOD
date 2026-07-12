@@ -80,5 +80,23 @@ struct LoopTests {
         #expect(abs(schedule.updateTime.deltaSeconds - 0.02) < 0.000_001)
         #expect(abs(schedule.updateTime.elapsedSeconds - 0.02) < 0.000_001)
         #expect(schedule.renderTime.interpolation == 1)
+        #expect(abs(schedule.frameTimeSeconds - 0.02) < 0.000_001)
+    }
+
+    @Test
+    func frameTimeRetainsTheUnclampedPresentationInterval() {
+        var loop = Loop(
+            settings: LoopSettings(
+                maximumDeltaSeconds: 0.25,
+                fixedStep: nil
+            )
+        )
+        let start = ContinuousClock.now
+        _ = loop.advance(to: start)
+
+        let schedule = loop.advance(to: start.advanced(by: .seconds(1)))
+
+        #expect(schedule.updateTime.deltaSeconds == 0.25)
+        #expect(schedule.frameTimeSeconds == 1)
     }
 }

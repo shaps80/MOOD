@@ -35,9 +35,16 @@ public struct UpdateTime: Hashable, Sendable {
 public struct RenderTime: Hashable, Sendable {
     public let frameIndex: UInt64
     public let interpolation: Double
+    /// CPU measurements from the preceding completed frame, or zero initially.
+    public let metrics: PerformanceMetrics
 
-    init(frameIndex: UInt64, interpolation: Double) {
+    init(
+        frameIndex: UInt64,
+        interpolation: Double,
+        metrics: PerformanceMetrics = .zero
+    ) {
         self.frameIndex = frameIndex
         self.interpolation = interpolation
+        self.metrics = metrics
     }
 }

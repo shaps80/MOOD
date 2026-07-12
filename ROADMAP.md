@@ -62,6 +62,7 @@ This file tracks architectural work across sessions. It records direction and de
 
 ## Graphics Follow-up
 
+- [x] Surface allocation-free portable frame interval, FPS, CPU game-update, and CPU render-recording metrics through `RenderTime`; GPU timing remains a later backend capability.
 - [x] Revalidate the static triangle through the refocused `PixlPlatform` and `PixlMetalPlatform` API before adapting the WebGPU backend.
 - [x] Adapt `PixlWasmPlatform` to the accepted Metal-first portable command interface; keep WebGPU bind-group/pipeline-layout machinery private to the adapter.
 - [x] Prove dynamic per-frame data by rotating the existing triangle without backend-specific Game code through fixed-capacity `setVertexBytes` recording; do not recreate immutable buffers each frame.

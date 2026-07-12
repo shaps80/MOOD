@@ -4,6 +4,7 @@ struct LoopSchedule {
     let fixedUpdateCount: UInt32
     let firstTickIndex: UInt64
     let fixedDeltaSeconds: Double
+    let frameTimeSeconds: Double
     let updateTime: UpdateTime
     let renderTime: RenderTime
 }
@@ -27,6 +28,7 @@ struct Loop {
                 fixedUpdateCount: 0,
                 firstTickIndex: tickIndex,
                 fixedDeltaSeconds: fixedDeltaSeconds,
+                frameTimeSeconds: 0,
                 deltaSeconds: 0,
                 interpolation: settings.fixedStep == nil ? 1 : 0
             )
@@ -44,6 +46,7 @@ struct Loop {
                 fixedUpdateCount: 0,
                 firstTickIndex: tickIndex,
                 fixedDeltaSeconds: 0,
+                frameTimeSeconds: rawDelta,
                 deltaSeconds: delta,
                 interpolation: 1
             )
@@ -68,6 +71,7 @@ struct Loop {
             fixedUpdateCount: updateCount,
             firstTickIndex: firstTickIndex,
             fixedDeltaSeconds: step,
+            frameTimeSeconds: rawDelta,
             deltaSeconds: delta,
             interpolation: min(1, accumulator / step)
         )
@@ -82,6 +86,7 @@ struct Loop {
         fixedUpdateCount: UInt32,
         firstTickIndex: UInt64,
         fixedDeltaSeconds: Double,
+        frameTimeSeconds: Double,
         deltaSeconds: Double,
         interpolation: Double
     ) -> LoopSchedule {
@@ -89,6 +94,7 @@ struct Loop {
             fixedUpdateCount: fixedUpdateCount,
             firstTickIndex: firstTickIndex,
             fixedDeltaSeconds: fixedDeltaSeconds,
+            frameTimeSeconds: frameTimeSeconds,
             updateTime: UpdateTime(
                 frameIndex: frameIndex,
                 deltaSeconds: deltaSeconds,

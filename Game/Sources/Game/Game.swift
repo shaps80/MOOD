@@ -96,7 +96,7 @@ struct Game: Pixl.Game {
         )
     }
 
-    func render(
+    mutating func render(
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame,
@@ -114,5 +114,15 @@ struct Game: Pixl.Game {
         pass.setVertexBuffer(vertexBuffer, index: 0)
         pass.setVertexBytes(of: Transform(rotation: rotation), index: 1)
         pass.drawPrimitives(.triangle, vertexCount: 3)
+
+        logMetrics(metrics: time.metrics)
+    }
+
+    private var metricsElapsed = 0.0
+    private mutating func logMetrics(metrics: PerformanceMetrics) {
+        metricsElapsed += metrics.frameTimeSeconds
+        guard metricsElapsed >= 5 else { return }
+        metricsElapsed.formTruncatingRemainder(dividingBy: 5)
+        print(metrics.summary)
     }
 }
