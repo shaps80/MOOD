@@ -6,9 +6,9 @@ These are reference measurements for detecting material performance regressions 
 
 This document contains separate profiling records for specific low-level components. It does not describe whole-backend, rendering, GPU, frame-time, or game performance.
 
-## PixlExec — arm64 macOS
+## PixlConcurrency — arm64 macOS
 
-Recorded on 2026-07-12 after extracting the lane prototype into the official `PixlExec` target.
+Recorded on 2026-07-12 after extracting `PixlConcurrency` into its own package, moving OS threading behind `PixlConcurrencyC`, correcting worker lifetime, separating work/completion signalling, isolating barrier atomics, tuning the spin threshold, and validating the final tiered-CMO configuration.
 
 ### Methodology
 
@@ -21,32 +21,32 @@ Recorded on 2026-07-12 after extracting the lane prototype into the official `Pi
 - The calling thread participates as lane zero.
 - Lifecycle creates and destroys the execution group, workers, context, buffers, cursor, and performs one dynamic run inside each measured sample.
 - Hot tests create the persistent group and preallocated context before measurement; only repeated `ExecutionGroup.run` calls are measured.
-- SIMD tests are workload examples using aligned `SIMD8<UInt64>` processing. PixlExec itself is SIMD-width agnostic.
+- SIMD tests are workload examples using aligned `SIMD8<UInt64>` processing. PixlConcurrency itself is SIMD-width agnostic.
+
+The lifecycle result now includes real worker shutdown and joining. Earlier lifecycle records retained their execution groups through worker ownership and therefore did not measure complete teardown correctly.
 
 Command:
 
 ```sh
-swiftly run swift test -c release --filter PixlExec
+swiftly run swift test -c release --filter PixlConcurrencyPerformanceTests
 ```
 
 ### Results
 
-| Workload | Wall time | CPU time | Instructions retired | Physical-memory delta |
-|---|---:|---:|---:|---:|
-| Lifecycle + dynamic scalar | 3.888 ms | 31.289 ms | 579.150 M | 209.720 KB |
-| Hot single-lane scalar | 21.547 ms | 21.770 ms | 563.191 M | 0 KB |
-| Hot static scalar | 4.064 ms | 30.112 ms | 575.281 M | 0 KB |
-| Hot dynamic scalar | 3.678 ms | 30.518 ms | 576.109 M | 6.554 KB |
-| Hot single-lane SIMD8 | 8.356 ms | 8.555 ms | 292.961 M | 0 KB |
-| Hot dynamic SIMD8 | 3.512 ms | 29.234 ms | 305.842 M | 13.107 KB |
+| Workload | Wall time |
+|---|---:|
+| Lifecycle + dynamic scalar | 3.856 ms |
+| Hot single-lane scalar | 21.496 ms |
+| Hot static scalar | 4.264 ms |
+| Hot dynamic scalar | 4.047 ms |
+| Hot single-lane SIMD8 | 8.315 ms |
+| Hot dynamic SIMD8 | 3.533 ms |
 
-The dynamic physical-memory deltas came from one or two initial 32 KB page commitments; remaining measured samples were zero. Treat these as lazy worker/runtime memory commitment, not steady per-run allocation. XCTest's peak physical-memory metric describes the whole test process and depends on test order, so it is intentionally not used as a component baseline.
-
-The reusable group-owned barrier preserved performance while removing barrier allocation from repeated `run` calls. Dynamic scalar was approximately 9.5% faster than static scalar in this record. SIMD8 reduced the single-lane example by approximately 61.2%; its incremental benefit was smaller once dynamic multi-lane execution approached shared-memory limits.
+XCTest also records CPU time, retired instructions, and physical memory for each run. Wall time remains the primary comparison here because CPU scheduling and whole-process peak memory vary with test order. Hot runs allocate no steady per-run library storage.
 
 ## ResourcePool
 
-The following represents the last accepted profiling record for `ResourcePool` specifically, recorded on 2026-07-11.
+The following represents the last accepted profiling record for `ResourcePool` specifically, recorded on 2026-07-12 with provider-side aggressive CMO restored.
 
 Every runtime executed the same platform-neutral suite from `PixlPlatformTestSupport`:
 
@@ -72,11 +72,43 @@ The native record used the release standalone runner on arm64 macOS. The WasmKit
 
 | Workload | Average | Per operation |
 |---|---:|---:|
-| Cold start lifecycle | 0.656 ms | 1.45 ns |
-| Sequential lookup | 0.108 ms | 0.72 ns |
-| Random-order lookup | 0.197 ms | 1.31 ns |
-| In-place update | 0.088 ms | 0.59 ns |
-| Remove/reinsert churn | 0.284 ms | 0.94 ns |
+| Cold start lifecycle | 0.448 ms | 0.99 ns |
+| Sequential lookup | 0.082 ms | 0.55 ns |
+| Random-order lookup | 0.177 ms | 1.18 ns |
+| In-place update | 0.083 ms | 0.55 ns |
+| Remove/reinsert churn | 0.296 ms | 0.98 ns |
+
+## Metal ResourcePool runtime scenario — arm64 macOS
+
+Recorded on 2026-07-12 using 256 distinct real `MTLTexture` objects. The suite performs 524,288 sequential or deterministic-random resolutions, matching the attachment-assignment shape in `MetalQueue.encode`. It separately measures pool resolution, direct Metal attachment binding, their combined path, transient drawable churn, and single-texture replacement.
+
+Command:
+
+```sh
+swiftly run swift run -c release PixlMetalPlatformBenchmarkRunner
+```
+
+| Workload | Previous | Current | Change |
+|---|---:|---:|---:|
+| Pool-only sequential resolution | 1.641 ms | 1.661 ms | 1.2% slower |
+| Direct sequential attachment binding | 7.205 ms | 7.133 ms | 1.0% faster |
+| Sequential texture resolution | 8.483 ms | 8.543 ms | 0.7% slower |
+| Pool-only random resolution | 1.630 ms | 1.589 ms | 2.5% faster |
+| Direct random attachment binding | 7.168 ms | 7.161 ms | unchanged |
+| Random-order texture resolution | 8.453 ms | 8.449 ms | unchanged |
+| Transient drawable churn | 0.450 ms | 0.436 ms | 3.1% faster |
+| Single texture replacement | 1.164 ms | 1.192 ms | 2.4% slower |
+
+These changes are within expected run variance. The pool remains a small part of the combined Metal attachment-binding cost.
+
+## Release cross-module optimization policy
+
+The accepted configuration keeps every Swift library target cross-module optimizable while applying the aggressive mode only where benchmarks prove it matters:
+
+- `-enable-cmo-everything`: `PixlPlatform`, `PixlConcurrency`.
+- `-cross-module-optimization`: `Pixl`, `PixlGraphics`, `Pixl2D`, `Pixl3D`, `PixlMetalPlatform`.
+
+Applying `-enable-cmo-everything` to every linked module caused duplicate Swift standard-library symbols. The tiered configuration links the release Game executable, retains concrete `ResourcePool<UInt64>`, `ResourcePool<MTLTexture>`, `ExecutionGroup<BenchmarkProgram>`, and `ExecutionState<BenchmarkProgram>` specializations, and preserves the accepted performance records above.
 
 ## WASM/WASI — WasmKit
 
