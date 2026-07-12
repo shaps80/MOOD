@@ -9,6 +9,11 @@ package enum RenderCommand {
         offset: UInt64,
         index: UInt32
     )
+    case setVertexBytes(
+        offset: UInt32,
+        count: UInt32,
+        index: UInt32
+    )
     case drawPrimitives(
         PrimitiveTopology,
         vertexStart: UInt32,

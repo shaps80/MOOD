@@ -27,7 +27,8 @@ final class Runtime: NSObject {
         self.device = device
         frame = Frame(
             passCapacity: renderSettings.framePassCapacity,
-            commandCapacity: renderSettings.frameCommandCapacity
+            commandCapacity: renderSettings.frameCommandCapacity,
+            byteCapacity: renderSettings.frameByteCapacity
         )
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings

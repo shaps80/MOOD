@@ -45,6 +45,23 @@ public struct RenderPassEncoder {
         )
     }
 
+    public func setVertexBytes(
+        _ bytes: UnsafeRawBufferPointer,
+        index: UInt32
+    ) {
+        frame.appendVertexBytes(bytes, index: index, toRenderPassAt: passIndex)
+    }
+
+    public func setVertexBytes<Value: BitwiseCopyable>(
+        of value: Value,
+        index: UInt32
+    ) {
+        var value = value
+        Swift.withUnsafeBytes(of: &value) {
+            setVertexBytes($0, index: index)
+        }
+    }
+
     public func drawPrimitives(
         _ topology: PrimitiveTopology,
         vertexStart: UInt32 = 0,

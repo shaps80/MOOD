@@ -1,3 +1,4 @@
+import Foundation
 import Pixl
 
 @main
@@ -13,8 +14,21 @@ struct Game: Pixl.Game {
         let third: Vertex
     }
 
+    private struct Transform {
+        let x: SIMD2<Float>
+        let y: SIMD2<Float>
+
+        init(rotation: Float) {
+            let cosine = cos(rotation)
+            let sine = sin(rotation)
+            x = SIMD2(cosine, sine)
+            y = SIMD2(-sine, cosine)
+        }
+    }
+
     private let vertexBuffer: Buffer
     private let pipeline: RenderPipeline
+    private var rotation: Float = 0
 
     static var gameSettings: GameSettings {
         .init(
@@ -25,6 +39,10 @@ struct Game: Pixl.Game {
                 height: 400
             )
         )
+    }
+
+    mutating func update(_ time: UpdateTime) {
+        rotation = Float(time.elapsedSeconds)
     }
 
     init(platform: any Platform) throws {
@@ -94,6 +112,7 @@ struct Game: Pixl.Game {
         )
         pass.setRenderPipeline(pipeline)
         pass.setVertexBuffer(vertexBuffer, index: 0)
+        pass.setVertexBytes(of: Transform(rotation: rotation), index: 1)
         pass.drawPrimitives(.triangle, vertexCount: 3)
     }
 }

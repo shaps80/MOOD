@@ -104,6 +104,15 @@ final class MetalQueue: Queue {
                     throw QueueError.invalidResource
                 }
 
+            case .setVertexBytes(let offset, let count, let index):
+                frame.withBytes(offset: offset, count: count) { bytes in
+                    encoder.setVertexBytes(
+                        bytes.baseAddress!,
+                        length: bytes.count,
+                        index: Int(index)
+                    )
+                }
+
             case .drawPrimitives(
                 let topology,
                 let vertexStart,
