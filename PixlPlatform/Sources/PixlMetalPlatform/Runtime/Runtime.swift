@@ -5,19 +5,20 @@ import PixlPlatform
 final class Runtime: NSObject {
     private let device: MTLDevice
     private let frame: Frame
-    private let game: any PlatformGame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
-    private let prepare: (any Platform) throws -> Void
+    private let defaultShaders: Shader
+    private let makeGame: (any Platform) throws -> any PlatformGame
+    private var game: (any PlatformGame)?
     private var platform: MetalPlatform?
     private var window: NSWindow?
     private var gameView: GameView?
 
     init(
-        game: any PlatformGame,
         gameSettings: GameSettings,
         renderSettings: RenderSettings,
-        prepare: @escaping (any Platform) throws -> Void
+        defaultShaders: Shader,
+        makeGame: @escaping (any Platform) throws -> any PlatformGame
     ) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not available")
@@ -25,10 +26,10 @@ final class Runtime: NSObject {
 
         self.device = device
         frame = Frame(passCapacity: renderSettings.framePassCapacity)
-        self.game = game
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings
-        self.prepare = prepare
+        self.defaultShaders = defaultShaders
+        self.makeGame = makeGame
         super.init()
     }
 
@@ -79,10 +80,10 @@ final class Runtime: NSObject {
         platform = MetalPlatform(view: view, renderSettings: renderSettings)
 
         do {
-            try prepare(platform!)
-            try game.prepare(on: platform!)
+            try platform!.shaders.append(defaultShaders)
+            game = try makeGame(platform!)
         } catch {
-            fatalError("Game preparation failed: \(error)")
+            fatalError("Game initialization failed: \(error)")
         }
 
         window.title = gameSettings.title
@@ -124,7 +125,7 @@ extension Runtime: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        guard let platform else { return }
+        guard let platform, let game else { return }
 
         do {
             guard let drawable = platform.drawable() else { return }

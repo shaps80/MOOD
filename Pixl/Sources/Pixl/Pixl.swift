@@ -11,7 +11,7 @@ public protocol Game: PlatformGame {
 }
 
 public extension Game {
-    static public var defaultShaders: Shader {
+    static var defaultShaders: Shader {
         ShaderCatalogue.default
     }
 }

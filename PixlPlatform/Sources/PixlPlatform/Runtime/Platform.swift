@@ -5,21 +5,13 @@ public protocol PlatformGame {
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
 
-    init()
-
-    func prepare(
-        on platform: any Platform
-    ) throws
+    init(platform: any Platform) throws
 
     func render(
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame
     ) throws
-}
-
-public extension PlatformGame {
-    func prepare(on platform: any Platform) throws {}
 }
 
 public protocol Platform: AnyObject {

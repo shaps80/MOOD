@@ -12,6 +12,8 @@ struct Game: Pixl.Game {
         )
     }
 
+    init(platform: any Platform) throws {}
+
     func render(
         on platform: any Platform,
         output: RenderTarget,

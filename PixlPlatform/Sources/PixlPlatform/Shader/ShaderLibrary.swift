@@ -1,6 +1,6 @@
 import Swift
 
-public final class Shader {
+public final class Shader: @unchecked Sendable {
     private let storage: UnsafeMutableRawPointer
     public let byteCount: Int
 

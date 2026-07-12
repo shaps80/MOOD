@@ -58,7 +58,7 @@ struct PixlShaderGenerator {
     import PixlPlatform
 
     public enum ShaderCatalogue {
-        public static var `default`: Shader {
+        public static let `default`: Shader = {
             guard let url = Bundle.module.url(
                 forResource: "PixlGraphics",
                 withExtension: "metallib"
@@ -71,7 +71,19 @@ struct PixlShaderGenerator {
             }
 
             return data.withUnsafeBytes { Shader(copying: $0) }
-        }
+        }()
+    }
+
+    public enum Shaders {
+        public static let vertex = ShaderFunction(
+            shader: ShaderCatalogue.default,
+            name: "pixlVertex"
+        )
+
+        public static let fragment = ShaderFunction(
+            shader: ShaderCatalogue.default,
+            name: "pixlFragment"
+        )
     }
     """
 

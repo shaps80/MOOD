@@ -7,11 +7,13 @@ public func run<Game: PlatformGame>(_ game: Game.Type) {
     let application = NSApplication.shared
 
     let runtime: Runtime = .init(
-        game: Game(),
         gameSettings: Game.gameSettings,
-        renderSettings: Game.renderSettings) {
-            try $0.shaders.append(Game.defaultShaders)
+        renderSettings: Game.renderSettings,
+        defaultShaders: Game.defaultShaders,
+        makeGame: { platform in
+            try Game(platform: platform)
         }
+    )
 
     runtime.start()
 
