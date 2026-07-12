@@ -126,3 +126,7 @@ The GPU layer should include concepts for:
 - resource access modes
 
 Compute output should be able to feed later render passes in the same frame.
+
+## Open Design Decisions
+
+- Before adding buffer writes, copy commands, or render-pass buffer binding: define portable buffer memory/upload semantics (`cpuVisible` versus `gpuOnly`), then map Metal shared/private/managed storage deliberately. Do not let the current internal `.storageModeShared` allocation policy become an accidental public contract.
