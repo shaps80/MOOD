@@ -90,10 +90,13 @@ struct PixlShaderGenerator {
             @location(0) color: vec4f,
         }
 
+        @group(0) @binding(0)
+        var<uniform> transform: mat2x2f;
+
         @vertex
         fn pixlVertex(input: VertexInput) -> VertexOutput {
             var output: VertexOutput;
-            output.position = vec4f(input.position, 0.0, 1.0);
+            output.position = vec4f(transform * input.position, 0.0, 1.0);
             output.color = input.color;
             return output;
         }

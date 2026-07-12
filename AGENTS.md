@@ -50,6 +50,7 @@ Implemented/decided so far:
 - `Frame.beginRenderPass` accepts a `RenderPassDescriptor` and returns a value-type `RenderPassEncoder`. Its public interface follows Metal: set pipeline/resource state, then issue primitive draws. Commands for a pass must be recorded contiguously.
 - Public `DrawCommand` and `Pass` values were removed. They exposed frame-storage implementation and would have grown into shallow bags of every future resource. Package-only `RenderCommand` storage records compact `ResourceID` payloads instead.
 - Exact `PrimitiveTopology` belongs to `RenderPassEncoder.drawPrimitives`, matching Metal and DirectX. Backends where topology is pipeline state must lower/cache pipeline variants internally.
+- `RenderPassEncoder.setVertexBytes` immediately copies up to 4 KiB of `BitwiseCopyable` or raw bytes into fixed-capacity `Frame` storage. Metal lowers it to native `setVertexBytes`; adapter-specific transfer storage remains private.
 - `PixlConcurrency` is a standalone sibling package containing Pixl's lane-based execution layer. Keep it platform-agnostic and independent of concrete platform targets.
 - `VertexLayout` owns fixed-capacity contiguous vertex-buffer and attribute descriptions. It defines GPU byte layout only; games retain ownership of their vertex Swift types and bytes.
 - `RenderPassDescriptor` currently owns one `ColorAttachment`. Compute remains a required future encoder, but empty public compute/pass placeholders must not imply implemented support.
@@ -74,7 +75,7 @@ Implemented/decided so far:
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
 - `MetalQueue.submit` resolves compact resource handles and lowers the recorded command stream almost one-for-one to `MTLRenderCommandEncoder`, then commits the command buffer.
 - `PixlMetalPlatform.run(_:)` is the single public macOS runtime entry point. It owns the AppKit/MTKView window runtime and its Metal device; `Pixl.run(_:)` reaches it through Pixl's macOS-conditioned platform dependency.
-- `PixlWasmPlatform.run(_:)` is the existing WASM/browser runtime entry point. Its previous static-triangle path is retained as historical proof, but its adapter update is intentionally deferred until the Metal-first portable API is accepted.
+- `PixlWasmPlatform.run(_:)` is the WASM/browser runtime entry point. It lowers Metal-shaped commands through cached WebGPU pipeline variants and a fixed-capacity internal uniform buffer/dynamic-offset bind group; those WebGPU concepts remain private to the adapter.
 - `PixlConcurrency` remains linked on WASM. The supported single-threaded WASI SDK reports one available lane and uses the existing single-lane execution path; its native thread backend is not invoked.
 - `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles. The capacities come from game-provided `RenderSettings` at startup.
 - `GameSettings` configures startup window/runtime values such as title, initial resolution, resizability, and preferred frame rate. `Game` supplies it with a default implementation.

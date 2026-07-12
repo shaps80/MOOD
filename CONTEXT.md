@@ -95,7 +95,7 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 : Attachment/load/store description used to begin one render pass. It contains no frame-storage bookkeeping.
 
 `RenderPassEncoder`
-: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands are `setRenderPipeline`, `setVertexBuffer`, and `drawPrimitives`.
+: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands are `setRenderPipeline`, `setVertexBuffer`, `setVertexBytes`, and `drawPrimitives`.
 
 `RenderCommand`
 : Package-only compact command representation stored by `Frame`. It is not public game vocabulary. Resource commands store `ResourceID` rather than copying full descriptors into every recorded command.
@@ -109,7 +109,9 @@ Commands for a pass must be recorded contiguously. `Frame` preallocates command 
 
 Pixl's public direction is stage/resource-specific encoder intent, matching Metal: vertex/fragment buffers, bytes, textures, and samplers; compute encoders imply the compute stage. Public bind groups and dynamic-offset flags are not current Pixl concepts.
 
-Dynamic CPU-to-GPU transfer storage, upload rings, WebGPU bind groups, Vulkan descriptor sets, and DX12 descriptor allocation are private adapter mechanisms. Before adding calls such as `setVertexBytes`, define fixed-capacity recording storage, GPU-completion retirement, and readback lifetime. Do not expose a generic per-call write API that allocates staging resources or synchronizes CPU/GPU execution.
+`setVertexBytes` copies at most 4 KiB immediately into fixed-capacity `Frame` byte storage. Metal lowers it to native inline bytes. WebGPU copies those recorded bytes through a fixed-capacity adapter-owned uniform buffer and one reusable dynamic-offset bind group. Larger or persistent data uses buffers instead.
+
+Dynamic CPU-to-GPU transfer storage, upload rings, WebGPU bind groups, Vulkan descriptor sets, and DX12 descriptor allocation are private adapter mechanisms. Before adding larger buffer-write/copy APIs, define GPU-completion retirement and readback lifetime. Do not expose a generic per-call write API that allocates staging resources or synchronizes CPU/GPU execution.
 
 ## Required Future Depth
 

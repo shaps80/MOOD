@@ -4,8 +4,12 @@ import PixlPlatform
 final class WasmDevice: Device {
     let webGPUDevice: JSObject
     let buffers: ResourcePool<JSObject>
-    let pipelines: ResourcePool<JSObject>
+    let pipelines: ResourcePool<WasmRenderPipeline>
     let textures: ResourcePool<JSObject>
+    let immediateBuffer: JSObject
+    let immediateBindGroup: JSObject
+    let immediateAlignment: UInt32
+    private let pipelineLayout: JSObject
     lazy var shaders = ShaderRegistry(device: self)
 
     init(device: JSObject, settings: RenderSettings) {
@@ -13,6 +17,59 @@ final class WasmDevice: Device {
         buffers = ResourcePool(capacity: settings.bufferCapacity)
         pipelines = ResourcePool(capacity: settings.pipelineCapacity)
         textures = ResourcePool(capacity: settings.textureCapacity)
+
+        immediateAlignment = UInt32(device.limits.minUniformBufferOffsetAlignment.number ?? 256)
+        let immediateCapacity = UInt64(settings.frameByteCapacity)
+            + UInt64(settings.frameCommandCapacity) * UInt64(immediateAlignment - 1)
+            + 4 * 1024
+        let bufferDescriptor = object()
+        bufferDescriptor["size"] = .number(Double(immediateCapacity))
+        bufferDescriptor["usage"] = .number(Double(0x40 | 0x08))
+        guard let immediateBuffer = device.createBuffer!(bufferDescriptor).object else {
+            fatalError("WebGPU immediate buffer creation failed")
+        }
+        self.immediateBuffer = immediateBuffer
+
+        let bufferLayout = object()
+        bufferLayout["type"] = .string("uniform")
+        bufferLayout["hasDynamicOffset"] = .boolean(true)
+        let layoutEntry = object()
+        layoutEntry["binding"] = .number(0)
+        layoutEntry["visibility"] = .number(0x1)
+        layoutEntry["buffer"] = .object(bufferLayout)
+        let layoutEntries = array()
+        _ = layoutEntries.jsObject.push!(layoutEntry)
+        let bindGroupLayoutDescriptor = object()
+        bindGroupLayoutDescriptor["entries"] = .object(layoutEntries.jsObject)
+        guard let bindGroupLayout = device.createBindGroupLayout!(bindGroupLayoutDescriptor).object else {
+            fatalError("WebGPU immediate bind-group layout creation failed")
+        }
+
+        let pipelineLayouts = array()
+        _ = pipelineLayouts.jsObject.push!(bindGroupLayout)
+        let pipelineLayoutDescriptor = object()
+        pipelineLayoutDescriptor["bindGroupLayouts"] = .object(pipelineLayouts.jsObject)
+        guard let pipelineLayout = device.createPipelineLayout!(pipelineLayoutDescriptor).object else {
+            fatalError("WebGPU pipeline layout creation failed")
+        }
+        self.pipelineLayout = pipelineLayout
+
+        let resource = object()
+        resource["buffer"] = .object(immediateBuffer)
+        resource["offset"] = .number(0)
+        resource["size"] = .number(4 * 1024)
+        let bindGroupEntry = object()
+        bindGroupEntry["binding"] = .number(0)
+        bindGroupEntry["resource"] = .object(resource)
+        let bindGroupEntries = array()
+        _ = bindGroupEntries.jsObject.push!(bindGroupEntry)
+        let bindGroupDescriptor = object()
+        bindGroupDescriptor["layout"] = .object(bindGroupLayout)
+        bindGroupDescriptor["entries"] = .object(bindGroupEntries.jsObject)
+        guard let immediateBindGroup = device.createBindGroup!(bindGroupDescriptor).object else {
+            fatalError("WebGPU immediate bind group creation failed")
+        }
+        self.immediateBindGroup = immediateBindGroup
     }
 
     func makeBuffer(_ descriptor: BufferDescriptor) throws(DeviceError) -> Buffer {
@@ -50,7 +107,7 @@ final class WasmDevice: Device {
               let fragment = shaders.library(for: descriptor.fragment.shader) as? WasmShaderLibrary else {
             throw .invalidRenderPipelineDescriptor
         }
-        let native = object(); native["layout"] = .string("auto")
+        let native = object(); native["layout"] = .object(pipelineLayout)
         let vertexStage = object(); vertexStage["module"] = .object(vertex.module); vertexStage["entryPoint"] = .string(descriptor.vertex.name)
         let buffersArray = array()
         var bufferIndex: UInt32 = 0
@@ -73,14 +130,38 @@ final class WasmDevice: Device {
         let fragmentStage = object(); fragmentStage["module"] = .object(fragment.module); fragmentStage["entryPoint"] = .string(descriptor.fragment.name)
         let target = object(); target["format"] = .string(descriptor.colorFormat.webGPUName)
         let targets = array(); _ = targets.jsObject.push!(target); fragmentStage["targets"] = .object(targets.jsObject); native["fragment"] = .object(fragmentStage)
-        let primitive = object(); primitive["topology"] = .string(descriptor.topology.webGPUName); native["primitive"] = .object(primitive)
-        guard let pipeline = webGPUDevice.createRenderPipeline!(native).object,
-              let id = pipelines.insert(pipeline) else { throw .renderPipelineCreationFailed }
+        guard let id = pipelines.insert(
+            WasmRenderPipeline(device: webGPUDevice, descriptor: native)
+        ) else { throw .renderPipelineCreationFailed }
         return RenderPipeline(id: id)
     }
 
     func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture { throw .resourceCreationFailed(.texture) }
-    func makeQueue() throws(DeviceError) -> any Queue { WasmQueue(device: webGPUDevice, buffers: buffers, pipelines: pipelines, textures: textures) }
+    func makeQueue() throws(DeviceError) -> any Queue { makeWasmQueue() }
+
+    func makeWasmQueue() -> WasmQueue {
+        WasmQueue(
+            device: webGPUDevice,
+            buffers: buffers,
+            pipelines: pipelines,
+            textures: textures,
+            immediateBuffer: immediateBuffer,
+            immediateBindGroup: immediateBindGroup,
+            immediateAlignment: immediateAlignment
+        )
+    }
+
+    func destroy(_ buffer: Buffer) {
+        precondition(buffers.remove(buffer.id), "Buffer is invalid or has already been destroyed")
+    }
+
+    func destroy(_ pipeline: RenderPipeline) {
+        precondition(pipelines.remove(pipeline.id), "Render pipeline is invalid or has already been destroyed")
+    }
+
+    func destroy(_ texture: Texture) {
+        precondition(textures.remove(texture.id), "Texture is invalid or has already been destroyed")
+    }
 
     private func bufferUsage(_ usage: BufferUsage) -> UInt32 {
         var value: UInt32 = 0

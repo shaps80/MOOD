@@ -15,7 +15,11 @@ final class Runtime {
     private var lastPresentationMilliseconds: Double?
 
     init(gameSettings: GameSettings, renderSettings: RenderSettings, defaultShaders: Shader, makeGame: @escaping (any Platform) throws -> any PlatformGame) {
-        frame = Frame(passCapacity: renderSettings.framePassCapacity, drawCapacity: renderSettings.frameDrawCapacity)
+        frame = Frame(
+            passCapacity: renderSettings.framePassCapacity,
+            commandCapacity: renderSettings.frameCommandCapacity,
+            byteCapacity: renderSettings.frameByteCapacity
+        )
         self.gameSettings = gameSettings; self.renderSettings = renderSettings; self.defaultShaders = defaultShaders; self.makeGame = makeGame
     }
 
