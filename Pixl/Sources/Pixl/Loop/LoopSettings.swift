@@ -16,6 +16,11 @@ public struct FixedStep: Hashable, Sendable {
     public let maximumUpdatesPerFrame: UInt32
 
     /// Creates a fixed-rate simulation policy.
+    ///
+    /// - Parameters:
+    ///   - updatesPerSecond: Number of fixed simulation ticks per second.
+    ///   - maximumUpdatesPerFrame: Maximum catch-up ticks permitted during one
+    ///     presentation callback.
     public init(
         updatesPerSecond: UInt32,
         maximumUpdatesPerFrame: UInt32
@@ -45,6 +50,12 @@ public struct LoopSettings: Hashable, Sendable {
     public let fixedStep: FixedStep?
 
     /// Creates runtime timing policy.
+    ///
+    /// - Parameters:
+    ///   - maximumDeltaSeconds: Largest variable-update delta accepted after a
+    ///     stalled presentation callback.
+    ///   - fixedStep: Optional fixed-rate simulation policy. Pass `nil` to use
+    ///     variable updates only.
     public init(
         maximumDeltaSeconds: Double = 0.25,
         fixedStep: FixedStep? = FixedStep(

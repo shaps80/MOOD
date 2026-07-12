@@ -9,6 +9,10 @@ public struct Resolution: Sendable, Hashable {
     public let height: Int
 
     /// Creates an initial drawable resolution.
+    ///
+    /// - Parameters:
+    ///   - width: Initial drawable width in platform pixels.
+    ///   - height: Initial drawable height in platform pixels.
     public init(width: Int, height: Int) {
         precondition(width > 0, "Resolution width must be greater than zero")
         precondition(height > 0, "Resolution height must be greater than zero")
@@ -37,11 +41,18 @@ public struct GameSettings: Sendable, Hashable {
     public let isResizable: Bool
 
     /// Creates game startup and presentation preferences.
+    ///
+    /// - Parameters:
+    ///   - title: Initial platform window title.
+    ///   - preferredFps: Requested presentation rate. The platform may present
+    ///     more slowly when constrained by display timing or system load.
+    ///   - resolution: Initial drawable resolution in platform pixels.
+    ///   - isResizable: Whether the platform window may be resized.
     public init(
         title: String,
         preferredFps: Int = 60,
         resolution: Resolution,
-        isResizable: Bool = true
+        isResizable: Bool = false
     ) {
         precondition(preferredFps > 0, "Preferred FPS must be greater than zero")
 

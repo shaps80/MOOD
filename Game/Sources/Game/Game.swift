@@ -23,7 +23,7 @@ struct Game: Pixl.Game {
     private let vertexBuffer: Buffer
     private let pipeline: RenderPipeline
     private let state = State()
-    private let camera = OrthographicCamera(halfHeight: 1)
+    private let camera = OrthographicCamera()
 
     static var gameSettings: GameSettings {
         .init(
