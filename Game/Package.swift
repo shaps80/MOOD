@@ -7,7 +7,7 @@ let package = Package(
         .macOS(.v13)
     ],
     dependencies: [
-        .package(path: "../Pixl")
+        .package(path: "../Pixl"),
     ],
     targets: [
         .executableTarget(

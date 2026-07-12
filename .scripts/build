@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PACKAGE_DIR="${ROOT_DIR}/Pixl"
+PACKAGE_DIR="${ROOT_DIR}/${1:-Game}"
 
 if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
   echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
@@ -14,6 +14,6 @@ cd "${PACKAGE_DIR}"
 
 CONFIGURATION="release"
 SDK="swift-6.3.2-RELEASE_wasm"
-TARGET="${1:-Pixl}"
+TARGET="${2:-${1:-Game}}"
 
 swiftly run swift build   --scratch-path ".build/wasm-${TARGET}"   --swift-sdk "${SDK}"   --target "${TARGET}"   -c "${CONFIGURATION}"

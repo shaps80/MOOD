@@ -56,6 +56,9 @@ struct PixlShaderGenerator {
 
     public enum ShaderCatalogue {
         public static let `default`: Shader = {
+        #if os(WASI)
+            return Shader(wgslSource: wgslSource)
+        #else
             guard let url = Bundle.module.url(
                 forResource: "PixlGraphics",
                 withExtension: "metallib"
@@ -67,8 +70,36 @@ struct PixlShaderGenerator {
                 fatalError("Generated PixlGraphics shader library could not be read")
             }
 
-            return data.withUnsafeBytes { Shader(copying: $0) }
+            return data.withUnsafeBytes {
+                Shader(copyingMetal: $0, wgslSource: wgslSource)
+            }
+        #endif
         }()
+
+        private static let wgslSource = \"\"\"
+        struct VertexInput {
+            @location(0) position: vec2f,
+            @location(1) color: vec4f,
+        }
+
+        struct VertexOutput {
+            @builtin(position) position: vec4f,
+            @location(0) color: vec4f,
+        }
+
+        @vertex
+        fn pixlVertex(input: VertexInput) -> VertexOutput {
+            var output: VertexOutput;
+            output.position = vec4f(input.position, 0.0, 1.0);
+            output.color = input.color;
+            return output;
+        }
+
+        @fragment
+        fn pixlFragment(input: VertexOutput) -> @location(0) vec4f {
+            return input.color;
+        }
+        \"\"\"
     }
 
     public enum Shaders {
@@ -85,6 +116,9 @@ struct PixlShaderGenerator {
     """
 
     private static func run(_ tool: String, _ arguments: [String]) throws {
+#if os(WASI)
+        throw ShaderGeneratorError.toolFailed(tool)
+#else
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = [tool] + arguments
@@ -93,6 +127,7 @@ struct PixlShaderGenerator {
         guard process.terminationStatus == 0 else {
             throw ShaderGeneratorError.toolFailed(tool)
         }
+#endif
     }
 }
 

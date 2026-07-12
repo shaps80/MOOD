@@ -3,65 +3,25 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PACKAGE_DIR="${ROOT_DIR}/PixlPlatform"
-
-if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
-  echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
-  exit 1
-fi
-
-MODE="${1:-all}"
 CONFIGURATION="release"
-PRODUCT="PixlPlatformTestRunner"
 SDK="swift-6.3.2-RELEASE_wasm"
 
-run_native() {
-  echo
-  echo "=== Native ==="
-  swiftly run swift run \
-    --package-path "${PACKAGE_DIR}" \
-    --scratch-path "${PACKAGE_DIR}/.build/test-native" \
-    -c "${CONFIGURATION}" \
-    "${PRODUCT}"
-}
+rm -rf \
+  "${ROOT_DIR}/PixlConcurrency/.build/test-wasm/wasm32-unknown-wasip1/release/ModuleCache" \
+  "${ROOT_DIR}/PixlPlatform/.build/test-wasm"
 
-run_wasm() {
-  echo
-  echo "=== WASM ==="
-  swiftly run swift run \
-    --package-path "${PACKAGE_DIR}" \
-    --scratch-path "${PACKAGE_DIR}/.build/test-wasm" \
-    --swift-sdk "${SDK}" \
-    -c "${CONFIGURATION}" \
-    "${PRODUCT}"
-}
+echo
+echo "=== PixlConcurrency — WASM correctness ==="
+swiftly run swift test \
+  --package-path "${ROOT_DIR}/PixlConcurrency" \
+  --scratch-path "${ROOT_DIR}/PixlConcurrency/.build/test-wasm" \
+  --swift-sdk "${SDK}" \
+  -c "${CONFIGURATION}"
 
-run_metal() {
-  echo
-  echo "=== Metal ==="
-  swiftly run swift run \
-    --package-path "${PACKAGE_DIR}" \
-    --scratch-path "${PACKAGE_DIR}/.build/test-metal" \
-    -c "${CONFIGURATION}" \
-    PixlMetalPlatformBenchmarkRunner
-}
-
-case "${MODE}" in
-  all)
-    run_native
-    run_wasm
-    ;;
-  native)
-    run_native
-    ;;
-  wasm)
-    run_wasm
-    ;;
-  metal)
-    run_metal
-    ;;
-  *)
-    echo "Usage: ./.scripts/test [all|native|wasm|metal]" >&2
-    exit 1
-    ;;
-esac
+echo
+echo "=== ResourcePool — WASM correctness ==="
+PIXL_PLATFORM_TEST=1 swiftly run swift test \
+  --package-path "${ROOT_DIR}/PixlPlatform" \
+  --scratch-path "${ROOT_DIR}/PixlPlatform/.build/test-wasm" \
+  --swift-sdk "${SDK}" \
+  -c "${CONFIGURATION}"

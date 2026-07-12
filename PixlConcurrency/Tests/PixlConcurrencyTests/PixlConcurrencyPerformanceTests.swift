@@ -1,3 +1,4 @@
+#if !os(WASI)
 import Foundation
 import XCTest
 @testable import PixlConcurrency
@@ -245,3 +246,4 @@ final class PixlConcurrencyPerformanceTests: XCTestCase {
         XCTAssertNotEqual(context.checksum, 0)
     }
 }
+#endif

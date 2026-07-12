@@ -84,7 +84,7 @@ Release builds of the `PixlPlatform` provider target enable Swift's aggressive c
 : Opaque backend-native library object. It is created from an owned `Shader` and retained directly by game or pipeline lifetime; it is not a pooled resource.
 
 `Shader`
-: Owned immutable bytes loaded from a generated game shader resource. `Shader` keeps resource loading and byte ownership outside platform implementations while avoiding Foundation or bundle APIs in PixlPlatform.
+: Owned generated backend artifacts. The current catalogue supplies compiled metallib bytes to Metal and WGSL source to WebGPU while keeping the same logical shader and entry-point identities.
 
 `ShaderCatalogue`
 : PixlGraphics-owned namespace for built-in `Shader` values. `ShaderCatalogue.default` is registered automatically by Pixl before game initialization.

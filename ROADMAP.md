@@ -11,14 +11,16 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Prototype static lane programs, balanced ranges, leader-only work, and reusable barriers; retain the API direction but reject the initial condition-variable barrier.
 - [x] Validate the first Metal path with compiled shaders, a GPU-only vertex buffer, a render pipeline, and a visible triangle.
 - [x] Establish explicit buffer memory intent: GPU-only, CPU-visible, and GPU-to-CPU.
+- [x] Build the same Game package for WASM and render its unchanged triangle through `PixlWasmPlatform` and WebGPU.
+- [x] Keep `PixlConcurrency` available under the supported single-threaded WASI SDK through its one-lane execution path.
 
 ## Next Architectural Decisions
 
 ### Runtime Loop and Timing
 
-- [ ] Define a platform-neutral Pixl loop driven by each platform's presentation callback.
-- [ ] Define variable-step and optional fixed-step update behavior.
-- [ ] Define elapsed time, accumulator limits, interpolation, pause/resume, and long-frame handling.
+- [x] Define a platform-neutral Pixl loop driven by each platform's presentation callback.
+- [x] Define variable-step and optional fixed-step update behavior.
+- [x] Define elapsed time, accumulator limits, interpolation, and long-frame handling.
 - [ ] Define deterministic safe points where queued editor/live-development changes may be applied without racing simulation or render preparation.
 - [ ] Define development hooks as part of the loop lifecycle without making editor behavior part of release-game policy.
 - [ ] Keep editor mutations queued until a safe point; never let editor code mutate live simulation state concurrently.

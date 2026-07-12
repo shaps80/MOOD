@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PACKAGE_DIR="${ROOT_DIR}/Pixl"
+PACKAGE="${1:-Game}"
+PACKAGE_DIR="${ROOT_DIR}/${PACKAGE}"
 
 if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
   echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
@@ -15,9 +16,9 @@ cd "${PACKAGE_DIR}"
 PORT=9999
 URL="http://127.0.0.1:${PORT}/"
 DIST_DIR=".dist"
-PRODUCT="${1:?Usage: ./.scripts/serve <product>}"
+PRODUCT="${2:-${PACKAGE}}"
 
-"${SCRIPT_DIR}/_package-web" "${PRODUCT}"
+"${SCRIPT_DIR}/_package-web" "${PACKAGE}" "${PRODUCT}"
 
 echo
 echo "Pixl running at:"

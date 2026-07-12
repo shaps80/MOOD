@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PACKAGE_DIR="${ROOT_DIR}/Pixl"
+PACKAGE="${1:-Game}"
+PACKAGE_DIR="${ROOT_DIR}/${PACKAGE}"
 
 if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
   echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
@@ -12,12 +13,12 @@ fi
 
 cd "${PACKAGE_DIR}"
 
-PRODUCT="${1:?Usage: ./.scripts/deploy <product>}"
+PRODUCT="${2:-${PACKAGE}}"
 DIST_DIR=".dist"
 ZIP_PATH="${PRODUCT}.zip"
 
 rm -f "${ZIP_PATH}"
-"${SCRIPT_DIR}/_package-web" "${PRODUCT}"
+"${SCRIPT_DIR}/_package-web" "${PACKAGE}" "${PRODUCT}"
 
 (
   cd "${DIST_DIR}"

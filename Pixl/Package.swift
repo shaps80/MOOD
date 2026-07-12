@@ -11,6 +11,11 @@ private var dependencies: [Target.Dependency] = [
         name: "PixlMetalPlatform",
         package: "PixlPlatform",
         condition: .when(platforms: [.macOS])
+    ),
+    .product(
+        name: "PixlWasmPlatform",
+        package: "PixlPlatform",
+        condition: .when(platforms: [.wasi])
     )
 ]
 
@@ -53,6 +58,12 @@ let package = Package(
                 ),
                 "Pixl2D",
                 "Pixl3D"
+                ,
+                .product(
+                    name: "PixlWasmPlatform",
+                    package: "PixlPlatform",
+                    condition: .when(platforms: [.wasi])
+                )
             ],
             swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),

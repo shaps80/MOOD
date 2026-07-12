@@ -13,6 +13,9 @@ package struct ExecutionSettings: Hashable, Sendable {
     }
 
     func resolvedLaneCount(for topology: ExecutionTopology) -> Int {
+#if os(WASI)
+        1
+#else
         switch laneCount {
         case .fixed(let count):
             precondition(count > 0)
@@ -24,5 +27,6 @@ package struct ExecutionSettings: Hashable, Sendable {
                     ?? topology.availableProcessorCount
             )
         }
+#endif
     }
 }

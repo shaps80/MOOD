@@ -241,6 +241,22 @@ void pixl_topology_query(int *available, int *performance) {
 #endif
 }
 
+#elif defined(__wasi__) || defined(__wasi) || defined(__WASI__) || defined(__wasm__) || defined(__wasm32__)
+
+struct pixl_condition { int unused; };
+void *pixl_thread_create(pixl_thread_entry_t entry, void *context, int *error) {
+    (void)entry; (void)context; if (error != NULL) *error = -1; return NULL;
+}
+int pixl_thread_join_and_destroy(void *thread) { (void)thread; return 0; }
+pixl_condition_t *pixl_condition_create(void) { return calloc(1, sizeof(pixl_condition_t)); }
+void pixl_condition_destroy(pixl_condition_t *condition) { free(condition); }
+int pixl_condition_lock(pixl_condition_t *condition) { (void)condition; return 0; }
+int pixl_condition_unlock(pixl_condition_t *condition) { (void)condition; return 0; }
+int pixl_condition_wait(pixl_condition_t *condition) { (void)condition; return -1; }
+int pixl_condition_signal(pixl_condition_t *condition) { (void)condition; return 0; }
+int pixl_condition_broadcast(pixl_condition_t *condition) { (void)condition; return 0; }
+void pixl_topology_query(int *available, int *performance) { *available = 1; *performance = 0; }
+
 #else
 
 #error "PixlConcurrencyC does not support this platform"

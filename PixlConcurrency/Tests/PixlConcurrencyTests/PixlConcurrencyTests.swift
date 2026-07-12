@@ -97,7 +97,7 @@ struct PixlConcurrencyTests {
             topology: nil,
             settings: .init(laneCount: .fixed(4))
         )
-        let context = CoverageContext(count: 1_003, laneCount: 4, dynamic: true)
+        let context = CoverageContext(count: 1_003, laneCount: group.laneCount, dynamic: true)
 
         for _ in 0..<100 {
             group.run(context)
@@ -128,11 +128,11 @@ struct PixlConcurrencyTests {
             topology: nil,
             settings: .init(laneCount: .fixed(laneCount))
         )
-        let context = PhaseContext(laneCount: laneCount)
+        let context = PhaseContext(laneCount: group.laneCount)
 
         group.run(context)
 
-        #expect(context.values.allSatisfy { $0 == 32 })
+        #expect(context.values.prefix(group.laneCount).allSatisfy { $0 == 32 })
     }
 
     @Test
@@ -143,7 +143,11 @@ struct PixlConcurrencyTests {
         )
         let group = ExecutionGroup<CoverageProgram>(topology: topology)
 
+#if os(WASI)
+        #expect(group.laneCount == 1)
+#else
         #expect(group.laneCount == 10)
+#endif
     }
 
     @Test
@@ -211,7 +215,7 @@ struct PixlConcurrencyTests {
         )
         let context = CoverageContext(
             count: count,
-            laneCount: laneCount,
+            laneCount: group.laneCount,
             dynamic: dynamic
         )
 
