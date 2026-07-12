@@ -47,13 +47,14 @@ Implemented/decided so far:
 - `RenderTarget` is a texture view shape: texture plus mip level and array layer. It is not a `screen` enum.
 - `Texture` is an opaque backend resource handle plus immutable `TextureDescriptor`.
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
+- `Buffer` follows the same opaque-handle model as `Texture`. `Device.makeBuffer` supports fixed-size allocation or a synchronous copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
 - `PlatformGame` is the lower-level render capability that concrete platform runtimes receive. It records into the runtime-owned `Frame` for the runtime-provided final `RenderTarget`; `Game` inherits it, so game packages use `Game` rather than this protocol directly.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
-- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns a fixed-capacity `ResourcePool<MTLTexture>` whose capacity is supplied explicitly at initialization.
+- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity `ResourcePool<MTLBuffer>` and `ResourcePool<MTLTexture>` storage whose capacities are supplied explicitly at initialization.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
 - `MetalQueue.submit` now executes ordered clear-only render passes: it resolves the target texture, maps mip/layer and load/store/clear state, ends the empty encoder, and commits the Metal command buffer.

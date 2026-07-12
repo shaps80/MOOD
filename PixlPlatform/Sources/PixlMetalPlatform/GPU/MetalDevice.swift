@@ -3,16 +3,69 @@ import PixlPlatform
 
 final class MetalDevice: Device {
     let metalDevice: MTLDevice
+    let buffers: ResourcePool<MTLBuffer>
     let textures: ResourcePool<MTLTexture>
 
-    init(device: MTLDevice, textureCapacity: UInt32) {
+    init(
+        device: MTLDevice,
+        bufferCapacity: UInt32,
+        textureCapacity: UInt32
+    ) {
         metalDevice = device
+        buffers = ResourcePool(capacity: bufferCapacity)
         textures = ResourcePool(capacity: textureCapacity)
     }
 
-    convenience init?(textureCapacity: UInt32) {
+    convenience init?(bufferCapacity: UInt32, textureCapacity: UInt32) {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
-        self.init(device: device, textureCapacity: textureCapacity)
+        self.init(
+            device: device,
+            bufferCapacity: bufferCapacity,
+            textureCapacity: textureCapacity
+        )
+    }
+
+    func makeBuffer(_ descriptor: BufferDescriptor) throws(DeviceError) -> Buffer {
+        guard let length = Int(exactly: descriptor.size),
+              let metalBuffer = metalDevice.makeBuffer(
+                  length: length,
+                  options: .storageModeShared
+              )
+        else {
+            throw DeviceError.resourceCreationFailed(.buffer)
+        }
+
+        guard let id = buffers.insert(metalBuffer) else {
+            throw DeviceError.resourceCreationFailed(.buffer)
+        }
+
+        return Buffer(id: id, descriptor: descriptor)
+    }
+
+    func makeBuffer(
+        copying bytes: UnsafeRawBufferPointer,
+        usage: BufferUsage
+    ) throws(DeviceError) -> Buffer {
+        let descriptor = BufferDescriptor(
+            size: UInt64(bytes.count),
+            usage: usage
+        )
+
+        guard let baseAddress = bytes.baseAddress,
+              let metalBuffer = metalDevice.makeBuffer(
+                  bytes: baseAddress,
+                  length: bytes.count,
+                  options: .storageModeShared
+              )
+        else {
+            throw DeviceError.resourceCreationFailed(.buffer)
+        }
+
+        guard let id = buffers.insert(metalBuffer) else {
+            throw DeviceError.resourceCreationFailed(.buffer)
+        }
+
+        return Buffer(id: id, descriptor: descriptor)
     }
 
     func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture {

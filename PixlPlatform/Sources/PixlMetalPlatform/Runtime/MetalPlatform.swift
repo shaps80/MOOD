@@ -17,6 +17,7 @@ final class MetalPlatform: @MainActor Platform {
 
         let metalDevice = MetalDevice(
             device: nativeDevice,
+            bufferCapacity: renderSettings.bufferCapacity,
             textureCapacity: renderSettings.textureCapacity
         )
         guard let commandQueue = nativeDevice.makeCommandQueue() else {
