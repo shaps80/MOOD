@@ -1,5 +1,5 @@
+import PixlMath
 import Swift
-import Foundation
 
 public struct Transform2D: BitwiseCopyable, Sendable {
     public let x: SIMD3<Float>
@@ -16,9 +16,10 @@ public struct Transform2D: BitwiseCopyable, Sendable {
         self.translation = translation
     }
 
-    public func rotated(by radians: Float) -> Self {
-        let cosine = cos(radians)
-        let sine = sin(radians)
+    public func rotated(by radians: Double) -> Self {
+        let rotation = sinCos(radians)
+        let cosine = Float(rotation.cosine)
+        let sine = Float(rotation.sine)
         let rotatedX = (x * cosine) + (y * sine)
         let rotatedY = (x * -sine) + (y * cosine)
 

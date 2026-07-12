@@ -22,7 +22,7 @@ private final class PartitionedValues: LanePartitioned, @unchecked Sendable {
 @main
 struct Game: Pixl.Game {
     private final class State: @unchecked Sendable {
-        var rotation: Float = 0
+        var rotation: Double = 0
         var metricsElapsed = 0.0
     }
 
@@ -54,7 +54,7 @@ struct Game: Pixl.Game {
     }
 
     func update(_ time: UpdateTime, lanes: Lanes) {
-        state.rotation = Float(time.elapsedSeconds)
+        state.rotation = time.elapsedSeconds
     }
 
     private let values: PartitionedValues

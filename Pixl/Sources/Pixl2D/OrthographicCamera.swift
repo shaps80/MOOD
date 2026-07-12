@@ -1,5 +1,5 @@
 import PixlPlatform
-import Swift
+import PixlMath
 
 public struct OrthographicCamera: Sendable {
     public var center: Vec2

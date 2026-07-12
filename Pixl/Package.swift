@@ -46,7 +46,8 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../PixlPlatform"),
-        .package(path: "../PixlConcurrency")
+        .package(path: "../PixlConcurrency"),
+        .package(path: "../PixlMath")
     ],
     targets: [
         .target(
@@ -69,7 +70,9 @@ let package = Package(
         ),
         .target(
             name: "Pixl2D",
-            dependencies: dependencies,
+            dependencies: dependencies + [
+                .product(name: "PixlMath", package: "PixlMath")
+            ],
             swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .target(
