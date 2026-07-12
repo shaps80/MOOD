@@ -1,12 +1,13 @@
+#if canImport(Darwin)
 import Darwin
-import Foundation
-import PixlPlatform
 
-extension ExecutionTopology {
-    static var `default`: ExecutionTopology {
+enum NativeTopology {
+    static var current: ExecutionTopology {
         let availableCount = max(
             1,
-            ProcessInfo.processInfo.activeProcessorCount
+            sysctlInteger(named: "hw.activecpu")
+                ?? sysctlInteger(named: "hw.logicalcpu")
+                ?? 1
         )
         let performanceCount = sysctlInteger(
             named: "hw.perflevel0.logicalcpu"
@@ -28,3 +29,4 @@ extension ExecutionTopology {
         return Int(value)
     }
 }
+#endif

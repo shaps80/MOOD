@@ -7,7 +7,6 @@ final class MetalPlatform: @MainActor Platform {
     private let view: MTKView
     private let drawables: ResourcePool<any CAMetalDrawable>
 
-    let executionTopology: ExecutionTopology? = .default
     var device: any Device { metalDevice }
     var shaders: ShaderRegistry { metalDevice.shaders }
 

@@ -1,8 +1,10 @@
-public struct ExecutionTopology: Hashable, Sendable {
-    public let availableProcessorCount: Int
-    public let performanceProcessorCount: Int?
+import Swift
 
-    public init(
+package struct ExecutionTopology: Hashable, Sendable {
+    package let availableProcessorCount: Int
+    package let performanceProcessorCount: Int?
+
+    package init(
         availableProcessorCount: Int,
         performanceProcessorCount: Int? = nil
     ) {
@@ -14,5 +16,9 @@ public struct ExecutionTopology: Hashable, Sendable {
 
         self.availableProcessorCount = availableProcessorCount
         self.performanceProcessorCount = performanceProcessorCount
+    }
+
+    package static var current: ExecutionTopology {
+        NativeTopology.current
     }
 }

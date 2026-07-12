@@ -34,29 +34,18 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../PixlPlatform"),
-        .package(
-            url: "https://github.com/apple/swift-atomics.git",
-            from: "1.3.0"
-        )
+        .package(path: "../PixlConcurrency")
     ],
     targets: [
         .target(
             name: "Pixl",
             dependencies: [
-                "PixlExec",
+                .product(
+                    name: "PixlConcurrency",
+                    package: "PixlConcurrency"
+                ),
                 "Pixl2D",
                 "Pixl3D"
-            ],
-            swiftSettings: defaultNonisolated
-        ),
-        .target(
-            name: "PixlExec",
-            dependencies: [
-                .product(
-                    name: "PixlPlatform",
-                    package: "PixlPlatform"
-                ),
-                .product(name: "Atomics", package: "swift-atomics")
             ],
             swiftSettings: defaultNonisolated
         ),
@@ -77,11 +66,6 @@ let package = Package(
             plugins: [
                 .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
             ]
-        ),
-        .testTarget(
-            name: "PixlExecTests",
-            dependencies: ["PixlExec"],
-            swiftSettings: defaultNonisolated
         ),
     ],
     swiftLanguageModes: [.v6]

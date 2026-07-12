@@ -15,7 +15,6 @@ public protocol PlatformGame {
 }
 
 public protocol Platform: AnyObject {
-    var executionTopology: ExecutionTopology? { get }
     var device: any Device { get }
     var shaders: ShaderRegistry { get }
 

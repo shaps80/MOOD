@@ -1,11 +1,11 @@
 import Atomics
-import Foundation
 
 final class LaneBarrier: @unchecked Sendable {
     private let participantCount: Int
     private let arrivalCount = ManagedAtomic<Int>(0)
     private let generation = ManagedAtomic<Int>(0)
-    private let parkCondition = NSCondition()
+    private let parkedWaiterCount = ManagedAtomic<Int>(0)
+    private let parkCondition = NativeCondition()
 
     init(participantCount: Int) {
         precondition(participantCount > 0)
@@ -24,9 +24,11 @@ final class LaneBarrier: @unchecked Sendable {
         if arrival == participantCount - 1 {
             arrivalCount.store(0, ordering: .relaxed)
             generation.wrappingIncrement(ordering: .releasing)
-            parkCondition.lock()
-            parkCondition.broadcast()
-            parkCondition.unlock()
+            if parkedWaiterCount.load(ordering: .acquiring) > 0 {
+                parkCondition.lock()
+                parkCondition.broadcast()
+                parkCondition.unlock()
+            }
             return
         }
 
@@ -37,8 +39,12 @@ final class LaneBarrier: @unchecked Sendable {
         }
 
         parkCondition.lock()
-        while generation.load(ordering: .acquiring) == currentGeneration {
-            parkCondition.wait()
+        if generation.load(ordering: .acquiring) == currentGeneration {
+            parkedWaiterCount.wrappingIncrement(ordering: .releasing)
+            while generation.load(ordering: .acquiring) == currentGeneration {
+                parkCondition.wait()
+            }
+            parkedWaiterCount.wrappingDecrement(ordering: .relaxed)
         }
         parkCondition.unlock()
     }

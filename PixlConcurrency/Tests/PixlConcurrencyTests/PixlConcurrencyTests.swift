@@ -1,7 +1,6 @@
 import Foundation
-import PixlPlatform
 import XCTest
-@testable import PixlExec
+@testable import PixlConcurrency
 
 private final class CoverageContext: @unchecked Sendable {
     let values: UnsafeMutableBufferPointer<Int>
@@ -32,7 +31,7 @@ private enum CoverageProgram: LaneProgram {
                 for index in range { context.values[index] += 1 }
             }
         } else {
-            for index in lane.range(count: context.values.count) {
+            for index in lane.partition(count: context.values.count) {
                 context.values[index] += 1
             }
         }
@@ -71,7 +70,7 @@ private enum PhaseProgram: LaneProgram {
     }
 }
 
-final class PixlExecTests: XCTestCase {
+final class PixlConcurrencyTests: XCTestCase {
     func testStaticRangesCoverEveryElementExactlyOnce() {
         verifyCoverage(dynamic: false, count: 10_003, laneCount: 7)
     }
@@ -93,12 +92,13 @@ final class PixlExecTests: XCTestCase {
             topology: nil,
             settings: .init(laneCount: .fixed(4))
         )
+        let context = CoverageContext(count: 1_003, laneCount: 4, dynamic: true)
 
         for _ in 0..<100 {
-            let context = CoverageContext(count: 1_003, laneCount: 4, dynamic: true)
             group.run(context)
-            XCTAssertTrue(context.values.allSatisfy { $0 == 1 })
         }
+
+        XCTAssertTrue(context.values.allSatisfy { $0 == 100 })
     }
 
     func testRepeatedPhaseBarriers() {
@@ -135,6 +135,46 @@ final class PixlExecTests: XCTestCase {
         )
 
         XCTAssertEqual(group.laneCount, 1)
+    }
+
+    func testEmptyCursorHasNoWork() {
+        let cursor = WorkCursor(count: 0, chunkSize: 8)
+
+        XCTAssertNil(cursor.claim())
+        cursor.reset()
+        XCTAssertNil(cursor.claim())
+    }
+
+    func testCursorHandlesNonDivisibleTail() {
+        let cursor = WorkCursor(count: 10, chunkSize: 4)
+
+        XCTAssertEqual(cursor.claim(), 0..<4)
+        XCTAssertEqual(cursor.claim(), 4..<8)
+        XCTAssertEqual(cursor.claim(), 8..<10)
+        XCTAssertNil(cursor.claim())
+    }
+
+    func testCursorHonorsChunkAlignment() {
+        let cursor = WorkCursor(
+            count: 1_003,
+            laneCount: 7,
+            chunksPerLane: 3,
+            alignment: 8
+        )
+
+        XCTAssertEqual(cursor.chunkSize % 8, 0)
+        while let range = cursor.claim() {
+            XCTAssertEqual(range.lowerBound % 8, 0)
+            XCTAssertLessThanOrEqual(range.upperBound, cursor.count)
+        }
+    }
+
+    func testCursorArithmeticAtIntegerBoundary() {
+        let cursor = WorkCursor(count: .max, chunkSize: .max - 1)
+
+        XCTAssertEqual(cursor.claim(), 0..<(Int.max - 1))
+        XCTAssertEqual(cursor.claim(), (Int.max - 1)..<Int.max)
+        XCTAssertNil(cursor.claim())
     }
 
     private func verifyCoverage(dynamic: Bool, count: Int, laneCount: Int) {

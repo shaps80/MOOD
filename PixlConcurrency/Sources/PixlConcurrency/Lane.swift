@@ -13,7 +13,7 @@ package struct Lane: Sendable {
         self.barrier = barrier
     }
 
-    package func range(count itemCount: Int) -> Range<Int> {
+    package func partition(count itemCount: Int) -> Range<Int> {
         precondition(itemCount >= 0)
 
         let baseCount = itemCount / count

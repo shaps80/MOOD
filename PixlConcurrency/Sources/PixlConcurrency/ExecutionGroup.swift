@@ -1,27 +1,28 @@
-import Foundation
-import PixlPlatform
+import Swift
 
 package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
     package let laneCount: Int
 
-    private let condition = NSCondition()
-    private var workers: [Thread] = []
+    private let condition = NativeCondition()
+    private let barrier: LaneBarrier
+    private var workers: [NativeThread] = []
     private var context: Program.Context?
-    private var barrier: LaneBarrier?
     private var remaining = 0
     private var readyCount = 0
     private var generation = 0
+    private var isRunning = false
     private var isStopping = false
 
     package init(
-        topology: ExecutionTopology?,
+        topology: ExecutionTopology? = nil,
         settings: ExecutionSettings = .init()
     ) {
-        laneCount = settings.resolvedLaneCount(for: topology)
+        laneCount = settings.resolvedLaneCount(for: topology ?? .current)
+        barrier = LaneBarrier(participantCount: laneCount)
         workers.reserveCapacity(max(0, laneCount - 1))
 
         for index in 1..<laneCount {
-            let worker = Thread { [self] in workerLoop(index: index) }
+            let worker = NativeThread { [self] in workerLoop(index: index) }
             workers.append(worker)
             worker.start()
         }
@@ -38,17 +39,16 @@ package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
         condition.broadcast()
         condition.unlock()
 
-        while workers.contains(where: { !$0.isFinished }) {
-            Thread.sleep(forTimeInterval: 0.000_1)
+        for worker in workers {
+            worker.join()
         }
     }
 
     package func run(_ context: Program.Context) {
-        let barrier = LaneBarrier(participantCount: laneCount)
-
         condition.lock()
+        precondition(!isRunning, "ExecutionGroup does not support concurrent runs")
+        isRunning = true
         self.context = context
-        self.barrier = barrier
         remaining = laneCount - 1
         generation &+= 1
         condition.broadcast()
@@ -62,7 +62,7 @@ package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
         condition.lock()
         while remaining > 0 { condition.wait() }
         self.context = nil
-        self.barrier = nil
+        isRunning = false
         condition.unlock()
     }
 
@@ -86,10 +86,9 @@ package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
 
             observedGeneration = generation
             let context = context
-            let barrier = barrier
             condition.unlock()
 
-            guard let context, let barrier else { continue }
+            guard let context else { continue }
             Program.execute(
                 context,
                 on: Lane(index: index, count: laneCount, barrier: barrier)

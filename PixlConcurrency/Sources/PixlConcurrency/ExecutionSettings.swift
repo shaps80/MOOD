@@ -1,4 +1,4 @@
-import PixlPlatform
+import Swift
 
 package struct ExecutionSettings: Hashable, Sendable {
     package enum LaneCount: Hashable, Sendable {
@@ -12,7 +12,7 @@ package struct ExecutionSettings: Hashable, Sendable {
         self.laneCount = laneCount
     }
 
-    func resolvedLaneCount(for topology: ExecutionTopology?) -> Int {
+    func resolvedLaneCount(for topology: ExecutionTopology) -> Int {
         switch laneCount {
         case .fixed(let count):
             precondition(count > 0)
@@ -20,9 +20,8 @@ package struct ExecutionSettings: Hashable, Sendable {
         case .automatic:
             return max(
                 1,
-                topology?.performanceProcessorCount
-                    ?? topology?.availableProcessorCount
-                    ?? 1
+                topology.performanceProcessorCount
+                    ?? topology.availableProcessorCount
             )
         }
     }
