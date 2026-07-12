@@ -1,6 +1,23 @@
 import Foundation
 import Pixl
 
+private final class PartitionedValues: LanePartitioned, @unchecked Sendable {
+    var values: [Int]
+    var count: Int { values.count }
+
+    init(count: Int) {
+        values = Array(repeating: 0, count: count)
+    }
+
+    func withUnsafeMutableElements<Result>(
+        _ body: (UnsafeMutableBufferPointer<Int>) throws -> Result
+    ) rethrows -> Result {
+        try values.withUnsafeMutableBufferPointer { elements in
+            try body(elements)
+        }
+    }
+}
+
 @main
 struct Game: Pixl.Game {
     private final class State: @unchecked Sendable {
@@ -46,12 +63,18 @@ struct Game: Pixl.Game {
         )
     }
 
-    func update(_ time: UpdateTime, lane: Lane) {
-        guard lane.isLeader else { return }
+    func update(_ time: UpdateTime, lanes: Lanes) {
         state.rotation = Float(time.elapsedSeconds)
     }
 
+    private let values: PartitionedValues
+
     init(platform: any Platform) throws {
+        values = PartitionedValues(count: 100)
+        for index in values.values.indices {
+            values.values[index] = index
+        }
+
         var triangle = Triangle(
             first: .init(position: .init(0, 0.5), color: .init(1, 0, 0, 1)),
             second: .init(position: .init(-0.5, -0.5), color: .init(0, 1, 0, 1)),

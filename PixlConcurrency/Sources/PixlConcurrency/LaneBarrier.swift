@@ -3,7 +3,6 @@ import Atomics
 final class LaneBarrier: @unchecked Sendable {
     private static let spinCount = 1_000
 
-    private let participantCount: Int
     private let atomicStorage = BarrierAtomicStorage()
     private let parkCondition = Condition()
 
@@ -19,13 +18,10 @@ final class LaneBarrier: @unchecked Sendable {
         atomicStorage.parkedWaiterCount
     }
 
-    init(participantCount: Int) {
-        precondition(participantCount > 0)
-        self.participantCount = participantCount
-    }
+    init() {}
 
     @inline(__always)
-    func synchronize() {
+    func synchronize(participantCount: Int) {
         guard participantCount > 1 else { return }
 
         let currentGeneration = generation.load(ordering: .relaxed)

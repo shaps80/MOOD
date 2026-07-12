@@ -8,15 +8,15 @@ private final class LifecycleRecorder: @unchecked Sendable {
     private var fixedLanes: [Int] = []
     private var updateLanes: [Int] = []
 
-    func recordFixed(on lane: Lane) {
+    func recordFixed() {
         lock.lock()
-        fixedLanes.append(lane.index)
+        fixedLanes.append(0)
         lock.unlock()
     }
 
-    func recordUpdate(on lane: Lane) {
+    func recordUpdate() {
         lock.lock()
-        updateLanes.append(lane.index)
+        updateLanes.append(0)
         lock.unlock()
     }
 
@@ -46,12 +46,12 @@ private struct LaneRecordingGame: Game {
         self.recorder = recorder
     }
 
-    func fixedUpdate(_ time: FixedTime, lane: Lane) {
-        recorder.recordFixed(on: lane)
+    func fixedUpdate(_ time: FixedTime, lanes: Lanes) {
+        recorder.recordFixed()
     }
 
-    func update(_ time: UpdateTime, lane: Lane) {
-        recorder.recordUpdate(on: lane)
+    func update(_ time: UpdateTime, lanes: Lanes) {
+        recorder.recordUpdate()
     }
 
     func render(
@@ -65,7 +65,7 @@ private struct LaneRecordingGame: Game {
 @Suite("Game runtime")
 struct GameRuntimeTests {
     @Test
-    func lifecycleRunsOncePerLane() {
+    func lifecycleRunsSerially() {
         let recorder = LifecycleRecorder()
         let runtime = GameRuntime(
             game: LaneRecordingGame(recorder: recorder),
@@ -88,7 +88,8 @@ struct GameRuntimeTests {
         )
 
         let recorded = recorder.snapshot()
-        #expect(recorded.fixed.sorted() == [0, 0, 1, 1, 2, 2])
-        #expect(recorded.update.sorted() == [0, 1, 2])
+        #expect(recorded.fixed == [0, 0])
+        #expect(recorded.update == [0])
     }
+
 }

@@ -28,6 +28,6 @@ public struct Lane: Sendable {
     }
 
     public func synchronize() {
-        barrier.synchronize()
+        barrier.synchronize(participantCount: count)
     }
 }

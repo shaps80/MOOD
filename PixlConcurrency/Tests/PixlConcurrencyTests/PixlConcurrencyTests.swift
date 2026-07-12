@@ -69,6 +69,37 @@ private enum PhaseProgram: LaneProgram {
     }
 }
 
+private final class PartitionedValues: LanePartitioned, @unchecked Sendable {
+    var values: [Int]
+    var count: Int { values.count }
+
+    init(count: Int) {
+        values = Array(repeating: 0, count: count)
+    }
+
+    func withUnsafeMutableElements<Result>(
+        _ body: (UnsafeMutableBufferPointer<Int>) throws -> Result
+    ) rethrows -> Result {
+        try values.withUnsafeMutableBufferPointer { elements in
+            try body(elements)
+        }
+    }
+}
+
+private final class LaneValues: @unchecked Sendable {
+    let values: UnsafeMutableBufferPointer<Int>
+
+    init(count: Int) {
+        values = .allocate(capacity: count)
+        values.initialize(repeating: 0)
+    }
+
+    deinit {
+        values.deinitialize()
+        values.deallocate()
+    }
+}
+
 @Suite("PixlConcurrency")
 struct PixlConcurrencyTests {
     @Test
@@ -133,6 +164,30 @@ struct PixlConcurrencyTests {
         group.run(context)
 
         #expect(context.values.prefix(group.laneCount).allSatisfy { $0 == 32 })
+    }
+
+    @Test
+    func lanesMutatePartitionedElementsInPlace() {
+        let values = PartitionedValues(count: 1_003)
+        let lanes = Lanes(settings: .init(laneCount: .fixed(4)))
+
+        lanes.run(for: values, preferredCount: 4) { value in
+            value += 1
+        }
+
+        #expect(values.values.allSatisfy { $0 == 1 })
+    }
+
+    @Test
+    func lanesRunOncePerActiveLane() {
+        let values = LaneValues(count: 4)
+        let lanes = Lanes(settings: .init(laneCount: .fixed(4)))
+
+        lanes.run { lane in
+            values.values[lane.index] = lane.count
+        }
+
+        #expect(values.values.allSatisfy { $0 == 4 })
     }
 
     @Test

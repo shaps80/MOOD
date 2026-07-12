@@ -22,9 +22,9 @@ public extension Game {
         .default
     }
 
-    func fixedUpdate(_ time: FixedTime, lane: Lane) {}
+    func fixedUpdate(_ time: FixedTime, lanes: Lanes) {}
 
-    func update(_ time: UpdateTime, lane: Lane) { }
+    func update(_ time: UpdateTime, lanes: Lanes) { }
 
     @MainActor
     static func main() {

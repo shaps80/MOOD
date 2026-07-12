@@ -33,8 +33,8 @@ public final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
         }
     }
 
-    public func run(_ context: Program.Context) {
-        state.run(context)
+    public func run(_ context: Program.Context, laneCount: Int? = nil) {
+        state.run(context, laneCount: laneCount ?? state.laneCount)
     }
 
 }
@@ -44,9 +44,11 @@ private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
 
     private let workCondition = Condition()
     private let completionCondition = Condition()
-    private let barrier: LaneBarrier
+    private let barrier = LaneBarrier()
     private var context: Unmanaged<Program.Context>?
     private let remaining = ManagedAtomic<Int>(0)
+    private let startingWorkerCount = ManagedAtomic<Int>(0)
+    private let activeCount = ManagedAtomic<Int>(1)
     private let isRunning = ManagedAtomic<Bool>(false)
     private var readyCount = 0
     private var workGeneration = 0
@@ -55,7 +57,6 @@ private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
 
     init(laneCount: Int) {
         self.laneCount = laneCount
-        barrier = LaneBarrier(participantCount: laneCount)
     }
 
     func waitUntilReady() {
@@ -72,7 +73,8 @@ private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
         workCondition.unlock()
     }
 
-    func run(_ context: Program.Context) {
+    func run(_ context: Program.Context, laneCount activeLaneCount: Int) {
+        precondition((1...laneCount).contains(activeLaneCount))
         let acquiredRun = isRunning.compareExchange(
             expected: false,
             desired: true,
@@ -81,8 +83,8 @@ private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
         precondition(acquiredRun, "ExecutionGroup does not support concurrent runs")
         defer { isRunning.store(false, ordering: .releasing) }
 
-        let leaderLane = Lane(index: 0, count: laneCount, barrier: barrier)
-        guard laneCount > 1 else {
+        let leaderLane = Lane(index: 0, count: activeLaneCount, barrier: barrier)
+        guard activeLaneCount > 1 else {
             Program.execute(context, on: leaderLane)
             return
         }
@@ -91,12 +93,15 @@ private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
         let expectedCompletion = completionGeneration
         completionCondition.unlock()
 
-        remaining.store(laneCount - 1, ordering: .relaxed)
+        let activeWorkerCount = activeLaneCount - 1
+        remaining.store(activeWorkerCount, ordering: .relaxed)
+        startingWorkerCount.store(activeWorkerCount, ordering: .relaxed)
+        activeCount.store(activeLaneCount, ordering: .releasing)
 
         workCondition.lock()
         self.context = .passUnretained(context)
         workGeneration &+= 1
-        workCondition.broadcast()
+        for _ in 0..<activeWorkerCount { workCondition.signal() }
         workCondition.unlock()
 
         Program.execute(context, on: leaderLane)
@@ -135,9 +140,17 @@ private final class ExecutionState<Program: LaneProgram>: @unchecked Sendable {
             workCondition.unlock()
 
             guard let context else { continue }
+            let previousStart = startingWorkerCount.loadThenWrappingDecrement(
+                ordering: .acquiringAndReleasing
+            )
+            precondition(previousStart > 0)
             Program.execute(
                 context.takeUnretainedValue(),
-                on: Lane(index: index, count: laneCount, barrier: barrier)
+                on: Lane(
+                    index: previousStart,
+                    count: activeCount.load(ordering: .acquiring),
+                    barrier: barrier
+                )
             )
 
             let previousRemaining = remaining.loadThenWrappingDecrement(

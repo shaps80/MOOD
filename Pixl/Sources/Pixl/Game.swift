@@ -1,8 +1,6 @@
 import PixlConcurrency
 import PixlPlatform
 
-/// A game shell whose mutable simulation data is owned by lane-partitioned
-/// reference storage rather than stored directly in the game value.
 public protocol Game {
     static var defaultShaders: Shader { get }
     static var gameSettings: GameSettings { get }
@@ -11,11 +9,11 @@ public protocol Game {
 
     init(platform: any Platform) throws
 
-    /// Invoked concurrently once on every lane for each fixed simulation tick.
-    func fixedUpdate(_ time: FixedTime, lane: Lane)
+    /// Invoked serially for each fixed simulation tick.
+    func fixedUpdate(_ time: FixedTime, lanes: Lanes)
 
-    /// Invoked concurrently once on every lane for each presentation update.
-    func update(_ time: UpdateTime, lane: Lane)
+    /// Invoked serially for each presentation update.
+    func update(_ time: UpdateTime, lanes: Lanes)
 
     /// Invoked on the leader lane because `Frame` recording is not yet
     /// lane-partitioned.
