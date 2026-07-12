@@ -19,6 +19,6 @@ package struct ExecutionTopology: Hashable, Sendable {
     }
 
     package static var current: ExecutionTopology {
-        NativeTopology.current
+        Topology.current
     }
 }

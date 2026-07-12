@@ -5,7 +5,7 @@ final class LaneBarrier: @unchecked Sendable {
     private let arrivalCount = ManagedAtomic<Int>(0)
     private let generation = ManagedAtomic<Int>(0)
     private let parkedWaiterCount = ManagedAtomic<Int>(0)
-    private let parkCondition = NativeCondition()
+    private let parkCondition = Condition()
 
     init(participantCount: Int) {
         precondition(participantCount > 0)

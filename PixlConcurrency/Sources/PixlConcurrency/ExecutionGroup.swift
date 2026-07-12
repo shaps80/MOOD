@@ -3,9 +3,9 @@ import Swift
 package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
     package let laneCount: Int
 
-    private let condition = NativeCondition()
+    private let condition = Condition()
     private let barrier: LaneBarrier
-    private var workers: [NativeThread] = []
+    private var workers: [Thread] = []
     private var context: Program.Context?
     private var remaining = 0
     private var readyCount = 0
@@ -22,7 +22,7 @@ package final class ExecutionGroup<Program: LaneProgram>: @unchecked Sendable {
         workers.reserveCapacity(max(0, laneCount - 1))
 
         for index in 1..<laneCount {
-            let worker = NativeThread { [self] in workerLoop(index: index) }
+            let worker = Thread { [self] in workerLoop(index: index) }
             workers.append(worker)
             worker.start()
         }
