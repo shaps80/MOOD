@@ -33,9 +33,9 @@ struct Game: Pixl.Game {
         triangle = try Triangle(
             device: platform.device,
             colors: (
-                .red,
-                .init(red: 0, green: 1, blue: 0),
-                .init(red: 0, green: 0, blue: 1)
+                .init(red: 1, green: 1, blue: 0),
+                .init(red: 0, green: 1, blue: 1),
+                .init(red: 1, green: 0, blue: 1)
             )
         )
         quad = try Quad(
