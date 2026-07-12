@@ -127,6 +127,33 @@ final class MetalQueue: Queue {
                     instanceCount: Int(instanceCount),
                     baseInstance: Int(baseInstance)
                 )
+
+            case .drawIndexedPrimitives(
+                let topology,
+                let indexType,
+                let indexBuffer,
+                let indexBufferOffset,
+                let indexCount,
+                let instanceCount,
+                let baseVertex,
+                let baseInstance
+            ):
+                guard let metalOffset = Int(exactly: indexBufferOffset),
+                      buffers.withValue(for: indexBuffer, { buffer in
+                          encoder.drawIndexedPrimitives(
+                              type: topology.metalPrimitiveType,
+                              indexCount: Int(indexCount),
+                              indexType: indexType.metalIndexType,
+                              indexBuffer: buffer.pointee,
+                              indexBufferOffset: metalOffset,
+                              instanceCount: Int(instanceCount),
+                              baseVertex: Int(baseVertex),
+                              baseInstance: Int(baseInstance)
+                          )
+                      }) != nil
+                else {
+                    throw QueueError.invalidResource
+                }
             }
             commandIndex += 1
         }

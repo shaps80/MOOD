@@ -16,6 +16,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Refocus the portable recording interface on Metal-style encoder/resource-slot commands, using modern DirectX as the secondary alignment reference.
 - [x] Remove public `Pass`/`DrawCommand` storage details; record compact package-only commands through `RenderPassEncoder`.
 - [x] Move exact primitive topology to `drawPrimitives` and preserve line/triangle strip semantics.
+- [x] Add Metal-shaped indexed primitive draws with portable 16- and 32-bit index types; keep adapter index-buffer binding private.
 - [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
 
 ## Next Architectural Decisions

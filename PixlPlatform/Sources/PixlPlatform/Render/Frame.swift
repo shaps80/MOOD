@@ -86,7 +86,7 @@ public final class Frame {
         switch command {
         case .setRenderPipeline:
             pass.hasRenderPipeline = true
-        case .drawPrimitives:
+        case .drawPrimitives, .drawIndexedPrimitives:
             precondition(
                 pass.hasRenderPipeline,
                 "A render pipeline must be set before drawing"

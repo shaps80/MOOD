@@ -160,6 +160,48 @@ final class WasmQueue: Queue {
                     Double(vertexStart),
                     Double(baseInstance)
                 )
+
+            case .drawIndexedPrimitives(
+                let topology,
+                let indexType,
+                let indexBuffer,
+                let indexBufferOffset,
+                let indexCount,
+                let instanceCount,
+                let baseVertex,
+                let baseInstance
+            ):
+                guard let currentPipeline,
+                      pipelines.withValue(for: currentPipeline, { pipeline in
+                          guard let state = pipeline.pointee.state(for: topology) else {
+                              return false
+                          }
+                          _ = encoder.setPipeline!(state)
+                          return true
+                      }) == true,
+                      buffers.withValue(for: indexBuffer, { native in
+                          _ = encoder.setIndexBuffer!(
+                              native.pointee,
+                              indexType.wasmIndexFormat,
+                              Double(indexBufferOffset)
+                          )
+                      }) != nil
+                else {
+                    throw .invalidResource
+                }
+
+                if let currentImmediateOffset {
+                    immediateOffsets.jsObject["0"] = .number(Double(currentImmediateOffset))
+                    _ = encoder.setBindGroup!(0, immediateBindGroup, immediateOffsets.jsObject)
+                }
+
+                _ = encoder.drawIndexed!(
+                    Double(indexCount),
+                    Double(instanceCount),
+                    0,
+                    Double(baseVertex),
+                    Double(baseInstance)
+                )
             }
             commandIndex += 1
         }
@@ -169,5 +211,14 @@ final class WasmQueue: Queue {
     private func aligned(_ value: UInt32, to alignment: UInt32) -> UInt32 {
         let remainder = value % alignment
         return remainder == 0 ? value : value + alignment - remainder
+    }
+}
+
+private extension IndexType {
+    var wasmIndexFormat: String {
+        switch self {
+        case .uint16: "uint16"
+        case .uint32: "uint32"
+        }
     }
 }

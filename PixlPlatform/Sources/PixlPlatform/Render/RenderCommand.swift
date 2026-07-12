@@ -21,4 +21,14 @@ package enum RenderCommand {
         instanceCount: UInt32,
         baseInstance: UInt32
     )
+    case drawIndexedPrimitives(
+        PrimitiveTopology,
+        indexType: IndexType,
+        indexBuffer: ResourceID,
+        indexBufferOffset: UInt64,
+        indexCount: UInt32,
+        instanceCount: UInt32,
+        baseVertex: Int32,
+        baseInstance: UInt32
+    )
 }

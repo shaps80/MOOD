@@ -12,3 +12,12 @@ extension PrimitiveTopology {
         }
     }
 }
+
+extension IndexType {
+    var metalIndexType: MTLIndexType {
+        switch self {
+        case .uint16: .uint16
+        case .uint32: .uint32
+        }
+    }
+}

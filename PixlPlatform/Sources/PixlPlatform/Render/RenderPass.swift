@@ -82,4 +82,48 @@ public struct RenderPassEncoder {
             toRenderPassAt: passIndex
         )
     }
+
+    /// Records an indexed primitive draw.
+    ///
+    /// - Parameters:
+    ///   - topology: Primitive interpretation for indexed vertices.
+    ///   - indexCount: Number of indices to read.
+    ///   - indexType: Element width stored in `indexBuffer`.
+    ///   - indexBuffer: Packed index buffer created with ``BufferUsage/index``.
+    ///   - indexBufferOffset: Byte offset of the first index.
+    ///   - instanceCount: Number of instances to draw.
+    ///   - baseVertex: Value added to each decoded index.
+    ///   - baseInstance: First instance identifier.
+    public func drawIndexedPrimitives(
+        _ topology: PrimitiveTopology,
+        indexCount: UInt32,
+        indexType: IndexType,
+        indexBuffer: Buffer,
+        indexBufferOffset: UInt64 = 0,
+        instanceCount: UInt32 = 1,
+        baseVertex: Int32 = 0,
+        baseInstance: UInt32 = 0
+    ) {
+        precondition(indexBuffer.descriptor.usage.contains(.index), "Index buffer is missing index usage")
+        precondition(indexCount > 0, "Index count must be greater than zero")
+        precondition(instanceCount > 0, "Instance count must be greater than zero")
+        precondition(indexBufferOffset.isMultiple(of: indexType.byteWidth), "Index buffer offset is not aligned to index type")
+        let byteCount = UInt64(indexCount) * indexType.byteWidth
+        precondition(byteCount <= indexBuffer.descriptor.size, "Index count exceeds index buffer size")
+        precondition(indexBufferOffset <= indexBuffer.descriptor.size - byteCount, "Index buffer range is out of bounds")
+
+        frame.append(
+            .drawIndexedPrimitives(
+                topology,
+                indexType: indexType,
+                indexBuffer: indexBuffer.id,
+                indexBufferOffset: indexBufferOffset,
+                indexCount: indexCount,
+                instanceCount: instanceCount,
+                baseVertex: baseVertex,
+                baseInstance: baseInstance
+            ),
+            toRenderPassAt: passIndex
+        )
+    }
 }

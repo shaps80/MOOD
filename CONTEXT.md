@@ -21,6 +21,7 @@ This is not a legacy OpenGL/WebGL state-machine abstraction. It is dimension-agn
 | `setRenderPipeline` | `setRenderPipelineState` | `SetPipelineState` | `setPipeline` | `vkCmdBindPipeline` |
 | `setVertexBuffer` | `setVertexBuffer` | root/descriptor or vertex-buffer binding | vertex buffer or internal bind group | vertex buffer or internal descriptor set |
 | `drawPrimitives` | `drawPrimitives` | `DrawInstanced` | `draw` | `vkCmdDraw` |
+| `drawIndexedPrimitives` | `drawIndexedPrimitives` | `DrawIndexedInstanced` | `setIndexBuffer` + `drawIndexed` | `vkCmdBindIndexBuffer` + `vkCmdDrawIndexed` |
 | `RenderTarget` | texture + mip/slice | resource/view | `GPUTextureView` | `VkImageView` |
 
 WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to implement a direct Pixl encoder command. That does not change the public vocabulary.
@@ -95,13 +96,16 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 : Attachment/load/store description used to begin one render pass. It contains no frame-storage bookkeeping.
 
 `RenderPassEncoder`
-: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands are `setRenderPipeline`, `setVertexBuffer`, `setVertexBytes`, and `drawPrimitives`.
+: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands are `setRenderPipeline`, `setVertexBuffer`, `setVertexBytes`, `drawPrimitives`, and `drawIndexedPrimitives`.
 
 `RenderCommand`
 : Package-only compact command representation stored by `Frame`. It is not public game vocabulary. Resource commands store `ResourceID` rather than copying full descriptors into every recorded command.
 
 `PrimitiveTopology`
 : Exact primitive interpretation supplied to `drawPrimitives`: point, line, line strip, triangle, or triangle strip.
+
+`IndexType`
+: Portable index element width: `uint16` or `uint32`. `drawIndexedPrimitives` takes the index buffer directly, matching Metal. WebGPU, Vulkan, and DirectX adapters bind/cache that buffer privately before their indexed draw command.
 
 Commands for a pass must be recorded contiguously. `Frame` preallocates command storage from startup-only `RenderSettings.frameCommandCapacity`; recording performs no allocation or dynamic dispatch.
 

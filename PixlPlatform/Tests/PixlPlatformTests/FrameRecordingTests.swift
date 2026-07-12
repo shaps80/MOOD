@@ -95,4 +95,68 @@ struct FrameRecordingTests {
         #expect(instanceCount == 2)
         #expect(baseInstance == 3)
     }
+
+    @Test
+    func recordsIndexedDrawWithItsBufferAndOffsets() {
+        let texture = Texture(
+            id: ResourceID(index: 1, generation: 1),
+            descriptor: TextureDescriptor(
+                size: TextureSize(width: 16, height: 16),
+                format: .bgra8Unorm,
+                usage: .renderAttachment
+            )
+        )
+        let pipeline = RenderPipeline(id: ResourceID(index: 2, generation: 1))
+        let indexBuffer = Buffer(
+            id: ResourceID(index: 3, generation: 1),
+            descriptor: BufferDescriptor(
+                size: 24,
+                usage: .index,
+                memory: .gpuOnly
+            )
+        )
+        let frame = Frame(passCapacity: 1, commandCapacity: 2, byteCapacity: 1)
+        let pass = frame.beginRenderPass(
+            RenderPassDescriptor(
+                ColorAttachment(
+                    target: RenderTarget(texture: texture),
+                    loadAction: .clear(.black)
+                )
+            )
+        )
+
+        pass.setRenderPipeline(pipeline)
+        pass.drawIndexedPrimitives(
+            .triangle,
+            indexCount: 6,
+            indexType: .uint16,
+            indexBuffer: indexBuffer,
+            indexBufferOffset: 4,
+            instanceCount: 2,
+            baseVertex: -3,
+            baseInstance: 5
+        )
+
+        guard case .drawIndexedPrimitives(
+            let topology,
+            let indexType,
+            let bufferID,
+            let offset,
+            let count,
+            let instances,
+            let baseVertex,
+            let baseInstance
+        ) = frame[command: 1] else {
+            Issue.record("Expected an indexed draw command")
+            return
+        }
+        #expect(topology == .triangle)
+        #expect(indexType == .uint16)
+        #expect(bufferID == indexBuffer.id)
+        #expect(offset == 4)
+        #expect(count == 6)
+        #expect(instances == 2)
+        #expect(baseVertex == -3)
+        #expect(baseInstance == 5)
+    }
 }
