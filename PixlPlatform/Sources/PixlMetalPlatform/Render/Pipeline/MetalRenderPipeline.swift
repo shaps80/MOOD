@@ -3,10 +3,8 @@ import PixlPlatform
 
 struct MetalRenderPipeline {
     let state: MTLRenderPipelineState
-    let topology: MTLPrimitiveType
 
-    init(state: MTLRenderPipelineState, topology: MTLPrimitiveType) {
+    init(state: MTLRenderPipelineState) {
         self.state = state
-        self.topology = topology
     }
 }

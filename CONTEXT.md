@@ -1,184 +1,118 @@
 # PixlPlatform GPU Vocabulary
 
-PixlPlatform's lowest graphics layer is a modern, platform-agnostic GPU abstraction aligned closely with Metal, WebGPU, Vulkan, and DirectX 12 style APIs. It is not a legacy OpenGL/WebGL-style abstraction.
+PixlPlatform is the lowest platform-agnostic GPU layer in Pixl. Its public interface follows Metal's direct encoder/resource-slot model, with modern DirectX used as a second alignment reference. WebGPU and Vulkan must implement the same capabilities, but their bind groups, descriptor sets, layout declarations, and pipeline variants are adapter machinery unless a future cross-platform requirement proves otherwise.
+
+This is not a legacy OpenGL/WebGL state-machine abstraction. It is dimension-agnostic; 2D and 3D meaning belongs in higher layers.
 
 ## Platform Mapping
 
-Metal and WebGPU are the primary references. Vulkan and DirectX 12 are later targets used to keep naming honest.
-
-| PixlPlatform | Metal | WebGPU | Vulkan | DirectX 12 |
+| PixlPlatform | Metal | DirectX 12 | WebGPU adapter | Vulkan adapter |
 | --- | --- | --- | --- | --- |
-| `Platform` | Metal runtime plus `MTKView` | browser runtime plus canvas context | window/swapchain runtime | window/swapchain runtime |
-| `Device` | `MTLDevice` | `GPUDevice` | `VkDevice` | `ID3D12Device` |
-| `Queue` | `MTLCommandQueue` | `GPUQueue` | `VkQueue` | `ID3D12CommandQueue` |
-| `CommandBuffer` | `MTLCommandBuffer` | `GPUCommandBuffer` / `GPUCommandEncoder` | `VkCommandBuffer` | `ID3D12GraphicsCommandList` |
-| `Buffer` | `MTLBuffer` | `GPUBuffer` | `VkBuffer` | `ID3D12Resource` |
-| `Texture` | `MTLTexture` | `GPUTexture` | `VkImage` / `VkImageView` | `ID3D12Resource` |
-| `Sampler` | `MTLSamplerState` | `GPUSampler` | `VkSampler` | sampler descriptor / descriptor heap entry |
-| `BufferUsage` | `MTLResourceOptions` plus encoder binding role | `GPUBufferUsage` | `VkBufferUsageFlags` | `D3D12_RESOURCE_FLAGS` / resource state |
-| `TextureUsage` | `MTLTextureUsage` | `GPUTextureUsage` | `VkImageUsageFlags` | `D3D12_RESOURCE_FLAGS` / resource state |
-| `ShaderLibrary` | `MTLLibrary` | shader module source/package | `VkShaderModule` | compiled DXIL blob |
-| `ShaderFunction` | `MTLFunction` | shader entry point | shader stage entry point | shader entry point |
-| `RenderPipeline` | `MTLRenderPipelineState` | `GPURenderPipeline` | `VkPipeline` | `ID3D12PipelineState` |
-| `ComputePipeline` | `MTLComputePipelineState` | `GPUComputePipeline` | `VkPipeline` | `ID3D12PipelineState` |
-| `VertexLayout` | `MTLVertexDescriptor` | `GPUVertexBufferLayout` | `VkVertexInput*` descriptions | `D3D12_INPUT_LAYOUT_DESC` |
-| `BindGroupLayout` | emulated with argument layout / fixed slots | `GPUBindGroupLayout` | `VkDescriptorSetLayout` | root signature |
-| `BindGroup` | emulated by setting buffers/textures/samplers | `GPUBindGroup` | `VkDescriptorSet` | descriptor table / root bindings |
-| `Binding` | buffer/texture/sampler slot | bind group entry | descriptor binding | descriptor/root parameter |
-| `RenderPass` | `MTLRenderCommandEncoder` plus pass descriptor | `GPURenderPassEncoder` | `VkRenderPass` / dynamic rendering | render pass encoded in command list |
-| `ComputePass` | `MTLComputeCommandEncoder` | `GPUComputePassEncoder` | compute command buffer section | compute command list section |
-| `RenderTarget` | `MTLTexture` / drawable texture | `GPUTextureView` / canvas texture | `VkImageView` / swapchain image | render target resource/view |
-| `ColorAttachment` | `MTLRenderPassColorAttachmentDescriptor` | `GPURenderPassColorAttachment` | color attachment description | RTV |
-| `DepthStencilAttachment` | `MTLRenderPassDepthAttachmentDescriptor` / stencil descriptor | `GPURenderPassDepthStencilAttachment` | depth/stencil attachment description | DSV |
-| `DrawCommand` | `draw*` on `MTLRenderCommandEncoder` | `draw*` on `GPURenderPassEncoder` | `vkCmdDraw*` | `Draw*` on command list |
-| `DispatchCommand` | `dispatchThreadgroups` / `dispatchThreads` | `dispatchWorkgroups` | `vkCmdDispatch` | `Dispatch` |
-| `CopyCommand` | blit encoder copy commands | command encoder copy commands | `vkCmdCopy*` | `Copy*` commands |
+| `Platform` | runtime + `MTKView` | runtime + swapchain | runtime + canvas context | runtime + swapchain |
+| `Device` | `MTLDevice` | `ID3D12Device` | `GPUDevice` | `VkDevice` |
+| `Queue` | `MTLCommandQueue` | `ID3D12CommandQueue` | `GPUQueue` | `VkQueue` |
+| `Frame` | recorded command-buffer input | recorded command-list input | command-encoder input | command-buffer input |
+| `Buffer` | `MTLBuffer` | `ID3D12Resource` | `GPUBuffer` | `VkBuffer` |
+| `Texture` | `MTLTexture` | `ID3D12Resource` | `GPUTexture` | `VkImage` / `VkImageView` |
+| `RenderPipeline` | `MTLRenderPipelineState` | `ID3D12PipelineState` | `GPURenderPipeline` variant | `VkPipeline` variant |
+| `VertexLayout` | `MTLVertexDescriptor` | `D3D12_INPUT_LAYOUT_DESC` | `GPUVertexBufferLayout` | `VkVertexInput*` descriptions |
+| `RenderPassDescriptor` | `MTLRenderPassDescriptor` | RTV/DSV pass configuration | `GPURenderPassDescriptor` | dynamic-rendering/pass configuration |
+| `RenderPassEncoder` | `MTLRenderCommandEncoder` | graphics command list methods | `GPURenderPassEncoder` | `vkCmd*` recording |
+| `setRenderPipeline` | `setRenderPipelineState` | `SetPipelineState` | `setPipeline` | `vkCmdBindPipeline` |
+| `setVertexBuffer` | `setVertexBuffer` | root/descriptor or vertex-buffer binding | vertex buffer or internal bind group | vertex buffer or internal descriptor set |
+| `drawPrimitives` | `drawPrimitives` | `DrawInstanced` | `draw` | `vkCmdDraw` |
+| `RenderTarget` | texture + mip/slice | resource/view | `GPUTextureView` | `VkImageView` |
+
+WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to implement a direct Pixl encoder command. That does not change the public vocabulary.
 
 ## Core Objects
 
 `Device`
-: Logical access to the GPU. Creates resources such as buffers, textures, samplers, pipelines, and command queues.
+: Logical GPU access. Creates queues and resources. Pooled resources are explicitly destroyed through the same device.
 
 `Queue`
-: Submission lane for encoded GPU work. Owns the act of submitting command buffers for execution.
-
-`CommandBuffer`
-: A recorded unit of GPU work submitted to a queue. Contains render passes, compute passes, copies, or other encoded commands.
+: Submission lane for recorded `Frame` work.
 
 `Platform`
-: Platform-facing frame boundary. Acquires a frame-scoped drawable, provides GPU device access, submits a frame, and presents the result.
+: Frame-presentation seam. Exposes the device, acquires a frame-scoped `Drawable`, and presents a recorded `Frame`.
 
-## Resources
-
-`Buffer`
-: Opaque raw GPU-visible memory with immutable `BufferDescriptor` metadata. Its explicit `BufferMemory` intent is `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU`; creation and transfer policy are backend-owned. Created through `Device`, stored by a backend, and used for vertices, indices, uniforms, storage data, staging, or copies depending on `BufferUsage`.
-
-`Texture`
-: GPU image resource. Used for sampled images, render targets, depth buffers, storage textures, and intermediate frame data.
-
-`Drawable`
-: Frame-scoped presentable texture acquired from a platform surface. It is consumed when presented and cannot be retained for a later frame.
-
-`Sampler`
-: Rules for reading texture data, such as filtering, address modes, mip behavior, and comparison behavior.
-
-`BufferUsage`
-: Declares intended buffer roles, such as vertex, index, uniform, storage, copy source, and copy destination.
-
-`TextureUsage`
-: Declares intended texture roles, such as sampled, render attachment, storage, copy source, and copy destination.
+`Frame`
+: Reusable, fixed-capacity, allocation-free recording storage for ordered passes and primitive encoder commands. Public callers cannot append internal pass/command values directly.
 
 ## Resource Ownership
 
 `ResourceID`
-: An opaque 64-bit generational handle split evenly between a 32-bit direct slot index and 32-bit generation. Generation zero is reserved; live slots begin at generation one. A phantom-tagged handle was measured and rejected because carrying an additional generic tag through `ResourcePool` regressed release lookup performance by roughly 55% across the package module boundary.
+: Package-visible 64-bit generational handle: 32-bit direct slot index plus 32-bit generation. Generation zero is reserved. Stale handles fail lookup after destruction/reuse. A phantom generic tag was measured and rejected after roughly 55% release lookup regression across the package seam.
 
 `ResourcePool`
-: Package-level, fixed-capacity `ResourcePool<Value>` storage shared by platform backends. It uses manually managed contiguous slot and value buffers, direct-index lookup, generation validation, and an intrusive free list. Insert, lookup, update, and removal are O(1), and no allocation occurs after initialization. A slot is permanently retired rather than allowing its generation to wrap. Pools are single-owner and contain no internal synchronization.
+: Package-level fixed-capacity native-resource storage. It uses contiguous manually managed slots, O(1) lookup/removal, generation validation, and an intrusive free list. It allocates only at initialization and contains no internal synchronization.
 
-Release builds of the `PixlPlatform` provider target enable Swift's aggressive cross-module optimization mode. This serializes package-private implementations so ordinary optimized consumers such as `PixlMetalPlatform` can specialize generic pool operations for concrete native resource types. Keep the setting release-only: debug builds prioritize diagnostics and iteration speed.
+`Buffer`, `Texture`, `RenderPipeline`
+: Copyable opaque handles plus deliberate public metadata where applicable. Creation inserts a native resource into its backend pool. `Device.destroy` invalidates the handle immediately and returns the slot for reuse. Copies of a destroyed handle are stale. Backends remain responsible for deferring native reclamation when already-submitted GPU work still references that resource.
+
+`Drawable`
+: Noncopyable frame-scoped presentable texture. Presentation consumes it. Its transient texture is platform-owned and must not be explicitly destroyed by game code.
+
+Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete package adapters to specialize hot package-private generic code such as `ResourcePool<Value>`.
+
+## Buffers and Textures
+
+`BufferDescriptor`
+: Describes an entire buffer allocation: byte size, allowed usage roles, and memory intent.
+
+`BufferMemory`
+: Explicit allocation intent: `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU`. It is intent, not a promise of identical physical memory on every backend.
+
+`BufferUsage`
+: Allowed roles such as vertex, index, uniform, storage, copy source, and copy destination.
+
+`TextureDescriptor`
+: Describes an entire texture allocation. Dimension/type, mip, cube, and richer array semantics remain an explicit future design gate.
+
+`RenderTarget`
+: Texture view shape selecting a texture, mip level, and array layer.
 
 ## Shaders and Pipelines
 
-`ShaderLibrary`
-: Opaque backend-native library object. It is created from an owned `Shader` and retained directly by game or pipeline lifetime; it is not a pooled resource.
-
 `Shader`
-: Owned generated backend artifacts. The current catalogue supplies compiled metallib bytes to Metal and WGSL source to WebGPU while keeping the same logical shader and entry-point identities.
-
-`ShaderCatalogue`
-: PixlGraphics-owned namespace for built-in `Shader` values. `ShaderCatalogue.default` is registered automatically by Pixl before game initialization.
+: Owned generated backend artifacts. Current generated values carry compiled Metal-library bytes and WGSL source. Artifact-format knowledge is temporarily accepted here but should eventually move behind generated/backend-specific access.
 
 `ShaderRegistry`
-: Platform-owned registry that creates and retains backend shader libraries. Built-in shaders are registered before game initialization; games may append their own generated shaders from `init(platform:)` and do not own backend shader-library lifetime.
+: Platform-owned native-library retention. Built-in shaders are registered before game initialization; games append generated shaders without retaining native shader-library objects.
 
 `ShaderFunction`
-: A specific shader entry point, such as a vertex, fragment, or compute function. It carries its originating `Shader` and entry-point name; backends resolve the registered shader to their native library.
+: Logical shader entry point carrying its originating `Shader` plus function name.
 
-`RenderPipeline`
-: Compiled render configuration. Combines shader functions, vertex layout, attachment formats, blending, depth/stencil behavior, and primitive topology.
-
-`DrawCommand`
-: A non-indexed draw using one render pipeline and one vertex buffer. Frame-owned fixed-capacity command storage keeps recording allocation-free; additional buffer/index/binding forms can extend this primitive.
+`RenderPipelineDescriptor`
+: Startup description of shader functions, vertex input layout, and attachment format. Exact primitive topology is not pipeline state in Pixl's Metal-first interface; it is supplied to `drawPrimitives`. Backends that require topology at pipeline creation own/cache the corresponding native variants.
 
 `VertexLayout`
-: Fixed-capacity vertex-input description. Owns ordered vertex-buffer layouts and vertex attributes without `Array` storage. Games define the byte layout of their own vertex structs; PixlPlatform does not impose a `Vertex` protocol or concrete vertex type.
+: Fixed-capacity startup description of vertex-buffer streams and shader attributes. It describes GPU byte layout only; games own their Swift vertex types and bytes.
 
-`VertexBufferLayout`
-: One vertex-buffer stream: buffer index, byte stride, and whether data advances per vertex or per instance.
+## Render Recording
 
-`VertexAttribute`
-: One shader vertex-input location: source buffer index, byte offset, and `VertexFormat`.
+`RenderPassDescriptor`
+: Attachment/load/store description used to begin one render pass. It contains no frame-storage bookkeeping.
 
-`ComputePipeline`
-: Compiled compute configuration. Combines a compute shader function with the binding layout needed for dispatch.
+`RenderPassEncoder`
+: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands are `setRenderPipeline`, `setVertexBuffer`, and `drawPrimitives`.
 
-`VertexLayout`
-: Describes how vertex buffer bytes map to shader attributes, such as position, UV, color, normal, or tangent.
+`RenderCommand`
+: Package-only compact command representation stored by `Frame`. It is not public game vocabulary. Resource commands store `ResourceID` rather than copying full descriptors into every recorded command.
 
-## Bindings
+`PrimitiveTopology`
+: Exact primitive interpretation supplied to `drawPrimitives`: point, line, line strip, triangle, or triangle strip.
 
-`BindGroupLayout`
-: Declares the resource slots a pipeline expects, including buffers, textures, samplers, and their access modes.
+Commands for a pass must be recorded contiguously. `Frame` preallocates command storage from startup-only `RenderSettings.frameCommandCapacity`; recording performs no allocation or dynamic dispatch.
 
-`BindGroup`
-: Concrete set of resources bound together for a draw or dispatch. Similar to WebGPU bind groups or Vulkan descriptor sets.
+## Dynamic Data and Resource Slots
 
-`Binding`
-: One resource assignment inside a bind group, such as a uniform buffer, storage buffer, sampled texture, storage texture, or sampler.
+Pixl's public direction is stage/resource-specific encoder intent, matching Metal: vertex/fragment buffers, bytes, textures, and samplers; compute encoders imply the compute stage. Public bind groups and dynamic-offset flags are not current Pixl concepts.
 
-`ResourceAccess`
-: Declares whether a bound resource is read-only, write-only, or read-write.
+Dynamic CPU-to-GPU transfer storage, upload rings, WebGPU bind groups, Vulkan descriptor sets, and DX12 descriptor allocation are private adapter mechanisms. Before adding calls such as `setVertexBytes`, define fixed-capacity recording storage, GPU-completion retirement, and readback lifetime. Do not expose a generic per-call write API that allocates staging resources or synchronizes CPU/GPU execution.
 
-## Passes and Targets
+## Required Future Depth
 
-`RenderPass`
-: A sequence of draw work targeting one or more attachments. Defines color/depth targets, clear/load/store behavior, and draw commands.
+Compute is required and must use the same encoder-command direction: compute pipeline state, buffer/texture resource slots, access modes, and dispatch commands. Compute output must feed later render passes in the same frame.
 
-`ComputePass`
-: A sequence of compute dispatch work. Used for GPU-side simulation, particles, culling, generation, and other parallel workloads.
-
-`RenderTarget`
-: A texture or drawable that render passes can draw into. May later be sampled by another pass for compositing or post-processing.
-
-`ColorAttachment`
-: Render pass color output, usually a screen drawable or texture.
-
-`DepthStencilAttachment`
-: Optional render pass depth/stencil output for depth testing, stencil operations, and later 3D support.
-
-## Commands
-
-`DrawCommand`
-: Render command that binds a render pipeline, resources, vertex/index buffers, and issues a draw.
-
-`DispatchCommand`
-: Compute command that binds a compute pipeline, resources, and dispatches threadgroups.
-
-`CopyCommand`
-: Transfer command for moving data between buffers, textures, and CPU-visible staging resources.
-
-## Frame Shape
-
-`Frame`
-: Platform-agnostic description of GPU work for one frame. Contains ordered passes plus fixed-capacity draw-command storage and enough metadata for profiling.
-
-`RenderSettings`
-: Startup-only render configuration: drawable pixel format plus fixed capacities for reusable frame-pass, draw-command, buffer, render-pipeline, texture, and drawable storage. `Game` supplies these with a default implementation; they are not read in the frame loop.
-
-`GameSettings`
-: Startup-only game-window settings: title, initial resolution, resizability, and preferred frame rate. `Game` supplies these with a default implementation.
-
-Frame pass
-: Either a render pass, compute pass, or copy pass. Ordering is significant because later passes may consume resources produced by earlier passes.
-
-## Profiling Terms
-
-`FrameMetrics`
-: CPU-side timing and counters for a frame.
-
-`PassMetrics`
-: CPU-side timing and counters for one pass, including draw count, dispatch count, vertices, indices, uploaded bytes, and resource bind counts.
-
-`RenderTotals`
-: Aggregated frame counters such as batches, culled objects, submitted vertices, uploaded bytes, and pipeline changes.
+Other explicit gates include indexed draws, samplers, texture binding, multiple color attachments, depth/stencil, blending, multisampling, richer texture dimensions/mips, copy commands, dynamic bytes, readback, and profiling counters. Add each through playable Game needs without widening existing modules into shallow configuration bags.

@@ -13,6 +13,10 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Establish explicit buffer memory intent: GPU-only, CPU-visible, and GPU-to-CPU.
 - [x] Build the same Game package for WASM and render its unchanged triangle through `PixlWasmPlatform` and WebGPU.
 - [x] Keep `PixlConcurrency` available under the supported single-threaded WASI SDK through its one-lane execution path.
+- [x] Refocus the portable recording interface on Metal-style encoder/resource-slot commands, using modern DirectX as the secondary alignment reference.
+- [x] Remove public `Pass`/`DrawCommand` storage details; record compact package-only commands through `RenderPassEncoder`.
+- [x] Move exact primitive topology to `drawPrimitives` and preserve line/triangle strip semantics.
+- [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
 
 ## Next Architectural Decisions
 
@@ -58,17 +62,19 @@ This file tracks architectural work across sessions. It records direction and de
 
 ## Graphics Follow-up
 
-- [ ] Prove dynamic per-frame data by rotating the existing triangle without changing backend-specific Game code. Design uniform binding plus reusable frame upload-ring lifetime first; do not recreate immutable buffers each frame.
+- [ ] Revalidate the unchanged static triangle through the refocused `PixlPlatform` and `PixlMetalPlatform` API before adapting the WebGPU backend.
+- [ ] Adapt `PixlWasmPlatform` to the accepted Metal-first portable command interface; keep WebGPU bind-group/pipeline-layout machinery private to the adapter.
+- [ ] Prove dynamic per-frame data by rotating the existing triangle without backend-specific Game code. Design stage-specific byte/resource commands plus reusable internal transfer-ring lifetime first; do not recreate immutable buffers each frame.
 - [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
 - [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
 - [ ] Keep all GPU concepts and platform implementations dimension-agnostic in `PixlPlatform`.
-- [ ] Add reusable frame upload-ring and readback lifetimes before exposing buffer writes or copy commands.
+- [ ] Add reusable internal upload-ring and readback lifetimes before exposing stage-specific dynamic bytes, buffer writes, or copy commands. Do not expose `upload` as game-facing render intent.
 
 ## Guiding Constraints
 
 - Obvious, intuitive, and fast APIs.
 - Multi-core capable by design; parallelism must earn its synchronization and scheduling costs.
 - No avoidable allocation or dynamic dispatch in hot paths.
-- Native-first development while preserving browser and future-platform portability.
+- Metal-first API development, modern-DirectX alignment, then adapter-owned WebGPU/Vulkan lowering.
 - Playable Game targets remain the proof of every abstraction.

@@ -9,23 +9,30 @@ PixlPlatform is the platform-agnostic API boundary for Pixl. Its current surface
 - The user wants to write most implementation code personally. Prefer explaining the smallest next shape instead of generating large code blocks.
 - Do not introduce platform imports in this library.
 - Do not add legacy WebGL/OpenGL fallback language or abstractions.
-- Prefer modern-facing GPU concepts aligned with Metal and WebGPU.
+- Prefer Metal-shaped GPU concepts and validate them against modern DirectX.
 
 ## Current Design Direction
 
-The lowest layer is not a 2D renderer. It is a modern GPU abstraction for resources, pipelines, bindings, passes, commands, frames, and profiling data.
+The lowest layer is not a 2D renderer. It is a modern GPU abstraction for resources, pipelines, passes, encoder commands, frames, and profiling data.
 
 2D and 3D conveniences should live above this layer. The GPU layer should remain dimension-agnostic.
 
-Primary reference backends:
+Primary API-design reference:
 
 - Metal
-- WebGPU
 
-Future alignment backends:
+Secondary alignment reference:
 
-- Vulkan
 - DirectX 12
+
+Adapters that must lower the same portable contract later:
+
+- WebGPU
+- Vulkan
+
+Keep the public `PixlPlatform` interface close to Metal's direct encoder/resource-slot model. Do not expose WebGPU bind groups, Vulkan descriptor sets, or their layout rules merely because an adapter needs them. WebGPU/Vulkan adapters own descriptor grouping, caching, and pipeline variants internally unless a future cross-platform requirement proves that machinery belongs in the public interface.
+
+During the current API refocus, implement and validate `PixlPlatform` with `PixlMetalPlatform` first. Do not preserve a questionable public abstraction solely to keep `PixlWasmPlatform` compiling. Adapt WASM only after the portable API is accepted through the Metal Game proof.
 
 Avoid designing around:
 
@@ -39,17 +46,19 @@ The first vertical slice is intentionally small: describe a frame with ordered p
 
 Implemented/decided so far:
 
-- `Frame` owns reusable fixed-capacity contiguous `Pass` storage. Runtime resets it each redraw; game code records through `append`; platform backends iterate it directly.
-- `Frame.beginRenderPass` returns a value-type encoder that appends to its fixed-capacity draw-command storage. This keeps per-frame draw recording allocation-free; draw commands for a pass must be recorded contiguously.
+- `Frame` owns reusable fixed-capacity contiguous recorded-pass and command storage. Runtime resets it each redraw; public callers record only through pass encoders; platform adapters iterate package-visible storage directly.
+- `Frame.beginRenderPass` accepts a `RenderPassDescriptor` and returns a value-type `RenderPassEncoder`. Its public interface follows Metal: set pipeline/resource state, then issue primitive draws. Commands for a pass must be recorded contiguously.
+- Public `DrawCommand` and `Pass` values were removed. They exposed frame-storage implementation and would have grown into shallow bags of every future resource. Package-only `RenderCommand` storage records compact `ResourceID` payloads instead.
+- Exact `PrimitiveTopology` belongs to `RenderPassEncoder.drawPrimitives`, matching Metal and DirectX. Backends where topology is pipeline state must lower/cache pipeline variants internally.
 - `PixlConcurrency` is a standalone sibling package containing Pixl's lane-based execution layer. Keep it platform-agnostic and independent of concrete platform targets.
 - `VertexLayout` owns fixed-capacity contiguous vertex-buffer and attribute descriptions. It defines GPU byte layout only; games retain ownership of their vertex Swift types and bytes.
-- `Pass` currently supports `.render(RenderPass)` and `.compute(ComputePass)`.
-- `RenderPass` owns a `ColorAttachment`.
+- `RenderPassDescriptor` currently owns one `ColorAttachment`. Compute remains a required future encoder, but empty public compute/pass placeholders must not imply implemented support.
 - `ColorAttachment` owns `RenderTarget`, `LoadAction`, and `StoreAction`.
 - `RenderTarget` is a texture view shape: texture plus mip level and array layer. It is not a `screen` enum.
 - `Texture` is an opaque backend resource handle plus immutable `TextureDescriptor`.
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
 - `Buffer` follows the same opaque-handle model as `Texture`. `BufferMemory` requires explicit `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU` intent. `Device.makeBuffer` supports fixed-size allocation or an initial copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
+- Pooled `Buffer`, `Texture`, and `RenderPipeline` handles have explicit `Device.destroy` operations. Destroy invalidates the generational handle immediately; adapters may defer native reclamation until already-submitted GPU work no longer references the resource.
 - `Shader` owns generated backend artifacts: compiled metallib bytes for Metal and WGSL source for WebGPU. `ShaderLibrary` is an opaque backend-native reference object created from the appropriate artifact. Shader libraries are retained by normal object lifetime, not a resource pool or `RenderSettings` capacity. Artifact-format knowledge currently lives in `Shader`; this is accepted temporarily but should eventually move behind generated/backend-specific access.
 - `ShaderCatalogue.default` is PixlGraphics' generated built-in shader and Pixl registers it automatically before `PlatformGame` initialization. Generated `Shaders.vertex` and `Shaders.fragment` are game-facing entry-point values. `Platform.shaders` is the platform-owned `ShaderRegistry`; games append their own shaders from `init(platform:)` without managing shader-library lifetime or platform resource loading.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
@@ -60,12 +69,12 @@ Implemented/decided so far:
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity `ResourcePool<MTLBuffer>` and `ResourcePool<MTLTexture>` storage whose capacities are supplied explicitly at initialization. `.gpuOnly` initial buffer data uses a private Metal buffer plus staging/blit upload; `.cpuVisible` and `.gpuToCPU` currently use shared storage.
-- `MetalDevice` also owns fixed-capacity `ResourcePool<MetalRenderPipeline>` storage. Public `RenderPipeline` is an opaque `ResourceID` handle, so draw encoding resolves native state directly without existential storage or per-draw type casts.
+- `MetalDevice` also owns fixed-capacity `ResourcePool<MetalRenderPipeline>` storage. Public `RenderPipeline` is an opaque `ResourceID` handle, so encoder commands resolve native state directly without existential storage or per-draw type casts.
 - `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
 - `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
-- `MetalQueue.submit` resolves render targets, pipelines, and vertex buffers for ordered render passes, then encodes Metal primitive draws and commits the command buffer.
+- `MetalQueue.submit` resolves compact resource handles and lowers the recorded command stream almost one-for-one to `MTLRenderCommandEncoder`, then commits the command buffer.
 - `PixlMetalPlatform.run(_:)` is the single public macOS runtime entry point. It owns the AppKit/MTKView window runtime and its Metal device; `Pixl.run(_:)` reaches it through Pixl's macOS-conditioned platform dependency.
-- `PixlWasmPlatform.run(_:)` is the WASM/browser runtime entry point. It owns the canvas and WebGPU lifecycle, mirrors the Metal platform's frame acquisition/submission shape, and resizes the drawable directly with the viewport without aspect correction.
+- `PixlWasmPlatform.run(_:)` is the existing WASM/browser runtime entry point. Its previous static-triangle path is retained as historical proof, but its adapter update is intentionally deferred until the Metal-first portable API is accepted.
 - `PixlConcurrency` remains linked on WASM. The supported single-threaded WASI SDK reports one available lane and uses the existing single-lane execution path; its native thread backend is not invoked.
 - `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles. The capacities come from game-provided `RenderSettings` at startup.
 - `GameSettings` configures startup window/runtime values such as title, initial resolution, resizability, and preferred frame rate. `Game` supplies it with a default implementation.
@@ -139,4 +148,4 @@ Compute output should be able to feed later render passes in the same frame.
 
 ## Open Design Decisions
 
-- Before adding buffer writes or copies, design reusable frame upload-ring and readback lifetimes. Do not add a naïve generic write API that allocates staging buffers or synchronizes CPU/GPU work per call.
+- Before adding public dynamic-byte, buffer-write, or copy commands, design reusable frame upload-ring and readback lifetimes. `Upload` describes private transfer machinery, not game-facing render intent; public calls should remain stage/resource specific, such as Metal's `setVertexBytes` family.

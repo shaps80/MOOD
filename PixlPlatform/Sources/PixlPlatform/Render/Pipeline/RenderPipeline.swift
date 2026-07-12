@@ -13,20 +13,17 @@ public struct RenderPipelineDescriptor {
     public let fragment: ShaderFunction
     public let vertexLayout: VertexLayout
     public let colorFormat: PixelFormat
-    public let topology: PrimitiveTopology
 
     public init(
         vertex: ShaderFunction,
         fragment: ShaderFunction,
         vertexLayout: VertexLayout,
-        colorFormat: PixelFormat,
-        topology: PrimitiveTopology = .triangle
+        colorFormat: PixelFormat
     ) {
         self.vertex = vertex
         self.fragment = fragment
         self.vertexLayout = vertexLayout
         self.colorFormat = colorFormat
-        self.topology = topology
     }
 }
 

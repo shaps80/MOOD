@@ -167,7 +167,6 @@ final class MetalDevice: Device {
         metalDescriptor.vertexFunction = vertexFunction
         metalDescriptor.fragmentFunction = fragmentFunction
         metalDescriptor.colorAttachments[0].pixelFormat = descriptor.colorFormat.metalPixelFormat
-        metalDescriptor.inputPrimitiveTopology = descriptor.topology.metalPrimitiveTopology
 
         let vertexDescriptor = MTLVertexDescriptor()
         var bufferIndex: UInt32 = 0
@@ -197,10 +196,7 @@ final class MetalDevice: Device {
         do {
             let state = try metalDevice.makeRenderPipelineState(descriptor: metalDescriptor)
             guard let id = pipelines.insert(
-                MetalRenderPipeline(
-                    state: state,
-                    topology: descriptor.topology.metalPrimitiveType
-                )
+                MetalRenderPipeline(state: state)
             ) else {
                 throw DeviceError.resourceCreationFailed(.renderPipeline)
             }
@@ -236,5 +232,17 @@ final class MetalDevice: Device {
             pipelines: pipelines,
             textures: textures
         )
+    }
+
+    func destroy(_ buffer: Buffer) {
+        precondition(buffers.remove(buffer.id), "Buffer is invalid or has already been destroyed")
+    }
+
+    func destroy(_ pipeline: RenderPipeline) {
+        precondition(pipelines.remove(pipeline.id), "Render pipeline is invalid or has already been destroyed")
+    }
+
+    func destroy(_ texture: Texture) {
+        precondition(textures.remove(texture.id), "Texture is invalid or has already been destroyed")
     }
 }

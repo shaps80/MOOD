@@ -8,5 +8,4 @@ public enum QueueError: Error, Hashable, Sendable {
     case commandBufferCreationFailed
     case encoderCreationFailed
     case invalidResource
-    case unsupportedPass
 }

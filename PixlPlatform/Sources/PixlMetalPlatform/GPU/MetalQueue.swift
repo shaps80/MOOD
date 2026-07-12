@@ -40,8 +40,6 @@ final class MetalQueue: Queue {
             switch pass {
             case .render(let renderPass):
                 try encode(renderPass, from: frame, into: commandBuffer)
-            case .compute:
-                throw QueueError.unsupportedPass
             }
 
             index += 1
@@ -55,11 +53,11 @@ final class MetalQueue: Queue {
     }
 
     private func encode(
-        _ pass: RenderPass,
+        _ pass: RecordedRenderPass,
         from frame: borrowing Frame,
         into commandBuffer: MTLCommandBuffer
     ) throws(QueueError) {
-        let attachment = pass.colorAttachment
+        let attachment = pass.descriptor.colorAttachment
         let target = attachment.target
         let descriptor = MTLRenderPassDescriptor()
 
@@ -82,29 +80,46 @@ final class MetalQueue: Queue {
             throw QueueError.encoderCreationFailed
         }
 
-        var drawIndex = pass.drawStart
-        let drawEnd = pass.drawStart + pass.drawCount
-        while drawIndex < drawEnd {
-            let draw = frame[draw: drawIndex]
+        var commandIndex = pass.commandStart
+        let commandEnd = pass.commandStart + pass.commandCount
+        while commandIndex < commandEnd {
+            switch frame[command: commandIndex] {
+            case .setRenderPipeline(let pipeline):
+                guard pipelines.withValue(for: pipeline, { pipeline in
+                    encoder.setRenderPipelineState(pipeline.pointee.state)
+                }) != nil else {
+                    throw QueueError.invalidResource
+                }
 
-            guard buffers.withValue(for: draw.vertexBuffer.id, { buffer in
-                encoder.setVertexBuffer(buffer.pointee, offset: 0, index: 0)
-                return true
-            }) == true else {
-                throw QueueError.invalidResource
-            }
-            guard pipelines.withValue(for: draw.pipeline.id, { pipeline in
-                encoder.setRenderPipelineState(pipeline.pointee.state)
+            case .setVertexBuffer(let buffer, let offset, let index):
+                guard let metalOffset = Int(exactly: offset),
+                      buffers.withValue(for: buffer, { buffer in
+                          encoder.setVertexBuffer(
+                              buffer.pointee,
+                              offset: metalOffset,
+                              index: Int(index)
+                          )
+                      }) != nil
+                else {
+                    throw QueueError.invalidResource
+                }
+
+            case .drawPrimitives(
+                let topology,
+                let vertexStart,
+                let vertexCount,
+                let instanceCount,
+                let baseInstance
+            ):
                 encoder.drawPrimitives(
-                    type: pipeline.pointee.topology,
-                    vertexStart: 0,
-                    vertexCount: Int(draw.vertexCount)
+                    type: topology.metalPrimitiveType,
+                    vertexStart: Int(vertexStart),
+                    vertexCount: Int(vertexCount),
+                    instanceCount: Int(instanceCount),
+                    baseInstance: Int(baseInstance)
                 )
-                return true
-            }) == true else {
-                throw QueueError.invalidResource
             }
-            drawIndex += 1
+            commandIndex += 1
         }
 
         encoder.endEncoding()

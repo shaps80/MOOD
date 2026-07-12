@@ -85,19 +85,15 @@ struct Game: Pixl.Game {
         time: RenderTime
     ) throws {
         let pass = frame.beginRenderPass(
-            RenderPass(
+            RenderPassDescriptor(
                 ColorAttachment(
                     target: output,
                     loadAction: .clear(.black)
                 )
             )
         )
-        pass.draw(
-            .init(
-                pipeline: pipeline,
-                vertexBuffer: vertexBuffer,
-                vertexCount: 3
-            )
-        )
+        pass.setRenderPipeline(pipeline)
+        pass.setVertexBuffer(vertexBuffer, index: 0)
+        pass.drawPrimitives(.triangle, vertexCount: 3)
     }
 }

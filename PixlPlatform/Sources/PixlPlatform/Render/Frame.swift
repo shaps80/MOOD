@@ -1,87 +1,100 @@
 import Swift
 
-public enum Pass {
-    case render(RenderPass)
-    case compute(ComputePass)
+package enum RecordedPass {
+    case render(RecordedRenderPass)
 }
 
 public final class Frame {
-    private let passes: UnsafeMutablePointer<Pass>
-    private let draws: UnsafeMutablePointer<DrawCommand>
+    private let passes: UnsafeMutablePointer<RecordedPass>
+    private let commands: UnsafeMutablePointer<RenderCommand>
 
     public let passCapacity: UInt32
-    public let drawCapacity: UInt32
+    public let commandCapacity: UInt32
     package private(set) var passCount: UInt32 = 0
-    package private(set) var drawCount: UInt32 = 0
+    package private(set) var commandCount: UInt32 = 0
 
-    package subscript(index: UInt32) -> Pass {
+    package subscript(index: UInt32) -> RecordedPass {
         passes[.init(index)]
     }
 
-    package subscript(index: Int) -> Pass {
+    package subscript(index: Int) -> RecordedPass {
         passes[index]
     }
 
-    package subscript(draw index: UInt32) -> DrawCommand {
-        draws[Int(index)]
+    package subscript(command index: UInt32) -> RenderCommand {
+        commands[Int(index)]
     }
 
-    public init(passCapacity: UInt32, drawCapacity: UInt32) {
+    public init(passCapacity: UInt32, commandCapacity: UInt32) {
         precondition(passCapacity > 0, "Frame pass capacity must be greater than zero")
-        precondition(drawCapacity > 0, "Frame draw capacity must be greater than zero")
+        precondition(commandCapacity > 0, "Frame command capacity must be greater than zero")
 
         self.passCapacity = passCapacity
-        self.drawCapacity = drawCapacity
+        self.commandCapacity = commandCapacity
         passes = .allocate(capacity: Int(passCapacity))
-        draws = .allocate(capacity: Int(drawCapacity))
+        commands = .allocate(capacity: Int(commandCapacity))
     }
 
     deinit {
         reset()
         passes.deallocate()
-        draws.deallocate()
+        commands.deallocate()
     }
 
     public func reset() {
         passes.deinitialize(count: Int(passCount))
-        draws.deinitialize(count: Int(drawCount))
+        commands.deinitialize(count: Int(commandCount))
         passCount = 0
-        drawCount = 0
+        commandCount = 0
     }
 
-    public func append(_ pass: consuming Pass) {
+    private func append(_ pass: consuming RecordedPass) {
         precondition(passCount < passCapacity, "Frame pass capacity exceeded")
 
         passes.advanced(by: Int(passCount)).initialize(to: pass)
         passCount += 1
     }
 
-    public func beginRenderPass(_ pass: consuming RenderPass) -> RenderPassEncoder {
+    public func beginRenderPass(
+        _ descriptor: consuming RenderPassDescriptor
+    ) -> RenderPassEncoder {
         let index = passCount
-        append(.render(pass))
+        append(.render(RecordedRenderPass(descriptor: descriptor)))
         return .init(frame: self, passIndex: index)
     }
 
-    package func append(_ draw: consuming DrawCommand, toRenderPassAt passIndex: UInt32) {
+    package func append(_ command: consuming RenderCommand, toRenderPassAt passIndex: UInt32) {
         precondition(passIndex < passCount, "Render pass does not belong to this frame")
-        precondition(drawCount < drawCapacity, "Frame draw capacity exceeded")
+        precondition(commandCount < commandCapacity, "Frame command capacity exceeded")
 
         guard case .render(var pass) = passes[Int(passIndex)] else {
             preconditionFailure("Draw commands can only be appended to render passes")
         }
 
-        if pass.drawCount == 0 {
-            pass.drawStart = drawCount
+        switch command {
+        case .setRenderPipeline:
+            pass.hasRenderPipeline = true
+        case .drawPrimitives:
+            precondition(
+                pass.hasRenderPipeline,
+                "A render pipeline must be set before drawing"
+            )
+        case .setVertexBuffer:
+            break
+        }
+
+        if pass.commandCount == 0 {
+            pass.commandStart = commandCount
         } else {
             precondition(
-                pass.drawStart + pass.drawCount == drawCount,
-                "Draw commands for a render pass must be recorded contiguously"
+                pass.commandStart + pass.commandCount == commandCount,
+                "Commands for a render pass must be recorded contiguously"
             )
         }
 
-        draws.advanced(by: Int(drawCount)).initialize(to: draw)
-        drawCount += 1
-        pass.drawCount += 1
+        commands.advanced(by: Int(commandCount)).initialize(to: command)
+        commandCount += 1
+        pass.commandCount += 1
         passes[Int(passIndex)] = .render(pass)
     }
 }

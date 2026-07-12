@@ -5,16 +5,10 @@ extension PrimitiveTopology {
     var metalPrimitiveType: MTLPrimitiveType {
         switch self {
         case .point: .point
-        case .line, .lineStrip: .line
-        case .triangle, .triangleStrip: .triangle
-        }
-    }
-
-    var metalPrimitiveTopology: MTLPrimitiveTopologyClass {
-        switch self {
-        case .point: .point
-        case .line, .lineStrip: .line
-        case .triangle, .triangleStrip: .triangle
+        case .line: .line
+        case .lineStrip: .lineStrip
+        case .triangle: .triangle
+        case .triangleStrip: .triangleStrip
         }
     }
 }
