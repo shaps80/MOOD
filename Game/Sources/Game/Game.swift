@@ -30,23 +30,8 @@ struct Game: Pixl.Game {
     }
 
     init(platform: any Platform) throws {
-        triangle = try Triangle(
-            device: platform.device,
-            colors: (
-                .init(red: 1, green: 1, blue: 0),
-                .init(red: 0, green: 1, blue: 1),
-                .init(red: 1, green: 0, blue: 1)
-            )
-        )
-        quad = try Quad(
-            device: platform.device,
-            colors: (
-                .init(red: 1, green: 1, blue: 0),
-                .init(red: 0, green: 1, blue: 1),
-                .init(red: 1, green: 0, blue: 1),
-                .white
-            )
-        )
+        triangle = try Triangle(device: platform.device)
+        quad = try Quad(device: platform.device)
 
         pipeline = try platform.device.makeRenderPipeline(
             .init(
@@ -64,14 +49,8 @@ struct Game: Pixl.Game {
         frame: borrowing Frame,
         time: RenderTime
     ) throws {
-        let pass = frame.beginRenderPass(
-            RenderPassDescriptor(
-                ColorAttachment(
-                    target: output,
-                    loadAction: .clear(.black)
-                )
-            )
-        )
+        let pass = frame.clear(target: output)
+
         pass.setRenderPipeline(pipeline)
         pass.setVertexBytes(
             of: camera.projection(for: output)
@@ -79,6 +58,7 @@ struct Game: Pixl.Game {
                 .rotated(by: state.rotation),
             index: 1
         )
+
         triangle.draw(on: pass)
         pass.setVertexBytes(
             of: camera.projection(for: output)

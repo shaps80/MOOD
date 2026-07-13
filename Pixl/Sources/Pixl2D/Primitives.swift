@@ -12,7 +12,11 @@ public struct Triangle: Sendable {
     ///   - colors: Colours for the top, lower-left, and lower-right vertices.
     public init(
         device: any Device,
-        colors: (Color, Color, Color)
+        colors: (Color, Color, Color) = (
+            .init(red: 1, green: 1, blue: 0),
+            .init(red: 0, green: 1, blue: 1),
+            .init(red: 1, green: 0, blue: 1)
+        )
     ) throws {
         var vertices = (
             ColorGeometry.vertex(position: .init(0, 0.5), color: colors.0),
@@ -22,6 +26,15 @@ public struct Triangle: Sendable {
         vertexBuffer = try withUnsafeBytes(of: &vertices) {
             try device.makeBuffer(copying: $0, usage: .vertex, memory: .gpuOnly)
         }
+    }
+
+    /// Creates a GPU-only triangle with one colour at every vertex.
+    ///
+    /// - Parameters:
+    ///   - device: Device that owns the immutable vertex buffer.
+    ///   - color: Colour assigned to all three vertices.
+    public init(device: any Device, color: Color) throws {
+        try self.init(device: device, colors: (color, color, color))
     }
 
     /// Creates the vertex layout consumed by Pixl's coloured geometry shader.
@@ -51,7 +64,12 @@ public struct Quad: Sendable {
     ///     top-right vertices.
     public init(
         device: any Device,
-        colors: (Color, Color, Color, Color)
+        colors: (Color, Color, Color, Color) = (
+            .init(red: 1, green: 1, blue: 0),
+            .init(red: 0, green: 1, blue: 1),
+            .init(red: 1, green: 0, blue: 1),
+            .white
+        )
     ) throws {
         var vertices = (
             ColorGeometry.vertex(position: .init(-0.5, 0.5), color: colors.0),
@@ -67,6 +85,15 @@ public struct Quad: Sendable {
         indexBuffer = try withUnsafeBytes(of: &indices) {
             try device.makeBuffer(copying: $0, usage: .index, memory: .gpuOnly)
         }
+    }
+
+    /// Creates a GPU-only quad with one colour at every vertex.
+    ///
+    /// - Parameters:
+    ///   - device: Device that owns the immutable vertex and index buffers.
+    ///   - color: Colour assigned to all four vertices.
+    public init(device: any Device, color: Color) throws {
+        try self.init(device: device, colors: (color, color, color, color))
     }
 
     /// Creates the vertex layout consumed by Pixl's coloured geometry shader.
