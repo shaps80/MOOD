@@ -75,6 +75,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
 - [ ] Keep all GPU concepts and platform implementations dimension-agnostic in `PixlPlatform`.
 - [ ] Add reusable internal upload-ring and readback lifetimes before exposing stage-specific dynamic bytes, buffer writes, or copy commands. Do not expose `upload` as game-facing render intent.
+- [ ] Use Cubano Regular as Pixl's official font. The local source file is `/Users/shaps/Library/Fonts/Cubano-Regular.otf`; the future font build pipeline should compile it into portable generated atlas and glyph artifacts rather than depending on that runtime path.
 
 ## Guiding Constraints
 
