@@ -24,6 +24,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// var angle = Angle.degrees(90)
     /// angle.degrees += 45
     /// ```
+    @inline(__always)
     public var degrees: Double {
         get {
             radians * (180.0 / .pi)
@@ -38,6 +39,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let angle = Angle()
     /// ```
+    @inline(__always)
     public init() {
         self.init(radians: 0)
     }
@@ -47,6 +49,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let angle = Angle(radians: .pi)
     /// ```
+    @inline(__always)
     public init(radians: Double) {
         self.radians = radians
     }
@@ -56,6 +59,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let angle = Angle(degrees: 180)
     /// ```
+    @inline(__always)
     public init(degrees: Double) {
         self.init(radians: degrees * (.pi / 180.0))
     }
@@ -65,6 +69,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let angle: Angle = .radians(.pi / 2)
     /// ```
+    @inline(__always)
     public static func radians(_ radians: Double) -> Angle {
         Angle(radians: radians)
     }
@@ -74,6 +79,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let angle: Angle = .degrees(90)
     /// ```
+    @inline(__always)
     public static func degrees(_ degrees: Double) -> Angle {
         Angle(degrees: degrees)
     }
@@ -83,6 +89,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let angle: Angle = .zero
     /// ```
+    @inline(__always)
     public static let zero = Angle()
 
     /// Returns whether the left angle is smaller than the right angle.
@@ -90,6 +97,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```swift
     /// let isQuarterTurn = Angle.degrees(90) < Angle.degrees(180)
     /// ```
+    @inline(__always)
     public static func < (lhs: Angle, rhs: Angle) -> Bool {
         lhs.radians < rhs.radians
     }
@@ -101,6 +109,7 @@ public extension Angle {
     /// ```swift
     /// let clockwise = -Angle.degrees(90)
     /// ```
+    @inline(__always)
     static prefix func - (angle: Angle) -> Angle {
         Angle(radians: -angle.radians)
     }
@@ -110,6 +119,7 @@ public extension Angle {
     /// ```swift
     /// let angle = Angle.degrees(90) + .degrees(45)
     /// ```
+    @inline(__always)
     static func + (lhs: Angle, rhs: Angle) -> Angle {
         Angle(radians: lhs.radians + rhs.radians)
     }
@@ -120,6 +130,7 @@ public extension Angle {
     /// var angle = Angle.zero
     /// angle += .degrees(90)
     /// ```
+    @inline(__always)
     static func += (lhs: inout Angle, rhs: Angle) {
         lhs = lhs + rhs
     }
@@ -129,6 +140,7 @@ public extension Angle {
     /// ```swift
     /// let angle = Angle.degrees(180) - .degrees(90)
     /// ```
+    @inline(__always)
     static func - (lhs: Angle, rhs: Angle) -> Angle {
         Angle(radians: lhs.radians - rhs.radians)
     }
@@ -139,6 +151,7 @@ public extension Angle {
     /// var angle = Angle.degrees(180)
     /// angle -= .degrees(90)
     /// ```
+    @inline(__always)
     static func -= (lhs: inout Angle, rhs: Angle) {
         lhs = lhs - rhs
     }
@@ -148,6 +161,7 @@ public extension Angle {
     /// ```swift
     /// let angle = Angle.degrees(90) * 2
     /// ```
+    @inline(__always)
     static func * (lhs: Angle, rhs: Double) -> Angle {
         Angle(radians: lhs.radians * rhs)
     }
@@ -157,6 +171,7 @@ public extension Angle {
     /// ```swift
     /// let angle = 2 * Angle.degrees(90)
     /// ```
+    @inline(__always)
     static func * (lhs: Double, rhs: Angle) -> Angle {
         rhs * lhs
     }
@@ -167,6 +182,7 @@ public extension Angle {
     /// var angle = Angle.degrees(90)
     /// angle *= 2
     /// ```
+    @inline(__always)
     static func *= (lhs: inout Angle, rhs: Double) {
         lhs = lhs * rhs
     }
@@ -176,6 +192,7 @@ public extension Angle {
     /// ```swift
     /// let angle = Angle.degrees(180) / 2
     /// ```
+    @inline(__always)
     static func / (lhs: Angle, rhs: Double) -> Angle {
         Angle(radians: lhs.radians / rhs)
     }
@@ -186,6 +203,7 @@ public extension Angle {
     /// var angle = Angle.degrees(180)
     /// angle /= 2
     /// ```
+    @inline(__always)
     static func /= (lhs: inout Angle, rhs: Double) {
         lhs = lhs / rhs
     }
