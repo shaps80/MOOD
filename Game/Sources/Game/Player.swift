@@ -5,9 +5,9 @@ struct Player: Entity {
     private let triangle: Triangle
     private let pipeline: RenderPipeline
 
-    private let camera = OrthographicCamera(halfHeight: 25)
+    private let camera = OrthographicCamera(halfHeight: 15)
     private var rotation: Double = .zero
-    private let rotationSpeed = Double.random(in: -2...2)
+    private let rotationSpeed = Double.random(in: -2...10)
     private let position = Vec2.random(
         x: -49...49,
         y: -24...24
@@ -15,7 +15,7 @@ struct Player: Entity {
 
 
     init(context: GameContext) throws {
-        triangle = try Triangle(device: context.platform.device)
+        triangle = try .init(device: context.platform.device)
         pipeline = try context.platform.device.makeRenderPipeline(
             .init(
                 vertex: Shaders.vertex,

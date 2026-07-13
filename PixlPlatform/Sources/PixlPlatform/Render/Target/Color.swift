@@ -1,6 +1,7 @@
 import Swift
 
 public struct Color: Sendable, Hashable {
+#warning("Move to SIMD4")
     public var red: Float
     public var green: Float
     public var blue: Float

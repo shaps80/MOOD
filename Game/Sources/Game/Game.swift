@@ -23,8 +23,8 @@ struct Game: Pixl.Game {
 
     init(context: GameContext) throws {
         let world = context.register(World())
-        let players = world.register(Player.self, capacity: 1_000)
-        for _ in 0..<1_000 {
+        let players = world.register(Player.self, capacity: 500)
+        for _ in 0..<500 {
             _ = try players.spawn()
         }
     }
@@ -43,8 +43,6 @@ struct Game: Pixl.Game {
 
 private extension Game {
     final class State: @unchecked Sendable {
-        var rotation: Double = 0
-        var previousRotation: Double = 0
         var metricsElapsed = 0.0
     }
 }
