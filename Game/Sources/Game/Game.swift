@@ -4,29 +4,26 @@ import Pixl2D
 @main
 struct Game: Pixl.Game {
     private final class State: @unchecked Sendable {
-        var rotation: Double = 0
-        var previousRotation: Double = 0
+        var angle: Angle = .zero
         var metricsElapsed = 0.0
     }
 
+    private let state = State()
     private let triangle: Triangle
     private let quad: Quad
     private let pipeline: RenderPipeline
-    private let state = State()
     private let camera = OrthographicCamera()
 
-    static var gameSettings: GameSettings {
-        .init(
-            title: "Pixl",
-            resolution: .init(
-                width: 800,
-                height: 400
-            )
+    static let gameSettings: GameSettings = .init(
+        title: "Pixl",
+        resolution: .init(
+            width: 800,
+            height: 400
         )
-    }
+    )
 
     func update(_ time: UpdateTime, lanes: Lanes) {
-        state.rotation = time.elapsedSeconds
+        state.angle = .radians(time.elapsedSeconds)
     }
 
     init(platform: any Platform) throws {
@@ -56,14 +53,14 @@ struct Game: Pixl.Game {
             on: pass,
             transform: camera.projection(for: output)
                 .translated(by: .init(x: -0.75, y: 0))
-                .rotated(by: state.rotation)
+                .rotated(by: state.angle.radians)
         )
 
         quad.draw(
             on: pass,
             transform: camera.projection(for: output)
                 .translated(by: .init(x: 0.75, y: 0))
-                .rotated(by: -state.rotation)
+                .rotated(by: -state.angle.radians)
         )
 
         logMetrics(metrics: time.metrics)
