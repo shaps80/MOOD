@@ -37,15 +37,13 @@ public struct Triangle: Sendable {
         try self.init(device: device, colors: (color, color, color))
     }
 
-    /// Creates the vertex layout consumed by Pixl's coloured geometry shader.
-    public static func makeVertexLayout() -> VertexLayout {
-        ColorGeometry.makeVertexLayout()
-    }
-
-    /// Records this triangle's vertex binding and primitive draw.
+    /// Records this triangle's transform, vertex binding, and primitive draw.
     ///
-    /// - Parameter pass: Render-pass encoder that already has a compatible pipeline.
-    public func draw(on pass: RenderPassEncoder) {
+    /// - Parameters:
+    ///   - pass: Render-pass encoder that already has a compatible pipeline.
+    ///   - transform: Transform uploaded to the built-in coloured vertex shader.
+    public func draw(on pass: RenderPassEncoder, transform: Transform2D) {
+        pass.setVertexBytes(of: transform, index: 1)
         pass.setVertexBuffer(vertexBuffer, index: 0)
         pass.drawPrimitives(.triangle, vertexCount: 3)
     }
@@ -96,15 +94,13 @@ public struct Quad: Sendable {
         try self.init(device: device, colors: (color, color, color, color))
     }
 
-    /// Creates the vertex layout consumed by Pixl's coloured geometry shader.
-    public static func makeVertexLayout() -> VertexLayout {
-        ColorGeometry.makeVertexLayout()
-    }
-
-    /// Records this quad's vertex binding and indexed primitive draw.
+    /// Records this quad's transform, vertex binding, and indexed primitive draw.
     ///
-    /// - Parameter pass: Render-pass encoder that already has a compatible pipeline.
-    public func draw(on pass: RenderPassEncoder) {
+    /// - Parameters:
+    ///   - pass: Render-pass encoder that already has a compatible pipeline.
+    ///   - transform: Transform uploaded to the built-in coloured vertex shader.
+    public func draw(on pass: RenderPassEncoder, transform: Transform2D) {
+        pass.setVertexBytes(of: transform, index: 1)
         pass.setVertexBuffer(vertexBuffer, index: 0)
         pass.drawIndexedPrimitives(
             .triangle,
@@ -120,8 +116,8 @@ private struct ColorVertex: BitwiseCopyable {
     let color: SIMD4<Float>
 }
 
-private enum ColorGeometry {
-    static func makeVertexLayout() -> VertexLayout {
+public enum ColorGeometry {
+    public static var vertexLayout: VertexLayout {
         let layout = VertexLayout(bufferCapacity: 1, attributeCapacity: 2)
         layout.append(
             .init(bufferIndex: 0, stride: UInt64(MemoryLayout<ColorVertex>.stride))
@@ -140,7 +136,7 @@ private enum ColorGeometry {
         return layout
     }
 
-    static func vertex(position: SIMD2<Float>, color: Color) -> ColorVertex {
+    fileprivate static func vertex(position: SIMD2<Float>, color: Color) -> ColorVertex {
         .init(
             position: position,
             color: .init(color.red, color.green, color.blue, color.alpha)

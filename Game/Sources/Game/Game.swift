@@ -37,7 +37,7 @@ struct Game: Pixl.Game {
             .init(
                 vertex: Shaders.vertex,
                 fragment: Shaders.fragment,
-                vertexLayout: Triangle.makeVertexLayout(),
+                vertexLayout: ColorGeometry.vertexLayout,
                 colorFormat: Self.renderSettings.drawableFormat
             )
         )
@@ -50,23 +50,21 @@ struct Game: Pixl.Game {
         time: RenderTime
     ) throws {
         let pass = frame.clear(target: output)
-
         pass.setRenderPipeline(pipeline)
-        pass.setVertexBytes(
-            of: camera.projection(for: output)
+
+        triangle.draw(
+            on: pass,
+            transform: camera.projection(for: output)
                 .translated(by: .init(x: -0.75, y: 0))
-                .rotated(by: state.rotation),
-            index: 1
+                .rotated(by: state.rotation)
         )
 
-        triangle.draw(on: pass)
-        pass.setVertexBytes(
-            of: camera.projection(for: output)
+        quad.draw(
+            on: pass,
+            transform: camera.projection(for: output)
                 .translated(by: .init(x: 0.75, y: 0))
-                .rotated(by: -state.rotation),
-            index: 1
+                .rotated(by: -state.rotation)
         )
-        quad.draw(on: pass)
 
         logMetrics(metrics: time.metrics)
     }
