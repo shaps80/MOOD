@@ -4,8 +4,15 @@ import Pixl2D
 struct Player: Entity {
     private let triangle: Triangle
     private let pipeline: RenderPipeline
-    private let camera = OrthographicCamera()
-    private var rotation = 0.0
+
+    private let camera = OrthographicCamera(halfHeight: 25)
+    private var rotation: Double = .zero
+    private let rotationSpeed = Double.random(in: -2...2)
+    private let position = Vec2.random(
+        x: -49...49,
+        y: -24...24
+    )
+
 
     init(context: GameContext) throws {
         triangle = try Triangle(device: context.platform.device)
@@ -25,7 +32,7 @@ struct Player: Entity {
         time: UpdateTime,
         lanes: Lanes
     ) {
-        rotation = time.elapsedSeconds
+        rotation = time.elapsedSeconds * rotationSpeed
     }
 
     func render(
@@ -40,6 +47,7 @@ struct Player: Entity {
             on: pass,
             transform: camera
                 .projection(for: output)
+                .translated(by: position)
                 .rotated(by: rotation)
         )
     }
