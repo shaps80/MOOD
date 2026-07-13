@@ -22,9 +22,16 @@ public extension Game {
         .default
     }
 
-    func fixedUpdate(_ time: FixedTime, lanes: Lanes) {}
+    mutating func fixedUpdate(_ time: FixedTime, lanes: Lanes) {}
 
-    func update(_ time: UpdateTime, lanes: Lanes) { }
+    mutating func update(_ time: UpdateTime, lanes: Lanes) { }
+
+    func render(
+        on platform: any Platform,
+        output: RenderTarget,
+        frame: borrowing Frame,
+        time: RenderTime
+    ) throws {}
 
     @MainActor
     static func main() {

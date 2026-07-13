@@ -1,4 +1,4 @@
-import Foundation
+import Swift
 
 /// CPU-side measurements for one completed game frame.
 ///
@@ -10,6 +10,9 @@ public struct PerformanceMetrics: Hashable, Sendable {
         frameTimeSeconds: 0,
         cpuGameSeconds: 0,
         cpuRenderSeconds: 0,
+        drawCount: 0,
+        activeEntityCount: 0,
+        inactiveEntityCount: 0,
         totalHitchCount: 0,
         summary: .zero
     )
@@ -28,6 +31,15 @@ public struct PerformanceMetrics: Hashable, Sendable {
 
     /// Time spent recording the game's render commands, in seconds.
     public let cpuRenderSeconds: Double
+
+    /// Draw calls recorded into the completed frame.
+    public let drawCount: UInt32
+
+    /// Live entities across registered worlds at the end of the completed frame.
+    public let activeEntityCount: UInt32
+
+    /// Reusable inactive dense slots across registered worlds.
+    public let inactiveEntityCount: UInt32
 
     /// Hitches observed since game startup.
     public let totalHitchCount: UInt64
@@ -69,9 +81,9 @@ public struct PerformanceMetrics: Hashable, Sendable {
         }
 
         private static func column(_ value: Double) -> String {
-            value.formatted(
-                .number.precision(.fractionLength(6))
-            ).padding(toLength: 12, withPad: " ", startingAt: 0)
+            let value = String(value)
+            guard value.count < 12 else { return value }
+            return value + String(repeating: " ", count: 12 - value.count)
         }
     }
 
@@ -80,6 +92,9 @@ public struct PerformanceMetrics: Hashable, Sendable {
         frameTimeSeconds: Double,
         cpuGameSeconds: Double,
         cpuRenderSeconds: Double,
+        drawCount: UInt32,
+        activeEntityCount: UInt32,
+        inactiveEntityCount: UInt32,
         totalHitchCount: UInt64,
         summary: Summary
     ) {
@@ -88,6 +103,9 @@ public struct PerformanceMetrics: Hashable, Sendable {
         framesPerSecond = frameTimeSeconds > 0 ? 1 / frameTimeSeconds : 0
         self.cpuGameSeconds = cpuGameSeconds
         self.cpuRenderSeconds = cpuRenderSeconds
+        self.drawCount = drawCount
+        self.activeEntityCount = activeEntityCount
+        self.inactiveEntityCount = inactiveEntityCount
         self.totalHitchCount = totalHitchCount
         self.summary = summary
     }

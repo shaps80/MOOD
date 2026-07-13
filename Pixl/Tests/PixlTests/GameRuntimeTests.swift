@@ -38,7 +38,7 @@ private struct LaneRecordingGame: Game {
         )
     }
 
-    init(platform: any Platform) throws {
+    init(context: GameContext) throws {
         recorder = .init()
     }
 

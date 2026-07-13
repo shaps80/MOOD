@@ -13,14 +13,16 @@ final class GameRuntime<G: Game>: PlatformGame {
         G.renderSettings
     }
 
-    private let game: G
+    private var game: G
+    private let context: GameContext
     private var loop: Loop
     private let lanes: Lanes
     private var latestMetrics: PerformanceMetrics = .zero
     private var metricsCollector: PerformanceMetricsCollector
 
     init(platform: any Platform) throws {
-        game = try G(platform: platform)
+        context = .init(platform: platform)
+        game = try G(context: context)
         loop = Loop(settings: G.loopSettings)
         lanes = .init()
         metricsCollector = .init(
@@ -30,6 +32,7 @@ final class GameRuntime<G: Game>: PlatformGame {
 
     init(game: G, executionSettings: ExecutionSettings) {
         self.game = game
+        context = .testing
         loop = Loop(settings: G.loopSettings)
         lanes = .init(settings: executionSettings)
         metricsCollector = .init(
@@ -59,13 +62,26 @@ final class GameRuntime<G: Game>: PlatformGame {
                 metrics: latestMetrics
             )
         )
+        try context.render(
+            on: platform,
+            output: output,
+            frame: frame,
+            time: RenderTime(
+                frameIndex: schedule.renderTime.frameIndex,
+                interpolation: schedule.renderTime.interpolation,
+                metrics: latestMetrics
+            )
+        )
 
         let renderEnd = ContinuousClock.now
         latestMetrics = metricsCollector.record(
             frameIndex: schedule.renderTime.frameIndex,
             frameTimeSeconds: schedule.frameTimeSeconds,
             cpuGameSeconds: Self.seconds(gameEnd - gameStart),
-            cpuRenderSeconds: Self.seconds(renderEnd - gameEnd)
+            cpuRenderSeconds: Self.seconds(renderEnd - gameEnd),
+            drawCount: frame.drawCount,
+            activeEntityCount: context.activeEntityCount,
+            inactiveEntityCount: context.inactiveEntityCount
         )
     }
 
@@ -73,19 +89,24 @@ final class GameRuntime<G: Game>: PlatformGame {
         var index: UInt32 = 0
         while index < schedule.fixedUpdateCount {
             let tickIndex = schedule.firstTickIndex &+ UInt64(index)
-            game.fixedUpdate(
-                FixedTime(
-                    tickIndex: tickIndex,
-                    deltaSeconds: schedule.fixedDeltaSeconds,
-                    elapsedSeconds: Double(tickIndex)
-                        * schedule.fixedDeltaSeconds
-                ),
+            let time = FixedTime(
+                tickIndex: tickIndex,
+                deltaSeconds: schedule.fixedDeltaSeconds,
+                elapsedSeconds: Double(tickIndex)
+                    * schedule.fixedDeltaSeconds
+            )
+            game.fixedUpdate(time,
+                lanes: lanes
+            )
+            context.fixedUpdate(
+                time,
                 lanes: lanes
             )
             index &+= 1
         }
 
         game.update(schedule.updateTime, lanes: lanes)
+        context.update(schedule.updateTime, lanes: lanes)
     }
 
     private static func seconds(_ duration: Duration) -> Double {

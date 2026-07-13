@@ -15,6 +15,7 @@ public final class Frame {
     package private(set) var passCount: UInt32 = 0
     package private(set) var commandCount: UInt32 = 0
     package private(set) var byteCount: UInt32 = 0
+    public private(set) var drawCount: UInt32 = 0
 
     package subscript(index: UInt32) -> RecordedPass {
         passes[.init(index)]
@@ -58,6 +59,7 @@ public final class Frame {
         passCount = 0
         commandCount = 0
         byteCount = 0
+        drawCount = 0
     }
 
     private func append(_ pass: consuming RecordedPass) {
@@ -91,6 +93,7 @@ public final class Frame {
                 pass.hasRenderPipeline,
                 "A render pipeline must be set before drawing"
             )
+            drawCount += 1
         case .setVertexBuffer, .setVertexBytes:
             break
         }

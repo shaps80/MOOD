@@ -22,7 +22,10 @@ struct PerformanceMetricsCollector {
         frameIndex: UInt64,
         frameTimeSeconds: Double,
         cpuGameSeconds: Double,
-        cpuRenderSeconds: Double
+        cpuRenderSeconds: Double,
+        drawCount: UInt32 = 0,
+        activeEntityCount: UInt32 = 0,
+        inactiveEntityCount: UInt32 = 0
     ) -> PerformanceMetrics {
         elapsedSeconds += frameTimeSeconds
         frameCount &+= 1
@@ -55,6 +58,9 @@ struct PerformanceMetricsCollector {
             frameTimeSeconds: frameTimeSeconds,
             cpuGameSeconds: cpuGameSeconds,
             cpuRenderSeconds: cpuRenderSeconds,
+            drawCount: drawCount,
+            activeEntityCount: activeEntityCount,
+            inactiveEntityCount: inactiveEntityCount,
             totalHitchCount: totalHitchCount,
             summary: latestSummary
         )

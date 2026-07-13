@@ -7,13 +7,13 @@ public protocol Game {
     static var renderSettings: RenderSettings { get }
     static var loopSettings: LoopSettings { get }
 
-    init(platform: any Platform) throws
+    init(context: GameContext) throws
 
     /// Invoked serially for each fixed simulation tick.
-    func fixedUpdate(_ time: FixedTime, lanes: Lanes)
+    mutating func fixedUpdate(_ time: FixedTime, lanes: Lanes)
 
     /// Invoked serially for each presentation update.
-    func update(_ time: UpdateTime, lanes: Lanes)
+    mutating func update(_ time: UpdateTime, lanes: Lanes)
 
     /// Invoked on the leader lane because `Frame` recording is not yet
     /// lane-partitioned.
