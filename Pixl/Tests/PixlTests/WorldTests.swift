@@ -6,6 +6,8 @@ private struct Counter: Entity {
     var updates = 0
     var despawnsDuringUpdate = false
 
+    init(context: GameContext) {}
+
     mutating func update(
         entity: EntityID,
         in world: World,
@@ -22,11 +24,12 @@ private struct Counter: Entity {
 @Suite("World")
 struct WorldTests {
     @Test
-    func storageReadsMutatesDespawnsAndReusesSlotsWithoutCompaction() {
-        let world = World()
+    func storageReadsMutatesDespawnsAndReusesSlotsWithoutCompaction() throws {
+        let context = GameContext.testing
+        let world = context.register(World())
         let counters = world.register(Counter.self, capacity: 2)
-        let first = counters.spawn(.init())!
-        let second = counters.spawn(.init())!
+        let first = try counters.spawn()!
+        let second = try counters.spawn()!
 
         _ = counters.update(first) { $0.pointee.updates = 4 }
         #expect(counters.withValue(for: first) { $0.pointee.updates } == 4)
@@ -35,18 +38,26 @@ struct WorldTests {
         #expect(world.activeEntityCount == 1)
         #expect(world.inactiveEntityCount == 1)
 
-        let replacement = counters.spawn(.init())!
+        world.update(
+            .init(frameIndex: 1, deltaSeconds: 0, elapsedSeconds: 0),
+            lanes: .init()
+        )
+        let replacement = try counters.spawn()!
         #expect(replacement != first)
-        #expect(counters.withValue(for: second) { $0.pointee.updates } == 0)
+        #expect(counters.withValue(for: second) { $0.pointee.updates } == 1)
         #expect(world.activeEntityCount == 2)
         #expect(world.inactiveEntityCount == 0)
     }
 
     @Test
-    func despawningDuringUpdateInvalidatesImmediatelyAndRetiresAfterTheLoop() {
-        let world = World()
+    func despawningDuringUpdateInvalidatesImmediatelyAndRetiresAfterTheLoop() throws {
+        let context = GameContext.testing
+        let world = context.register(World())
         let counters = world.register(Counter.self, capacity: 2)
-        let entity = counters.spawn(.init(despawnsDuringUpdate: true))!
+        let entity = try counters.spawn()!
+        _ = counters.update(entity) {
+            $0.pointee.despawnsDuringUpdate = true
+        }
 
         world.update(
             .init(frameIndex: 1, deltaSeconds: 1.0 / 60.0, elapsedSeconds: 1.0 / 60.0),

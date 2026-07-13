@@ -52,7 +52,7 @@ public struct GameSettings: Sendable, Hashable {
         title: String,
         preferredFps: Int = 60,
         resolution: Resolution,
-        isResizable: Bool = false
+        isResizable: Bool = true
     ) {
         precondition(preferredFps > 0, "Preferred FPS must be greater than zero")
 

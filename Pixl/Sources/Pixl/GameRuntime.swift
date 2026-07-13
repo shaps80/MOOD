@@ -21,7 +21,7 @@ final class GameRuntime<G: Game>: PlatformGame {
     private var metricsCollector: PerformanceMetricsCollector
 
     init(platform: any Platform) throws {
-        context = .init(platform: platform)
+        context = .init(platform: platform, renderSettings: G.renderSettings)
         game = try G(context: context)
         loop = Loop(settings: G.loopSettings)
         lanes = .init()

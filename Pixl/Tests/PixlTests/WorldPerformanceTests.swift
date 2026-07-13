@@ -3,6 +3,10 @@ import XCTest
 
 private struct PerformanceEntity: Entity {
     var value: UInt64
+
+    init(context: GameContext) {
+        value = 1
+    }
 }
 
 final class WorldPerformanceTests: XCTestCase {
@@ -10,7 +14,7 @@ final class WorldPerformanceTests: XCTestCase {
     private static let passes = 100
 
     func testSequentialReadPerformance() throws {
-        let (store, entities) = makeFullStore()
+        let (store, entities) = try makeFullStore()
         var checksum: UInt64 = 0
 
         measure(metrics: [XCTClockMetric()]) {
@@ -27,7 +31,7 @@ final class WorldPerformanceTests: XCTestCase {
     }
 
     func testInPlaceUpdatePerformance() throws {
-        let (store, entities) = makeFullStore()
+        let (store, entities) = try makeFullStore()
 
         measure(metrics: [XCTClockMetric()]) {
             for _ in 0..<Self.passes {
@@ -41,7 +45,8 @@ final class WorldPerformanceTests: XCTestCase {
     }
 
     func testInsertDespawnChurnPerformance() throws {
-        let world = World()
+        let context = GameContext.testing
+        let world = context.register(World())
         let store = world.register(
             PerformanceEntity.self,
             capacity: UInt32(Self.entityCount)
@@ -52,43 +57,57 @@ final class WorldPerformanceTests: XCTestCase {
         defer { entities.deallocate() }
         var insertSeconds = 0.0
         var insertSamples = 0
+        var despawnSeconds = 0.0
 
         measure(metrics: [XCTClockMetric()]) {
             let insertStart = ContinuousClock.now
             for index in 0..<Self.entityCount {
                 entities.advanced(by: index).initialize(
-                    to: store.spawn(.init(value: UInt64(index)))!
+                    to: try! store.spawn()!
                 )
             }
             insertSeconds += Self.seconds(ContinuousClock.now - insertStart)
             insertSamples += 1
+            let despawnStart = ContinuousClock.now
             for index in 0..<Self.entityCount {
-                _ = store.despawn(entities[index])
+                _ = world.despawn(entities[index])
                 entities.advanced(by: index).deinitialize(count: 1)
             }
+            despawnSeconds += Self.seconds(ContinuousClock.now - despawnStart)
+            world.update(
+                .init(frameIndex: 0, deltaSeconds: 0, elapsedSeconds: 0),
+                lanes: .init()
+            )
         }
 
-        XCTAssertEqual(store.activeEntityCount, 0)
-        XCTAssertEqual(store.inactiveEntityCount, UInt32(Self.entityCount))
+        XCTAssertEqual(world.activeEntityCount, 0)
+        XCTAssertEqual(world.inactiveEntityCount, UInt32(Self.entityCount))
         let insertNanoseconds = insertSeconds
             / Double(insertSamples * Self.entityCount)
             * 1_000_000_000
         print("World hot insert: \(insertNanoseconds) ns/entity")
+        let despawnNanoseconds = despawnSeconds
+            / Double(insertSamples * Self.entityCount)
+            * 1_000_000_000
+        print("World despawn mark: \(despawnNanoseconds) ns/entity")
     }
 
-    private func makeFullStore() -> (
+    private func makeFullStore() throws -> (
         EntityStore<PerformanceEntity>,
         ContiguousArray<EntityID>
     ) {
-        let world = World()
+        let context = GameContext.testing
+        let world = context.register(World())
         let store = world.register(
             PerformanceEntity.self,
             capacity: UInt32(Self.entityCount)
         )
         var entities: ContiguousArray<EntityID> = []
         entities.reserveCapacity(Self.entityCount)
-        for index in 0..<Self.entityCount {
-            entities.append(store.spawn(.init(value: UInt64(index + 1)))!)
+        for _ in 0..<Self.entityCount {
+            entities.append(
+                try store.spawn()!
+            )
         }
         return (store, entities)
     }

@@ -4,6 +4,7 @@ import PixlPlatform
 /// Runtime services available while a game constructs its persistent state.
 public final class GameContext {
     private let storedPlatform: (any Platform)?
+    public let renderSettings: RenderSettings
     private var worlds: ContiguousArray<World> = []
 
     public var platform: any Platform {
@@ -13,22 +14,29 @@ public final class GameContext {
         return storedPlatform
     }
 
-    init(platform: any Platform, worldCapacity: Int = 8) {
+    init(
+        platform: any Platform,
+        renderSettings: RenderSettings,
+        worldCapacity: Int = 8
+    ) {
         storedPlatform = platform
+        self.renderSettings = renderSettings
         worlds.reserveCapacity(worldCapacity)
     }
 
     private init(worldCapacity: Int) {
         storedPlatform = nil
+        renderSettings = .default
         worlds.reserveCapacity(worldCapacity)
     }
 
-    static var testing: GameContext { .init(worldCapacity: 0) }
+    static var testing: GameContext { .init(worldCapacity: 8) }
 
     /// Retains a world and schedules its lifecycle automatically.
     @discardableResult
     public func register(_ world: World) -> World {
         precondition(worlds.count < worlds.capacity, "Game world capacity exceeded")
+        world.attach(to: self)
         worlds.append(world)
         return world
     }

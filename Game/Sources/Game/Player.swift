@@ -7,14 +7,14 @@ struct Player: Entity {
     private let camera = OrthographicCamera()
     private var rotation = 0.0
 
-    init(device: any Device, drawableFormat: PixelFormat) throws {
-        triangle = try Triangle(device: device)
-        pipeline = try device.makeRenderPipeline(
+    init(context: GameContext) throws {
+        triangle = try Triangle(device: context.platform.device)
+        pipeline = try context.platform.device.makeRenderPipeline(
             .init(
                 vertex: Shaders.vertex,
                 fragment: Shaders.fragment,
                 vertexLayout: ColorGeometry.vertexLayout,
-                colorFormat: drawableFormat
+                colorFormat: context.renderSettings.drawableFormat
             )
         )
     }
@@ -38,7 +38,9 @@ struct Player: Entity {
         pass.setRenderPipeline(pipeline)
         triangle.draw(
             on: pass,
-            transform: camera.projection(for: output).rotated(by: rotation)
+            transform: camera
+                .projection(for: output)
+                .rotated(by: rotation)
         )
     }
 }
