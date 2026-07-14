@@ -80,10 +80,10 @@ final class WasmQueue: Queue {
         case .clear(let value):
             color["loadOp"] = .string("clear")
             let clear = object()
-            clear["r"] = .number(Double(value.red))
-            clear["g"] = .number(Double(value.green))
-            clear["b"] = .number(Double(value.blue))
-            clear["a"] = .number(Double(value.alpha))
+            clear["r"] = .number(Double(value[0]))
+            clear["g"] = .number(Double(value[1]))
+            clear["b"] = .number(Double(value[2]))
+            clear["a"] = .number(Double(value[3]))
             color["clearValue"] = .object(clear)
         }
         color["storeOp"] = .string(attachment.storeAction == .store ? "store" : "discard")

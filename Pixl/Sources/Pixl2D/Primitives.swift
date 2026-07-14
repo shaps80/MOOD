@@ -139,7 +139,7 @@ public enum ColorGeometry {
     fileprivate static func vertex(position: SIMD2<Float>, color: Color) -> ColorVertex {
         .init(
             position: position,
-            color: .init(color.red, color.green, color.blue, color.alpha)
+            color: color
         )
     }
 }

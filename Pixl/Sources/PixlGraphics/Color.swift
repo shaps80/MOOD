@@ -29,17 +29,17 @@ public extension Color {
     // MARK: Text
 
     static let primary = Self.white
-    static let secondary = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, alpha: 0.6)
-    static let tertiary = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, alpha: 0.29803923)
-    static let quaternary = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, alpha: 0.15686275)
-    static let placeholder = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, alpha: 0.29803923)
+    static let secondary = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, opacity: 0.6)
+    static let tertiary = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, opacity: 0.29803923)
+    static let quaternary = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, opacity: 0.15686275)
+    static let placeholder = Self(red: 0.92156863, green: 0.92156863, blue: 0.9607843, opacity: 0.29803923)
 
     // MARK: Overlay fills
 
-    static let fill = Self(red: 0.47058824, green: 0.47058824, blue: 0.5019608, alpha: 0.36078432)
-    static let secondaryFill = Self(red: 0.47058824, green: 0.47058824, blue: 0.5019608, alpha: 0.32156864)
-    static let tertiaryFill = Self(red: 0.4627451, green: 0.4627451, blue: 0.5019608, alpha: 0.23921569)
-    static let quaternaryFill = Self(red: 0.4627451, green: 0.4627451, blue: 0.5019608, alpha: 0.18039216)
+    static let fill = Self(red: 0.47058824, green: 0.47058824, blue: 0.5019608, opacity: 0.36078432)
+    static let secondaryFill = Self(red: 0.47058824, green: 0.47058824, blue: 0.5019608, opacity: 0.32156864)
+    static let tertiaryFill = Self(red: 0.4627451, green: 0.4627451, blue: 0.5019608, opacity: 0.23921569)
+    static let quaternaryFill = Self(red: 0.4627451, green: 0.4627451, blue: 0.5019608, opacity: 0.18039216)
 
     // MARK: Surfaces
 
@@ -49,7 +49,7 @@ public extension Color {
 
     // MARK: Lines and links
 
-    static let separator = Self(red: 0.32941177, green: 0.32941177, blue: 0.34509805, alpha: 0.5)
+    static let separator = Self(red: 0.32941177, green: 0.32941177, blue: 0.34509805, opacity: 0.5)
     static let opaqueSeparator = Self(red: 0.21960784, green: 0.21960784, blue: 0.22745098)
     static let link = Self(red: 0.03529412, green: 0.5176471, blue: 1)
 }

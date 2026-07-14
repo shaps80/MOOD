@@ -42,6 +42,14 @@ let package = Package(
         .library(
             name: "Pixl",
             targets: ["Pixl"]
+        ),
+        .library(
+            name: "PixlText",
+            targets: ["PixlText"]
+        ),
+        .library(
+            name: "PixlUI",
+            targets: ["PixlUI"]
         )
     ],
     dependencies: [
@@ -87,6 +95,14 @@ let package = Package(
             plugins: [
                 .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
             ]
+        ),
+        .target(
+            name: "PixlText",
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+        ),
+        .target(
+            name: "PixlUI",
+            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
         .testTarget(
             name: "PixlTests",

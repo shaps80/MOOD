@@ -4,10 +4,10 @@ import PixlPlatform
 extension Color {
     var metalClearColor: MTLClearColor {
         MTLClearColor(
-            red: Double(red),
-            green: Double(green),
-            blue: Double(blue),
-            alpha: Double(alpha)
+            red: Double(self[0]),
+            green: Double(self[1]),
+            blue: Double(self[2]),
+            alpha: Double(self[3])
         )
     }
 }
