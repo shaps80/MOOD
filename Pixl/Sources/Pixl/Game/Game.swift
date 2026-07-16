@@ -5,6 +5,7 @@ public protocol Game {
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
     static var loopSettings: LoopSettings { get }
+    static var assetSettings: AssetSettings { get }
 
     init(context: GameContext) throws
 

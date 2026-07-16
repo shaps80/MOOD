@@ -18,8 +18,11 @@ public extension Game {
         .default
     }
 
-    mutating func fixedUpdate(_ time: FixedTime, lanes: Lanes) {}
+    static var assetSettings: AssetSettings {
+        .default
+    }
 
+    mutating func fixedUpdate(_ time: FixedTime, lanes: Lanes) { }
     mutating func update(_ time: UpdateTime, lanes: Lanes) { }
 
     func render(

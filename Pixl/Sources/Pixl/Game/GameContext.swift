@@ -4,6 +4,7 @@ import PixlPlatform
 public final class GameContext {
     private let storedPlatform: (any Platform)?
     public let renderSettings: RenderSettings
+    public let assets: Assets
 
     public var platform: any Platform {
         guard let storedPlatform else {
@@ -18,11 +19,16 @@ public final class GameContext {
     ) {
         storedPlatform = platform
         self.renderSettings = renderSettings
+        assets = Assets(
+            device: platform.device,
+            source: platform.assetSource
+        )
     }
 
     private init() {
         storedPlatform = nil
         renderSettings = .default
+        assets = Assets(device: nil, source: nil)
     }
 
     static var testing: GameContext { .init() }

@@ -67,26 +67,29 @@ Implemented/decided so far:
 - `Texture` is an opaque backend resource handle plus immutable `TextureDescriptor`.
 - `Texture.id` is a package-visible `ResourceID`, so higher layers can hold textures but cannot see or mint backend handles.
 - `Buffer` follows the same opaque-handle model as `Texture`. `BufferMemory` requires explicit `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU` intent. `Device.makeBuffer` supports fixed-size allocation or an initial copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
-- Pooled `Buffer`, `Texture`, and `RenderPipeline` handles have explicit `Device.destroy` operations. Destroy invalidates the generational handle immediately; adapters may defer native reclamation until already-submitted GPU work no longer references the resource.
+- Pooled `Buffer`, `Texture`, `Sampler`, and `RenderPipeline` handles have explicit `Device.destroy` operations. Destroy invalidates the generational handle immediately; adapters may defer native reclamation until already-submitted GPU work no longer references the resource.
 - `ShaderFunction` is only a portable entry-point name. `PixlGraphics` exposes its built-in functions as `.vertex` and `.fragment`.
 - Concrete adapters own their built-in shader sources directly: SwiftPM compiles `PixlMetalPlatform`'s `.metal` files into its default library, while `PixlWasmPlatform` embeds its WGSL. There is no public shader object, registry, library abstraction, generator executable, or build plugin.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
 - `Game` is the game-facing lifecycle. `GameRuntime<G: Game>` owns the concrete mutable game and platform-neutral `Loop`, implements `PlatformGame`, and is what concrete platform runtimes receive. Game initialization still runs after the platform and built-in shaders exist, allowing immutable startup resources without optional storage.
-- `GameRuntime` advances fixed and variable updates once per presentation callback, then passes `RenderTime` into game rendering. The current triangle is deliberately static; rotating it is the next proof of dynamic per-frame GPU data.
+- `GameRuntime` applies queued asset replacements at the beginning of each presentation callback, then advances fixed and variable updates and passes `RenderTime` into game rendering.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
-- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity `ResourcePool<MTLBuffer>` and `ResourcePool<MTLTexture>` storage whose capacities are supplied explicitly at initialization. `.gpuOnly` initial buffer data uses a private Metal buffer plus staging/blit upload; `.cpuVisible` and `.gpuToCPU` currently use shared storage.
+- `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity buffer, texture, sampler, and pipeline pools whose capacities are supplied explicitly at initialization. GPU-only buffers and initial texture pixels use staging/blit uploads.
 - `MetalDevice` also owns fixed-capacity `ResourcePool<MetalRenderPipeline>` storage. Public `RenderPipeline` is an opaque `ResourceID` handle, so encoder commands resolve native state directly without existential storage or per-draw type casts.
-- `MetalDevice.makeTexture` maps `TextureDescriptor` to `MTLTextureDescriptor`, inserts the created `MTLTexture` into that pool, and returns package-minted `Texture`.
-- `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's texture pool.
+- `MetalDevice.makeTexture` supports empty allocation or initial owned pixel bytes, maps `TextureDescriptor` to `MTLTextureDescriptor`, and returns a package-minted `Texture`.
+- `RenderPassEncoder` records fragment texture and sampler bindings. Metal lowers them directly; WebGPU lowering remains follow-up work.
+- `MetalDevice.makeQueue` creates a `MetalQueue` sharing the device's resource pools.
 - `MetalQueue.submit` resolves compact resource handles and lowers the recorded command stream almost one-for-one to `MTLRenderCommandEncoder`, then commits the command buffer.
 - `PixlMetalPlatform.run(_:)` is the single public macOS runtime entry point. It owns the AppKit/MTKView window runtime and its Metal device; `Pixl.run(_:)` reaches it through Pixl's macOS-conditioned platform dependency.
 - `PixlWasmPlatform.run(_:)` is the WASM/browser runtime entry point. It lowers Metal-shaped commands through cached WebGPU pipeline variants and a fixed-capacity internal uniform buffer/dynamic-offset bind group; those WebGPU concepts remain private to the adapter.
 - `PixlConcurrency` remains linked on WASM. The supported single-threaded WASI SDK reports one available lane and uses the existing single-lane execution path; its native thread backend is not invoked.
 - `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles. The capacities come from game-provided `RenderSettings` at startup.
 - `GameSettings` configures startup window/runtime values such as title, initial resolution, resizability, and preferred frame rate. `Game` supplies it with a default implementation.
+- `PixlPlatform.AssetSource` is a rooted byte-read capability with optional asynchronous file changes. `PixlMetalPlatform` supplies a project-relative directory source backed by recursive file-level FSEvents.
+- `Pixl.Assets` owns PNG decoding, caching, stable `TextureAsset` identities, background reload preparation, last-good retention, and safe-point GPU replacement. Games load through `context.assets.load(texture:)`.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 ## Naming

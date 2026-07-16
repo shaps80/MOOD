@@ -14,6 +14,14 @@ package enum RenderCommand {
         count: UInt32,
         index: UInt32
     )
+    case setFragmentTexture(
+        ResourceID,
+        index: UInt32
+    )
+    case setFragmentSampler(
+        ResourceID,
+        index: UInt32
+    )
     case drawPrimitives(
         PrimitiveTopology,
         vertexStart: UInt32,

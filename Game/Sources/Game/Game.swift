@@ -3,18 +3,42 @@ import Pixl2D
 
 @main
 struct Game: Pixl.Game {
-    private let state = State()
+    private let state: State
 
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
-            resolution: .init(width: 800, height: 400)
+            resolution: .init(width: 800, height: 400),
         )
     }
 
-    init(context: GameContext) throws { }
+    init(context: GameContext) throws {
+        state = try .init(context: context)
+    }
 
-    func render(on platform: any Platform, output: RenderTarget, frame: borrowing Frame, time: RenderTime) throws {
+    func fixedUpdate(_ time: FixedTime, lanes: Lanes) {
+        state.player.fixedUpdate(time, lanes: lanes)
+    }
+
+    func update(_ time: UpdateTime, lanes: Lanes) {
+        state.player.update(time, lanes: lanes)
+    }
+
+    func render(
+        on platform: any Platform,
+        output: RenderTarget,
+        frame: borrowing Frame,
+        time: RenderTime
+    ) throws {
+        _ = frame.clear(target: output)
+
+        try state.player.render(
+            on: platform,
+            output: output,
+            frame: frame,
+            time: time
+        )
+
         logMetrics(metrics: time.metrics)
     }
 
@@ -29,5 +53,19 @@ struct Game: Pixl.Game {
 private extension Game {
     final class State: @unchecked Sendable {
         var metricsElapsed = 0.0
+        var pipeline: RenderPipeline
+        var player: Player
+
+        init(context: GameContext) throws {
+            pipeline = try context.platform.device.makeRenderPipeline(
+                .init(
+                    vertex: .vertex,
+                    fragment: .fragment,
+                    vertexLayout: ColorGeometry.vertexLayout,
+                    colorFormat: context.renderSettings.drawableFormat
+                )
+            )
+            player = try .init(pipeline: pipeline, context: context)
+        }
     }
 }

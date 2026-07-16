@@ -3,6 +3,13 @@ import PackageDescription
 
 let package = Package(
     name: "PixlPlatform",
+    platforms: [
+        .macOS(.v13),
+        .watchOS(.v9),
+        .tvOS(.v16),
+        .iOS(.v16),
+        .visionOS(.v1)
+    ],
     products: [
         .library(name: "PixlPlatform", targets: ["PixlPlatform"]),
         .library(name: "PixlWasmPlatform", targets: ["PixlWasmPlatform"]),
@@ -34,7 +41,13 @@ let package = Package(
         ),
         .testTarget(
             name: "PixlPlatformTests",
-            dependencies: ["PixlPlatform"],
+            dependencies: [
+                "PixlPlatform",
+                .target(
+                    name: "PixlMetalPlatform",
+                    condition: .when(platforms: [.macOS])
+                )
+            ],
             swiftSettings: defaultNonisolated()
         )
     ],

@@ -7,6 +7,7 @@ final class Runtime: NSObject {
     private let frame: Frame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
+    private let assetPath: String?
     private let makeGame: (any Platform) throws -> any PlatformGame
     private var game: (any PlatformGame)?
     private var platform: MetalPlatform?
@@ -16,6 +17,7 @@ final class Runtime: NSObject {
     init(
         gameSettings: GameSettings,
         renderSettings: RenderSettings,
+        assetPath: String?,
         makeGame: @escaping (any Platform) throws -> any PlatformGame
     ) {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -30,6 +32,7 @@ final class Runtime: NSObject {
         )
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings
+        self.assetPath = assetPath
         self.makeGame = makeGame
         super.init()
     }
@@ -78,7 +81,11 @@ final class Runtime: NSObject {
         view.delegate = self
         view.preferredFramesPerSecond = gameSettings.preferredFps
 
-        platform = MetalPlatform(view: view, renderSettings: renderSettings)
+        platform = MetalPlatform(
+            view: view,
+            renderSettings: renderSettings,
+            assetPath: assetPath
+        )
 
         do {
             game = try makeGame(platform!)

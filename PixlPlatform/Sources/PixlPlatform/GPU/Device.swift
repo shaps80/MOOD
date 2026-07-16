@@ -19,9 +19,20 @@ public protocol Device {
         _ descriptor: TextureDescriptor
     ) throws(DeviceError) -> Texture
 
+    func makeTexture(
+        copying bytes: [UInt8],
+        descriptor: TextureDescriptor,
+        bytesPerRow: UInt32
+    ) throws(DeviceError) -> Texture
+
+    func makeSampler(
+        _ descriptor: SamplerDescriptor
+    ) throws(DeviceError) -> Sampler
+
     func makeQueue() throws(DeviceError) -> any Queue
 
     func destroy(_ buffer: Buffer)
     func destroy(_ pipeline: RenderPipeline)
+    func destroy(_ sampler: Sampler)
     func destroy(_ texture: Texture)
 }

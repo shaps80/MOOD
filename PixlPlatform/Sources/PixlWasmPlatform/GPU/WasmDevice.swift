@@ -133,6 +133,8 @@ final class WasmDevice: Device {
     }
 
     func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture { throw .resourceCreationFailed(.texture) }
+    func makeTexture(copying bytes: [UInt8], descriptor: TextureDescriptor, bytesPerRow: UInt32) throws(DeviceError) -> Texture { throw .resourceCreationFailed(.texture) }
+    func makeSampler(_ descriptor: SamplerDescriptor) throws(DeviceError) -> Sampler { throw .resourceCreationFailed(.sampler) }
     func makeQueue() throws(DeviceError) -> any Queue { makeWasmQueue() }
 
     func makeWasmQueue() -> WasmQueue {
@@ -153,6 +155,10 @@ final class WasmDevice: Device {
 
     func destroy(_ pipeline: RenderPipeline) {
         precondition(pipelines.remove(pipeline.id), "Render pipeline is invalid or has already been destroyed")
+    }
+
+    func destroy(_ sampler: Sampler) {
+        preconditionFailure("WebGPU samplers are not implemented")
     }
 
     func destroy(_ texture: Texture) {

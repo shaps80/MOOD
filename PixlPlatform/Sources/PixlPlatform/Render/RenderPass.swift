@@ -62,6 +62,30 @@ public struct RenderPassEncoder {
         }
     }
 
+    public func setFragmentTexture(
+        _ texture: Texture,
+        index: UInt32
+    ) {
+        precondition(
+            texture.descriptor.usage.contains(.sampled),
+            "Fragment texture is missing sampled usage"
+        )
+        frame.append(
+            .setFragmentTexture(texture.id, index: index),
+            toRenderPassAt: passIndex
+        )
+    }
+
+    public func setFragmentSampler(
+        _ sampler: Sampler,
+        index: UInt32
+    ) {
+        frame.append(
+            .setFragmentSampler(sampler.id, index: index),
+            toRenderPassAt: passIndex
+        )
+    }
+
     public func drawPrimitives(
         _ topology: PrimitiveTopology,
         vertexStart: UInt32 = 0,

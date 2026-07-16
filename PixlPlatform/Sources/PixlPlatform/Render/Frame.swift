@@ -94,7 +94,10 @@ public final class Frame {
                 "A render pipeline must be set before drawing"
             )
             drawCount += 1
-        case .setVertexBuffer, .setVertexBytes:
+        case .setVertexBuffer,
+             .setVertexBytes,
+             .setFragmentTexture,
+             .setFragmentSampler:
             break
         }
 

@@ -12,5 +12,7 @@ public struct ShaderFunction: Sendable {
 public extension ShaderFunction {
     static let vertex = Self(name: "pixlVertex")
     static let fragment = Self(name: "pixlFragment")
+    static let texturedVertex = Self(name: "texturedVertex")
+    static let texturedFragment = Self(name: "texturedFragment")
     static let testFragment = Self(name: "testFragment")
 }

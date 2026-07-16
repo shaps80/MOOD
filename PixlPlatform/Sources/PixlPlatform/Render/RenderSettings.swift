@@ -7,6 +7,7 @@ public struct RenderSettings: Sendable, Hashable {
     public let frameByteCapacity: UInt32
     public let bufferCapacity: UInt32
     public let pipelineCapacity: UInt32
+    public let samplerCapacity: UInt32
     public let textureCapacity: UInt32
     public let drawableCapacity: UInt32
 
@@ -17,6 +18,7 @@ public struct RenderSettings: Sendable, Hashable {
         frameByteCapacity: UInt32 = 16 * 1024,
         bufferCapacity: UInt32 = 256,
         pipelineCapacity: UInt32 = 256,
+        samplerCapacity: UInt32 = 64,
         textureCapacity: UInt32 = 256,
         drawableCapacity: UInt32 = 3
     ) {
@@ -25,6 +27,7 @@ public struct RenderSettings: Sendable, Hashable {
         precondition(frameByteCapacity > 0, "Frame byte capacity must be greater than zero")
         precondition(bufferCapacity > 0, "Buffer capacity must be greater than zero")
         precondition(pipelineCapacity > 0, "Pipeline capacity must be greater than zero")
+        precondition(samplerCapacity > 0, "Sampler capacity must be greater than zero")
         precondition(textureCapacity > 0, "Texture capacity must be greater than zero")
         precondition(drawableCapacity > 0, "Drawable capacity must be greater than zero")
 
@@ -34,6 +37,7 @@ public struct RenderSettings: Sendable, Hashable {
         self.frameByteCapacity = frameByteCapacity
         self.bufferCapacity = bufferCapacity
         self.pipelineCapacity = pipelineCapacity
+        self.samplerCapacity = samplerCapacity
         self.textureCapacity = textureCapacity
         self.drawableCapacity = drawableCapacity
     }

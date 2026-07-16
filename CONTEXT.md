@@ -14,12 +14,15 @@ This is not a legacy OpenGL/WebGL state-machine abstraction. It is dimension-agn
 | `Frame` | recorded command-buffer input | recorded command-list input | command-encoder input | command-buffer input |
 | `Buffer` | `MTLBuffer` | `ID3D12Resource` | `GPUBuffer` | `VkBuffer` |
 | `Texture` | `MTLTexture` | `ID3D12Resource` | `GPUTexture` | `VkImage` / `VkImageView` |
+| `Sampler` | `MTLSamplerState` | sampler descriptor | `GPUSampler` | `VkSampler` |
 | `RenderPipeline` | `MTLRenderPipelineState` | `ID3D12PipelineState` | `GPURenderPipeline` variant | `VkPipeline` variant |
 | `VertexLayout` | `MTLVertexDescriptor` | `D3D12_INPUT_LAYOUT_DESC` | `GPUVertexBufferLayout` | `VkVertexInput*` descriptions |
 | `RenderPassDescriptor` | `MTLRenderPassDescriptor` | RTV/DSV pass configuration | `GPURenderPassDescriptor` | dynamic-rendering/pass configuration |
 | `RenderPassEncoder` | `MTLRenderCommandEncoder` | graphics command list methods | `GPURenderPassEncoder` | `vkCmd*` recording |
 | `setRenderPipeline` | `setRenderPipelineState` | `SetPipelineState` | `setPipeline` | `vkCmdBindPipeline` |
 | `setVertexBuffer` | `setVertexBuffer` | root/descriptor or vertex-buffer binding | vertex buffer or internal bind group | vertex buffer or internal descriptor set |
+| `setFragmentTexture` | `setFragmentTexture` | descriptor table/root binding | internal bind group | internal descriptor set |
+| `setFragmentSampler` | `setFragmentSamplerState` | sampler descriptor table | internal bind group | internal descriptor set |
 | `drawPrimitives` | `drawPrimitives` | `DrawInstanced` | `draw` | `vkCmdDraw` |
 | `drawIndexedPrimitives` | `drawIndexedPrimitives` | `DrawIndexedInstanced` | `setIndexBuffer` + `drawIndexed` | `vkCmdBindIndexBuffer` + `vkCmdDrawIndexed` |
 | `RenderTarget` | texture + mip/slice | resource/view | `GPUTextureView` | `VkImageView` |
@@ -48,7 +51,7 @@ WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to impleme
 `ResourcePool`
 : Package-level fixed-capacity native-resource storage. It uses contiguous manually managed slots, O(1) lookup/removal, generation validation, and an intrusive free list. It allocates only at initialization and contains no internal synchronization.
 
-`Buffer`, `Texture`, `RenderPipeline`
+`Buffer`, `Texture`, `Sampler`, `RenderPipeline`
 : Copyable opaque handles plus deliberate public metadata where applicable. Creation inserts a native resource into its backend pool. `Device.destroy` invalidates the handle immediately and returns the slot for reuse. Copies of a destroyed handle are stale. Backends remain responsible for deferring native reclamation when already-submitted GPU work still references that resource.
 
 `Drawable`
@@ -70,8 +73,21 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `TextureDescriptor`
 : Describes an entire texture allocation. Dimension/type, mip, cube, and richer array semantics remain an explicit future design gate.
 
+`Device.makeTexture(copying:descriptor:bytesPerRow:)`
+: Creates a texture with initial owned pixel bytes. Metal stages rows into an aligned transfer buffer and blits into private texture storage before publishing the handle.
+
+`SamplerDescriptor`
+: Portable filtering and address-mode state. Samplers are pooled opaque resources, independent of textures.
+
 `RenderTarget`
 : Texture view shape selecting a texture, mip level, and array layer.
+
+## Platform Asset Capability
+
+`AssetSource`
+: Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
+
+macOS currently resolves the game-provided project-relative asset root, reads directly from that directory, and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, reload failure policy, and GPU replacement.
 
 ## Shaders and Pipelines
 
@@ -92,7 +108,7 @@ Concrete adapters own their built-in shader sources. SwiftPM compiles `PixlMetal
 : Attachment/load/store description used to begin one render pass. It contains no frame-storage bookkeeping.
 
 `RenderPassEncoder`
-: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands are `setRenderPipeline`, `setVertexBuffer`, `setVertexBytes`, `drawPrimitives`, and `drawIndexedPrimitives`.
+: Metal-shaped public recorder. Callers set pipeline/resource state and then issue draws. Current commands include pipeline, vertex buffer/bytes, fragment texture/sampler bindings, and primitive/indexed draws.
 
 `RenderCommand`
 : Package-only compact command representation stored by `Frame`. It is not public game vocabulary. Resource commands store `ResourceID` rather than copying full descriptors into every recorded command.
@@ -117,4 +133,4 @@ Dynamic CPU-to-GPU transfer storage, upload rings, WebGPU bind groups, Vulkan de
 
 Compute is required and must use the same encoder-command direction: compute pipeline state, buffer/texture resource slots, access modes, and dispatch commands. Compute output must feed later render passes in the same frame.
 
-Other explicit gates include indexed draws, samplers, texture binding, multiple color attachments, depth/stencil, blending, multisampling, richer texture dimensions/mips, copy commands, dynamic bytes, readback, and profiling counters. Add each through playable Game needs without widening existing modules into shallow configuration bags.
+Other explicit gates include WebGPU texture/sampler lowering, multiple color attachments, depth/stencil, blending, multisampling, richer texture dimensions/mips, copy commands, dynamic bytes, readback, and profiling counters. Add each through playable Game needs without widening existing modules into shallow configuration bags.

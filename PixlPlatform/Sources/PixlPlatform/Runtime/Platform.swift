@@ -3,6 +3,7 @@ import Swift
 public protocol PlatformGame {
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
+    static var assetPath: String? { get }
 
     init(platform: any Platform) throws
 
@@ -13,8 +14,13 @@ public protocol PlatformGame {
     ) throws
 }
 
+public extension PlatformGame {
+    static var assetPath: String? { nil }
+}
+
 public protocol Platform: AnyObject {
     var device: any Device { get }
+    var assetSource: (any AssetSource)? { get }
 
     func drawable() -> Drawable?
 
@@ -24,6 +30,10 @@ public protocol Platform: AnyObject {
     ) throws(PlatformError)
 
     func discard(_ drawable: consuming Drawable)
+}
+
+public extension Platform {
+    var assetSource: (any AssetSource)? { nil }
 }
 
 public enum PlatformError: Error, Hashable, Sendable {

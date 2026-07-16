@@ -6,17 +6,20 @@ final class MetalQueue: Queue {
     private let queue: MTLCommandQueue
     private let buffers: ResourcePool<MTLBuffer>
     private let pipelines: ResourcePool<MetalRenderPipeline>
+    private let samplers: ResourcePool<MTLSamplerState>
     private let textures: ResourcePool<MTLTexture>
 
     init(
         queue: MTLCommandQueue,
         buffers: ResourcePool<MTLBuffer>,
         pipelines: ResourcePool<MetalRenderPipeline>,
+        samplers: ResourcePool<MTLSamplerState>,
         textures: ResourcePool<MTLTexture>
     ) {
         self.queue = queue
         self.buffers = buffers
         self.pipelines = pipelines
+        self.samplers = samplers
         self.textures = textures
     }
 
@@ -111,6 +114,26 @@ final class MetalQueue: Queue {
                         length: bytes.count,
                         index: Int(index)
                     )
+                }
+
+            case .setFragmentTexture(let texture, let index):
+                guard textures.withValue(for: texture, { texture in
+                    encoder.setFragmentTexture(
+                        texture.pointee,
+                        index: Int(index)
+                    )
+                }) != nil else {
+                    throw QueueError.invalidResource
+                }
+
+            case .setFragmentSampler(let sampler, let index):
+                guard samplers.withValue(for: sampler, { sampler in
+                    encoder.setFragmentSamplerState(
+                        sampler.pointee,
+                        index: Int(index)
+                    )
+                }) != nil else {
+                    throw QueueError.invalidResource
                 }
 
             case .drawPrimitives(

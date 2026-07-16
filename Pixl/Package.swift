@@ -75,7 +75,13 @@ let package = Package(
         ),
         .testTarget(
             name: "PixlTests",
-            dependencies: ["Pixl"],
+            dependencies: [
+                "Pixl",
+                .product(
+                    name: "PixlMetalPlatform",
+                    package: "PixlPlatform"
+                )
+            ],
             swiftSettings: defaultNonisolated()
         ),
     ],

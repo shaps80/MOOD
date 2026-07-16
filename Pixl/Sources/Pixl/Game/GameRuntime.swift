@@ -9,6 +9,10 @@ final class GameRuntime<G: Game>: PlatformGame {
         G.renderSettings
     }
 
+    static var assetPath: String? {
+        G.assetSettings.path
+    }
+
     private var game: G
     private let context: GameContext
     private var loop: Loop
@@ -41,6 +45,7 @@ final class GameRuntime<G: Game>: PlatformGame {
         output: RenderTarget,
         frame: borrowing Frame
     ) throws {
+        context.assets.applyChanges()
         let frameStart = ContinuousClock.now
         let schedule = loop.advance(to: frameStart)
         let gameStart = ContinuousClock.now

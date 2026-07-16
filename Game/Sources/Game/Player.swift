@@ -1,54 +1,44 @@
 import Pixl
 import Pixl2D
 
-struct Player {
+struct Player: Entity {
     private let triangle: Triangle
     private let pipeline: RenderPipeline
 
-    private let camera = OrthographicCamera(halfHeight: 15)
+    private let camera = OrthographicCamera(halfHeight: 1)
     private var rotation: Double = .zero
     private let rotationSpeed = Double.random(in: -2...10)
-    private let position = Vec2.random(
-        x: -49...49,
-        y: -24...24
-    )
+    private let position = Vec2.zero
 
-
-    init(context: GameContext) throws {
-        triangle = try .init(device: context.platform.device)
-        pipeline = try context.platform.device.makeRenderPipeline(
-            .init(
-                vertex: .vertex,
-                fragment: .fragment,
-                vertexLayout: ColorGeometry.vertexLayout,
-                colorFormat: context.renderSettings.drawableFormat
-            )
-        )
+    init(
+        pipeline: RenderPipeline,
+        context: GameContext
+    ) throws {
+        self.triangle = try .init(device: context.platform.device)
+        self.pipeline = pipeline
     }
 
-//    mutating func update(
-//        entity: EntityID,
-//        in world: World,
-//        time: UpdateTime,
-//        lanes: Lanes
-//    ) {
-//        rotation = time.elapsedSeconds * rotationSpeed
-//    }
-//
-//    func render(
-//        entity: EntityID,
-//        in world: World,
-//        output: RenderTarget,
-//        on pass: RenderPassEncoder,
-//        time: RenderTime
-//    ) throws {
-//        pass.setRenderPipeline(pipeline)
-//        triangle.draw(
-//            on: pass,
-//            transform: camera
-//                .projection(for: output)
-//                .translated(by: position)
-//                .rotated(by: rotation)
-//        )
-//    }
+    mutating func update(_ time: UpdateTime, lanes: Lanes) {
+        rotation = time.elapsedSeconds * rotationSpeed
+    }
+
+    func render(
+        on platform: any Platform,
+        output: RenderTarget,
+        frame: borrowing Frame,
+        time: RenderTime
+    ) throws {
+        let pass = frame.beginRenderPass(
+            .init(.init(target: output, loadAction: .load))
+        )
+
+        pass.setRenderPipeline(pipeline)
+        triangle.draw(
+            on: pass,
+            transform: camera
+                .projection(for: output)
+                .translated(by: position)
+                .rotated(by: rotation)
+        )
+    }
 }

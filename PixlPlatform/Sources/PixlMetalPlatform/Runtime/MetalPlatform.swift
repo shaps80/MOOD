@@ -8,8 +8,14 @@ final class MetalPlatform: @MainActor Platform {
     private let drawables: ResourcePool<any CAMetalDrawable>
 
     var device: any Device { metalDevice }
+    nonisolated let assetSource: (any AssetSource)?
+
     @MainActor
-    init(view: MTKView, renderSettings: RenderSettings) {
+    init(
+        view: MTKView,
+        renderSettings: RenderSettings,
+        assetPath: String?
+    ) {
         guard let nativeDevice = view.device else {
             fatalError("MTKView requires an MTLDevice")
         }
@@ -18,6 +24,7 @@ final class MetalPlatform: @MainActor Platform {
             device: nativeDevice,
             bufferCapacity: renderSettings.bufferCapacity,
             pipelineCapacity: renderSettings.pipelineCapacity,
+            samplerCapacity: renderSettings.samplerCapacity,
             textureCapacity: renderSettings.textureCapacity
         )
         guard let commandQueue = nativeDevice.makeCommandQueue() else {
@@ -29,10 +36,12 @@ final class MetalPlatform: @MainActor Platform {
             queue: commandQueue,
             buffers: metalDevice.buffers,
             pipelines: metalDevice.pipelines,
+            samplers: metalDevice.samplers,
             textures: metalDevice.textures
         )
         self.view = view
         drawables = ResourcePool(capacity: renderSettings.drawableCapacity)
+        assetSource = assetPath.map(DirectoryAssetSource.init(path:))
     }
 
     @MainActor

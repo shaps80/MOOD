@@ -130,6 +130,9 @@ final class WasmQueue: Queue {
                 currentImmediateOffset = immediateOffset
                 immediateOffset += count
 
+            case .setFragmentTexture, .setFragmentSampler:
+                throw .invalidResource
+
             case .drawPrimitives(
                 let topology,
                 let vertexStart,
