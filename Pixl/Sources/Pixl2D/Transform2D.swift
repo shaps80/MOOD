@@ -46,6 +46,18 @@ public struct Transform2D: BitwiseCopyable, Sendable {
         )
     }
 
+    /// Returns this transform followed by a local-space scale.
+    ///
+    /// Negative values mirror geometry around its local origin. For example,
+    /// `scaled(x: -1, y: 1)` flips a sprite horizontally.
+    public func scaled(x: Double, y: Double) -> Self {
+        .init(
+            x: self.x * Float(x),
+            y: self.y * Float(y),
+            translation: translation
+        )
+    }
+
     /// Returns this transform followed by a world-space translation.
     ///
     /// - Parameter offset: World-space displacement applied after the current

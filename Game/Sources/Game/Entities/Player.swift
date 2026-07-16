@@ -25,7 +25,7 @@ struct Player: Entity {
     }
 
     mutating func update(_ time: UpdateTime, lanes: Lanes) {
-//        rotation = time.elapsedSeconds
+        rotation = -time.elapsedSeconds
     }
 
     func render(
@@ -48,6 +48,7 @@ struct Player: Entity {
             transform: camera
                 .projection(for: output)
                 .translated(by: position)
+//                .scaled(x: -1, y: 1)
                 .rotated(by: rotation)
         )
     }
