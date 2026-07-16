@@ -63,7 +63,9 @@ let package = Package(
         .target(
             name: "PixlGraphics",
             dependencies: ["PixlPlatform"],
-            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
+            swiftSettings: releaseCrossModuleOptimization()
+                + defaultNonisolated()
+                + [.enableExperimentalFeature("Lifetimes")]
         ),
         .target(
             name: "PixlText",
