@@ -55,8 +55,19 @@ public final class Assets {
 
     public func load(
         texture path: String
+    ) -> TextureAsset? {
+        do {
+            return try loadTexture(path)
+        } catch {
+            print("Unable to load texture '\(path)': \(error)")
+            return nil
+        }
+    }
+
+    private func loadTexture(
+        _ value: String
     ) throws(AssetError) -> TextureAsset {
-        let path = try makePath(path)
+        let path = try makePath(value)
         if let texture = textures[path] {
             return texture
         }

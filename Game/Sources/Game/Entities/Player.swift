@@ -5,7 +5,7 @@ struct Player: Entity {
     private let quad: Quad
     private let pipeline: RenderPipeline
     private let sampler: Sampler
-    private let texture: TextureAsset
+    private let texture: TextureAsset?
 
     private let camera = OrthographicCamera(halfHeight: 1)
     private var rotation: Double = .zero
@@ -15,17 +15,17 @@ struct Player: Entity {
         pipeline: RenderPipeline,
         context: GameContext
     ) throws {
+        texture = context.assets.load(texture: "player.png")
         quad = try .init(
             device: context.platform.device,
-            color: .white
+            color: .clear
         )
         self.pipeline = pipeline
         sampler = try context.platform.device.makeSampler(.init())
-        texture = try context.assets.load(texture: "player.png")
     }
 
     mutating func update(_ time: UpdateTime, lanes: Lanes) {
-        rotation = time.elapsedSeconds
+//        rotation = time.elapsedSeconds
     }
 
     func render(
@@ -39,7 +39,9 @@ struct Player: Entity {
         )
 
         pass.setRenderPipeline(pipeline)
-        pass.setFragmentTexture(texture, index: 0)
+        if let texture {
+            pass.setFragmentTexture(texture, index: 0)
+        }
         pass.setFragmentSampler(sampler, index: 0)
         quad.draw(
             on: pass,
