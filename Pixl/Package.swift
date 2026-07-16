@@ -1,43 +1,14 @@
 // swift-tools-version: 6.3
 import PackageDescription
 
-private var dependencies: [Target.Dependency] = [
-    "PixlGraphics",
-    .product(
-        name: "PixlPlatform",
-        package: "PixlPlatform"
-    ),
-    .product(
-        name: "PixlMetalPlatform",
-        package: "PixlPlatform",
-        condition: .when(platforms: [.macOS])
-    ),
-    .product(
-        name: "PixlWasmPlatform",
-        package: "PixlPlatform",
-        condition: .when(platforms: [.wasi])
-    )
-]
-
-let defaultNonisolated: [SwiftSetting] = [
-    .defaultIsolation(nil)
-]
-
-let releaseCrossModuleOptimization: [SwiftSetting] = [
-    .unsafeFlags(
-        ["-cross-module-optimization"],
-        .when(configuration: .release)
-    )
-]
-
 let package = Package(
     name: "Pixl",
     platforms: [
         .macOS(.v13),
-        .iOS(.v16),
+        .watchOS(.v9),
         .tvOS(.v16),
-        .visionOS(.v1),
-        .watchOS(.v9)
+        .iOS(.v16),
+        .visionOS(.v1)
     ],
     products: [
         .library(
@@ -75,41 +46,71 @@ let package = Package(
                     condition: .when(platforms: [.wasi])
                 )
             ],
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "Pixl2D",
-            dependencies: dependencies + [
+            dependencies: dependencies() + [
                 .product(name: "PixlMath", package: "PixlMath")
             ],
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "Pixl3D",
-            dependencies: dependencies,
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            dependencies: dependencies(),
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlGraphics",
             dependencies: ["PixlPlatform"],
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated,
-            plugins: [
-                .plugin(name: "PixlShaderPlugin", package: "PixlPlatform")
-            ]
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlText",
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlUI",
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(
             name: "PixlTests",
             dependencies: ["Pixl"],
-            swiftSettings: defaultNonisolated
+            swiftSettings: defaultNonisolated()
         ),
     ],
     swiftLanguageModes: [.v6]
 )
+
+private func dependencies() -> [Target.Dependency] {
+    [
+        "PixlGraphics",
+        .product(
+            name: "PixlPlatform",
+            package: "PixlPlatform"
+        ),
+        .product(
+            name: "PixlMetalPlatform",
+            package: "PixlPlatform",
+            condition: .when(platforms: [.macOS])
+        ),
+        .product(
+            name: "PixlWasmPlatform",
+            package: "PixlPlatform",
+            condition: .when(platforms: [.wasi])
+        )
+    ]
+}
+
+private func defaultNonisolated() -> [SwiftSetting] {
+    [.defaultIsolation(nil)]
+}
+
+private func releaseCrossModuleOptimization() -> [SwiftSetting] {
+    [
+        .unsafeFlags(
+            ["-cross-module-optimization"],
+            .when(configuration: .release)
+        )
+    ]
+}

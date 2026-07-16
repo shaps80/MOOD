@@ -7,7 +7,6 @@ final class Runtime: NSObject {
     private let frame: Frame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
-    private let defaultShaders: Shader
     private let makeGame: (any Platform) throws -> any PlatformGame
     private var game: (any PlatformGame)?
     private var platform: MetalPlatform?
@@ -17,7 +16,6 @@ final class Runtime: NSObject {
     init(
         gameSettings: GameSettings,
         renderSettings: RenderSettings,
-        defaultShaders: Shader,
         makeGame: @escaping (any Platform) throws -> any PlatformGame
     ) {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -32,7 +30,6 @@ final class Runtime: NSObject {
         )
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings
-        self.defaultShaders = defaultShaders
         self.makeGame = makeGame
         super.init()
     }
@@ -84,7 +81,6 @@ final class Runtime: NSObject {
         platform = MetalPlatform(view: view, renderSettings: renderSettings)
 
         do {
-            try platform!.shaders.append(defaultShaders)
             game = try makeGame(platform!)
         } catch {
             fatalError("Game initialization failed: \(error)")

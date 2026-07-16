@@ -1,7 +1,6 @@
 import Swift
 
 public protocol PlatformGame {
-    static var defaultShaders: Shader { get }
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
 
@@ -16,7 +15,6 @@ public protocol PlatformGame {
 
 public protocol Platform: AnyObject {
     var device: any Device { get }
-    var shaders: ShaderRegistry { get }
 
     func drawable() -> Drawable?
 

@@ -2,7 +2,6 @@ import PixlConcurrency
 import PixlPlatform
 
 public protocol Game {
-    static var defaultShaders: Shader { get }
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
     static var loopSettings: LoopSettings { get }

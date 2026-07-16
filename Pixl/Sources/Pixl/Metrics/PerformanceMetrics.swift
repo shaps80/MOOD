@@ -11,8 +11,6 @@ public struct PerformanceMetrics: Hashable, Sendable {
         cpuGameSeconds: 0,
         cpuRenderSeconds: 0,
         drawCount: 0,
-        activeEntityCount: 0,
-        inactiveEntityCount: 0,
         totalHitchCount: 0,
         summary: .zero
     )
@@ -34,12 +32,6 @@ public struct PerformanceMetrics: Hashable, Sendable {
 
     /// Draw calls recorded into the completed frame.
     public let drawCount: UInt32
-
-    /// Live entities across registered worlds at the end of the completed frame.
-    public let activeEntityCount: UInt32
-
-    /// Reusable inactive dense slots across registered worlds.
-    public let inactiveEntityCount: UInt32
 
     /// Hitches observed since game startup.
     public let totalHitchCount: UInt64
@@ -93,8 +85,6 @@ public struct PerformanceMetrics: Hashable, Sendable {
         cpuGameSeconds: Double,
         cpuRenderSeconds: Double,
         drawCount: UInt32,
-        activeEntityCount: UInt32,
-        inactiveEntityCount: UInt32,
         totalHitchCount: UInt64,
         summary: Summary
     ) {
@@ -104,8 +94,6 @@ public struct PerformanceMetrics: Hashable, Sendable {
         self.cpuGameSeconds = cpuGameSeconds
         self.cpuRenderSeconds = cpuRenderSeconds
         self.drawCount = drawCount
-        self.activeEntityCount = activeEntityCount
-        self.inactiveEntityCount = inactiveEntityCount
         self.totalHitchCount = totalHitchCount
         self.summary = summary
     }

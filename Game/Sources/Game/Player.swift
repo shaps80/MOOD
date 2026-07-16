@@ -1,7 +1,7 @@
 import Pixl
 import Pixl2D
 
-struct Player: Entity {
+struct Player {
     private let triangle: Triangle
     private let pipeline: RenderPipeline
 
@@ -18,37 +18,37 @@ struct Player: Entity {
         triangle = try .init(device: context.platform.device)
         pipeline = try context.platform.device.makeRenderPipeline(
             .init(
-                vertex: Shaders.vertex,
-                fragment: Shaders.fragment,
+                vertex: .vertex,
+                fragment: .fragment,
                 vertexLayout: ColorGeometry.vertexLayout,
                 colorFormat: context.renderSettings.drawableFormat
             )
         )
     }
 
-    mutating func update(
-        entity: EntityID,
-        in world: World,
-        time: UpdateTime,
-        lanes: Lanes
-    ) {
-        rotation = time.elapsedSeconds * rotationSpeed
-    }
-
-    func render(
-        entity: EntityID,
-        in world: World,
-        output: RenderTarget,
-        on pass: RenderPassEncoder,
-        time: RenderTime
-    ) throws {
-        pass.setRenderPipeline(pipeline)
-        triangle.draw(
-            on: pass,
-            transform: camera
-                .projection(for: output)
-                .translated(by: position)
-                .rotated(by: rotation)
-        )
-    }
+//    mutating func update(
+//        entity: EntityID,
+//        in world: World,
+//        time: UpdateTime,
+//        lanes: Lanes
+//    ) {
+//        rotation = time.elapsedSeconds * rotationSpeed
+//    }
+//
+//    func render(
+//        entity: EntityID,
+//        in world: World,
+//        output: RenderTarget,
+//        on pass: RenderPassEncoder,
+//        time: RenderTime
+//    ) throws {
+//        pass.setRenderPipeline(pipeline)
+//        triangle.draw(
+//            on: pass,
+//            transform: camera
+//                .projection(for: output)
+//                .translated(by: position)
+//                .rotated(by: rotation)
+//        )
+//    }
 }

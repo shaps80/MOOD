@@ -10,8 +10,6 @@ final class WasmPlatform: Platform {
     private let drawables: ResourcePool<JSObject>
 
     var device: any Device { wasmDevice }
-    var shaders: ShaderRegistry { wasmDevice.shaders }
-
     init(device: JSObject, context: JSObject, canvas: JSObject, format: PixelFormat, settings: RenderSettings) {
         wasmDevice = WasmDevice(device: device, settings: settings)
         queue = wasmDevice.makeWasmQueue()

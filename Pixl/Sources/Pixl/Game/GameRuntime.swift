@@ -1,10 +1,6 @@
 import Swift
 
 final class GameRuntime<G: Game>: PlatformGame {
-    static var defaultShaders: Shader {
-        G.defaultShaders
-    }
-
     static var gameSettings: GameSettings {
         G.gameSettings
     }
@@ -62,26 +58,13 @@ final class GameRuntime<G: Game>: PlatformGame {
                 metrics: latestMetrics
             )
         )
-        try context.render(
-            on: platform,
-            output: output,
-            frame: frame,
-            time: RenderTime(
-                frameIndex: schedule.renderTime.frameIndex,
-                interpolation: schedule.renderTime.interpolation,
-                metrics: latestMetrics
-            )
-        )
-
         let renderEnd = ContinuousClock.now
         latestMetrics = metricsCollector.record(
             frameIndex: schedule.renderTime.frameIndex,
             frameTimeSeconds: schedule.frameTimeSeconds,
             cpuGameSeconds: Self.seconds(gameEnd - gameStart),
             cpuRenderSeconds: Self.seconds(renderEnd - gameEnd),
-            drawCount: frame.drawCount,
-            activeEntityCount: context.activeEntityCount,
-            inactiveEntityCount: context.inactiveEntityCount
+            drawCount: frame.drawCount
         )
     }
 
@@ -98,15 +81,10 @@ final class GameRuntime<G: Game>: PlatformGame {
             game.fixedUpdate(time,
                 lanes: lanes
             )
-            context.fixedUpdate(
-                time,
-                lanes: lanes
-            )
             index &+= 1
         }
 
         game.update(schedule.updateTime, lanes: lanes)
-        context.update(schedule.updateTime, lanes: lanes)
     }
 
     private static func seconds(_ duration: Duration) -> Double {

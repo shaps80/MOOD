@@ -10,10 +10,6 @@ import PixlWasmPlatform
 #endif
 
 public extension Game {
-    static var defaultShaders: Shader {
-        ShaderCatalogue.default
-    }
-
     static var renderSettings: RenderSettings {
         .default
     }

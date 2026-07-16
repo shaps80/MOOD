@@ -11,10 +11,6 @@ public protocol Device {
         memory: BufferMemory
     ) throws(DeviceError) -> Buffer
 
-    func makeShaderLibrary(
-        _ shader: borrowing Shader
-    ) throws(DeviceError) -> any ShaderLibrary
-
     func makeRenderPipeline(
         _ descriptor: RenderPipelineDescriptor
     ) throws(DeviceError) -> RenderPipeline

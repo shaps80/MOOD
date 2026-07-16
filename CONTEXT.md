@@ -75,14 +75,10 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 
 ## Shaders and Pipelines
 
-`Shader`
-: Owned generated backend artifacts. Current generated values carry compiled Metal-library bytes and WGSL source. Artifact-format knowledge is temporarily accepted here but should eventually move behind generated/backend-specific access.
-
-`ShaderRegistry`
-: Platform-owned native-library retention. Built-in shaders are registered before game initialization; games append generated shaders without retaining native shader-library objects.
-
 `ShaderFunction`
-: Logical shader entry point carrying its originating `Shader` plus function name.
+: Portable shader entry-point name. `PixlGraphics` publishes built-in names as static members on this type. It carries no artifact or backend-library ownership.
+
+Concrete adapters own their built-in shader artifacts and load them during device initialization. `PixlMetalPlatform` bundles the compiled Metal library; `PixlWasmPlatform` embeds its WGSL source. Pipeline creation resolves `ShaderFunction.name` against that adapter-owned library or module. Pixl currently has no public custom-shader loading or registration API.
 
 `RenderPipelineDescriptor`
 : Startup description of shader functions, vertex input layout, and attachment format. Exact primitive topology is not pipeline state in Pixl's Metal-first interface; it is supplied to `drawPrimitives`. Backends that require topology at pipeline creation own/cache the corresponding native variants.

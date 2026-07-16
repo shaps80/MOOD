@@ -1,4 +1,3 @@
-import Dispatch
 import Foundation
 import Metal
 import PixlPlatform
@@ -9,7 +8,7 @@ final class MetalDevice: Device {
     let buffers: ResourcePool<MTLBuffer>
     let pipelines: ResourcePool<MetalRenderPipeline>
     let textures: ResourcePool<MTLTexture>
-    lazy var shaders = ShaderRegistry(device: self)
+    private let shaderLibrary: MTLLibrary
 
     init(
         device: MTLDevice,
@@ -20,9 +19,19 @@ final class MetalDevice: Device {
         guard let uploadQueue = device.makeCommandQueue() else {
             fatalError("Metal command queue creation failed")
         }
+        guard let libraryURL = Bundle.module.url(
+            forResource: "Shaders",
+            withExtension: "metallib"
+        ) else {
+            fatalError("Pixl Metal shader library is missing")
+        }
+        guard let shaderLibrary = try? device.makeLibrary(URL: libraryURL) else {
+            fatalError("Pixl Metal shader library could not be loaded")
+        }
 
         metalDevice = device
         self.uploadQueue = uploadQueue
+        self.shaderLibrary = shaderLibrary
         buffers = ResourcePool(capacity: bufferCapacity)
         pipelines = ResourcePool(capacity: pipelineCapacity)
         textures = ResourcePool(capacity: textureCapacity)
@@ -132,34 +141,13 @@ final class MetalDevice: Device {
         return destination
     }
 
-    func makeShaderLibrary(_ shader: borrowing Shader) throws(DeviceError) -> any ShaderLibrary {
-        let library: MTLLibrary
-
-        do {
-            library = try shader.withUnsafeBytes {
-                try metalDevice.makeLibrary(data: DispatchData(bytes: $0))
-            }
-        } catch {
-            throw DeviceError.resourceCreationFailed(.shader)
-        }
-
-        print("PixlMetalPlatform loaded shader functions: \(library.functionNames)")
-        return MetalShaderLibrary(library: library)
-    }
-
     func makeRenderPipeline(
         _ descriptor: RenderPipelineDescriptor
     ) throws(DeviceError) -> RenderPipeline {
-        guard let vertexLibrary = shaders.library(for: descriptor.vertex.shader) as? MetalShaderLibrary,
-              let fragmentLibrary = shaders.library(for: descriptor.fragment.shader) as? MetalShaderLibrary
-        else {
-            throw DeviceError.invalidRenderPipelineDescriptor
-        }
-
-        guard let vertexFunction = vertexLibrary.library.makeFunction(name: descriptor.vertex.name) else {
+        guard let vertexFunction = shaderLibrary.makeFunction(name: descriptor.vertex.name) else {
             throw DeviceError.shaderFunctionNotFound(descriptor.vertex.name)
         }
-        guard let fragmentFunction = fragmentLibrary.library.makeFunction(name: descriptor.fragment.name) else {
+        guard let fragmentFunction = shaderLibrary.makeFunction(name: descriptor.fragment.name) else {
             throw DeviceError.shaderFunctionNotFound(descriptor.fragment.name)
         }
 

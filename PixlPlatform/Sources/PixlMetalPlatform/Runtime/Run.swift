@@ -9,7 +9,6 @@ public func run<Game: PlatformGame>(_ game: Game.Type) {
     let runtime: Runtime = .init(
         gameSettings: Game.gameSettings,
         renderSettings: Game.renderSettings,
-        defaultShaders: Game.defaultShaders,
         makeGame: { platform in
             try Game(platform: platform)
         }

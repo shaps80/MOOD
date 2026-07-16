@@ -1,31 +1,12 @@
 // swift-tools-version: 6.3
 import PackageDescription
 
-let releaseCrossModuleOptimization: [SwiftSetting] = [
-    .unsafeFlags(
-        ["-cross-module-optimization"],
-        .when(configuration: .release)
-    )
-]
-
-let releaseFullCrossModuleOptimization: [SwiftSetting] = [
-    .unsafeFlags(
-        ["-enable-cmo-everything"],
-        .when(configuration: .release)
-    )
-]
-
-let defaultNonisolated: [SwiftSetting] = [
-    .defaultIsolation(nil)
-]
-
 let package = Package(
     name: "PixlPlatform",
     products: [
         .library(name: "PixlPlatform", targets: ["PixlPlatform"]),
         .library(name: "PixlWasmPlatform", targets: ["PixlWasmPlatform"]),
-        .library(name: "PixlMetalPlatform", targets: ["PixlMetalPlatform"]),
-        .plugin(name: "PixlShaderPlugin", targets: ["PixlShaderPlugin"])
+        .library(name: "PixlMetalPlatform", targets: ["PixlMetalPlatform"])
     ],
     dependencies: [
         .package(
@@ -36,7 +17,7 @@ let package = Package(
     targets: [
         .target(
             name: "PixlPlatform",
-            swiftSettings: releaseFullCrossModuleOptimization + defaultNonisolated
+            swiftSettings: releaseFullCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlWasmPlatform",
@@ -44,26 +25,43 @@ let package = Package(
                 "PixlPlatform",
                 .product(name: "JavaScriptKit", package: "JavaScriptKit")
             ],
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
-        ),
-        .executableTarget(
-            name: "PixlShaderGenerator"
-        ),
-        .plugin(
-            name: "PixlShaderPlugin",
-            capability: .buildTool(),
-            dependencies: ["PixlShaderGenerator"]
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlMetalPlatform",
             dependencies: ["PixlPlatform"],
-            swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
+            resources: [
+                .copy("Shaders/Shaders.metallib")
+            ],
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(
             name: "PixlPlatformTests",
             dependencies: ["PixlPlatform"],
-            swiftSettings: defaultNonisolated
+            swiftSettings: defaultNonisolated()
         )
     ],
     swiftLanguageModes: [.v6]
 )
+
+private func releaseCrossModuleOptimization() -> [SwiftSetting] {
+    [
+        .unsafeFlags(
+            ["-cross-module-optimization"],
+            .when(configuration: .release)
+        )
+    ]
+}
+
+private func releaseFullCrossModuleOptimization() -> [SwiftSetting] {
+    [
+        .unsafeFlags(
+            ["-enable-cmo-everything"],
+            .when(configuration: .release)
+        )
+    ]
+}
+
+private func defaultNonisolated() -> [SwiftSetting] {
+    [.defaultIsolation(nil)]
+}

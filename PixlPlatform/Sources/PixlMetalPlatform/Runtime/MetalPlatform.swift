@@ -8,8 +8,6 @@ final class MetalPlatform: @MainActor Platform {
     private let drawables: ResourcePool<any CAMetalDrawable>
 
     var device: any Device { metalDevice }
-    var shaders: ShaderRegistry { metalDevice.shaders }
-
     @MainActor
     init(view: MTKView, renderSettings: RenderSettings) {
         guard let nativeDevice = view.device else {

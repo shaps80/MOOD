@@ -10,7 +10,7 @@ final class WasmDevice: Device {
     let immediateBindGroup: JSObject
     let immediateAlignment: UInt32
     private let pipelineLayout: JSObject
-    lazy var shaders = ShaderRegistry(device: self)
+    private let shaderModule: JSObject
 
     init(device: JSObject, settings: RenderSettings) {
         webGPUDevice = device
@@ -70,6 +70,13 @@ final class WasmDevice: Device {
             fatalError("WebGPU immediate bind group creation failed")
         }
         self.immediateBindGroup = immediateBindGroup
+
+        let shaderDescriptor = object()
+        shaderDescriptor["code"] = .string(pixlGraphicsShaderSource)
+        guard let shaderModule = device.createShaderModule!(shaderDescriptor).object else {
+            fatalError("Pixl WebGPU shader module creation failed")
+        }
+        self.shaderModule = shaderModule
     }
 
     func makeBuffer(_ descriptor: BufferDescriptor) throws(DeviceError) -> Buffer {
@@ -95,20 +102,9 @@ final class WasmDevice: Device {
         return buffer
     }
 
-    func makeShaderLibrary(_ shader: borrowing Shader) throws(DeviceError) -> any ShaderLibrary {
-        guard let code = shader.source(for: .wgsl) else { throw .resourceCreationFailed(.shader) }
-        let descriptor = object(); descriptor["code"] = .string(code)
-        guard let module = webGPUDevice.createShaderModule!(descriptor).object else { throw .resourceCreationFailed(.shader) }
-        return WasmShaderLibrary(module: module)
-    }
-
     func makeRenderPipeline(_ descriptor: RenderPipelineDescriptor) throws(DeviceError) -> RenderPipeline {
-        guard let vertex = shaders.library(for: descriptor.vertex.shader) as? WasmShaderLibrary,
-              let fragment = shaders.library(for: descriptor.fragment.shader) as? WasmShaderLibrary else {
-            throw .invalidRenderPipelineDescriptor
-        }
         let native = object(); native["layout"] = .object(pipelineLayout)
-        let vertexStage = object(); vertexStage["module"] = .object(vertex.module); vertexStage["entryPoint"] = .string(descriptor.vertex.name)
+        let vertexStage = object(); vertexStage["module"] = .object(shaderModule); vertexStage["entryPoint"] = .string(descriptor.vertex.name)
         let buffersArray = array()
         var bufferIndex: UInt32 = 0
         while bufferIndex < descriptor.vertexLayout.bufferCount {
@@ -127,7 +123,7 @@ final class WasmDevice: Device {
             buffer["attributes"] = .object(attributes.jsObject); _ = buffersArray.jsObject.push!(buffer); bufferIndex += 1
         }
         vertexStage["buffers"] = .object(buffersArray.jsObject); native["vertex"] = .object(vertexStage)
-        let fragmentStage = object(); fragmentStage["module"] = .object(fragment.module); fragmentStage["entryPoint"] = .string(descriptor.fragment.name)
+        let fragmentStage = object(); fragmentStage["module"] = .object(shaderModule); fragmentStage["entryPoint"] = .string(descriptor.fragment.name)
         let target = object(); target["format"] = .string(descriptor.colorFormat.webGPUName)
         let targets = array(); _ = targets.jsObject.push!(target); fragmentStage["targets"] = .object(targets.jsObject); native["fragment"] = .object(fragmentStage)
         guard let id = pipelines.insert(

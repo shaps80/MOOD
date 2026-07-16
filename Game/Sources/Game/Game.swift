@@ -12,22 +12,7 @@ struct Game: Pixl.Game {
         )
     }
 
-    static var renderSettings: RenderSettings {
-        .init(
-            frameCommandCapacity: 4_096,
-            frameByteCapacity: 64 * 1_024,
-            bufferCapacity: 1_024,
-            pipelineCapacity: 1_024
-        )
-    }
-
-    init(context: GameContext) throws {
-        let world = context.register(World())
-        let players = world.register(Player.self, capacity: 500)
-        for _ in 0..<500 {
-            _ = try players.spawn()
-        }
-    }
+    init(context: GameContext) throws { }
 
     func render(on platform: any Platform, output: RenderTarget, frame: borrowing Frame, time: RenderTime) throws {
         logMetrics(metrics: time.metrics)
