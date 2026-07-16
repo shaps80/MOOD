@@ -11,14 +11,19 @@ final class DirectoryAssetSource: AssetSource, @unchecked Sendable {
     private let root: URL
     private let monitor: DirectoryMonitor?
 
-    init(path: String) {
+    init(path: String, sourcePath: String? = nil) {
         let url: URL
         if path.hasPrefix("/") {
             url = URL(fileURLWithPath: path)
         } else {
-            url = URL(
-                fileURLWithPath: FileManager.default.currentDirectoryPath
-            )
+            guard let sourcePath,
+                  let gamePath = gamePath(for: sourcePath)
+            else {
+                preconditionFailure(
+                    "Relative asset paths require a Game source path"
+                )
+            }
+            url = URL(fileURLWithPath: gamePath)
             .appendingPathComponent(path, isDirectory: true)
         }
         root = URL(
@@ -54,6 +59,16 @@ final class DirectoryAssetSource: AssetSource, @unchecked Sendable {
         }
         return Array(data)
     }
+}
+
+private func gamePath(for sourcePath: String) -> String? {
+    guard let range = sourcePath.range(
+        of: "/Sources/",
+        options: .backwards
+    ) else {
+        return nil
+    }
+    return String(sourcePath[..<range.lowerBound])
 }
 
 private final class DirectoryMonitor: @unchecked Sendable {

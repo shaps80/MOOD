@@ -9,6 +9,8 @@ final class MetalDevice: Device {
     let pipelines: ResourcePool<MetalRenderPipeline>
     let samplers: ResourcePool<MTLSamplerState>
     let textures: ResourcePool<MTLTexture>
+    private let defaultTexture: MTLTexture
+    private let defaultSampler: MTLSamplerState
     private let shaderLibrary: any MTLLibrary
 
     init(
@@ -26,9 +28,36 @@ final class MetalDevice: Device {
         ) else {
             fatalError("Pixl Metal shader library could not be loaded")
         }
+        let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm,
+            width: 1,
+            height: 1,
+            mipmapped: false
+        )
+        textureDescriptor.usage = .shaderRead
+        textureDescriptor.storageMode = .shared
+        guard let defaultTexture = device.makeTexture(
+            descriptor: textureDescriptor
+        ) else {
+            fatalError("Pixl default texture could not be created")
+        }
+        var white: UInt32 = .max
+        defaultTexture.replace(
+            region: MTLRegionMake2D(0, 0, 1, 1),
+            mipmapLevel: 0,
+            withBytes: &white,
+            bytesPerRow: 4
+        )
+        guard let defaultSampler = device.makeSamplerState(
+            descriptor: SamplerDescriptor().metalDescriptor
+        ) else {
+            fatalError("Pixl default sampler could not be created")
+        }
 
         metalDevice = device
         self.commandQueue = commandQueue
+        self.defaultTexture = defaultTexture
+        self.defaultSampler = defaultSampler
         self.shaderLibrary = shaderLibrary
         buffers = ResourcePool(capacity: bufferCapacity)
         pipelines = ResourcePool(capacity: pipelineCapacity)
@@ -187,7 +216,11 @@ final class MetalDevice: Device {
         do {
             let state = try metalDevice.makeRenderPipelineState(descriptor: metalDescriptor)
             guard let id = pipelines.insert(
-                MetalRenderPipeline(state: state)
+                MetalRenderPipeline(
+                    state: state,
+                    usesDefaultBindings: descriptor.fragment.name
+                        == ShaderFunction.fragment.name
+                )
             ) else {
                 throw DeviceError.resourceCreationFailed(.renderPipeline)
             }
@@ -350,24 +383,42 @@ final class MetalDevice: Device {
             buffers: buffers,
             pipelines: pipelines,
             samplers: samplers,
-            textures: textures
+            textures: textures,
+            defaultTexture: defaultTexture,
+            defaultSampler: defaultSampler
         )
     }
 
     func destroy(_ buffer: Buffer) {
-        precondition(buffers.remove(buffer.id), "Buffer is invalid or has already been destroyed")
+        let removed = buffers.remove(buffer.id)
+        precondition(
+            removed,
+            "Buffer is invalid or has already been destroyed"
+        )
     }
 
     func destroy(_ pipeline: RenderPipeline) {
-        precondition(pipelines.remove(pipeline.id), "Render pipeline is invalid or has already been destroyed")
+        let removed = pipelines.remove(pipeline.id)
+        precondition(
+            removed,
+            "Render pipeline is invalid or has already been destroyed"
+        )
     }
 
     func destroy(_ sampler: Sampler) {
-        precondition(samplers.remove(sampler.id), "Sampler is invalid or has already been destroyed")
+        let removed = samplers.remove(sampler.id)
+        precondition(
+            removed,
+            "Sampler is invalid or has already been destroyed"
+        )
     }
 
     func destroy(_ texture: Texture) {
-        precondition(textures.remove(texture.id), "Texture is invalid or has already been destroyed")
+        let removed = textures.remove(texture.id)
+        precondition(
+            removed,
+            "Texture is invalid or has already been destroyed"
+        )
     }
 
     private func logFunctions(in library: any MTLLibrary) {

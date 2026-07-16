@@ -5,10 +5,13 @@ final class WasmDevice: Device {
     let webGPUDevice: JSObject
     let buffers: ResourcePool<JSObject>
     let pipelines: ResourcePool<WasmRenderPipeline>
+    let samplers: ResourcePool<JSObject>
     let textures: ResourcePool<JSObject>
     let immediateBuffer: JSObject
-    let immediateBindGroup: JSObject
     let immediateAlignment: UInt32
+    let bindGroupLayout: JSObject
+    let defaultTexture: JSObject
+    let defaultSampler: JSObject
     private let pipelineLayout: JSObject
     private let shaderModule: JSObject
 
@@ -16,6 +19,7 @@ final class WasmDevice: Device {
         webGPUDevice = device
         buffers = ResourcePool(capacity: settings.bufferCapacity)
         pipelines = ResourcePool(capacity: settings.pipelineCapacity)
+        samplers = ResourcePool(capacity: settings.samplerCapacity)
         textures = ResourcePool(capacity: settings.textureCapacity)
 
         immediateAlignment = UInt32(device.limits.minUniformBufferOffsetAlignment.number ?? 256)
@@ -37,13 +41,32 @@ final class WasmDevice: Device {
         layoutEntry["binding"] = .number(0)
         layoutEntry["visibility"] = .number(0x1)
         layoutEntry["buffer"] = .object(bufferLayout)
+        let textureLayout = object()
+        textureLayout["sampleType"] = .string("float")
+        textureLayout["viewDimension"] = .string("2d")
+        textureLayout["multisampled"] = .boolean(false)
+        let textureLayoutEntry = object()
+        textureLayoutEntry["binding"] = .number(1)
+        textureLayoutEntry["visibility"] = .number(0x2)
+        textureLayoutEntry["texture"] = .object(textureLayout)
+
+        let samplerLayout = object()
+        samplerLayout["type"] = .string("filtering")
+        let samplerLayoutEntry = object()
+        samplerLayoutEntry["binding"] = .number(2)
+        samplerLayoutEntry["visibility"] = .number(0x2)
+        samplerLayoutEntry["sampler"] = .object(samplerLayout)
+
         let layoutEntries = array()
         _ = layoutEntries.jsObject.push!(layoutEntry)
+        _ = layoutEntries.jsObject.push!(textureLayoutEntry)
+        _ = layoutEntries.jsObject.push!(samplerLayoutEntry)
         let bindGroupLayoutDescriptor = object()
         bindGroupLayoutDescriptor["entries"] = .object(layoutEntries.jsObject)
         guard let bindGroupLayout = device.createBindGroupLayout!(bindGroupLayoutDescriptor).object else {
             fatalError("WebGPU immediate bind-group layout creation failed")
         }
+        self.bindGroupLayout = bindGroupLayout
 
         let pipelineLayouts = array()
         _ = pipelineLayouts.jsObject.push!(bindGroupLayout)
@@ -54,22 +77,52 @@ final class WasmDevice: Device {
         }
         self.pipelineLayout = pipelineLayout
 
-        let resource = object()
-        resource["buffer"] = .object(immediateBuffer)
-        resource["offset"] = .number(0)
-        resource["size"] = .number(4 * 1024)
-        let bindGroupEntry = object()
-        bindGroupEntry["binding"] = .number(0)
-        bindGroupEntry["resource"] = .object(resource)
-        let bindGroupEntries = array()
-        _ = bindGroupEntries.jsObject.push!(bindGroupEntry)
-        let bindGroupDescriptor = object()
-        bindGroupDescriptor["layout"] = .object(bindGroupLayout)
-        bindGroupDescriptor["entries"] = .object(bindGroupEntries.jsObject)
-        guard let immediateBindGroup = device.createBindGroup!(bindGroupDescriptor).object else {
-            fatalError("WebGPU immediate bind group creation failed")
+        let defaultTextureDescriptor = object()
+        let defaultTextureSize = object()
+        defaultTextureSize["width"] = .number(1)
+        defaultTextureSize["height"] = .number(1)
+        defaultTextureSize["depthOrArrayLayers"] = .number(1)
+        defaultTextureDescriptor["size"] = .object(defaultTextureSize)
+        defaultTextureDescriptor["dimension"] = .string("2d")
+        defaultTextureDescriptor["format"] = .string("rgba8unorm")
+        defaultTextureDescriptor["usage"] = .number(Double(0x04 | 0x02))
+        guard let defaultTexture = device.createTexture!(
+            defaultTextureDescriptor
+        ).object else {
+            fatalError("Pixl WebGPU default texture creation failed")
         }
-        self.immediateBindGroup = immediateBindGroup
+        self.defaultTexture = defaultTexture
+
+        let white: [UInt8] = [255, 255, 255, 255]
+        white.withUnsafeBytes { bytes in
+            let source = JSUint8Array(
+                buffer: bytes.bindMemory(to: UInt8.self)
+            )
+            let destination = object()
+            destination["texture"] = .object(defaultTexture)
+            let layout = object()
+            let size = object()
+            size["width"] = .number(1)
+            size["height"] = .number(1)
+            size["depthOrArrayLayers"] = .number(1)
+            _ = device.queue.writeTexture(
+                destination,
+                source.jsObject,
+                layout,
+                size
+            )
+        }
+
+        let defaultSamplerDescriptor = object()
+        defaultSamplerDescriptor["minFilter"] = .string("nearest")
+        defaultSamplerDescriptor["magFilter"] = .string("nearest")
+        defaultSamplerDescriptor["mipmapFilter"] = .string("nearest")
+        guard let defaultSampler = device.createSampler!(
+            defaultSamplerDescriptor
+        ).object else {
+            fatalError("Pixl WebGPU default sampler creation failed")
+        }
+        self.defaultSampler = defaultSampler
 
         let shaderDescriptor = object()
         shaderDescriptor["code"] = .string(pixlGraphicsShaderSource)
@@ -132,9 +185,107 @@ final class WasmDevice: Device {
         return RenderPipeline(id: id)
     }
 
-    func makeTexture(_ descriptor: TextureDescriptor) throws(DeviceError) -> Texture { throw .resourceCreationFailed(.texture) }
-    func makeTexture(copying bytes: [UInt8], descriptor: TextureDescriptor, bytesPerRow: UInt32) throws(DeviceError) -> Texture { throw .resourceCreationFailed(.texture) }
-    func makeSampler(_ descriptor: SamplerDescriptor) throws(DeviceError) -> Sampler { throw .resourceCreationFailed(.sampler) }
+    func makeTexture(
+        _ descriptor: TextureDescriptor
+    ) throws(DeviceError) -> Texture {
+        guard descriptor.size.width > 0,
+              descriptor.size.height > 0,
+              descriptor.size.depthOrArrayLayers > 0,
+              descriptor.sampleCount > 0
+        else {
+            throw .invalidTextureDescriptor(descriptor)
+        }
+
+        let size = object()
+        size["width"] = .number(Double(descriptor.size.width))
+        size["height"] = .number(Double(descriptor.size.height))
+        size["depthOrArrayLayers"] = .number(
+            Double(descriptor.size.depthOrArrayLayers)
+        )
+        let native = object()
+        native["size"] = .object(size)
+        native["dimension"] = .string("2d")
+        native["format"] = .string(descriptor.format.webGPUName)
+        native["sampleCount"] = .number(Double(descriptor.sampleCount))
+        native["usage"] = .number(Double(textureUsage(descriptor.usage)))
+        guard let texture = webGPUDevice.createTexture!(native).object,
+              let id = textures.insert(texture)
+        else {
+            throw .resourceCreationFailed(.texture)
+        }
+        return Texture(id: id, descriptor: descriptor)
+    }
+
+    func makeTexture(
+        copying bytes: [UInt8],
+        descriptor: TextureDescriptor,
+        bytesPerRow: UInt32
+    ) throws(DeviceError) -> Texture {
+        guard descriptor.sampleCount == 1,
+              descriptor.size.depthOrArrayLayers == 1,
+              descriptor.usage.contains(.copyDestination),
+              bytesPerRow >= UInt32(descriptor.size.width * 4),
+              bytes.count >= Int(bytesPerRow) * descriptor.size.height
+        else {
+            throw .invalidTextureDescriptor(descriptor)
+        }
+
+        let texture = try makeTexture(descriptor)
+        guard textures.withValue(for: texture.id, { native in
+            bytes.withUnsafeBytes { bytes in
+                let source = JSUint8Array(
+                    buffer: bytes.bindMemory(to: UInt8.self)
+                )
+                let destination = object()
+                destination["texture"] = .object(native.pointee)
+                let layout = object()
+                layout["bytesPerRow"] = .number(Double(bytesPerRow))
+                layout["rowsPerImage"] = .number(
+                    Double(descriptor.size.height)
+                )
+                let size = object()
+                size["width"] = .number(Double(descriptor.size.width))
+                size["height"] = .number(Double(descriptor.size.height))
+                size["depthOrArrayLayers"] = .number(1)
+                _ = webGPUDevice.queue.writeTexture(
+                    destination,
+                    source.jsObject,
+                    layout,
+                    size
+                )
+            }
+            return ()
+        }) != nil else {
+            throw .resourceCreationFailed(.texture)
+        }
+        return texture
+    }
+
+    func makeSampler(
+        _ descriptor: SamplerDescriptor
+    ) throws(DeviceError) -> Sampler {
+        let native = object()
+        native["minFilter"] = .string(descriptor.minFilter.webGPUName)
+        native["magFilter"] = .string(descriptor.magFilter.webGPUName)
+        native["mipmapFilter"] = .string(
+            descriptor.mipFilter.webGPUName
+        )
+        native["addressModeU"] = .string(
+            descriptor.addressModeU.webGPUName
+        )
+        native["addressModeV"] = .string(
+            descriptor.addressModeV.webGPUName
+        )
+        native["addressModeW"] = .string(
+            descriptor.addressModeW.webGPUName
+        )
+        guard let sampler = webGPUDevice.createSampler!(native).object,
+              let id = samplers.insert(sampler)
+        else {
+            throw .resourceCreationFailed(.sampler)
+        }
+        return Sampler(id: id, descriptor: descriptor)
+    }
     func makeQueue() throws(DeviceError) -> any Queue { makeWasmQueue() }
 
     func makeWasmQueue() -> WasmQueue {
@@ -142,27 +293,60 @@ final class WasmDevice: Device {
             device: webGPUDevice,
             buffers: buffers,
             pipelines: pipelines,
+            samplers: samplers,
             textures: textures,
             immediateBuffer: immediateBuffer,
-            immediateBindGroup: immediateBindGroup,
-            immediateAlignment: immediateAlignment
+            immediateAlignment: immediateAlignment,
+            bindGroupLayout: bindGroupLayout,
+            defaultTexture: defaultTexture,
+            defaultSampler: defaultSampler
         )
     }
 
     func destroy(_ buffer: Buffer) {
-        precondition(buffers.remove(buffer.id), "Buffer is invalid or has already been destroyed")
+        guard buffers.withValue(for: buffer.id, { native in
+            _ = native.pointee.destroy!()
+        }) != nil else {
+            preconditionFailure(
+                "Buffer is invalid or has already been destroyed"
+            )
+        }
+        let removed = buffers.remove(buffer.id)
+        precondition(
+            removed,
+            "Buffer is invalid or has already been destroyed"
+        )
     }
 
     func destroy(_ pipeline: RenderPipeline) {
-        precondition(pipelines.remove(pipeline.id), "Render pipeline is invalid or has already been destroyed")
+        let removed = pipelines.remove(pipeline.id)
+        precondition(
+            removed,
+            "Render pipeline is invalid or has already been destroyed"
+        )
     }
 
     func destroy(_ sampler: Sampler) {
-        preconditionFailure("WebGPU samplers are not implemented")
+        let removed = samplers.remove(sampler.id)
+        precondition(
+            removed,
+            "Sampler is invalid or has already been destroyed"
+        )
     }
 
     func destroy(_ texture: Texture) {
-        precondition(textures.remove(texture.id), "Texture is invalid or has already been destroyed")
+        guard textures.withValue(for: texture.id, { native in
+            _ = native.pointee.destroy!()
+        }) != nil else {
+            preconditionFailure(
+                "Texture is invalid or has already been destroyed"
+            )
+        }
+        let removed = textures.remove(texture.id)
+        precondition(
+            removed,
+            "Texture is invalid or has already been destroyed"
+        )
     }
 
     private func bufferUsage(_ usage: BufferUsage) -> UInt32 {
@@ -173,6 +357,16 @@ final class WasmDevice: Device {
         if usage.contains(.storage) { value |= 0x80 }
         if usage.contains(.copySource) { value |= 0x04 }
         if usage.contains(.copyDestination) { value |= 0x08 }
+        return value
+    }
+
+    private func textureUsage(_ usage: TextureUsage) -> UInt32 {
+        var value: UInt32 = 0
+        if usage.contains(.copySource) { value |= 0x01 }
+        if usage.contains(.copyDestination) { value |= 0x02 }
+        if usage.contains(.sampled) { value |= 0x04 }
+        if usage.contains(.storage) { value |= 0x08 }
+        if usage.contains(.renderAttachment) { value |= 0x10 }
         return value
     }
 }

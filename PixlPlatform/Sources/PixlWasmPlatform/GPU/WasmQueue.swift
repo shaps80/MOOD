@@ -5,28 +5,38 @@ final class WasmQueue: Queue {
     private let device: JSObject
     private let buffers: ResourcePool<JSObject>
     private let pipelines: ResourcePool<WasmRenderPipeline>
+    private let samplers: ResourcePool<JSObject>
     private let textures: ResourcePool<JSObject>
     private let immediateBuffer: JSObject
-    private let immediateBindGroup: JSObject
     private let immediateAlignment: UInt32
+    private let bindGroupLayout: JSObject
+    private let defaultTexture: JSObject
+    private let defaultSampler: JSObject
     private let immediateOffsets: JSArray
+    private var bindGroups: [Bindings: JSObject] = [:]
 
     init(
         device: JSObject,
         buffers: ResourcePool<JSObject>,
         pipelines: ResourcePool<WasmRenderPipeline>,
+        samplers: ResourcePool<JSObject>,
         textures: ResourcePool<JSObject>,
         immediateBuffer: JSObject,
-        immediateBindGroup: JSObject,
-        immediateAlignment: UInt32
+        immediateAlignment: UInt32,
+        bindGroupLayout: JSObject,
+        defaultTexture: JSObject,
+        defaultSampler: JSObject
     ) {
         self.device = device
         self.buffers = buffers
         self.pipelines = pipelines
+        self.samplers = samplers
         self.textures = textures
         self.immediateBuffer = immediateBuffer
-        self.immediateBindGroup = immediateBindGroup
         self.immediateAlignment = immediateAlignment
+        self.bindGroupLayout = bindGroupLayout
+        self.defaultTexture = defaultTexture
+        self.defaultSampler = defaultSampler
         immediateOffsets = array()
         _ = immediateOffsets.jsObject.push!(0)
     }
@@ -98,6 +108,9 @@ final class WasmQueue: Queue {
 
         var currentPipeline: ResourceID?
         var currentImmediateOffset: UInt32?
+        var currentTexture = defaultTexture
+        var currentSampler = defaultSampler
+        var currentBindings = Bindings()
         var commandIndex = pass.commandStart
         let commandEnd = pass.commandStart + pass.commandCount
         while commandIndex < commandEnd {
@@ -130,8 +143,21 @@ final class WasmQueue: Queue {
                 currentImmediateOffset = immediateOffset
                 immediateOffset += count
 
-            case .setFragmentTexture, .setFragmentSampler:
-                throw .invalidResource
+            case .setFragmentTexture(let texture, _):
+                guard textures.withValue(for: texture, { native in
+                    currentTexture = native.pointee
+                }) != nil else {
+                    throw .invalidResource
+                }
+                currentBindings.texture = texture
+
+            case .setFragmentSampler(let sampler, _):
+                guard samplers.withValue(for: sampler, { native in
+                    currentSampler = native.pointee
+                }) != nil else {
+                    throw .invalidResource
+                }
+                currentBindings.sampler = sampler
 
             case .drawPrimitives(
                 let topology,
@@ -152,10 +178,13 @@ final class WasmQueue: Queue {
                     throw .invalidResource
                 }
 
-                if let currentImmediateOffset {
-                    immediateOffsets.jsObject["0"] = .number(Double(currentImmediateOffset))
-                    _ = encoder.setBindGroup!(0, immediateBindGroup, immediateOffsets.jsObject)
-                }
+                try bind(
+                    currentBindings,
+                    texture: currentTexture,
+                    sampler: currentSampler,
+                    offset: currentImmediateOffset ?? 0,
+                    on: encoder
+                )
 
                 _ = encoder.draw!(
                     Double(vertexCount),
@@ -193,10 +222,13 @@ final class WasmQueue: Queue {
                     throw .invalidResource
                 }
 
-                if let currentImmediateOffset {
-                    immediateOffsets.jsObject["0"] = .number(Double(currentImmediateOffset))
-                    _ = encoder.setBindGroup!(0, immediateBindGroup, immediateOffsets.jsObject)
-                }
+                try bind(
+                    currentBindings,
+                    texture: currentTexture,
+                    sampler: currentSampler,
+                    offset: currentImmediateOffset ?? 0,
+                    on: encoder
+                )
 
                 _ = encoder.drawIndexed!(
                     Double(indexCount),
@@ -211,10 +243,68 @@ final class WasmQueue: Queue {
         _ = encoder.end!()
     }
 
+    private func bind(
+        _ bindings: Bindings,
+        texture: JSObject,
+        sampler: JSObject,
+        offset: UInt32,
+        on encoder: JSObject
+    ) throws(QueueError) {
+        let bindGroup: JSObject
+        if let cached = bindGroups[bindings] {
+            bindGroup = cached
+        } else {
+            let bufferResource = object()
+            bufferResource["buffer"] = .object(immediateBuffer)
+            bufferResource["offset"] = .number(0)
+            bufferResource["size"] = .number(4 * 1024)
+
+            let bufferEntry = object()
+            bufferEntry["binding"] = .number(0)
+            bufferEntry["resource"] = .object(bufferResource)
+
+            guard let textureView = texture.createView!().object else {
+                throw .invalidResource
+            }
+            let textureEntry = object()
+            textureEntry["binding"] = .number(1)
+            textureEntry["resource"] = .object(textureView)
+
+            let samplerEntry = object()
+            samplerEntry["binding"] = .number(2)
+            samplerEntry["resource"] = .object(sampler)
+
+            let entries = array()
+            _ = entries.jsObject.push!(bufferEntry)
+            _ = entries.jsObject.push!(textureEntry)
+            _ = entries.jsObject.push!(samplerEntry)
+            let descriptor = object()
+            descriptor["layout"] = .object(bindGroupLayout)
+            descriptor["entries"] = .object(entries.jsObject)
+            guard let created = device.createBindGroup!(descriptor).object else {
+                throw .invalidResource
+            }
+            bindGroups[bindings] = created
+            bindGroup = created
+        }
+
+        immediateOffsets.jsObject["0"] = .number(Double(offset))
+        _ = encoder.setBindGroup!(
+            0,
+            bindGroup,
+            immediateOffsets.jsObject
+        )
+    }
+
     private func aligned(_ value: UInt32, to alignment: UInt32) -> UInt32 {
         let remainder = value % alignment
         return remainder == 0 ? value : value + alignment - remainder
     }
+}
+
+private struct Bindings: Hashable {
+    var texture: ResourceID?
+    var sampler: ResourceID?
 }
 
 private extension IndexType {

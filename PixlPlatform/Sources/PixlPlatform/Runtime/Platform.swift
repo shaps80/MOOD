@@ -4,6 +4,7 @@ public protocol PlatformGame {
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
     static var assetPath: String? { get }
+    static var assetSourcePath: String? { get }
 
     init(platform: any Platform) throws
 
@@ -16,6 +17,7 @@ public protocol PlatformGame {
 
 public extension PlatformGame {
     static var assetPath: String? { nil }
+    static var assetSourcePath: String? { nil }
 }
 
 public protocol Platform: AnyObject {

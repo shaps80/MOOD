@@ -8,6 +8,7 @@ final class Runtime: NSObject {
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
     private let assetPath: String?
+    private let assetSourcePath: String?
     private let makeGame: (any Platform) throws -> any PlatformGame
     private var game: (any PlatformGame)?
     private var platform: MetalPlatform?
@@ -18,6 +19,7 @@ final class Runtime: NSObject {
         gameSettings: GameSettings,
         renderSettings: RenderSettings,
         assetPath: String?,
+        assetSourcePath: String?,
         makeGame: @escaping (any Platform) throws -> any PlatformGame
     ) {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -33,6 +35,7 @@ final class Runtime: NSObject {
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings
         self.assetPath = assetPath
+        self.assetSourcePath = assetSourcePath
         self.makeGame = makeGame
         super.init()
     }
@@ -84,7 +87,8 @@ final class Runtime: NSObject {
         platform = MetalPlatform(
             view: view,
             renderSettings: renderSettings,
-            assetPath: assetPath
+            assetPath: assetPath,
+            assetSourcePath: assetSourcePath
         )
 
         do {

@@ -2,8 +2,10 @@ import Pixl
 import Pixl2D
 
 struct Player: Entity {
-    private let triangle: Triangle
+    private let quad: Quad
     private let pipeline: RenderPipeline
+    private let sampler: Sampler
+    private let texture: TextureAsset
 
     private let camera = OrthographicCamera(halfHeight: 1)
     private var rotation: Double = .zero
@@ -13,8 +15,13 @@ struct Player: Entity {
         pipeline: RenderPipeline,
         context: GameContext
     ) throws {
-        self.triangle = try .init(device: context.platform.device)
+        quad = try .init(
+            device: context.platform.device,
+            color: .white
+        )
         self.pipeline = pipeline
+        sampler = try context.platform.device.makeSampler(.init())
+        texture = try context.assets.load(texture: "player.png")
     }
 
     mutating func update(_ time: UpdateTime, lanes: Lanes) {
@@ -32,7 +39,9 @@ struct Player: Entity {
         )
 
         pass.setRenderPipeline(pipeline)
-        triangle.draw(
+        pass.setFragmentTexture(texture, index: 0)
+        pass.setFragmentSampler(sampler, index: 0)
+        quad.draw(
             on: pass,
             transform: camera
                 .projection(for: output)

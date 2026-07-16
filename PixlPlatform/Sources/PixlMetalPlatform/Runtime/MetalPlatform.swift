@@ -14,7 +14,8 @@ final class MetalPlatform: @MainActor Platform {
     init(
         view: MTKView,
         renderSettings: RenderSettings,
-        assetPath: String?
+        assetPath: String?,
+        assetSourcePath: String?
     ) {
         guard let nativeDevice = view.device else {
             fatalError("MTKView requires an MTLDevice")
@@ -31,7 +32,9 @@ final class MetalPlatform: @MainActor Platform {
         queue = metalDevice.makeMetalQueue()
         self.view = view
         drawables = ResourcePool(capacity: renderSettings.drawableCapacity)
-        assetSource = assetPath.map(DirectoryAssetSource.init(path:))
+        assetSource = assetPath.map {
+            DirectoryAssetSource(path: $0, sourcePath: assetSourcePath)
+        }
     }
 
     @MainActor

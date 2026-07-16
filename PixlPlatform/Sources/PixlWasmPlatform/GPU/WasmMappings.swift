@@ -45,5 +45,24 @@ extension VertexFormat {
     }
 }
 
+extension SamplerFilter {
+    var webGPUName: String {
+        switch self {
+        case .nearest: "nearest"
+        case .linear: "linear"
+        }
+    }
+}
+
+extension SamplerAddressMode {
+    var webGPUName: String {
+        switch self {
+        case .clampToEdge: "clamp-to-edge"
+        case .repeat: "repeat"
+        case .mirrorRepeat: "mirror-repeat"
+        }
+    }
+}
+
 func object() -> JSObject { JSObject.global.Object.function!.new() }
 func array() -> JSArray { JSArray(unsafelyWrapping: JSObject.global.Array.function!.new()) }

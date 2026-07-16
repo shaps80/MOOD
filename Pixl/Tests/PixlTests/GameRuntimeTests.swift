@@ -38,6 +38,10 @@ private struct LaneRecordingGame: Game {
         )
     }
 
+    static var assetSettings: AssetSettings {
+        .init()
+    }
+
     init(context: GameContext) throws {
         recorder = .init()
     }

@@ -139,8 +139,8 @@ struct AssetTests {
 
         let pipeline = try device.makeRenderPipeline(
             RenderPipelineDescriptor(
-                vertex: .texturedVertex,
-                fragment: .texturedFragment,
+                vertex: .vertex,
+                fragment: .fragment,
                 vertexLayout: layout,
                 colorFormat: .bgra8Unorm
             )

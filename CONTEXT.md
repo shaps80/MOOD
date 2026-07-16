@@ -90,7 +90,7 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
 
-macOS currently resolves the game-provided project-relative asset root, reads directly from that directory, and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, and reload failure policy. Same-size texture changes are written asynchronously through the platform writer; rendering does not poll for changes.
+macOS resolves the game-provided asset path relative to the Game package that declares `AssetSettings`. `AssetSettings` captures that declaration's `#filePath`; the adapter removes its `/Sources/...` suffix without searching the filesystem, then appends the configured path. Absolute paths bypass package-relative resolution. macOS reads directly from that directory and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, and reload failure policy. Same-size texture changes are written asynchronously through the platform writer; rendering does not poll for changes.
 
 ## Shaders and Pipelines
 

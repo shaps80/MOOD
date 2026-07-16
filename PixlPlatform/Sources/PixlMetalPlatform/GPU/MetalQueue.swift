@@ -8,19 +8,25 @@ final class MetalQueue: Queue {
     private let pipelines: ResourcePool<MetalRenderPipeline>
     private let samplers: ResourcePool<MTLSamplerState>
     private let textures: ResourcePool<MTLTexture>
+    private let defaultTexture: MTLTexture
+    private let defaultSampler: MTLSamplerState
 
     init(
         queue: MTLCommandQueue,
         buffers: ResourcePool<MTLBuffer>,
         pipelines: ResourcePool<MetalRenderPipeline>,
         samplers: ResourcePool<MTLSamplerState>,
-        textures: ResourcePool<MTLTexture>
+        textures: ResourcePool<MTLTexture>,
+        defaultTexture: MTLTexture,
+        defaultSampler: MTLSamplerState
     ) {
         self.queue = queue
         self.buffers = buffers
         self.pipelines = pipelines
         self.samplers = samplers
         self.textures = textures
+        self.defaultTexture = defaultTexture
+        self.defaultSampler = defaultSampler
     }
 
     func submit(_ frame: borrowing Frame) throws(QueueError) {
@@ -90,6 +96,11 @@ final class MetalQueue: Queue {
             case .setRenderPipeline(let pipeline):
                 guard pipelines.withValue(for: pipeline, { pipeline in
                     encoder.setRenderPipelineState(pipeline.pointee.state)
+                    if pipeline.pointee.usesDefaultBindings {
+                        encoder.setFragmentTexture(defaultTexture, index: 0)
+                        encoder.setFragmentSamplerState(defaultSampler, index: 0)
+                    }
+                    return ()
                 }) != nil else {
                     throw QueueError.invalidResource
                 }

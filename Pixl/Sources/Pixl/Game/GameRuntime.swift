@@ -13,6 +13,10 @@ final class GameRuntime<G: Game>: PlatformGame {
         G.assetSettings.path
     }
 
+    static var assetSourcePath: String? {
+        G.assetSettings.sourcePath
+    }
+
     private var game: G
     private let context: GameContext
     private var loop: Loop

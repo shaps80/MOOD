@@ -19,9 +19,9 @@ public struct Triangle: Sendable {
         )
     ) throws {
         var vertices = (
-            ColorGeometry.vertex(position: .init(0, 0.5), color: colors.0),
-            ColorGeometry.vertex(position: .init(-0.5, -0.5), color: colors.1),
-            ColorGeometry.vertex(position: .init(0.5, -0.5), color: colors.2)
+            PrimitiveVertex.make(position: .init(0, 0.5), color: colors.0),
+            PrimitiveVertex.make(position: .init(-0.5, -0.5), color: colors.1),
+            PrimitiveVertex.make(position: .init(0.5, -0.5), color: colors.2)
         )
         vertexBuffer = try withUnsafeBytes(of: &vertices) {
             try device.makeBuffer(copying: $0, usage: .vertex, memory: .gpuOnly)
@@ -70,10 +70,26 @@ public struct Quad: Sendable {
         )
     ) throws {
         var vertices = (
-            ColorGeometry.vertex(position: .init(-0.5, 0.5), color: colors.0),
-            ColorGeometry.vertex(position: .init(-0.5, -0.5), color: colors.1),
-            ColorGeometry.vertex(position: .init(0.5, -0.5), color: colors.2),
-            ColorGeometry.vertex(position: .init(0.5, 0.5), color: colors.3)
+            PrimitiveVertex.make(
+                position: .init(-0.5, 0.5),
+                color: colors.0,
+                textureCoordinate: .init(0, 0)
+            ),
+            PrimitiveVertex.make(
+                position: .init(-0.5, -0.5),
+                color: colors.1,
+                textureCoordinate: .init(0, 1)
+            ),
+            PrimitiveVertex.make(
+                position: .init(0.5, -0.5),
+                color: colors.2,
+                textureCoordinate: .init(1, 1)
+            ),
+            PrimitiveVertex.make(
+                position: .init(0.5, 0.5),
+                color: colors.3,
+                textureCoordinate: .init(1, 0)
+            )
         )
         var indices: (UInt16, UInt16, UInt16, UInt16, UInt16, UInt16) = (0, 1, 2, 0, 2, 3)
 
@@ -111,16 +127,29 @@ public struct Quad: Sendable {
     }
 }
 
-private struct ColorVertex: BitwiseCopyable {
+private struct PrimitiveVertex: BitwiseCopyable {
     let position: SIMD2<Float>
     let color: SIMD4<Float>
+    let textureCoordinate: SIMD2<Float>
+
+    static func make(
+        position: SIMD2<Float>,
+        color: Color,
+        textureCoordinate: SIMD2<Float> = .zero
+    ) -> Self {
+        .init(
+            position: position,
+            color: color,
+            textureCoordinate: textureCoordinate
+        )
+    }
 }
 
-public enum ColorGeometry {
-    public static var vertexLayout: VertexLayout {
-        let layout = VertexLayout(bufferCapacity: 1, attributeCapacity: 2)
+public extension VertexLayout {
+    static var primitive: VertexLayout {
+        let layout = VertexLayout(bufferCapacity: 1, attributeCapacity: 3)
         layout.append(
-            .init(bufferIndex: 0, stride: UInt64(MemoryLayout<ColorVertex>.stride))
+            .init(bufferIndex: 0, stride: UInt64(MemoryLayout<PrimitiveVertex>.stride))
         )
         layout.append(
             .init(location: 0, bufferIndex: 0, format: .float32x2, offset: 0)
@@ -130,16 +159,21 @@ public enum ColorGeometry {
                 location: 1,
                 bufferIndex: 0,
                 format: .float32x4,
-                offset: UInt64(MemoryLayout<ColorVertex>.offset(of: \.color)!)
+                offset: UInt64(MemoryLayout<PrimitiveVertex>.offset(of: \.color)!)
+            )
+        )
+        layout.append(
+            .init(
+                location: 2,
+                bufferIndex: 0,
+                format: .float32x2,
+                offset: UInt64(
+                    MemoryLayout<PrimitiveVertex>.offset(
+                        of: \.textureCoordinate
+                    )!
+                )
             )
         )
         return layout
-    }
-
-    fileprivate static func vertex(position: SIMD2<Float>, color: Color) -> ColorVertex {
-        .init(
-            position: position,
-            color: color
-        )
     }
 }

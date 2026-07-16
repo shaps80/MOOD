@@ -12,6 +12,10 @@ struct Game: Pixl.Game {
         )
     }
 
+    static var assetSettings: AssetSettings {
+        .init()
+    }
+
     init(context: GameContext) throws {
         state = try .init(context: context)
     }
@@ -61,7 +65,7 @@ private extension Game {
                 .init(
                     vertex: .vertex,
                     fragment: .fragment,
-                    vertexLayout: ColorGeometry.vertexLayout,
+                    vertexLayout: .primitive,
                     colorFormat: context.renderSettings.drawableFormat
                 )
             )

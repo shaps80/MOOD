@@ -10,6 +10,7 @@ public func run<Game: PlatformGame>(_ game: Game.Type) {
         gameSettings: Game.gameSettings,
         renderSettings: Game.renderSettings,
         assetPath: Game.assetPath,
+        assetSourcePath: Game.assetSourcePath,
         makeGame: { platform in
             try Game(platform: platform)
         }
