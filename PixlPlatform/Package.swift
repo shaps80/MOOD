@@ -30,9 +30,6 @@ let package = Package(
         .target(
             name: "PixlMetalPlatform",
             dependencies: ["PixlPlatform"],
-            resources: [
-                .copy("Shaders/Shaders.metallib")
-            ],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(

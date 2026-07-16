@@ -8,7 +8,7 @@ final class MetalDevice: Device {
     let buffers: ResourcePool<MTLBuffer>
     let pipelines: ResourcePool<MetalRenderPipeline>
     let textures: ResourcePool<MTLTexture>
-    private let shaderLibrary: MTLLibrary
+    private let shaderLibrary: any MTLLibrary
 
     init(
         device: MTLDevice,
@@ -19,13 +19,9 @@ final class MetalDevice: Device {
         guard let uploadQueue = device.makeCommandQueue() else {
             fatalError("Metal command queue creation failed")
         }
-        guard let libraryURL = Bundle.module.url(
-            forResource: "Shaders",
-            withExtension: "metallib"
+        guard let shaderLibrary = try? device.makeDefaultLibrary(
+            bundle: Bundle.module
         ) else {
-            fatalError("Pixl Metal shader library is missing")
-        }
-        guard let shaderLibrary = try? device.makeLibrary(URL: libraryURL) else {
             fatalError("Pixl Metal shader library could not be loaded")
         }
 
@@ -35,6 +31,8 @@ final class MetalDevice: Device {
         buffers = ResourcePool(capacity: bufferCapacity)
         pipelines = ResourcePool(capacity: pipelineCapacity)
         textures = ResourcePool(capacity: textureCapacity)
+
+        logFunctions(in: shaderLibrary)
     }
 
     convenience init?(
@@ -232,5 +230,11 @@ final class MetalDevice: Device {
 
     func destroy(_ texture: Texture) {
         precondition(textures.remove(texture.id), "Texture is invalid or has already been destroyed")
+    }
+
+    private func logFunctions(in library: any MTLLibrary) {
+        for name in library.functionNames.sorted() {
+            print("Registered shader '\(name)'")
+        }
     }
 }

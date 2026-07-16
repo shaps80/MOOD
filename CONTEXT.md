@@ -78,7 +78,7 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `ShaderFunction`
 : Portable shader entry-point name. `PixlGraphics` publishes built-in names as static members on this type. It carries no artifact or backend-library ownership.
 
-Concrete adapters own their built-in shader artifacts and load them during device initialization. `PixlMetalPlatform` bundles the compiled Metal library; `PixlWasmPlatform` embeds its WGSL source. Pipeline creation resolves `ShaderFunction.name` against that adapter-owned library or module. Pixl currently has no public custom-shader loading or registration API.
+Concrete adapters own their built-in shader sources. SwiftPM compiles `PixlMetalPlatform`'s `.metal` files into the target's default library; `PixlWasmPlatform` embeds its WGSL source. Pipeline creation resolves `ShaderFunction.name` against that adapter-owned library or module. Pixl currently has no public custom-shader loading or registration API.
 
 `RenderPipelineDescriptor`
 : Startup description of shader functions, vertex input layout, and attachment format. Exact primitive topology is not pipeline state in Pixl's Metal-first interface; it is supplied to `drawPrimitives`. Backends that require topology at pipeline creation own/cache the corresponding native variants.

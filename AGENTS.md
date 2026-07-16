@@ -69,7 +69,7 @@ Implemented/decided so far:
 - `Buffer` follows the same opaque-handle model as `Texture`. `BufferMemory` requires explicit `.gpuOnly`, `.cpuVisible`, or `.gpuToCPU` intent. `Device.makeBuffer` supports fixed-size allocation or an initial copy from `UnsafeRawBufferPointer`; buffer capacity is startup-only `RenderSettings` configuration.
 - Pooled `Buffer`, `Texture`, and `RenderPipeline` handles have explicit `Device.destroy` operations. Destroy invalidates the generational handle immediately; adapters may defer native reclamation until already-submitted GPU work no longer references the resource.
 - `ShaderFunction` is only a portable entry-point name. `PixlGraphics` exposes its built-in functions as `.vertex` and `.fragment`.
-- Concrete adapters own and load their built-in platform artifacts directly: `PixlMetalPlatform` bundles its compiled metallib and `PixlWasmPlatform` embeds its WGSL. There is no public shader object, registry, library abstraction, generator executable, or build plugin.
+- Concrete adapters own their built-in shader sources directly: SwiftPM compiles `PixlMetalPlatform`'s `.metal` files into its default library, while `PixlWasmPlatform` embeds its WGSL. There is no public shader object, registry, library abstraction, generator executable, or build plugin.
 - `Texture.init` and `ResourceID.init` are `package`, because platform backends live in the same Swift package while games/higher abstractions do not.
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
