@@ -3,6 +3,7 @@ import Foundation
 @main
 struct PixlShaderGenerator {
     static func main() throws {
+#if os(macOS)
         let arguments = CommandLine.arguments
         guard let outputIndex = arguments.firstIndex(of: "--output"),
               arguments.indices.contains(outputIndex + 1)
@@ -25,6 +26,9 @@ struct PixlShaderGenerator {
 
         try run("metal", ["-c", sourceURL.path(), "-o", airURL.path()])
         try run("metallib", [airURL.path(), "-o", libraryURL.path()])
+#else
+        throw ShaderGeneratorError.unsupportedOS
+#endif
     }
 
     private static let source = """
@@ -124,9 +128,7 @@ struct PixlShaderGenerator {
     """
 
     private static func run(_ tool: String, _ arguments: [String]) throws {
-#if os(WASI)
-        throw ShaderGeneratorError.toolFailed(tool)
-#else
+#if os(macOS)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = [tool] + arguments
@@ -135,11 +137,14 @@ struct PixlShaderGenerator {
         guard process.terminationStatus == 0 else {
             throw ShaderGeneratorError.toolFailed(tool)
         }
+#else
+        throw ShaderGeneratorError.toolFailed(tool)
 #endif
     }
 }
 
 private enum ShaderGeneratorError: Error {
+    case unsupportedOS
     case missingOutputDirectory
     case toolFailed(String)
 }

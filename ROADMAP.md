@@ -19,6 +19,33 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Add Metal-shaped indexed primitive draws with portable 16- and 32-bit index types; keep adapter index-buffer binding private.
 - [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
 
+## Product Refocus — 15 July 2026
+
+Use Raylib as the benchmark for how quickly a developer can begin making a game, not as an architectural model. Keep Pixl's modern Metal-shaped GPU approach and cross-platform contract, while making the eventual game-facing experience equally direct.
+
+Near-term foundation scope:
+
+- Bring rendering to a useful game-building baseline, including textures and the primitives needed by higher-level sprite APIs.
+- Restore cross-platform audio.
+- Provide raw cross-platform input.
+- Establish an asset pipeline and straightforward loading for textures, sprites, audio, shaders, and generated text assets.
+- Keep `PixlText`; defer `PixlUI` until debugging/tooling work needs it.
+- Prove the combined foundations in a small playable demo before expanding engine scope.
+- After the portable contract is proven on macOS and WebAssembly, carry it to Windows, iOS, tvOS, and visionOS without leaking platform-specific concepts upward.
+
+Explicit non-goals:
+
+- Entities, spawning, despawning, and world ownership. These belong to games; remove the experimental engine-level `World` direction during the refocus.
+- Physics and particle simulation. These may become separate libraries using Pixl's rendering facilities later.
+- A Raylib/OpenGL-shaped abstraction or legacy rendering fallback.
+- Building convenience APIs before the low-level cross-platform rendering, input, audio, and asset foundations can support them cleanly.
+
+Camera constraint:
+
+- `PixlPlatform` and its adapters must remain camera-agnostic.
+- Rendering, transforms, resource binding, depth, render targets, and frame data must remain expressive enough for higher layers to build sophisticated 2D and 3D camera systems without backend changes.
+- Validate future graphics API choices against flexible multi-camera, off-screen, layered, and 3D rendering needs even though the camera system itself is out of scope.
+
 ## Next Architectural Decisions
 
 ### Runtime Loop and Timing
@@ -69,7 +96,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Adapt `PixlWasmPlatform` to the accepted Metal-first portable command interface; keep WebGPU bind-group/pipeline-layout machinery private to the adapter.
 - [x] Prove dynamic per-frame data by rotating the existing triangle without backend-specific Game code through fixed-capacity `setVertexBytes` recording; do not recreate immutable buffers each frame.
 - [x] Add y-up aspect-correct `OrthographicCamera` and reusable immutable coloured `Triangle` and indexed `Quad` primitives in `Pixl2D`.
-- [x] Add opt-in fixed-capacity `World` storage with typed entity stores, O(1) generational identity lookup/spawn/despawn, and runtime-registered lifecycle forwarding.
+- [x] Prototype opt-in fixed-capacity `World` storage; the July product refocus rejects entities/world ownership as engine scope and schedules this direction for removal.
 - [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
 - [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.

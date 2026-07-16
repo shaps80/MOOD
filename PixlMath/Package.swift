@@ -3,12 +3,6 @@ import PackageDescription
 
 let package = Package(
     name: "PixlMath",
-    platforms: [
-        .macOS(.v13),
-        .iOS(.v15),
-        .tvOS(.v15),
-        .visionOS(.v2)
-    ],
     products: [
         .library(name: "PixlMath", targets: ["PixlMath"])
     ],

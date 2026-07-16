@@ -34,9 +34,10 @@ let package = Package(
     name: "Pixl",
     platforms: [
         .macOS(.v13),
-        .iOS(.v15),
-        .tvOS(.v15),
-        .visionOS(.v2)
+        .iOS(.v16),
+        .tvOS(.v16),
+        .visionOS(.v1),
+        .watchOS(.v9)
     ],
     products: [
         .library(

@@ -17,6 +17,14 @@ The lowest layer is not a 2D renderer. It is a modern GPU abstraction for resour
 
 2D and 3D conveniences should live above this layer. The GPU layer should remain dimension-agnostic.
 
+Pixl's near-term product goal is a Raylib-like time-to-first-game without adopting Raylib's OpenGL-shaped architecture. Focus the cross-platform foundations on rendering, raw input, audio, texture/sprite asset loading, and an obvious startup path. Convenience APIs belong above those foundations.
+
+Entities, spawning, and world ownership are game concerns, not engine concerns. Push back if they begin entering Pixl's engine or platform scope. Physics and particle simulation are also separate future libraries that may consume Pixl rendering; they are not part of the current foundation work.
+
+`PixlText` remains part of the intended game-facing stack. `PixlUI` may later support debugging and tooling, but is not a current priority.
+
+Do not put a camera system into `PixlPlatform` or concrete platform adapters. Do ensure their rendering and data APIs are sufficiently general that higher layers can build sophisticated 2D and 3D camera systems without backend changes or platform knowledge.
+
 Primary API-design reference:
 
 - Metal

@@ -21,12 +21,6 @@ let defaultNonisolated: [SwiftSetting] = [
 
 let package = Package(
     name: "PixlPlatform",
-    platforms: [
-        .macOS(.v13),
-        .iOS(.v15),
-        .tvOS(.v15),
-        .visionOS(.v2)
-    ],
     products: [
         .library(name: "PixlPlatform", targets: ["PixlPlatform"]),
         .library(name: "PixlWasmPlatform", targets: ["PixlWasmPlatform"]),
@@ -52,7 +46,9 @@ let package = Package(
             ],
             swiftSettings: releaseCrossModuleOptimization + defaultNonisolated
         ),
-        .executableTarget(name: "PixlShaderGenerator"),
+        .executableTarget(
+            name: "PixlShaderGenerator"
+        ),
         .plugin(
             name: "PixlShaderPlugin",
             capability: .buildTool(),

@@ -10,12 +10,6 @@ let releaseCrossModuleOptimization: [SwiftSetting] = [
 
 let package = Package(
     name: "PixlConcurrency",
-    platforms: [
-        .macOS(.v13),
-        .iOS(.v15),
-        .tvOS(.v15),
-        .visionOS(.v2)
-    ],
     products: [
         .library(
             name: "PixlConcurrency",
