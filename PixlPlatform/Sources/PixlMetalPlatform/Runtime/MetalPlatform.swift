@@ -27,18 +27,8 @@ final class MetalPlatform: @MainActor Platform {
             samplerCapacity: renderSettings.samplerCapacity,
             textureCapacity: renderSettings.textureCapacity
         )
-        guard let commandQueue = nativeDevice.makeCommandQueue() else {
-            fatalError("Metal command queue creation failed")
-        }
-
         self.metalDevice = metalDevice
-        queue = MetalQueue(
-            queue: commandQueue,
-            buffers: metalDevice.buffers,
-            pipelines: metalDevice.pipelines,
-            samplers: metalDevice.samplers,
-            textures: metalDevice.textures
-        )
+        queue = metalDevice.makeMetalQueue()
         self.view = view
         drawables = ResourcePool(capacity: renderSettings.drawableCapacity)
         assetSource = assetPath.map(DirectoryAssetSource.init(path:))

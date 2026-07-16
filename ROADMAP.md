@@ -53,7 +53,7 @@ Camera constraint:
 - [x] Define a platform-neutral Pixl loop driven by each platform's presentation callback.
 - [x] Define variable-step and optional fixed-step update behavior.
 - [x] Define elapsed time, accumulator limits, interpolation, and long-frame handling.
-- [x] Apply queued texture-asset replacements at the beginning of a presentation callback, before simulation and render preparation.
+- [x] Keep same-size texture hot reload event-driven and entirely outside presentation, simulation, and render traversal.
 - [ ] Define deterministic safe points where queued editor/live-development changes may be applied without racing simulation or render preparation.
 - [ ] Define development hooks as part of the loop lifecycle without making editor behavior part of release-game policy.
 - [ ] Keep editor mutations queued until a safe point; never let editor code mutate live simulation state concurrently.
@@ -79,7 +79,7 @@ Camera constraint:
 ### Live Development
 
 - [x] Add macOS project-relative asset reads and recursive file-level monitoring without tying hot reload to Debug configuration.
-- [x] Decode changed PNGs away from the game loop, retain the last valid texture on failure, and swap stable texture assets at the runtime safe point.
+- [x] Decode changed PNGs away from the game loop, retain the last valid texture on failure, and asynchronously write same-size changes into stable texture handles without polling.
 - [ ] Treat the editor as an optional in-game Pixl subsystem so its core UI and behavior can run across supported platforms.
 - [ ] Keep the in-game editor's state isolated from live game state; inspect snapshots and issue commands rather than sharing mutable ownership.
 - [ ] Keep the host process focused on capabilities the game cannot provide itself: file watching, builds, diagnostics, remote transport, and optional source writeback.

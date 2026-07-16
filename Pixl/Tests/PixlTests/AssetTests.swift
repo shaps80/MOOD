@@ -55,6 +55,44 @@ private func decodeTestTexture(
     )
 }
 
+private func decodeResizableTestTexture(
+    _ bytes: [UInt8],
+    path: AssetPath
+) throws(AssetError) -> DecodedTexture {
+    guard bytes.first != 2 else {
+        return DecodedTexture(
+            width: 2,
+            height: 1,
+            bytes: [2, 0, 0, 255, 2, 0, 0, 255]
+        )
+    }
+    return try decodeTestTexture(bytes, path: path)
+}
+
+private actor TestTextureWriter: TextureWriter {
+    private var writes: [[UInt8]] = []
+
+    func write(
+        copying bytes: [UInt8],
+        bytesPerRow: UInt32
+    ) async throws(DeviceError) {
+        writes.append(bytes)
+    }
+
+    var writeCount: Int {
+        writes.count
+    }
+}
+
+private func waitForWrite(
+    from writer: TestTextureWriter
+) async throws {
+    for _ in 0..<50 {
+        guard await writer.writeCount == 0 else { return }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
+
 @Suite("Assets")
 struct AssetTests {
     @Test
@@ -135,9 +173,40 @@ struct AssetTests {
     }
 
     @Test
-    func cachesAndSwapsStableTextureHandles() async throws {
+    func writesExistingMetalTexture() async throws {
+        let device = try #require(
+            MetalDevice(
+                bufferCapacity: 1,
+                pipelineCapacity: 1,
+                samplerCapacity: 1,
+                textureCapacity: 1
+            )
+        )
+        let descriptor = TextureDescriptor(
+            size: TextureSize(width: 1, height: 1),
+            format: .rgba8Unorm,
+            usage: [.sampled, .copyDestination]
+        )
+        let texture = try device.makeTexture(
+            copying: [1, 0, 0, 255],
+            descriptor: descriptor,
+            bytesPerRow: 4
+        )
+        let writer = try #require(device.textureWriter(for: texture))
+
+        try await writer.write(
+            copying: [2, 0, 0, 255],
+            bytesPerRow: 4
+        )
+
+        device.destroy(texture)
+    }
+
+    @Test
+    func cachesAndReloadsStableTextureHandles() async throws {
         let path = try AssetPath("player.png")
         let source = TestAssetSource(path: path, bytes: [1])
+        let writer = TestTextureWriter()
         let device = try #require(
             MetalDevice(
                 bufferCapacity: 1,
@@ -149,7 +218,8 @@ struct AssetTests {
         let assets = Assets(
             device: device,
             source: source,
-            decode: decodeTestTexture
+            decode: decodeTestTexture,
+            textureWriter: { _ in writer }
         )
 
         let first = try assets.load(texture: path.value)
@@ -159,16 +229,44 @@ struct AssetTests {
         #expect(first === cached)
 
         source.change(path, bytes: [2])
-        try await Task.sleep(for: .milliseconds(200))
-        assets.applyChanges()
+        try await waitForWrite(from: writer)
 
-        #expect(first.texture != initialTexture)
+        #expect(await writer.writeCount == 1)
+        #expect(first.texture == initialTexture)
 
-        let validTexture = first.texture
         source.change(path, bytes: [0])
         try await Task.sleep(for: .milliseconds(200))
-        assets.applyChanges()
 
-        #expect(first.texture == validTexture)
+        #expect(await writer.writeCount == 1)
+        #expect(first.texture == initialTexture)
+    }
+
+    @Test
+    func retainsTextureWhenReloadDimensionsChange() async throws {
+        let path = try AssetPath("player.png")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let writer = TestTextureWriter()
+        let device = try #require(
+            MetalDevice(
+                bufferCapacity: 1,
+                pipelineCapacity: 1,
+                samplerCapacity: 1,
+                textureCapacity: 1
+            )
+        )
+        let assets = Assets(
+            device: device,
+            source: source,
+            decode: decodeResizableTestTexture,
+            textureWriter: { _ in writer }
+        )
+        let asset = try assets.load(texture: path.value)
+        let texture = asset.texture
+
+        source.change(path, bytes: [2])
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(await writer.writeCount == 0)
+        #expect(asset.texture == texture)
     }
 }

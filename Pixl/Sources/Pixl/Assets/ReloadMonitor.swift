@@ -8,45 +8,105 @@ typealias TextureDecode = @Sendable (
 
 struct ReloadMonitor: Sendable {
     let source: any AssetSource
-    let changes: AsyncStream<AssetChange>
-    let state: ReloadState
     let decode: TextureDecode
 
-    func run() async {
-        for await change in changes {
-            guard !Task.isCancelled,
-                  state.contains(change.path)
-            else {
-                continue
-            }
+    func run(_ events: AsyncStream<ReloadEvent>) async {
+        var targets: [AssetPath: ReloadTarget] = [:]
 
-            do {
-                try await Task.sleep(for: .milliseconds(75))
-            } catch is CancellationError {
-                return
-            } catch {
-                return
-            }
+        for await event in events {
+            guard !Task.isCancelled else { return }
 
-            let bytes: [UInt8]
-            do {
-                bytes = try source.read(change.path)
-            } catch {
-                state.queue(
-                    .failure(assetError(error)),
-                    for: change.path
-                )
-                continue
-            }
+            switch event {
+            case .register(let path, let size, let writer):
+                targets[path] = ReloadTarget(size: size, writer: writer)
 
-            do {
-                let texture = try decode(bytes, change.path)
-                state.queue(.success(texture), for: change.path)
-            } catch {
-                state.queue(.failure(error), for: change.path)
+            case .change(let change):
+                guard let target = targets[change.path] else { continue }
+                await reload(change.path, target: target)
             }
         }
     }
+
+    private func reload(
+        _ path: AssetPath,
+        target: ReloadTarget
+    ) async {
+        do {
+            try await Task.sleep(for: .milliseconds(75))
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled else { return }
+
+        let bytes: [UInt8]
+        do {
+            bytes = try source.read(path)
+        } catch {
+            report(assetError(error), for: path)
+            return
+        }
+
+        let decoded: DecodedTexture
+        do {
+            decoded = try decode(bytes, path)
+        } catch {
+            report(error, for: path)
+            return
+        }
+
+        guard decoded.width == target.size.width,
+              decoded.height == target.size.height
+        else {
+            report(
+                AssetError.invalidTexture(path.value),
+                for: path,
+                reason: "dimensions changed from "
+                    + "\(target.size.width)x\(target.size.height) to "
+                    + "\(decoded.width)x\(decoded.height)"
+            )
+            return
+        }
+
+        do {
+            try await target.writer.write(
+                copying: decoded.bytes,
+                bytesPerRow: decoded.bytesPerRow
+            )
+            print("Reloaded texture '\(path.value)'")
+        } catch {
+            report(error, for: path)
+        }
+    }
+
+    private func report(
+        _ error: any Error,
+        for path: AssetPath,
+        reason: String? = nil
+    ) {
+        if let reason {
+            print(
+                "Unable to reload texture '\(path.value)': "
+                    + "\(error) (\(reason))"
+            )
+        } else {
+            print("Unable to reload texture '\(path.value)': \(error)")
+        }
+    }
+}
+
+enum ReloadEvent: Sendable {
+    case register(
+        path: AssetPath,
+        size: TextureSize,
+        writer: any TextureWriter
+    )
+    case change(AssetChange)
+}
+
+private struct ReloadTarget: Sendable {
+    let size: TextureSize
+    let writer: any TextureWriter
 }
 
 func assetError(_ error: AssetSourceError) -> AssetError {

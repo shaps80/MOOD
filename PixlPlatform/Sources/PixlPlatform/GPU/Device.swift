@@ -25,6 +25,10 @@ public protocol Device {
         bytesPerRow: UInt32
     ) throws(DeviceError) -> Texture
 
+    func textureWriter(
+        for texture: Texture
+    ) -> (any TextureWriter)?
+
     func makeSampler(
         _ descriptor: SamplerDescriptor
     ) throws(DeviceError) -> Sampler
@@ -35,4 +39,12 @@ public protocol Device {
     func destroy(_ pipeline: RenderPipeline)
     func destroy(_ sampler: Sampler)
     func destroy(_ texture: Texture)
+}
+
+public extension Device {
+    func textureWriter(
+        for texture: Texture
+    ) -> (any TextureWriter)? {
+        nil
+    }
 }

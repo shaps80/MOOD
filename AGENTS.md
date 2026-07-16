@@ -74,7 +74,7 @@ Implemented/decided so far:
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
 - `Game` is the game-facing lifecycle. `GameRuntime<G: Game>` owns the concrete mutable game and platform-neutral `Loop`, implements `PlatformGame`, and is what concrete platform runtimes receive. Game initialization still runs after the platform and built-in shaders exist, allowing immutable startup resources without optional storage.
-- `GameRuntime` applies queued asset replacements at the beginning of each presentation callback, then advances fixed and variable updates and passes `RenderTime` into game rendering.
+- `GameRuntime` has no asset polling or reload work in its presentation callback. Texture reloads are event-driven and remain outside simulation and render traversal.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity buffer, texture, sampler, and pipeline pools whose capacities are supplied explicitly at initialization. GPU-only buffers and initial texture pixels use staging/blit uploads.
@@ -89,7 +89,7 @@ Implemented/decided so far:
 - `MetalPlatform` imports the current MTKView drawable into fixed-capacity pools for one frame, submits the frame, schedules `CAMetalDrawable` presentation, then retires those transient handles. The capacities come from game-provided `RenderSettings` at startup.
 - `GameSettings` configures startup window/runtime values such as title, initial resolution, resizability, and preferred frame rate. `Game` supplies it with a default implementation.
 - `PixlPlatform.AssetSource` is a rooted byte-read capability with optional asynchronous file changes. `PixlMetalPlatform` supplies a project-relative directory source backed by recursive file-level FSEvents.
-- `Pixl.Assets` owns PNG decoding, caching, stable `TextureAsset` identities, background reload preparation, last-good retention, and safe-point GPU replacement. Games load through `context.assets.load(texture:)`.
+- `Pixl.Assets` owns PNG decoding, caching, stable `TextureAsset` identities, background reload processing, and last-good retention. Same-size texture changes write asynchronously into the existing texture through a backend-owned `TextureWriter`; dimension changes are rejected for now. Games load through `context.assets.load(texture:)`.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 ## Naming

@@ -76,6 +76,9 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `Device.makeTexture(copying:descriptor:bytesPerRow:)`
 : Creates a texture with initial owned pixel bytes. Metal stages rows into an aligned transfer buffer and blits into private texture storage before publishing the handle.
 
+`TextureWriter`
+: Optional backend-owned asynchronous access to one existing texture. It supports event-driven same-size content replacement without changing the public texture handle or touching frame recording. Metal orders writes and rendering through the same command queue. Backends that do not support live texture writes return no writer.
+
 `SamplerDescriptor`
 : Portable filtering and address-mode state. Samplers are pooled opaque resources, independent of textures.
 
@@ -87,7 +90,7 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
 
-macOS currently resolves the game-provided project-relative asset root, reads directly from that directory, and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, reload failure policy, and GPU replacement.
+macOS currently resolves the game-provided project-relative asset root, reads directly from that directory, and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, and reload failure policy. Same-size texture changes are written asynchronously through the platform writer; rendering does not poll for changes.
 
 ## Shaders and Pipelines
 

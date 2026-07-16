@@ -7,7 +7,6 @@ struct Player: Entity {
 
     private let camera = OrthographicCamera(halfHeight: 1)
     private var rotation: Double = .zero
-    private let rotationSpeed = Double.random(in: -2...10)
     private let position = Vec2.zero
 
     init(
@@ -19,7 +18,7 @@ struct Player: Entity {
     }
 
     mutating func update(_ time: UpdateTime, lanes: Lanes) {
-        rotation = time.elapsedSeconds * rotationSpeed
+        rotation = time.elapsedSeconds
     }
 
     func render(

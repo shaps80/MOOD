@@ -4,7 +4,7 @@ import PixlPlatform
 
 final class MetalDevice: Device {
     let metalDevice: MTLDevice
-    private let uploadQueue: MTLCommandQueue
+    private let commandQueue: MTLCommandQueue
     let buffers: ResourcePool<MTLBuffer>
     let pipelines: ResourcePool<MetalRenderPipeline>
     let samplers: ResourcePool<MTLSamplerState>
@@ -18,7 +18,7 @@ final class MetalDevice: Device {
         samplerCapacity: UInt32,
         textureCapacity: UInt32
     ) {
-        guard let uploadQueue = device.makeCommandQueue() else {
+        guard let commandQueue = device.makeCommandQueue() else {
             fatalError("Metal command queue creation failed")
         }
         guard let shaderLibrary = try? device.makeDefaultLibrary(
@@ -28,7 +28,7 @@ final class MetalDevice: Device {
         }
 
         metalDevice = device
-        self.uploadQueue = uploadQueue
+        self.commandQueue = commandQueue
         self.shaderLibrary = shaderLibrary
         buffers = ResourcePool(capacity: bufferCapacity)
         pipelines = ResourcePool(capacity: pipelineCapacity)
@@ -121,7 +121,7 @@ final class MetalDevice: Device {
                   length: bytes.count,
                   options: .storageModePrivate
               ),
-              let commandBuffer = uploadQueue.makeCommandBuffer(),
+              let commandBuffer = commandQueue.makeCommandBuffer(),
               let blit = commandBuffer.makeBlitCommandEncoder()
         else {
             throw DeviceError.resourceCreationFailed(.buffer)
@@ -275,7 +275,7 @@ final class MetalDevice: Device {
         guard let texture = metalDevice.makeTexture(
             descriptor: metalDescriptor
         ),
-        let commandBuffer = uploadQueue.makeCommandBuffer(),
+        let commandBuffer = commandQueue.makeCommandBuffer(),
         let blit = commandBuffer.makeBlitCommandEncoder()
         else {
             throw DeviceError.resourceCreationFailed(.texture)
@@ -321,13 +321,32 @@ final class MetalDevice: Device {
         return Sampler(id: id, descriptor: descriptor)
     }
 
-    func makeQueue() throws(DeviceError) -> any Queue {
-        guard let queue = metalDevice.makeCommandQueue() else {
-            throw DeviceError.commandQueueCreationFailed
+    func textureWriter(
+        for texture: Texture
+    ) -> (any TextureWriter)? {
+        var metalTexture: (any MTLTexture)?
+        guard textures.withValue(for: texture.id, { value in
+            metalTexture = value.pointee
+        }) != nil,
+        let metalTexture
+        else {
+            return nil
         }
 
-        return MetalQueue(
-            queue: queue,
+        return MetalTextureWriter(
+            texture: metalTexture,
+            queue: commandQueue,
+            descriptor: texture.descriptor
+        )
+    }
+
+    func makeQueue() throws(DeviceError) -> any Queue {
+        makeMetalQueue()
+    }
+
+    func makeMetalQueue() -> MetalQueue {
+        MetalQueue(
+            queue: commandQueue,
             buffers: buffers,
             pipelines: pipelines,
             samplers: samplers,

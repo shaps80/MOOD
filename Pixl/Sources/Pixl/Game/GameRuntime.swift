@@ -45,7 +45,6 @@ final class GameRuntime<G: Game>: PlatformGame {
         output: RenderTarget,
         frame: borrowing Frame
     ) throws {
-        context.assets.applyChanges()
         let frameStart = ContinuousClock.now
         let schedule = loop.advance(to: frameStart)
         let gameStart = ContinuousClock.now

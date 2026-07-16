@@ -5,32 +5,47 @@ public final class Assets {
     private let device: (any Device)?
     private let source: (any AssetSource)?
     private let decode: TextureDecode
-    private let reloadState = ReloadState()
+    private let textureWriter: (Texture) -> (any TextureWriter)?
     private var textures: [AssetPath: TextureAsset] = [:]
+    private var reloadContinuation: AsyncStream<ReloadEvent>.Continuation?
+    private var changeTask: Task<Void, Never>?
     private var monitorTask: Task<Void, Never>?
 
     init(
         device: (any Device)?,
         source: (any AssetSource)?,
-        decode: @escaping TextureDecode = PNGDecoder.decode
+        decode: @escaping TextureDecode = PNGDecoder.decode,
+        textureWriter: ((Texture) -> (any TextureWriter)?)? = nil
     ) {
         self.device = device
         self.source = source
         self.decode = decode
+        self.textureWriter = textureWriter ?? { texture in
+            device?.textureWriter(for: texture)
+        }
 
         guard let source, let changes = source.changes else { return }
+        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
+        reloadContinuation = continuation
+
         let monitor = ReloadMonitor(
             source: source,
-            changes: changes,
-            state: reloadState,
             decode: decode
         )
         monitorTask = Task.detached(priority: .utility) {
-            await monitor.run()
+            await monitor.run(events)
+        }
+        changeTask = Task.detached(priority: .utility) {
+            for await change in changes {
+                guard !Task.isCancelled else { return }
+                continuation.yield(.change(change))
+            }
         }
     }
 
     deinit {
+        changeTask?.cancel()
+        reloadContinuation?.finish()
         monitorTask?.cancel()
         guard let device else { return }
         for asset in textures.values {
@@ -61,35 +76,16 @@ public final class Assets {
         let texture = try makeTexture(decoded, on: device)
         let asset = TextureAsset(path: path, texture: texture)
         textures[path] = asset
-        reloadState.register(path)
-        return asset
-    }
-
-    func applyChanges() {
-        guard let device else { return }
-        let pending = reloadState.takePending()
-
-        for path in pending.keys.sorted(by: {
-            $0.value < $1.value
-        }) {
-            guard let asset = textures[path],
-                  let result = pending[path]
-            else {
-                continue
-            }
-
-            do {
-                let decoded = try result.get()
-                let texture = try makeTexture(decoded, on: device)
-                let previous = asset.replace(with: texture)
-                device.destroy(previous)
-                print("Reloaded texture '\(path.value)'")
-            } catch {
-                print(
-                    "Unable to reload texture '\(path.value)': \(error)"
+        if let writer = textureWriter(texture) {
+            reloadContinuation?.yield(
+                .register(
+                    path: path,
+                    size: texture.descriptor.size,
+                    writer: writer
                 )
-            }
+            )
         }
+        return asset
     }
 
     private func makePath(

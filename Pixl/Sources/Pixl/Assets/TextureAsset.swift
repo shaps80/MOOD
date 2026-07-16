@@ -3,7 +3,7 @@ import Swift
 
 public final class TextureAsset: Hashable {
     public let path: String
-    public private(set) var texture: Texture
+    public let texture: Texture
 
     public var size: TextureSize {
         texture.descriptor.size
@@ -12,12 +12,6 @@ public final class TextureAsset: Hashable {
     init(path: AssetPath, texture: Texture) {
         self.path = path.value
         self.texture = texture
-    }
-
-    func replace(with texture: Texture) -> Texture {
-        let previous = self.texture
-        self.texture = texture
-        return previous
     }
 
     public static func == (
