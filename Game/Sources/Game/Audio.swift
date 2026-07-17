@@ -1,13 +1,14 @@
 import Pixl
 
 struct AudioSettings: Codable {
-    var master: Float = 1
-    var music: Float = 0.8
-    var effects: Float = 0.1
+    var master: Float = 0.1
+    var music: Float = 1
+    var effects: Float = 1
     var voices: Float = 1
 }
 
 final class GameAudio {
+    let master: Bus
     let music: Bus
     let effects: Bus
     let voices: Bus
@@ -16,11 +17,13 @@ final class GameAudio {
         audio: Audio,
         settings: AudioSettings
     ) throws {
+        master = audio.masterBus
         music = try audio.makeBus()
         effects = try audio.makeBus()
         voices = try audio.makeBus()
 
         audio.masterVolume = settings.master
+        master.volume = settings.master
         music.volume = settings.music
         effects.volume = settings.effects
         voices.volume = settings.voices

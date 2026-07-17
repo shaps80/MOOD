@@ -9,6 +9,7 @@ struct Game: Pixl.Game {
     private var fade: Timer = .init(duration: 1)
     private var player: Player
     private var phase: GamePhase = .active
+    private var previousVolume: Double = 1
 
     init(context: GameContext) throws {
         audio = try .init(audio: context.audio, settings: .init())
@@ -39,18 +40,9 @@ struct Game: Pixl.Game {
 
         switch phase {
         case .active:
-            do {
-                try music.play()
-            } catch {
-                print("Unable to play music: \(error)")
-            }
-            context.timeScale = 1
-
+            try? music.play()
         case .background, .inactive:
-#if os(wasi)
-            music.pause()
-#endif
-            context.timeScale = 0
+            previousVolume = .init(context.audio.masterVolume)
         }
     }
 
@@ -65,12 +57,12 @@ struct Game: Pixl.Game {
         switch phase {
         case .active:
 #if os(macOS)
-            let volume = lerp(from: 0.15, to: 1, by: fade.progress)
+            let volume = lerp(from: 0, to: previousVolume, by: fade.progress)
             context.audio.masterVolume = .init(volume)
 #endif
         case .inactive, .background:
 #if os(macOS)
-            let volume = lerp(from: 1.0, to: 0.15, by: fade.progress)
+            let volume = lerp(from: previousVolume, to: 0, by: fade.progress)
             context.audio.masterVolume = .init(volume)
 #endif
         }
