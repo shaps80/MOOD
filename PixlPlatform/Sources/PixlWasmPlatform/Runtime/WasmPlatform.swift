@@ -10,11 +10,14 @@ final class WasmPlatform: Platform {
     private let drawables: ResourcePool<JSObject>
 
     var device: any Device { wasmDevice }
+    let assetSource: (any AssetSource)?
+
     init(device: JSObject, context: JSObject, canvas: JSObject, format: PixelFormat, settings: RenderSettings) {
         wasmDevice = WasmDevice(device: device, settings: settings)
         queue = wasmDevice.makeWasmQueue()
         self.context = context; self.canvas = canvas; self.format = format
         drawables = ResourcePool(capacity: settings.drawableCapacity)
+        assetSource = WasmAssetSource()
     }
 
     func resize() {

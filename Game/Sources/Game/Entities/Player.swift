@@ -48,7 +48,7 @@ struct Player: Entity {
             transform: camera
                 .projection(for: output)
                 .translated(by: position)
-//                .scaled(x: -1, y: 1)
+                .scaled(x: -1, y: 1) // flip horizontally
                 .rotated(by: rotation)
         )
     }

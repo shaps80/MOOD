@@ -11,101 +11,101 @@
 
 /// An error produced during parsing.
 public struct ParsingError: Error {
-  /// The different kinds of parsing errors.
-  public struct Status: Equatable, Sendable {
-    enum RawValue {
-      case insufficientData
-      case invalidValue
-      case userError
+    /// The different kinds of parsing errors.
+    public struct Status: Equatable, Sendable {
+        enum RawValue {
+            case insufficientData
+            case invalidValue
+            case userError
+        }
+        
+        var rawValue: RawValue
+        
+        /// Parsing failed due to insufficient data.
+        public static var insufficientData: Self {
+            .init(rawValue: .insufficientData)
+        }
+        /// Parsing failed due to an invalid parsed value (for example, due to
+        /// overflow) or an invalid parameter passed to a parsing function.
+        public static var invalidValue: Self {
+            .init(rawValue: .invalidValue)
+        }
+        /// Parsing failed for another reason, as described by the user error.
+        public static var userError: Self {
+            .init(rawValue: .userError)
+        }
     }
-
-    var rawValue: RawValue
-
-    /// Parsing failed due to insufficient data.
-    public static var insufficientData: Self {
-      .init(rawValue: .insufficientData)
+    
+    /// The type of parsing error.
+    public var status: Status
+    
+    /// The index of the first byte that caused the error, or `-1` if the error
+    /// did not occur while parsing.
+    var _location: Int
+    
+    /// The index of the first byte that caused the error, or `nil` if the error
+    /// did not occur while parsing.
+    public var location: Int? {
+        _location >= 0 ? _location : nil
     }
-    /// Parsing failed due to an invalid parsed value (for example, due to
-    /// overflow) or an invalid parameter passed to a parsing function.
-    public static var invalidValue: Self {
-      .init(rawValue: .invalidValue)
+    
+#if !$Embedded
+    /// The user-provided error associated with this parsing error.
+    public var userError: (any Error)?
+    
+    @usableFromInline
+    init(
+        status: Status,
+        location: Int? = nil,
+        userError: (any Error)? = nil
+    ) {
+        self.status = status
+        self._location = location ?? -1
+        self.userError = userError
     }
-    /// Parsing failed for another reason, as described by the user error.
-    public static var userError: Self {
-      .init(rawValue: .userError)
+#endif
+    
+    @usableFromInline
+    init(status: Status, location: Int) {
+        self.status = status
+        self._location = location
     }
-  }
-
-  /// The type of parsing error.
-  public var status: Status
-
-  /// The index of the first byte that caused the error, or `-1` if the error
-  /// did not occur while parsing.
-  var _location: Int
-
-  /// The index of the first byte that caused the error, or `nil` if the error
-  /// did not occur while parsing.
-  public var location: Int? {
-    _location >= 0 ? _location : nil
-  }
-
-  #if !$Embedded
-  /// The user-provided error associated with this parsing error.
-  public var userError: (any Error)?
-
-  @usableFromInline
-  init(
-    status: Status,
-    location: Int? = nil,
-    userError: (any Error)? = nil
-  ) {
-    self.status = status
-    self._location = location ?? -1
-    self.userError = userError
-  }
-  #endif
-
-  @usableFromInline
-  init(status: Status, location: Int) {
-    self.status = status
-    self._location = location
-  }
-
-  @usableFromInline
-  init(statusOnly status: Status) {
-    self.status = status
-    self._location = -1
-  }
+    
+    @usableFromInline
+    init(statusOnly status: Status) {
+        self.status = status
+        self._location = -1
+    }
 }
 
 #if !$Embedded
 extension ParsingError {
-  public init(userError: any Error) {
-    self = .init(status: .userError, userError: userError)
-  }
+    public init(userError: any Error) {
+        self = .init(status: .userError, userError: userError)
+    }
 }
 
 extension ParsingError: CustomStringConvertible {
-  public var description: String {
-    if let location {
-      "\(status) at position \(location)"
-    } else {
-      "\(status) by a non-parsing operation"
+    public var description: String {
+        if let location {
+            "\(status) at position \(location)"
+        } else {
+            "\(status) by a non-parsing operation"
+        }
     }
-  }
 }
 
 extension ParsingError.Status: CustomStringConvertible {
-  public var description: String {
-    switch self.rawValue {
-    case .insufficientData:
-      "insufficient data"
-    case .invalidValue:
-      "invalid value"
-    case .userError:
-      "user error"
+    public var description: String {
+        switch self.rawValue {
+        case .insufficientData:
+            "insufficient data"
+        case .invalidValue:
+            "invalid value"
+        case .userError:
+            "user error"
+        }
     }
-  }
 }
 #endif
 

@@ -92,6 +92,10 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 
 macOS resolves the game-provided asset path relative to the Game package that declares `AssetSettings`. `AssetSettings` captures that declaration's `#filePath`; the adapter removes its `/Sources/...` suffix without searching the filesystem, then appends the configured path. Absolute paths bypass package-relative resolution. macOS reads directly from that directory and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, and reload failure policy. Same-size texture changes are written asynchronously through the platform writer; rendering does not poll for changes.
 
+Browser packaging copies `Game/Assets`, generates a manifest, and preloads those files before starting WASM. `PixlWasmPlatform` exposes the resulting in-memory bytes through the same synchronous `AssetSource` contract used by Pixl during game initialization. Browser builds do not monitor assets for changes.
+
+PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`. It uses the vendored Apple Swift Binary Parsing core and a Pixl-owned zlib/DEFLATE, scanline-filter, colour, transparency, and Adam7 implementation. Platform image frameworks are not part of PNG decoding.
+
 ## Shaders and Pipelines
 
 `ShaderFunction`

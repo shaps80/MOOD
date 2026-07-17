@@ -159,7 +159,7 @@ struct AssetTests {
             Data(
                 base64Encoded:
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
-                    + "AAAAC0lEQVR42mP8/x8AAusB9Y9ZlYQAAAAASUVORK5CYII="
+                    + "AAAAC0lEQVR4nGP4/x8AAwAB//wl3FEAAAAASUVORK5CYII="
             )
         )
         let decoded = try PNGDecoder.decode(

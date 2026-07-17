@@ -37,6 +37,7 @@ let package = Package(
                     name: "PixlConcurrency",
                     package: "PixlConcurrency"
                 ),
+                "PixlGraphics",
                 "Pixl2D",
                 "Pixl3D"
                 ,

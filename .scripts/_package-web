@@ -26,17 +26,55 @@ write_index_html() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
   <title>${PRODUCT}</title>
 </head>
 <body>
   <script type="module">
     import { init } from "./pixl.js";
 
-    init();
+    const paths = await fetch("./assets.json").then(response => response.json());
+    const entries = await Promise.all(paths.map(async path => {
+      const response = await fetch("./Assets/" + path);
+      if (!response.ok) {
+        throw new Error(
+          "Unable to load asset '" + path + "': " + response.status
+        );
+      }
+      return [path, new Uint8Array(await response.arrayBuffer())];
+    }));
+    globalThis.__pixlAssets = Object.fromEntries(entries);
+
+    await init();
   </script>
 </body>
 </html>
 HTML
+}
+
+copy_assets() {
+  local assets_dir="${PROJECT_DIR}/Assets"
+
+  if [[ ! -d "${assets_dir}" ]]; then
+    printf '[]\n' > "${DIST_DIR}/assets.json"
+    return
+  fi
+
+  cp -R "${assets_dir}" "${DIST_DIR}/Assets"
+  python3 -c '
+import json
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+paths = sorted(
+    path.relative_to(root).as_posix()
+    for path in root.rglob("*")
+    if path.is_file()
+    and not any(part.startswith(".") for part in path.relative_to(root).parts)
+)
+pathlib.Path(sys.argv[2]).write_text(json.dumps(paths), encoding="utf-8")
+' "${assets_dir}" "${DIST_DIR}/assets.json"
 }
 
 copy_target_resources() {
@@ -114,6 +152,7 @@ npm install --prefix "${PACKAGE_DIR}" --omit=dev
 npx --yes esbuild "${PACKAGE_DIR}/index.js"   --bundle   --format=esm   --minify   --platform=browser   --legal-comments=none   --outfile="${DIST_DIR}/pixl.js"
 
 cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
+copy_assets
 copy_target_resources
 write_index_html "${DIST_DIR}/index.html"
 

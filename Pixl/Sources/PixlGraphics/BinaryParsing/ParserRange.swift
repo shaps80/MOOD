@@ -20,53 +20,53 @@
 /// either the ``ParserSpan/seeking(toRange:)`` or
 /// ``ParserSpan/seek(toRange:)`` method.
 public struct ParserRange: Hashable, Sendable {
-  @usableFromInline
-  internal var range: Range<Int>
-
-  @usableFromInline
-  init(range: Range<Int>) {
-    self.range = range
-  }
-
-  /// A Boolean value indicating whether the range is empty.
-  @_alwaysEmitIntoClient
-  public var isEmpty: Bool {
-    range.isEmpty
-  }
-
-  /// The lower bound of the range.
-  @_alwaysEmitIntoClient
-  public var lowerBound: Int {
-    range.lowerBound
-  }
-
-  /// The upper, non-inclusive bound of the range.
-  @_alwaysEmitIntoClient
-  public var upperBound: Int {
-    range.upperBound
-  }
+    @usableFromInline
+    internal var range: Range<Int>
+    
+    @usableFromInline
+    init(range: Range<Int>) {
+        self.range = range
+    }
+    
+    /// A Boolean value indicating whether the range is empty.
+    @_alwaysEmitIntoClient
+    public var isEmpty: Bool {
+        range.isEmpty
+    }
+    
+    /// The lower bound of the range.
+    @_alwaysEmitIntoClient
+    public var lowerBound: Int {
+        range.lowerBound
+    }
+    
+    /// The upper, non-inclusive bound of the range.
+    @_alwaysEmitIntoClient
+    public var upperBound: Int {
+        range.upperBound
+    }
 }
 
 extension RandomAccessCollection<UInt8> where Index == Int {
-  /// Accesses the subsequence of this collection described by the given range,
-  /// throwing an error if the range is outside the collection's bounds.
-  public subscript(_ range: ParserRange) -> SubSequence {
-    get throws(ParsingError) {
-      let validRange = startIndex...endIndex
-      guard validRange.contains(range.lowerBound),
-        validRange.contains(range.upperBound)
-      else {
-        throw ParsingError(status: .invalidValue, location: range.lowerBound)
-      }
-      return self[range.range]
+    /// Accesses the subsequence of this collection described by the given range,
+    /// throwing an error if the range is outside the collection's bounds.
+    public subscript(_ range: ParserRange) -> SubSequence {
+        get throws(ParsingError) {
+            let validRange = startIndex...endIndex
+            guard validRange.contains(range.lowerBound),
+                  validRange.contains(range.upperBound)
+            else {
+                throw ParsingError(status: .invalidValue, location: range.lowerBound)
+            }
+            return self[range.range]
+        }
     }
-  }
 }
 
 extension ParserSpan {
-  /// The current range of this parser span.
-  @inlinable
-  public var parserRange: ParserRange {
-    ParserRange(range: self.startPosition..<self.endPosition)
-  }
+    /// The current range of this parser span.
+    @inlinable
+    public var parserRange: ParserRange {
+        ParserRange(range: self.startPosition..<self.endPosition)
+    }
 }
