@@ -15,7 +15,7 @@ struct Game: Pixl.Game {
                 vertex: .vertex,
                 fragment: .fragment,
                 vertexLayout: .primitive,
-                colorFormat: context.renderSettings.drawableFormat
+                colorFormat: context.drawableFormat
             )
         )
 

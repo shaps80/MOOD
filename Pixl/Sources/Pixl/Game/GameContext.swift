@@ -3,16 +3,17 @@ import PixlPlatform
 /// Runtime services available while a game constructs its persistent state.
 public final class GameContext {
     public let platform: any Platform
-    public let renderSettings: RenderSettings
+    public let drawableFormat: PixelFormat
     public let audio: Audio
     public let assets: Assets
 
+
     init(
         platform: any Platform,
-        renderSettings: RenderSettings
+        format: PixelFormat
     ) {
         self.platform = platform
-        self.renderSettings = renderSettings
+        self.drawableFormat = format
         audio = Audio(device: platform.audioDevice)
         assets = Assets(
             device: platform.device,

@@ -29,7 +29,10 @@ final class GameRuntime<G: Game>: PlatformGame {
     private var phase: GamePhase?
 
     init(platform: any Platform) throws {
-        context = .init(platform: platform, renderSettings: G.renderSettings)
+        context = .init(
+            platform: platform,
+            format: G.renderSettings.drawableFormat
+        )
         game = try G(context: context)
         loop = Loop(settings: G.loopSettings)
         metricsCollector = .init(
