@@ -26,16 +26,14 @@ struct MetalAudioBackendTests {
         #expect(!engine.isRunning)
 
         let start = ContinuousClock.now
-        let voice = try #require(
-            backend.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1,
-                completion: AudioCompletion()
-            )
+        let voice = try backend.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1,
+            completion: AudioCompletion()
         )
         let elapsed = ContinuousClock.now - start
 

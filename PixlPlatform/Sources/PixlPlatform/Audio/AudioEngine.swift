@@ -120,69 +120,69 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         on bus: Bus?,
         volume: Float,
         pan: Float,
-        looping: Bool,
+        loop: Bool,
         rate: Float
-    ) -> Playback? {
+    ) throws(AudioError) -> Playback {
         preconditionVolume(volume)
         preconditionPan(pan)
         preconditionRate(rate)
 
-        return state.withLock { state -> Playback? in
+        return try state.withLock { state throws(AudioError) -> Playback in
             if state.voices.count == state.voices.capacity {
                 reapFinishedVoices(state)
             }
             guard state.voices.count < state.voices.capacity else {
-                return nil
+                throw .resourceCreationFailed(.voice)
             }
 
-            return state.sounds.withValue(for: sound.id) { record -> Playback? in
-                guard let soundResource = record.pointee.resource else {
-                    return nil
-                }
-                let busResource: Backend.BusResource?
-                if let bus {
-                    guard let resource = state.buses.withValue(
-                        for: bus.id,
-                        { $0.pointee.resource }
-                    ) else {
-                        return nil
-                    }
-                    busResource = resource
-                } else {
-                    busResource = nil
-                }
+            guard let soundRecord = state.sounds.withValue(
+                for: sound.id,
+                { $0.pointee }
+            ), let soundResource = soundRecord.resource else {
+                throw .resourceUnavailable(.sound)
+            }
 
-                let completion = AudioCompletion()
-                guard let resource = state.backend.play(
-                    soundResource,
-                    on: busResource,
+            let busResource: Backend.BusResource?
+            if let bus {
+                guard let resource = state.buses.withValue(
+                    for: bus.id,
+                    { $0.pointee.resource }
+                ) else {
+                    throw .resourceUnavailable(.bus)
+                }
+                busResource = resource
+            } else {
+                busResource = nil
+            }
+
+            let completion = AudioCompletion()
+            let resource = try state.backend.play(
+                soundResource,
+                on: busResource,
+                volume: volume,
+                pan: pan,
+                looping: loop,
+                rate: rate,
+                completion: completion
+            )
+            guard let id = state.voices.insert(
+                VoiceRecord(
+                    resource: resource,
+                    completion: completion,
+                    soundID: sound.id,
+                    busID: bus?.id,
                     volume: volume,
                     pan: pan,
-                    looping: looping,
+                    looping: loop,
                     rate: rate,
-                    completion: completion
-                ) else {
-                    return nil
-                }
-                guard let id = state.voices.insert(
-                    VoiceRecord(
-                        resource: resource,
-                        completion: completion,
-                        soundID: sound.id,
-                        busID: bus?.id,
-                        volume: volume,
-                        pan: pan,
-                        looping: looping,
-                        rate: rate,
-                        isPaused: false
-                    )
-                ) else {
-                    state.backend.stop(resource)
-                    state.backend.destroy(resource)
-                    return nil
-                }
-                return Playback(id: id)
-            } ?? nil
+                    isPaused: false
+                )
+            ) else {
+                state.backend.stop(resource)
+                state.backend.destroy(resource)
+                throw .resourceCreationFailed(.voice)
+            }
+            return Playback(id: id)
         }
     }
 
@@ -390,7 +390,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
             }
 
             let completion = AudioCompletion()
-            guard let resource = state.backend.play(
+            guard let resource = try? state.backend.play(
                 sound,
                 on: busResource,
                 volume: voice.pointee.volume,

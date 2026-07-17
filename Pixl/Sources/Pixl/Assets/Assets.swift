@@ -74,24 +74,14 @@ public final class Assets {
 
     public func load(
         texture path: String
-    ) -> TextureAsset? {
-        do {
-            return try loadTexture(path)
-        } catch {
-            print("Unable to load texture '\(path)': \(error)")
-            return nil
-        }
+    ) throws(AssetError) -> TextureAsset {
+        try loadTexture(path)
     }
 
     public func load(
         sound path: String
-    ) -> SoundAsset? {
-        do {
-            return try loadSound(path)
-        } catch {
-            print("Unable to load sound '\(path)': \(error)")
-            return nil
-        }
+    ) throws(AssetError) -> SoundAsset {
+        try loadSound(path)
     }
 
     private func loadTexture(

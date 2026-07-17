@@ -24,15 +24,17 @@ struct Game: Pixl.Game {
 
         switch phase {
         case .active:
+            context.audio[rate: state.musicPlayback] = 1
+            
+#if os(wasi)
+            context.audio.resume(state.musicPlayback)
+#endif
             state.timeScale = 1
 
-            if let playback = state.musicPlayback {
-                context.audio.resume(playback)
-            } else if let music = state.music {
-                state.musicPlayback = context.audio.play(music, looping: true)
-            }
-
         case .background, .inactive:
+#if os(wasi)
+            context.audio.pause(state.musicPlayback)
+#endif
             state.timeScale = 0
         }
     }
@@ -50,17 +52,11 @@ struct Game: Pixl.Game {
 #if os(macOS)
             let volume = lerp(from: 0.15, to: 1, by: state.fade.progress)
             context.audio.masterVolume = .init(volume)
-#else
-            if let music = state.musicPlayback {
-                context.audio.resume(music)
-            }
 #endif
         case .inactive, .background:
 #if os(macOS)
             let volume = lerp(from: 1.0, to: 0.15, by: state.fade.progress)
             context.audio.masterVolume = .init(volume)
-#else
-            context.audio.pause(state.musicPlayback)
 #endif
         }
     }
@@ -98,10 +94,10 @@ private extension Game {
         var metricsElapsed = 0.0
         var fade: Timer = .init(duration: 1)
         var timeScale = 1.0
-        var musicPlayback: Playback?
         var pipeline: RenderPipeline
         var player: Player
-        let music: SoundAsset?
+        let music: SoundAsset
+        var musicPlayback: Playback
         var phase: GamePhase = .active
 
         init(context: GameContext) throws {
@@ -114,7 +110,8 @@ private extension Game {
                 )
             )
             player = try .init(pipeline: pipeline, context: context)
-            music = context.assets.load(sound: "music.wav")
+            music = try context.assets.load(sound: "music.wav")
+            musicPlayback = try context.audio.play(music, loop: true)
         }
     }
 }

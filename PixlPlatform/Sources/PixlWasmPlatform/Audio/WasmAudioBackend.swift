@@ -283,8 +283,8 @@ package final class WasmAudioBackend: AudioBackend {
         looping: Bool,
         rate: Float,
         completion: AudioCompletion
-    ) -> WasmVoiceResource? {
-        return WasmVoiceResource(
+    ) throws(AudioError) -> WasmVoiceResource {
+        WasmVoiceResource(
             context: context,
             sound: sound,
             target: bus?.gain ?? master,

@@ -36,7 +36,7 @@ package protocol AudioBackend: AnyObject {
         looping: Bool,
         rate: Float,
         completion: AudioCompletion
-    ) -> VoiceResource?
+    ) throws(AudioError) -> VoiceResource
 
     func pause(_ voice: VoiceResource)
     func resume(_ voice: VoiceResource)

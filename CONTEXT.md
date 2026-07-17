@@ -111,6 +111,8 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 
 macOS resolves the game-provided asset path relative to the Game package that declares `AssetSettings`. `AssetSettings` captures that declaration's `#filePath`; the adapter removes its `/Sources/...` suffix without searching the filesystem, then appends the configured path. Absolute paths bypass package-relative resolution. macOS reads directly from that directory and monitors recursive file changes with FSEvents. Pixl owns decoding, caching, dependency decisions, and reload failure policy. Same-size texture changes are written asynchronously through the platform writer; rendering does not poll for changes.
 
+`Assets.load(texture:)` and `Assets.load(sound:)` throw `AssetError`. Required startup assets therefore fail explicitly instead of becoming optional values with logged errors.
+
 Browser packaging copies `Game/Assets`, generates a manifest, and preloads those files before starting WASM. `PixlWasmPlatform` exposes the resulting in-memory bytes through the same synchronous `AssetSource` contract used by Pixl during game initialization. Browser builds do not monitor assets for changes.
 
 PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`. It uses the vendored Apple Swift Binary Parsing core and a Pixl-owned zlib/DEFLATE, scanline-filter, colour, transparency, and Adam7 implementation. Platform image frameworks are not part of PNG decoding.
@@ -130,10 +132,10 @@ PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`
 : Optional flat routing target with independent volume. Buses feed the master output; nested graphs and effects are not part of the current contract.
 
 `AudioDevice`
-: Portable low-level resource/playback boundary. Shared `AudioEngine` owns handles, capacity, validation, buses, voice lifetime, control values, master volume, and sound replacement. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations. Getters return engine-owned portable state and never synchronously query a native audio graph. Metal uses AVFAudio; the browser uses Web Audio.
+: Portable low-level resource/playback boundary. Shared `AudioEngine` owns handles, capacity, validation, buses, voice lifetime, control values, master volume, and sound replacement. Playback throws `AudioError` and returns a nonoptional handle; unavailable resources and voice-creation failures are explicit. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations. Getters return engine-owned portable state and never synchronously query a native audio graph. Metal uses AVFAudio; the browser uses Web Audio.
 
 `SoundWriter`
-: Optional backend-owned replacement/invalidation capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl coalesces each per-path event burst, reads, and decodes off the game loop. A valid content replacement restarts active voices from the beginning with their existing playback handles and controls. Removal immediately stops and retires active voices, marks the sound unavailable, and makes `play` return `nil` until valid content reappears. Invalid replacement data retains the last valid sound. Browser-packaged assets remain an immutable build-time snapshot for now.
+: Optional backend-owned replacement/invalidation capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl coalesces each per-path event burst, reads, and decodes off the game loop. A valid content replacement restarts active voices from the beginning with their existing playback handles and controls. Removal immediately stops and retires active voices, marks the sound unavailable, and makes `play` throw `AudioError.resourceUnavailable(.sound)` until valid content reappears. Invalid replacement data retains the last valid sound. Browser-packaged assets remain an immutable build-time snapshot for now.
 
 Native completion handlers only set an atomic flag. Cleanup is demand-driven; completion performs no task creation, logging, allocation, or engine lock acquisition.
 

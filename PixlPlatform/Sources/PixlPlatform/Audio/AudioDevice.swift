@@ -17,9 +17,9 @@ public protocol AudioDevice: AnyObject {
         on bus: Bus?,
         volume: Float,
         pan: Float,
-        looping: Bool,
+        loop: Bool,
         rate: Float
-    ) -> Playback?
+    ) throws(AudioError) -> Playback
 
     func pause(_ playback: Playback)
     func resume(_ playback: Playback)

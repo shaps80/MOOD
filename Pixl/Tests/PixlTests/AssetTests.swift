@@ -416,8 +416,8 @@ struct AssetTests {
             textureWriter: { _ in writer }
         )
 
-        let first = try #require(assets.load(texture: path.value))
-        let cached = try #require(assets.load(texture: path.value))
+        let first = try assets.load(texture: path.value)
+        let cached = try assets.load(texture: path.value)
         let initialTexture = first.texture
 
         #expect(first === cached)
@@ -454,7 +454,7 @@ struct AssetTests {
             decode: decodeResizableTestTexture,
             textureWriter: { _ in writer }
         )
-        let asset = try #require(assets.load(texture: path.value))
+        let asset = try assets.load(texture: path.value)
         let texture = asset.texture
 
         source.change(path, bytes: [2])

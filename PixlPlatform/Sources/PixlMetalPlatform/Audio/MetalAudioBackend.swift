@@ -97,7 +97,7 @@ package final class MetalAudioBackend: AudioBackend {
         looping: Bool,
         rate: Float,
         completion: AudioCompletion
-    ) -> MetalVoiceResource? {
+    ) throws(AudioError) -> MetalVoiceResource {
         let voice = MetalVoiceResource(sound: sound)
         audioQueue.async { [state, voice, bus] in
             state.play(

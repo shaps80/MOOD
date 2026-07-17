@@ -63,7 +63,7 @@ private final class TestAudioBackend: AudioBackend {
         looping: Bool,
         rate: Float,
         completion: AudioCompletion
-    ) -> TestVoice? {
+    ) throws(AudioError) -> TestVoice {
         let voice = TestVoice(
             sound: sound,
             bus: bus,
@@ -150,7 +150,7 @@ struct AudioEngineTests {
         #expect(audio.makeBus() != nil)
         #expect(audio.makeBus() == nil)
 
-        let first = audio.play(
+        let first = try audio.play(
             sound,
             on: nil,
             volume: 1,
@@ -158,7 +158,7 @@ struct AudioEngineTests {
             looping: false,
             rate: 1
         )
-        let second = audio.play(
+        let second = try audio.play(
             sound,
             on: nil,
             volume: 1,
@@ -166,29 +166,27 @@ struct AudioEngineTests {
             looping: false,
             rate: 1
         )
-        #expect(first != nil)
-        #expect(second != nil)
-        #expect(
-            audio.play(
+        _ = first
+        _ = second
+        #expect(throws: AudioError.self) {
+            try audio.play(
                 sound,
                 on: nil,
                 volume: 1,
                 pan: 0,
                 looping: false,
                 rate: 1
-            ) == nil
-        )
+            )
+        }
 
         backend.voices[0].completion.finish()
-        #expect(
-            audio.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1
-            ) != nil
+        _ = try audio.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1
         )
         #expect(backend.voices[0].isDestroyed)
     }
@@ -205,15 +203,13 @@ struct AudioEngineTests {
             descriptor: testSoundDescriptor
         )
         let bus = try #require(audio.makeBus())
-        let playback = try #require(
-            audio.play(
-                sound,
-                on: bus,
-                volume: 0.8,
-                pan: -0.25,
-                looping: false,
-                rate: 0.5
-            )
+        let playback = try audio.play(
+            sound,
+            on: bus,
+            volume: 0.8,
+            pan: -0.25,
+            looping: false,
+            rate: 0.5
         )
         let voice = backend.voices[0]
 
@@ -271,27 +267,23 @@ struct AudioEngineTests {
             descriptor: testSoundDescriptor
         )
 
-        _ = try #require(
-            audio.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1
-            )
+        _ = try audio.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1
         )
         backend.voices[0].isBackendFinished = true
 
-        #expect(
-            audio.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1
-            ) != nil
+        _ = try audio.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1
         )
         #expect(backend.voices[0].isDestroyed)
     }
@@ -307,15 +299,13 @@ struct AudioEngineTests {
             copying: [0.25],
             descriptor: testSoundDescriptor
         )
-        let playback = try #require(
-            audio.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1
-            )
+        let playback = try audio.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1
         )
         let writer = try #require(audio.soundWriter(for: sound))
 
@@ -342,15 +332,13 @@ struct AudioEngineTests {
             copying: [0.25],
             descriptor: testSoundDescriptor
         )
-        _ = try #require(
-            audio.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1
-            )
+        _ = try audio.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1
         )
         let writer = try #require(audio.soundWriter(for: sound))
 
@@ -358,23 +346,8 @@ struct AudioEngineTests {
 
         #expect(backend.voices[0].isStopped)
         #expect(backend.voices[0].isDestroyed)
-        #expect(
-            audio.play(
-                sound,
-                on: nil,
-                volume: 1,
-                pan: 0,
-                looping: false,
-                rate: 1
-            ) == nil
-        )
-
-        try await writer.write(
-            copying: [0.75],
-            descriptor: testSoundDescriptor
-        )
-        _ = try #require(
-            audio.play(
+        #expect(throws: AudioError.self) {
+            try audio.play(
                 sound,
                 on: nil,
                 volume: 1,
@@ -382,6 +355,19 @@ struct AudioEngineTests {
                 looping: false,
                 rate: 1
             )
+        }
+
+        try await writer.write(
+            copying: [0.75],
+            descriptor: testSoundDescriptor
+        )
+        _ = try audio.play(
+            sound,
+            on: nil,
+            volume: 1,
+            pan: 0,
+            looping: false,
+            rate: 1
         )
         #expect(backend.voices[1].sound.firstSample == 0.75)
     }

@@ -18,15 +18,15 @@ public final class Audio {
         on bus: Bus? = nil,
         volume: Float = 1,
         pan: Float = 0,
-        looping: Bool = false,
+        loop: Bool = false,
         rate: Float = 1
-    ) -> Playback? {
-        device.play(
+    ) throws(AudioError) -> Playback {
+        try device.play(
             sound.sound,
             on: bus,
             volume: volume,
             pan: pan,
-            looping: looping,
+            loop: loop,
             rate: rate
         )
     }

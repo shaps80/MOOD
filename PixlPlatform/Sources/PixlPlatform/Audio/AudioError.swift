@@ -8,5 +8,6 @@ public enum AudioResourceKind: Hashable, Sendable {
 
 public enum AudioError: Error, Hashable, Sendable {
     case invalidSampleCount(expected: Int, actual: Int)
+    case resourceUnavailable(AudioResourceKind)
     case resourceCreationFailed(AudioResourceKind)
 }
