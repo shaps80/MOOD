@@ -27,7 +27,7 @@ struct Player: Entity {
             context: context
         )
 
-        context.inputs.bind(profile.storage)
+        profile.bind(to: context.inputs)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {

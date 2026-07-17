@@ -2,7 +2,11 @@ import Pixl
 import Pixl2D
 
 struct PlayerProfile {
-    let storage: Input.Profile
+    private let storage: Input.Profile
+
+    func bind(to map: Input.Map) {
+        map.bind(storage)
+    }
 
     let left: Input
     let right: Input
