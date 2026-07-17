@@ -7,6 +7,14 @@ public final class GameContext {
     public let audio: Audio
     public let assets: Assets
 
+    public var timeScale: Double = 1 {
+        didSet {
+            precondition(
+                timeScale.isFinite && timeScale >= 0,
+                "Time scale must be finite and nonnegative"
+            )
+        }
+    }
 
     init(
         platform: any Platform,

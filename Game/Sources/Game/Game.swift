@@ -42,13 +42,13 @@ struct Game: Pixl.Game {
             } catch {
                 print("Unable to play music: \(error)")
             }
-            state.timeScale = 1
+            context.timeScale = 1
 
         case .background, .inactive:
 #if os(wasi)
             music.pause()
 #endif
-            state.timeScale = 0
+            context.timeScale = 0
         }
     }
 
@@ -106,7 +106,6 @@ extension Game {
     private final class State: @unchecked Sendable {
         var metricsElapsed = 0.0
         var fade: Timer = .init(duration: 1)
-        var timeScale = 1.0
         var player: Player
         var phase: GamePhase = .active
 

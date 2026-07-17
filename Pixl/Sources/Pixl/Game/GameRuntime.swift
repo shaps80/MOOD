@@ -48,7 +48,7 @@ final class GameRuntime<G: Game>: PlatformGame {
         let frameStart = ContinuousClock.now
         let schedule = loop.advance(
             to: frameStart,
-            timeScale: game.timeScale
+            timeScale: context.timeScale
         )
         let gameStart = ContinuousClock.now
 

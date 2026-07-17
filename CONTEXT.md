@@ -48,17 +48,17 @@ WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to impleme
 `GamePhase`
 : Coarse platform lifecycle: `background`, `active`, or `inactive`. Loading and preparation remain game-owned state. Phase transitions are delivered once through `Game.didEnter(_:context:)`.
 
-`Game.timeScale`
+`GameContext.timeScale`
 : Nonnegative simulation-time multiplier. `0` suppresses fixed updates while presentation updates and rendering continue. Audio and unscaled time remain independent.
 
 `FixedTime.delta`
 : Fixed simulation step after game time scaling determines whether a tick occurs.
 
 `UpdateTime.delta`
-: Clamped presentation delta multiplied by `Game.timeScale`.
+: Clamped presentation delta multiplied by `GameContext.timeScale`.
 
 `UpdateTime.unscaledDelta`
-: The same clamped presentation delta before `Game.timeScale`. Lifecycle fades and other work that must continue while simulation is paused use this value.
+: The same clamped presentation delta before `GameContext.timeScale`. Lifecycle fades and other work that must continue while simulation is paused use this value.
 
 Every `Game.fixedUpdate`, `Game.update`, and `Game.render` callback receives the runtime's stable `GameContext` as its final argument. Pixl has no dependency on or re-export of `PixlConcurrency`; games may depend on that standalone package directly when they need explicit lanes.
 

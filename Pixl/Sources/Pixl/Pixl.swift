@@ -21,10 +21,6 @@ public extension Game {
         .default
     }
 
-    var timeScale: Double {
-        1
-    }
-
     mutating func didEnter(_ phase: GamePhase, context: GameContext) { }
     mutating func fixedUpdate(
         _ time: FixedTime,

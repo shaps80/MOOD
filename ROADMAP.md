@@ -60,7 +60,7 @@ Camera constraint:
 - [x] Define variable-step and optional fixed-step update behavior.
 - [x] Define elapsed time, accumulator limits, interpolation, and long-frame handling.
 - [x] Keep same-size texture hot reload event-driven and entirely outside presentation, simulation, and render traversal.
-- [x] Expose `UpdateTime.delta` and `unscaledDelta`, with `Game.timeScale` affecting only simulation time.
+- [x] Expose `UpdateTime.delta` and `unscaledDelta`, with `GameContext.timeScale` affecting only simulation time.
 - [ ] Define deterministic safe points where queued editor/live-development changes may be applied without racing simulation or render preparation.
 - [ ] Define development hooks as part of the loop lifecycle without making editor behavior part of release-game policy.
 - [ ] Keep editor mutations queued until a safe point; never let editor code mutate live simulation state concurrently.
