@@ -1,6 +1,5 @@
 @_exported import PixlPlatform
 @_exported import PixlGraphics
-@_exported import PixlConcurrency
 
 #if canImport(PixlMetalPlatform)
 import PixlMetalPlatform
@@ -27,14 +26,21 @@ public extension Game {
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) { }
-    mutating func fixedUpdate(_ time: FixedTime, lanes: Lanes) { }
-    mutating func update(_ time: UpdateTime, lanes: Lanes) { }
+    mutating func fixedUpdate(
+        _ time: FixedTime,
+        context: GameContext
+    ) { }
+    mutating func update(
+        _ time: UpdateTime,
+        context: GameContext
+    ) { }
 
     func render(
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame,
-        time: RenderTime
+        time: RenderTime,
+        context: GameContext
     ) throws {}
 
     @MainActor

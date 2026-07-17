@@ -6,7 +6,6 @@ struct Player: Entity {
     private let pipeline: RenderPipeline
     private let sampler: Sampler
     private let texture: TextureAsset?
-    private let audio: Audio
     private let jump: SoundAsset?
 
     private let camera = OrthographicCamera(halfHeight: 1)
@@ -19,7 +18,6 @@ struct Player: Entity {
         context: GameContext
     ) throws {
         texture = context.assets.load(texture: "player.png")
-        audio = context.audio
         jump = context.assets.load(sound: "jump.wav")
         quad = try .init(
             device: context.platform.device,
@@ -29,11 +27,11 @@ struct Player: Entity {
         sampler = try context.platform.device.makeSampler(.init())
     }
 
-    mutating func update(_ time: UpdateTime, lanes: Lanes) {
+    mutating func update(_ time: UpdateTime, context: GameContext) {
         rotation = -time.elapsedSeconds
 
         if let jump, time.elapsedSeconds >= nextJumpSoundElapsed {
-            audio.play(jump)
+            context.audio.play(jump)
         }
 
         let fullTurn = Double.pi * 2
@@ -47,7 +45,8 @@ struct Player: Entity {
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame,
-        time: RenderTime
+        time: RenderTime,
+        context: GameContext
     ) throws {
         let pass = frame.beginRenderPass(
             .init(.init(target: output, loadAction: .load))

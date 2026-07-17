@@ -34,7 +34,8 @@ struct Loop {
                 firstTickIndex: tickIndex,
                 fixedDeltaSeconds: fixedDeltaSeconds,
                 frameTimeSeconds: 0,
-                deltaSeconds: 0,
+                delta: 0,
+                unscaledDelta: 0,
                 interpolation: settings.fixedStep == nil ? 1 : 0
             )
         }
@@ -43,7 +44,8 @@ struct Loop {
         frameIndex &+= 1
 
         let rawDelta = max(0, Self.seconds(now - previousInstant))
-        let delta = min(rawDelta, settings.maximumDeltaSeconds) * timeScale
+        let unscaledDelta = min(rawDelta, settings.maximumDeltaSeconds)
+        let delta = unscaledDelta * timeScale
         elapsedSeconds += delta
 
         guard let fixedStep = settings.fixedStep else {
@@ -52,7 +54,8 @@ struct Loop {
                 firstTickIndex: tickIndex,
                 fixedDeltaSeconds: 0,
                 frameTimeSeconds: rawDelta,
-                deltaSeconds: delta,
+                delta: delta,
+                unscaledDelta: unscaledDelta,
                 interpolation: 1
             )
         }
@@ -77,7 +80,8 @@ struct Loop {
             firstTickIndex: firstTickIndex,
             fixedDeltaSeconds: step,
             frameTimeSeconds: rawDelta,
-            deltaSeconds: delta,
+            delta: delta,
+            unscaledDelta: unscaledDelta,
             interpolation: min(1, accumulator / step)
         )
     }
@@ -92,7 +96,8 @@ struct Loop {
         firstTickIndex: UInt64,
         fixedDeltaSeconds: Double,
         frameTimeSeconds: Double,
-        deltaSeconds: Double,
+        delta: Double,
+        unscaledDelta: Double,
         interpolation: Double
     ) -> LoopSchedule {
         LoopSchedule(
@@ -102,7 +107,8 @@ struct Loop {
             frameTimeSeconds: frameTimeSeconds,
             updateTime: UpdateTime(
                 frameIndex: frameIndex,
-                deltaSeconds: deltaSeconds,
+                delta: delta,
+                unscaledDelta: unscaledDelta,
                 elapsedSeconds: elapsedSeconds
             ),
             renderTime: RenderTime(

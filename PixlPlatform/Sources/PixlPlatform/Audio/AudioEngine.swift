@@ -18,11 +18,17 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         var isPaused: Bool
     }
 
+    private struct BusRecord {
+        var resource: Backend.BusResource
+        var volume: Float
+    }
+
     private struct State {
         let backend: Backend
         let sounds: ResourcePool<SoundRecord>
         let voices: ResourcePool<VoiceRecord>
-        let buses: ResourcePool<Backend.BusResource>
+        let buses: ResourcePool<BusRecord>
+        var masterVolume: Float
     }
 
     private let state: CriticalState<State>
@@ -36,7 +42,8 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 backend: backend,
                 sounds: ResourcePool(capacity: settings.maxSoundCount),
                 voices: ResourcePool(capacity: settings.maxVoiceCount),
-                buses: ResourcePool(capacity: settings.maxBusCount)
+                buses: ResourcePool(capacity: settings.maxBusCount),
+                masterVolume: 1
             )
         )
     }
@@ -49,7 +56,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 return true
             }
             state.buses.removeAll { bus in
-                state.backend.destroy(bus.pointee)
+                state.backend.destroy(bus.pointee.resource)
                 return true
             }
         }
@@ -98,7 +105,9 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         state.withLock { state in
             guard state.buses.count < state.buses.capacity,
                   let resource = state.backend.makeBus(),
-                  let id = state.buses.insert(resource)
+                  let id = state.buses.insert(
+                      BusRecord(resource: resource, volume: 1)
+                  )
             else {
                 return nil
             }
@@ -134,7 +143,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 if let bus {
                     guard let resource = state.buses.withValue(
                         for: bus.id,
-                        { $0.pointee }
+                        { $0.pointee.resource }
                     ) else {
                         return nil
                     }
@@ -206,55 +215,83 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         }
     }
 
-    package func setVolume(
-        _ volume: Float,
-        for playback: Playback
-    ) {
-        preconditionVolume(volume)
-        withLiveVoice(playback) { backend, voice in
-            backend.setVolume(volume, for: voice.pointee.resource)
-            voice.pointee.volume = volume
+    package subscript(volume playback: Playback) -> Float {
+        get {
+            withLiveVoice(playback) { _, voice in
+                voice.pointee.volume
+            } ?? 0
         }
-    }
-
-    package func setPan(
-        _ pan: Float,
-        for playback: Playback
-    ) {
-        preconditionPan(pan)
-        withLiveVoice(playback) { backend, voice in
-            backend.setPan(pan, for: voice.pointee.resource)
-            voice.pointee.pan = pan
-        }
-    }
-
-    package func setRate(
-        _ rate: Float,
-        for playback: Playback
-    ) {
-        preconditionRate(rate)
-        withLiveVoice(playback) { backend, voice in
-            backend.setRate(rate, for: voice.pointee.resource)
-            voice.pointee.rate = rate
-        }
-    }
-
-    package func setVolume(
-        _ volume: Float,
-        for bus: Bus
-    ) {
-        preconditionVolume(volume)
-        state.withLock { state in
-            _ = state.buses.withValue(for: bus.id) { bus in
-                state.backend.setVolume(volume, for: bus.pointee)
+        set {
+            withLiveVoice(playback) { backend, voice in
+                preconditionVolume(newValue)
+                backend.setVolume(newValue, for: voice.pointee.resource)
+                voice.pointee.volume = newValue
             }
         }
     }
 
-    package func setMasterVolume(_ volume: Float) {
-        preconditionVolume(volume)
-        state.withLock { state in
-            state.backend.setMasterVolume(volume)
+    package subscript(pan playback: Playback) -> Float {
+        get {
+            withLiveVoice(playback) { _, voice in
+                voice.pointee.pan
+            } ?? 0
+        }
+        set {
+            withLiveVoice(playback) { backend, voice in
+                preconditionPan(newValue)
+                backend.setPan(newValue, for: voice.pointee.resource)
+                voice.pointee.pan = newValue
+            }
+        }
+    }
+
+    package subscript(rate playback: Playback) -> Float {
+        get {
+            withLiveVoice(playback) { _, voice in
+                voice.pointee.rate
+            } ?? 0
+        }
+        set {
+            withLiveVoice(playback) { backend, voice in
+                preconditionRate(newValue)
+                backend.setRate(newValue, for: voice.pointee.resource)
+                voice.pointee.rate = newValue
+            }
+        }
+    }
+
+    package subscript(volume bus: Bus) -> Float {
+        get {
+            state.withLock { state in
+                state.buses.withValue(for: bus.id) { bus in
+                    bus.pointee.volume
+                } ?? 0
+            }
+        }
+        set {
+            state.withLock { state in
+                _ = state.buses.update(bus.id) { bus in
+                    preconditionVolume(newValue)
+                    state.backend.setVolume(
+                        newValue,
+                        for: bus.pointee.resource
+                    )
+                    bus.pointee.volume = newValue
+                }
+            }
+        }
+    }
+
+    package var masterVolume: Float {
+        get {
+            state.withLock { $0.masterVolume }
+        }
+        set {
+            preconditionVolume(newValue)
+            state.withLock { state in
+                state.backend.setMasterVolume(newValue)
+                state.masterVolume = newValue
+            }
         }
     }
 
@@ -297,11 +334,14 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         }
     }
 
-    private func withLiveVoice(
+    private func withLiveVoice<Result>(
         _ playback: Playback,
-        _ body: (Backend, UnsafeMutablePointer<VoiceRecord>) -> Void
-    ) {
-        state.withLock { state in
+        _ body: (
+            Backend,
+            UnsafeMutablePointer<VoiceRecord>
+        ) -> Result
+    ) -> Result? {
+        state.withLock { state -> Result? in
             guard let finished = state.voices.withValue(
                 for: playback.id,
                 {
@@ -309,13 +349,13 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                         || state.backend.isFinished($0.pointee.resource)
                 }
             ) else {
-                return
+                return nil
             }
             if finished {
                 disposeVoice(playback.id, state)
-                return
+                return nil
             }
-            _ = state.voices.update(playback.id) { voice in
+            return state.voices.update(playback.id) { voice in
                 body(state.backend, voice)
             }
         }
@@ -340,7 +380,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
             if let busID = voice.pointee.busID {
                 guard let resource = state.buses.withValue(
                     for: busID,
-                    { $0.pointee }
+                    { $0.pointee.resource }
                 ) else {
                     return true
                 }

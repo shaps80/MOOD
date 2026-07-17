@@ -4,7 +4,6 @@ import Pixl2D
 @main
 struct Game: Pixl.Game {
     private let state: State
-    private let audio: Audio
 
     static var gameSettings: GameSettings {
         .init(
@@ -13,13 +12,10 @@ struct Game: Pixl.Game {
         )
     }
 
-    static var assetSettings: AssetSettings {
-        .init()
-    }
+    static let assetSettings: AssetSettings = .init()
 
     init(context: GameContext) throws {
         self.state = try .init(context: context)
-        self.audio = context.audio
     }
 
     func didEnter(_ phase: GamePhase, context: GameContext) {
@@ -28,6 +24,8 @@ struct Game: Pixl.Game {
 
         switch phase {
         case .active:
+            state.timeScale = 1
+
             if let playback = state.musicPlayback {
                 context.audio.resume(playback)
             } else if let music = state.music {
@@ -35,25 +33,25 @@ struct Game: Pixl.Game {
             }
 
         case .background, .inactive:
-            break
+            state.timeScale = 0
         }
     }
 
-    func fixedUpdate(_ time: FixedTime, lanes: Lanes) {
-        state.player.fixedUpdate(time, lanes: lanes)
+    func fixedUpdate(_ time: FixedTime, context: GameContext) {
+        state.player.fixedUpdate(time, context: context)
     }
 
-    func update(_ time: UpdateTime, lanes: Lanes) {
-        state.player.update(time, lanes: lanes)
-        state.fade.advance(by: time.deltaSeconds)
+    func update(_ time: UpdateTime, context: GameContext) {
+        state.player.update(time, context: context)
+        state.fade.advance(by: time.unscaledDelta)
 
         switch state.phase {
         case .active:
             let volume = lerp(from: 0.15, to: 1, by: state.fade.progress)
-            audio.setMasterVolume(.init(volume))
+            context.audio.masterVolume = .init(volume)
         case .inactive, .background:
             let volume = lerp(from: 1.0, to: 0.15, by: state.fade.progress)
-            audio.setMasterVolume(.init(volume))
+            context.audio.masterVolume = .init(volume)
         }
     }
 
@@ -61,7 +59,8 @@ struct Game: Pixl.Game {
         on platform: any Platform,
         output: RenderTarget,
         frame: borrowing Frame,
-        time: RenderTime
+        time: RenderTime,
+        context: GameContext
     ) throws {
         _ = frame.clear(target: output)
 
@@ -69,7 +68,8 @@ struct Game: Pixl.Game {
             on: platform,
             output: output,
             frame: frame,
-            time: time
+            time: time,
+            context: context
         )
 
         logMetrics(metrics: time.metrics)
@@ -87,6 +87,7 @@ private extension Game {
     final class State: @unchecked Sendable {
         var metricsElapsed = 0.0
         var fade: Timer = .init(duration: 1)
+        var timeScale = 1.0
         var musicPlayback: Playback?
         var pipeline: RenderPipeline
         var player: Player

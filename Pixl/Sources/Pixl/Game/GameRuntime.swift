@@ -24,7 +24,6 @@ final class GameRuntime<G: Game>: PlatformGame {
     private var game: G
     private let context: GameContext
     private var loop: Loop
-    private let lanes: Lanes
     private var latestMetrics: PerformanceMetrics = .zero
     private var metricsCollector: PerformanceMetricsCollector
     private var phase: GamePhase?
@@ -33,17 +32,6 @@ final class GameRuntime<G: Game>: PlatformGame {
         context = .init(platform: platform, renderSettings: G.renderSettings)
         game = try G(context: context)
         loop = Loop(settings: G.loopSettings)
-        lanes = .init()
-        metricsCollector = .init(
-            preferredFramesPerSecond: G.gameSettings.preferredFps
-        )
-    }
-
-    init(game: G, executionSettings: ExecutionSettings) {
-        self.game = game
-        context = .testing
-        loop = Loop(settings: G.loopSettings)
-        lanes = .init(settings: executionSettings)
         metricsCollector = .init(
             preferredFramesPerSecond: G.gameSettings.preferredFps
         )
@@ -72,7 +60,8 @@ final class GameRuntime<G: Game>: PlatformGame {
                 frameIndex: schedule.renderTime.frameIndex,
                 interpolation: schedule.renderTime.interpolation,
                 metrics: latestMetrics
-            )
+            ),
+            context: context
         )
         let renderEnd = ContinuousClock.now
         latestMetrics = metricsCollector.record(
@@ -96,17 +85,21 @@ final class GameRuntime<G: Game>: PlatformGame {
             let tickIndex = schedule.firstTickIndex &+ UInt64(index)
             let time = FixedTime(
                 tickIndex: tickIndex,
-                deltaSeconds: schedule.fixedDeltaSeconds,
+                delta: schedule.fixedDeltaSeconds,
                 elapsedSeconds: Double(tickIndex)
                     * schedule.fixedDeltaSeconds
             )
-            game.fixedUpdate(time,
-                lanes: lanes
+            game.fixedUpdate(
+                time,
+                context: context
             )
             index &+= 1
         }
 
-        game.update(schedule.updateTime, lanes: lanes)
+        game.update(
+            schedule.updateTime,
+            context: context
+        )
     }
 
     private static func seconds(_ duration: Duration) -> Double {

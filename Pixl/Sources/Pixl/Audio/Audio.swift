@@ -2,14 +2,14 @@ import PixlPlatform
 import Swift
 
 public final class Audio {
-    private let device: (any AudioDevice)?
+    private let device: any AudioDevice
 
-    init(device: (any AudioDevice)?) {
+    init(device: any AudioDevice) {
         self.device = device
     }
 
     public func makeBus() -> Bus? {
-        device?.makeBus()
+        device.makeBus()
     }
 
     @discardableResult
@@ -21,7 +21,7 @@ public final class Audio {
         looping: Bool = false,
         rate: Float = 1
     ) -> Playback? {
-        device?.play(
+        device.play(
             sound.sound,
             on: bus,
             volume: volume,
@@ -32,46 +32,59 @@ public final class Audio {
     }
 
     public func pause(_ playback: Playback) {
-        device?.pause(playback)
+        device.pause(playback)
     }
 
     public func resume(_ playback: Playback) {
-        device?.resume(playback)
+        device.resume(playback)
     }
 
     public func stop(_ playback: Playback) {
-        device?.stop(playback)
+        device.stop(playback)
     }
 
-    public func setVolume(
-        _ volume: Float,
-        for playback: Playback
-    ) {
-        device?.setVolume(volume, for: playback)
+    public subscript(volume playback: Playback) -> Float {
+        get {
+            device[volume: playback]
+        }
+        set {
+            device[volume: playback] = newValue
+        }
     }
 
-    public func setPan(
-        _ pan: Float,
-        for playback: Playback
-    ) {
-        device?.setPan(pan, for: playback)
+    public subscript(pan playback: Playback) -> Float {
+        get {
+            device[pan: playback]
+        }
+        set {
+            device[pan: playback] = newValue
+        }
     }
 
-    public func setRate(
-        _ rate: Float,
-        for playback: Playback
-    ) {
-        device?.setRate(rate, for: playback)
+    public subscript(rate playback: Playback) -> Float {
+        get {
+            device[rate: playback]
+        }
+        set {
+            device[rate: playback] = newValue
+        }
     }
 
-    public func setVolume(
-        _ volume: Float,
-        for bus: Bus
-    ) {
-        device?.setVolume(volume, for: bus)
+    public subscript(volume bus: Bus) -> Float {
+        get {
+            device[volume: bus]
+        }
+        set {
+            device[volume: bus] = newValue
+        }
     }
 
-    public func setMasterVolume(_ volume: Float) {
-        device?.setMasterVolume(volume)
+    public var masterVolume: Float {
+        get {
+            device.masterVolume
+        }
+        set {
+            device.masterVolume = newValue
+        }
     }
 }

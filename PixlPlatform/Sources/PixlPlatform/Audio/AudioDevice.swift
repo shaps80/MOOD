@@ -25,12 +25,12 @@ public protocol AudioDevice: AnyObject {
     func resume(_ playback: Playback)
     func stop(_ playback: Playback)
 
-    func setVolume(_ volume: Float, for playback: Playback)
-    func setPan(_ pan: Float, for playback: Playback)
-    func setRate(_ rate: Float, for playback: Playback)
+    subscript(volume playback: Playback) -> Float { get set }
+    subscript(pan playback: Playback) -> Float { get set }
+    subscript(rate playback: Playback) -> Float { get set }
+    subscript(volume bus: Bus) -> Float { get set }
 
-    func setVolume(_ volume: Float, for bus: Bus)
-    func setMasterVolume(_ volume: Float)
+    var masterVolume: Float { get set }
 }
 
 public extension AudioDevice {

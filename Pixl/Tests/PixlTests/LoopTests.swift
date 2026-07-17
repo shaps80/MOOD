@@ -11,7 +11,8 @@ struct LoopTests {
 
         #expect(schedule.fixedUpdateCount == 0)
         #expect(schedule.updateTime.frameIndex == 0)
-        #expect(schedule.updateTime.deltaSeconds == 0)
+        #expect(schedule.updateTime.delta == 0)
+        #expect(schedule.updateTime.unscaledDelta == 0)
         #expect(schedule.updateTime.elapsedSeconds == 0)
         #expect(schedule.renderTime.interpolation == 0)
     }
@@ -58,7 +59,8 @@ struct LoopTests {
 
         #expect(schedule.fixedUpdateCount == 2)
         #expect(schedule.firstTickIndex == 1)
-        #expect(schedule.updateTime.deltaSeconds == 0.25)
+        #expect(schedule.updateTime.delta == 0.25)
+        #expect(schedule.updateTime.unscaledDelta == 0.25)
         #expect(abs(schedule.renderTime.interpolation) < 0.000_001)
     }
 
@@ -77,7 +79,8 @@ struct LoopTests {
 
         #expect(schedule.fixedUpdateCount == 0)
         #expect(schedule.updateTime.frameIndex == 1)
-        #expect(abs(schedule.updateTime.deltaSeconds - 0.02) < 0.000_001)
+        #expect(abs(schedule.updateTime.delta - 0.02) < 0.000_001)
+        #expect(abs(schedule.updateTime.unscaledDelta - 0.02) < 0.000_001)
         #expect(abs(schedule.updateTime.elapsedSeconds - 0.02) < 0.000_001)
         #expect(schedule.renderTime.interpolation == 1)
         #expect(abs(schedule.frameTimeSeconds - 0.02) < 0.000_001)
@@ -96,7 +99,8 @@ struct LoopTests {
 
         let schedule = loop.advance(to: start.advanced(by: .seconds(1)))
 
-        #expect(schedule.updateTime.deltaSeconds == 0.25)
+        #expect(schedule.updateTime.delta == 0.25)
+        #expect(schedule.updateTime.unscaledDelta == 0.25)
         #expect(schedule.frameTimeSeconds == 1)
     }
 
@@ -111,7 +115,8 @@ struct LoopTests {
             timeScale: 0
         )
         #expect(paused.fixedUpdateCount == 0)
-        #expect(paused.updateTime.deltaSeconds == 0)
+        #expect(paused.updateTime.delta == 0)
+        #expect(paused.updateTime.unscaledDelta == 0.25)
         #expect(paused.updateTime.elapsedSeconds == 0)
         #expect(paused.frameTimeSeconds == 1)
 
@@ -120,7 +125,8 @@ struct LoopTests {
             timeScale: 1
         )
         #expect(resumed.fixedUpdateCount == 1)
-        #expect(abs(resumed.updateTime.deltaSeconds - 0.02) < 0.000_001)
+        #expect(abs(resumed.updateTime.delta - 0.02) < 0.000_001)
+        #expect(abs(resumed.updateTime.unscaledDelta - 0.02) < 0.000_001)
         #expect(abs(resumed.updateTime.elapsedSeconds - 0.02) < 0.000_001)
     }
 
@@ -143,14 +149,16 @@ struct LoopTests {
             timeScale: 0.5
         )
         #expect(slow.fixedUpdateCount == 0)
-        #expect(abs(slow.updateTime.deltaSeconds - 0.01) < 0.000_001)
+        #expect(abs(slow.updateTime.delta - 0.01) < 0.000_001)
+        #expect(abs(slow.updateTime.unscaledDelta - 0.02) < 0.000_001)
 
         let fast = loop.advance(
             to: start.advanced(by: .milliseconds(30)),
             timeScale: 2
         )
         #expect(fast.fixedUpdateCount == 1)
-        #expect(abs(fast.updateTime.deltaSeconds - 0.02) < 0.000_001)
+        #expect(abs(fast.updateTime.delta - 0.02) < 0.000_001)
+        #expect(abs(fast.updateTime.unscaledDelta - 0.01) < 0.000_001)
         #expect(abs(fast.updateTime.elapsedSeconds - 0.03) < 0.000_001)
     }
 }

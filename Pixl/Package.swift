@@ -26,17 +26,12 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../PixlPlatform"),
-        .package(path: "../PixlConcurrency"),
         .package(path: "../PixlMath")
     ],
     targets: [
         .target(
             name: "Pixl",
             dependencies: [
-                .product(
-                    name: "PixlConcurrency",
-                    package: "PixlConcurrency"
-                ),
                 "PixlGraphics",
                 "Pixl2D",
                 "Pixl3D"

@@ -21,6 +21,8 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Add portable resident sound resources, fixed-capacity voices, flat buses, playback controls, and natural-pitch `rate` control.
 - [x] Decode mono/stereo WAV into planar `Float32` in shared Swift code and lower playback through simple AVFAudio and Web Audio adapters.
 - [x] Hot-reload sounds from coalesced recursive macOS asset events without frame polling: removal stops voices and marks the stable sound unavailable; valid replacement restarts active voices; invalid data retains last-good content.
+- [x] Add coarse `GamePhase`, scaled and unscaled update deltas, zero-scale simulation pause, and stable `GameContext` access in every game callback.
+- [x] Keep `PixlConcurrency` standalone without coupling or re-export from Pixl; games opt into it directly.
 
 ## Product Refocus — 15 July 2026
 
@@ -57,6 +59,7 @@ Camera constraint:
 - [x] Define variable-step and optional fixed-step update behavior.
 - [x] Define elapsed time, accumulator limits, interpolation, and long-frame handling.
 - [x] Keep same-size texture hot reload event-driven and entirely outside presentation, simulation, and render traversal.
+- [x] Expose `UpdateTime.delta` and `unscaledDelta`, with `Game.timeScale` affecting only simulation time.
 - [ ] Define deterministic safe points where queued editor/live-development changes may be applied without racing simulation or render preparation.
 - [ ] Define development hooks as part of the loop lifecycle without making editor behavior part of release-game policy.
 - [ ] Keep editor mutations queued until a safe point; never let editor code mutate live simulation state concurrently.
@@ -67,7 +70,7 @@ Camera constraint:
 
 - [ ] Design an explicit lane model rather than a conventional generic job system.
 - [ ] Define persistent lane-group lifetime, lane index/count, barriers, range partitioning, and narrow execution.
-- [x] Keep the `Game` lifecycle serial by default; games explicitly enter persistent lane regions for partitioned work.
+- [x] Keep the `Game` lifecycle serial by default; games may depend on `PixlConcurrency` directly for partitioned work.
 - [x] Keep `PixlConcurrency` portable and independent of `PixlMetalPlatform` or another concrete platform.
 - [ ] Decide the portable worker launch/parking backend only when the lane model requires it; add Swift Atomics only when an atomic primitive is implemented.
 - [ ] Prefer explicit ownership, dependencies, and deterministic synchronization over task-per-entity or allocation-heavy scheduling.

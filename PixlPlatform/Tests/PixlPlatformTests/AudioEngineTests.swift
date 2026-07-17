@@ -226,21 +226,33 @@ struct AudioEngineTests {
         #expect(voice.isPaused)
         audio.resume(playback)
         #expect(!voice.isPaused)
-        audio.setVolume(0.4, for: playback)
-        audio.setPan(0.5, for: playback)
-        audio.setRate(2, for: playback)
-        audio.setVolume(0.6, for: bus)
-        audio.setMasterVolume(0.7)
+        #expect(audio[volume: playback] == 0.8)
+        #expect(audio[pan: playback] == -0.25)
+        #expect(audio[rate: playback] == 0.5)
+        #expect(audio[volume: bus] == 1)
+        #expect(audio.masterVolume == 1)
+
+        audio[volume: playback] = 0.4
+        audio[pan: playback] = 0.5
+        audio[rate: playback] = 2
+        audio[volume: bus] = 0.6
+        audio.masterVolume = 0.7
 
         #expect(voice.volume == 0.4)
         #expect(voice.pan == 0.5)
         #expect(voice.rate == 2)
         #expect(voice.bus?.volume == 0.6)
         #expect(backend.masterVolume == 0.7)
+        #expect(audio[volume: playback] == 0.4)
+        #expect(audio[pan: playback] == 0.5)
+        #expect(audio[rate: playback] == 2)
+        #expect(audio[volume: bus] == 0.6)
+        #expect(audio.masterVolume == 0.7)
 
         audio.stop(playback)
         #expect(voice.isStopped)
         #expect(voice.isDestroyed)
+        #expect(audio[volume: playback] == 0)
     }
 
     @Test
@@ -315,7 +327,7 @@ struct AudioEngineTests {
         #expect(backend.voices[0].isDestroyed)
         #expect(backend.voices[1].sound.firstSample == 0.75)
 
-        audio.setRate(2, for: playback)
+        audio[rate: playback] = 2
         #expect(backend.voices[1].rate == 2)
     }
 
