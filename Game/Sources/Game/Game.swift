@@ -3,10 +3,12 @@ import Pixl2D
 
 @main
 struct Game: Pixl.Game {
-    private let state: State
     private let pipeline: RenderPipeline
     private let music: Playback
     private let audio: GameAudio
+    private var fade: Timer = .init(duration: 1)
+    private var player: Player
+    private var phase: GamePhase = .active
 
     init(context: GameContext) throws {
         audio = try .init(audio: context.audio, settings: .init())
@@ -24,16 +26,16 @@ struct Game: Pixl.Game {
         music.loop = true
         music.bus = audio.music
 
-        self.state = try .init(
+        player = try .init(
             pipeline: pipeline,
             audio: audio,
             context: context
         )
     }
 
-    func didEnter(_ phase: GamePhase, context: GameContext) {
-        state.phase = phase
-        state.fade.invalidate()
+    mutating func didEnter(_ phase: GamePhase, context: GameContext) {
+        self.phase = phase
+        fade.invalidate()
 
         switch phase {
         case .active:
@@ -52,23 +54,23 @@ struct Game: Pixl.Game {
         }
     }
 
-    func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        state.player.fixedUpdate(time, context: context)
+    mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
+        player.fixedUpdate(time, context: context)
     }
 
-    func update(_ time: UpdateTime, context: GameContext) {
-        state.player.update(time, context: context)
-        state.fade.advance(by: time.unscaledDelta)
+    mutating func update(_ time: UpdateTime, context: GameContext) {
+        player.update(time, context: context)
+        fade.advance(by: time.unscaledDelta)
 
-        switch state.phase {
+        switch phase {
         case .active:
 #if os(macOS)
-            let volume = lerp(from: 0.15, to: 1, by: state.fade.progress)
+            let volume = lerp(from: 0.15, to: 1, by: fade.progress)
             context.audio.masterVolume = .init(volume)
 #endif
         case .inactive, .background:
 #if os(macOS)
-            let volume = lerp(from: 1.0, to: 0.15, by: state.fade.progress)
+            let volume = lerp(from: 1.0, to: 0.15, by: fade.progress)
             context.audio.masterVolume = .init(volume)
 #endif
         }
@@ -83,7 +85,7 @@ struct Game: Pixl.Game {
     ) throws {
         _ = frame.clear(target: output)
 
-        try state.player.render(
+        try player.render(
             on: platform,
             output: output,
             frame: frame,
@@ -91,37 +93,21 @@ struct Game: Pixl.Game {
             context: context
         )
 
-        logMetrics(metrics: time.metrics)
+        logMetrics(time)
     }
 
-    private func logMetrics(metrics: PerformanceMetrics) {
-        state.metricsElapsed += metrics.frameTimeSeconds
-        guard state.metricsElapsed >= 5 else { return }
-        state.metricsElapsed.formTruncatingRemainder(dividingBy: 5)
-        print(metrics.summary)
+    private func logMetrics(_ time: RenderTime) {
+        let interval = UInt64(Self.gameSettings.preferredFps * 5)
+        guard time.frameIndex > 0,
+              time.frameIndex.isMultiple(of: interval)
+        else {
+            return
+        }
+        print(time.metrics.summary)
     }
 }
 
 extension Game {
-    private final class State: @unchecked Sendable {
-        var metricsElapsed = 0.0
-        var fade: Timer = .init(duration: 1)
-        var player: Player
-        var phase: GamePhase = .active
-
-        init(
-            pipeline: RenderPipeline,
-            audio: GameAudio,
-            context: GameContext
-        ) throws {
-            player = try .init(
-                pipeline: pipeline,
-                audio: audio,
-                context: context
-            )
-        }
-    }
-
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
