@@ -50,7 +50,10 @@ let package = Package(
         ),
         .target(
             name: "PixlMetalPlatform",
-            dependencies: ["PixlPlatform"],
+            dependencies: [
+                "PixlPlatform",
+                "PixlPlatformSynchronization"
+            ],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(

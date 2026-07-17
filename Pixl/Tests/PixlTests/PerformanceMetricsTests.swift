@@ -24,6 +24,6 @@ struct PerformanceMetricsTests {
         #expect(summary.hitchCount == 1)
         #expect(metrics.totalHitchCount == 1)
         #expect(summary.hitchThresholdSeconds == 1.0 / 30.0)
-        #expect(summary.description.contains("Hitches: 1"))
+        #expect(summary.description.contains("Window hitches: 1"))
     }
 }

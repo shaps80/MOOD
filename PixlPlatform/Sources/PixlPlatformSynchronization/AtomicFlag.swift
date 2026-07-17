@@ -15,4 +15,11 @@ public final class AtomicFlag: Sendable {
     public func load() -> Bool {
         value.load(ordering: .acquiring)
     }
+
+    public func exchange(_ value: Bool) -> Bool {
+        self.value.exchange(
+            value,
+            ordering: .acquiringAndReleasing
+        )
+    }
 }

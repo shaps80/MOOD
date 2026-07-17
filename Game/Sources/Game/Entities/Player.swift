@@ -31,11 +31,11 @@ struct Player: Entity {
 
     mutating func update(_ time: UpdateTime, lanes: Lanes) {
         rotation = -time.elapsedSeconds
-        guard time.elapsedSeconds >= nextJumpSoundElapsed else { return }
 
-        if let jump {
+        if let jump, time.elapsedSeconds >= nextJumpSoundElapsed {
             audio.play(jump)
         }
+
         let fullTurn = Double.pi * 2
         let completedMarkers = (
             (time.elapsedSeconds - Double.pi) / fullTurn

@@ -438,8 +438,8 @@ private final class EngineSoundWriter<Backend: AudioBackend>: SoundWriter, @unch
 
 private func preconditionVolume(_ volume: Float) {
     precondition(
-        volume.isFinite && volume >= 0 && volume <= 1,
-        "Audio volume must be between zero and one"
+        volume.isFinite && volume >= 0,
+        "Audio volume must be greater than zero"
     )
 }
 
@@ -452,7 +452,7 @@ private func preconditionPan(_ pan: Float) {
 
 private func preconditionRate(_ rate: Float) {
     precondition(
-        rate.isFinite && rate >= 0.25 && rate <= 4,
-        "Audio rate must be between 0.25 and 4"
+        rate.isFinite && rate >= 0,
+        "Audio rate must be greater than zero"
     )
 }

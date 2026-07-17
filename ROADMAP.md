@@ -20,7 +20,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
 - [x] Add portable resident sound resources, fixed-capacity voices, flat buses, playback controls, and natural-pitch `rate` control.
 - [x] Decode mono/stereo WAV into planar `Float32` in shared Swift code and lower playback through simple AVFAudio and Web Audio adapters.
-- [x] Hot-reload sounds from recursive macOS asset events without frame polling, retaining the last valid sound and existing active voices.
+- [x] Hot-reload sounds from coalesced recursive macOS asset events without frame polling: removal stops voices and marks the stable sound unavailable; valid replacement restarts active voices; invalid data retains last-good content.
 
 ## Product Refocus — 15 July 2026
 
@@ -83,7 +83,8 @@ Camera constraint:
 
 - [x] Add macOS project-relative asset reads and recursive file-level monitoring without tying hot reload to Debug configuration.
 - [x] Decode changed PNGs away from the game loop, retain the last valid texture on failure, and asynchronously write same-size changes into stable texture handles without polling.
-- [x] Decode changed WAVs away from the game loop and atomically replace stable resident sound handles without polling; active voices retain their original samples.
+- [x] Decode changed WAVs away from the game loop, invalidate removed sounds immediately, and restart active voices from valid replacement content while preserving playback handles and controls.
+- [ ] Add a browser development server channel that watches source assets, updates served bytes, and notifies the running WASM game; packaged browser assets are currently static.
 - [ ] Treat the editor as an optional in-game Pixl subsystem so its core UI and behavior can run across supported platforms.
 - [ ] Keep the in-game editor's state isolated from live game state; inspect snapshots and issue commands rather than sharing mutable ownership.
 - [ ] Keep the host process focused on capabilities the game cannot provide itself: file watching, builds, diagnostics, remote transport, and optional source writeback.
@@ -116,6 +117,8 @@ Camera constraint:
 ## Audio Follow-up
 
 - [x] Prove the portable sound path in Game by loading `jump.wav` and playing it when the player rotation crosses 180°.
+- [x] Run all macOS AVFAudio work on a private serial `.utility` queue and recover output hardware configuration changes there, never blocking game/render frame work.
+- [ ] Move browser-side Web Audio graph control behind an AudioWorklet/worker message boundary if profiling proves its small control-thread sections interfere with frame work; browser audio rendering is already off-thread.
 - [ ] Add an explicit streaming sound source after resident sound effects are established; music should use streaming by default.
 - [ ] Add compressed formats only when a playable Game need justifies their decoder and packaging costs.
 - [ ] Let game needs determine effects and richer routing without exposing platform audio graphs in `PixlPlatform`.

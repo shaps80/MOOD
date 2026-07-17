@@ -114,9 +114,13 @@ PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`
 : Portable low-level resource/playback boundary. Shared `AudioEngine` owns handles, capacity, validation, buses, voice lifetime, and sound replacement. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations. Metal uses AVFAudio; the browser uses Web Audio.
 
 `SoundWriter`
-: Optional backend-owned replacement capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl debounces, reads, and decodes off the game loop, then swaps the resident sound. Existing voices retain their original samples, later voices use the replacement, and failures retain the last valid sound. Browser-packaged assets remain immutable for now.
+: Optional backend-owned replacement/invalidation capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl coalesces each per-path event burst, reads, and decodes off the game loop. A valid content replacement restarts active voices from the beginning with their existing playback handles and controls. Removal immediately stops and retires active voices, marks the sound unavailable, and makes `play` return `nil` until valid content reappears. Invalid replacement data retains the last valid sound. Browser-packaged assets remain an immutable build-time snapshot for now.
 
 Native completion handlers only set an atomic flag. Cleanup is demand-driven; completion performs no task creation, logging, allocation, or engine lock acquisition.
+
+The macOS adapter owns one private serial `.utility` QoS audio-control queue. It creates and operates every AVFAudio engine, buffer, mixer, player, and varispeed node on that queue; game/render callers only perform fixed-capacity handle bookkeeping and enqueue commands. Audio hardware configuration notifications enqueue recovery on the same queue, so preparing or restarting a stopped engine never blocks frame work. Core Audio owns the real-time rendering thread. No route polling runs in the game loop.
+
+Web Audio already separates its control and rendering threads internally. The current single-threaded WASM adapter issues lightweight `AudioContext` graph-control calls from the browser control thread; a stricter separation of those calls requires a future AudioWorklet/worker messaging backend.
 
 ## Shaders and Pipelines
 
