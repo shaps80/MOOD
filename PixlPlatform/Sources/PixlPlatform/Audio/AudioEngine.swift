@@ -2,14 +2,25 @@ import PixlPlatformSynchronization
 import Swift
 
 package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked Sendable {
+    private struct SoundRecord {
+        var resource: Backend.SoundResource?
+    }
+
     private struct VoiceRecord {
-        let resource: Backend.VoiceResource
-        let completion: AudioCompletion
+        var resource: Backend.VoiceResource
+        var completion: AudioCompletion
+        let soundID: ResourceID
+        let busID: ResourceID?
+        var volume: Float
+        var pan: Float
+        let looping: Bool
+        var rate: Float
+        var isPaused: Bool
     }
 
     private struct State {
         let backend: Backend
-        let sounds: ResourcePool<Backend.SoundResource>
+        let sounds: ResourcePool<SoundRecord>
         let voices: ResourcePool<VoiceRecord>
         let buses: ResourcePool<Backend.BusResource>
     }
@@ -58,7 +69,9 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 copying: samples,
                 descriptor: descriptor
             )
-            guard let id = state.sounds.insert(resource) else {
+            guard let id = state.sounds.insert(
+                SoundRecord(resource: resource)
+            ) else {
                 throw .resourceCreationFailed(.sound)
             }
             return Sound(id: id)
@@ -76,6 +89,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
 
     package func destroy(_ sound: Sound) {
         state.withLock { state in
+            stopVoices(for: sound.id, state)
             _ = state.sounds.remove(sound.id)
         }
     }
@@ -104,7 +118,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         preconditionPan(pan)
         preconditionRate(rate)
 
-        return state.withLock { state in
+        return state.withLock { state -> Playback? in
             if state.voices.count == state.voices.capacity {
                 reapFinishedVoices(state)
             }
@@ -112,7 +126,10 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 return nil
             }
 
-            return state.sounds.withValue(for: sound.id) { sound in
+            return state.sounds.withValue(for: sound.id) { record -> Playback? in
+                guard let soundResource = record.pointee.resource else {
+                    return nil
+                }
                 let busResource: Backend.BusResource?
                 if let bus {
                     guard let resource = state.buses.withValue(
@@ -128,7 +145,7 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
 
                 let completion = AudioCompletion()
                 guard let resource = state.backend.play(
-                    sound.pointee,
+                    soundResource,
                     on: busResource,
                     volume: volume,
                     pan: pan,
@@ -141,7 +158,14 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 guard let id = state.voices.insert(
                     VoiceRecord(
                         resource: resource,
-                        completion: completion
+                        completion: completion,
+                        soundID: sound.id,
+                        busID: bus?.id,
+                        volume: volume,
+                        pan: pan,
+                        looping: looping,
+                        rate: rate,
+                        isPaused: false
                     )
                 ) else {
                     state.backend.stop(resource)
@@ -155,13 +179,15 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
 
     package func pause(_ playback: Playback) {
         withLiveVoice(playback) { backend, voice in
-            backend.pause(voice)
+            backend.pause(voice.pointee.resource)
+            voice.pointee.isPaused = true
         }
     }
 
     package func resume(_ playback: Playback) {
         withLiveVoice(playback) { backend, voice in
-            backend.resume(voice)
+            backend.resume(voice.pointee.resource)
+            voice.pointee.isPaused = false
         }
     }
 
@@ -186,7 +212,8 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
     ) {
         preconditionVolume(volume)
         withLiveVoice(playback) { backend, voice in
-            backend.setVolume(volume, for: voice)
+            backend.setVolume(volume, for: voice.pointee.resource)
+            voice.pointee.volume = volume
         }
     }
 
@@ -196,7 +223,8 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
     ) {
         preconditionPan(pan)
         withLiveVoice(playback) { backend, voice in
-            backend.setPan(pan, for: voice)
+            backend.setPan(pan, for: voice.pointee.resource)
+            voice.pointee.pan = pan
         }
     }
 
@@ -206,7 +234,8 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
     ) {
         preconditionRate(rate)
         withLiveVoice(playback) { backend, voice in
-            backend.setRate(rate, for: voice)
+            backend.setRate(rate, for: voice.pointee.resource)
+            voice.pointee.rate = rate
         }
     }
 
@@ -245,16 +274,32 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 descriptor: descriptor
             )
             guard state.sounds.update(sound.id, { sound in
-                sound.pointee = replacement
+                sound.pointee.resource = replacement
             }) != nil else {
                 throw .resourceCreationFailed(.sound)
             }
+            restartVoices(
+                for: sound.id,
+                using: replacement,
+                state
+            )
+        }
+    }
+
+    fileprivate func invalidate(_ sound: Sound) {
+        state.withLock { state in
+            guard state.sounds.update(sound.id, { sound in
+                sound.pointee.resource = nil
+            }) != nil else {
+                return
+            }
+            stopVoices(for: sound.id, state)
         }
     }
 
     private func withLiveVoice(
         _ playback: Playback,
-        _ body: (Backend, Backend.VoiceResource) -> Void
+        _ body: (Backend, UnsafeMutablePointer<VoiceRecord>) -> Void
     ) {
         state.withLock { state in
             guard let finished = state.voices.withValue(
@@ -267,9 +312,70 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
                 disposeVoice(playback.id, state)
                 return
             }
-            _ = state.voices.withValue(for: playback.id) { voice in
-                body(state.backend, voice.pointee.resource)
+            _ = state.voices.update(playback.id) { voice in
+                body(state.backend, voice)
             }
+        }
+    }
+
+    private func restartVoices(
+        for soundID: ResourceID,
+        using sound: Backend.SoundResource,
+        _ state: State
+    ) {
+        state.voices.removeAll { voice in
+            guard voice.pointee.soundID == soundID else { return false }
+            guard !voice.pointee.completion.isFinished else {
+                state.backend.destroy(voice.pointee.resource)
+                return true
+            }
+
+            state.backend.stop(voice.pointee.resource)
+            state.backend.destroy(voice.pointee.resource)
+
+            let busResource: Backend.BusResource?
+            if let busID = voice.pointee.busID {
+                guard let resource = state.buses.withValue(
+                    for: busID,
+                    { $0.pointee }
+                ) else {
+                    return true
+                }
+                busResource = resource
+            } else {
+                busResource = nil
+            }
+
+            let completion = AudioCompletion()
+            guard let resource = state.backend.play(
+                sound,
+                on: busResource,
+                volume: voice.pointee.volume,
+                pan: voice.pointee.pan,
+                looping: voice.pointee.looping,
+                rate: voice.pointee.rate,
+                completion: completion
+            ) else {
+                return true
+            }
+            if voice.pointee.isPaused {
+                state.backend.pause(resource)
+            }
+            voice.pointee.resource = resource
+            voice.pointee.completion = completion
+            return false
+        }
+    }
+
+    private func stopVoices(
+        for soundID: ResourceID,
+        _ state: State
+    ) {
+        state.voices.removeAll { voice in
+            guard voice.pointee.soundID == soundID else { return false }
+            state.backend.stop(voice.pointee.resource)
+            state.backend.destroy(voice.pointee.resource)
+            return true
         }
     }
 
@@ -323,6 +429,10 @@ private final class EngineSoundWriter<Backend: AudioBackend>: SoundWriter, @unch
             copying: samples,
             descriptor: descriptor
         )
+    }
+
+    func invalidate() async {
+        engine.invalidate(sound)
     }
 }
 

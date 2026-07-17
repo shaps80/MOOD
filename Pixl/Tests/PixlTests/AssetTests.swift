@@ -103,6 +103,7 @@ private actor TestTextureWriter: TextureWriter {
 
 private actor TestSoundWriter: SoundWriter {
     private var writes: [[Float]] = []
+    private var invalidations = 0
 
     func write(
         copying samples: [Float],
@@ -111,8 +112,16 @@ private actor TestSoundWriter: SoundWriter {
         writes.append(samples)
     }
 
+    func invalidate() {
+        invalidations += 1
+    }
+
     var writeCount: Int {
         writes.count
+    }
+
+    var invalidationCount: Int {
+        invalidations
     }
 }
 
@@ -130,6 +139,15 @@ private func waitForWrite(
 ) async throws {
     for _ in 0..<50 {
         guard await writer.writeCount == 0 else { return }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
+
+private func waitForInvalidation(
+    from writer: TestSoundWriter
+) async throws {
+    for _ in 0..<50 {
+        guard await writer.invalidationCount == 0 else { return }
         try await Task.sleep(for: .milliseconds(10))
     }
 }
@@ -208,6 +226,66 @@ struct AssetTests {
             .change(AssetChange(path: path, kind: .modified))
         )
         try await Task.sleep(for: .milliseconds(200))
+        #expect(await writer.writeCount == 1)
+    }
+
+    @Test
+    func removalInvalidatesRegisteredSound() async throws {
+        let path = try AssetPath("jump.wav")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let writer = TestSoundWriter()
+        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
+        let monitor = ReloadMonitor(
+            source: source,
+            decodeTexture: decodeTestTexture,
+            decodeSound: decodeTestSound
+        )
+        let task = Task {
+            await monitor.run(events)
+        }
+        defer {
+            continuation.finish()
+            task.cancel()
+        }
+
+        continuation.yield(.registerSound(path: path, writer: writer))
+        continuation.yield(
+            .change(AssetChange(path: path, kind: .removed))
+        )
+        try await waitForInvalidation(from: writer)
+
+        #expect(await writer.invalidationCount == 1)
+        #expect(await writer.writeCount == 0)
+    }
+
+    @Test
+    func coalescesSoundChangeBurstsIntoOneReload() async throws {
+        let path = try AssetPath("jump.wav")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let writer = TestSoundWriter()
+        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
+        let monitor = ReloadMonitor(
+            source: source,
+            decodeTexture: decodeTestTexture,
+            decodeSound: decodeTestSound
+        )
+        let task = Task {
+            await monitor.run(events)
+        }
+        defer {
+            continuation.finish()
+            task.cancel()
+        }
+
+        continuation.yield(.registerSound(path: path, writer: writer))
+        source.change(path, bytes: [2])
+        for _ in 0..<3 {
+            continuation.yield(
+                .change(AssetChange(path: path, kind: .modified))
+            )
+        }
+        try await Task.sleep(for: .milliseconds(350))
+
         #expect(await writer.writeCount == 1)
     }
 

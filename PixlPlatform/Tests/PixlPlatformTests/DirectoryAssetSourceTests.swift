@@ -60,6 +60,49 @@ struct DirectoryAssetSourceTests {
         #expect(try modificationSource.read(path) == [4, 5, 6])
     }
 
+    @Test
+    func reportsRenameAwayAndBackAsRemovalAndCreation() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let jump = try AssetPath("jump.wav")
+        let music = try AssetPath("music.wav")
+        let jumpURL = root.appendingPathComponent(jump.value)
+        let musicURL = root.appendingPathComponent(music.value)
+
+        let source = DirectoryAssetSource(path: root.path)
+        let stream = try #require(source.changes)
+        try await Task.sleep(for: .milliseconds(500))
+
+        let initialCreationTask = Task {
+            try await nextChange(in: stream, matching: jump)
+        }
+        try Data([1, 2, 3]).write(to: jumpURL)
+        let initialCreation = try await initialCreationTask.value
+        #expect(initialCreation.kind == .created)
+
+        let removalTask = Task {
+            try await nextChange(in: stream, matching: jump)
+        }
+        try FileManager.default.moveItem(at: jumpURL, to: musicURL)
+        let removal = try await removalTask.value
+        #expect(removal.kind == .removed)
+
+        let creationTask = Task {
+            try await nextChange(in: stream, matching: jump)
+        }
+        try FileManager.default.moveItem(at: musicURL, to: jumpURL)
+        let creation = try await creationTask.value
+        #expect(creation.kind == .created)
+    }
+
     private func nextChange(
         in stream: AsyncStream<AssetChange>,
         matching path: AssetPath

@@ -13,6 +13,12 @@ struct ReloadMonitor: Sendable {
 
     func run(_ events: AsyncStream<ReloadEvent>) async {
         var targets: [AssetPath: ReloadTarget] = [:]
+        var pendingReloads: [AssetPath: Task<Void, Never>] = [:]
+        defer {
+            for task in pendingReloads.values {
+                task.cancel()
+            }
+        }
 
         for await event in events {
             guard !Task.isCancelled else { return }
@@ -26,7 +32,22 @@ struct ReloadMonitor: Sendable {
 
             case .change(let change):
                 guard let target = targets[change.path] else { continue }
-                await reload(change.path, target: target)
+                pendingReloads[change.path]?.cancel()
+                if case .sound(let writer) = target,
+                   change.kind == .removed {
+                    pendingReloads[change.path] = nil
+                    await invalidateSound(change.path, writer: writer)
+                    continue
+                }
+                pendingReloads[change.path] = Task {
+                    do {
+                        try await Task.sleep(for: .milliseconds(75))
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled else { return }
+                    await reload(change.path, target: target)
+                }
             }
         }
     }
@@ -35,18 +56,17 @@ struct ReloadMonitor: Sendable {
         _ path: AssetPath,
         target: ReloadTarget
     ) async {
-        do {
-            try await Task.sleep(for: .milliseconds(75))
-        } catch {
-            return
-        }
-
         guard !Task.isCancelled else { return }
 
         let bytes: [UInt8]
         do {
             bytes = try source.read(path)
         } catch {
+            if case .sound(let writer) = target,
+               case .notFound = error {
+                await invalidateSound(path, writer: writer)
+                return
+            }
             report(assetError(error), for: path)
             return
         }
@@ -126,6 +146,17 @@ struct ReloadMonitor: Sendable {
         } catch {
             report(error, kind: "sound", for: path)
         }
+    }
+
+    private func invalidateSound(
+        _ path: AssetPath,
+        writer: any SoundWriter
+    ) async {
+        await writer.invalidate()
+        print(
+            "Sound unavailable '\(path.value)'; "
+                + "active playbacks stopped"
+        )
     }
 
     private func report(

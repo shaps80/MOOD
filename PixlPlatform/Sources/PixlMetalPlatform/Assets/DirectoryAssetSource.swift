@@ -186,6 +186,13 @@ private final class DirectoryMonitorContext {
         path: String
     ) -> AssetChange.Kind {
         if flags & FSEventStreamEventFlags(
+            kFSEventStreamEventFlagItemRenamed
+        ) != 0 {
+            return FileManager.default.fileExists(atPath: path)
+                ? .created
+                : .removed
+        }
+        if flags & FSEventStreamEventFlags(
             kFSEventStreamEventFlagItemRemoved
         ) != 0 {
             return .removed
@@ -194,13 +201,6 @@ private final class DirectoryMonitorContext {
             kFSEventStreamEventFlagItemCreated
         ) != 0 {
             return .created
-        }
-        if flags & FSEventStreamEventFlags(
-            kFSEventStreamEventFlagItemRenamed
-        ) != 0 {
-            return FileManager.default.fileExists(atPath: path)
-                ? .created
-                : .removed
         }
         return .modified
     }

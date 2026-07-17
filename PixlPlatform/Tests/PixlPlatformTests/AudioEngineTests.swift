@@ -239,7 +239,7 @@ struct AudioEngineTests {
     }
 
     @Test
-    func hotSwapKeepsHandleAndExistingVoiceBacking() async throws {
+    func hotSwapRestartsExistingVoiceAndKeepsPlaybackHandle() async throws {
         let backend = TestAudioBackend()
         let audio = AudioEngine(
             backend: backend,
@@ -249,13 +249,15 @@ struct AudioEngineTests {
             copying: [0.25],
             descriptor: testSoundDescriptor
         )
-        _ = audio.play(
-            sound,
-            on: nil,
-            volume: 1,
-            pan: 0,
-            looping: false,
-            rate: 1
+        let playback = try #require(
+            audio.play(
+                sound,
+                on: nil,
+                volume: 1,
+                pan: 0,
+                looping: false,
+                rate: 1
+            )
         )
         let writer = try #require(audio.soundWriter(for: sound))
 
@@ -263,16 +265,66 @@ struct AudioEngineTests {
             copying: [0.75],
             descriptor: testSoundDescriptor
         )
-        _ = audio.play(
-            sound,
-            on: nil,
-            volume: 1,
-            pan: 0,
-            looping: false,
-            rate: 1
+        #expect(backend.voices[0].isStopped)
+        #expect(backend.voices[0].isDestroyed)
+        #expect(backend.voices[1].sound.firstSample == 0.75)
+
+        audio.setRate(2, for: playback)
+        #expect(backend.voices[1].rate == 2)
+    }
+
+    @Test
+    func invalidationStopsVoicesUntilSoundIsReplaced() async throws {
+        let backend = TestAudioBackend()
+        let audio = AudioEngine(
+            backend: backend,
+            settings: .default
+        )
+        let sound = try audio.makeSound(
+            copying: [0.25],
+            descriptor: testSoundDescriptor
+        )
+        _ = try #require(
+            audio.play(
+                sound,
+                on: nil,
+                volume: 1,
+                pan: 0,
+                looping: false,
+                rate: 1
+            )
+        )
+        let writer = try #require(audio.soundWriter(for: sound))
+
+        await writer.invalidate()
+
+        #expect(backend.voices[0].isStopped)
+        #expect(backend.voices[0].isDestroyed)
+        #expect(
+            audio.play(
+                sound,
+                on: nil,
+                volume: 1,
+                pan: 0,
+                looping: false,
+                rate: 1
+            ) == nil
         )
 
-        #expect(backend.voices[0].sound.firstSample == 0.25)
+        try await writer.write(
+            copying: [0.75],
+            descriptor: testSoundDescriptor
+        )
+        _ = try #require(
+            audio.play(
+                sound,
+                on: nil,
+                volume: 1,
+                pan: 0,
+                looping: false,
+                rate: 1
+            )
+        )
         #expect(backend.voices[1].sound.firstSample == 0.75)
     }
 }

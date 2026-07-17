@@ -5,4 +5,6 @@ public protocol SoundWriter: Sendable {
         copying samples: [Float],
         descriptor: SoundDescriptor
     ) async throws(AudioError)
+
+    func invalidate() async
 }
