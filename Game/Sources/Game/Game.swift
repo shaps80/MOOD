@@ -1,6 +1,6 @@
 import Pixl
 import Pixl2D
-
+import SwiftUI
 @main
 struct Game: Pixl.Game {
     private let state: State
@@ -18,6 +18,10 @@ struct Game: Pixl.Game {
 
     init(context: GameContext) throws {
         state = try .init(context: context)
+
+        if let asset = context.assets.load(sound: "music.wav") {
+            context.audio.play(asset)
+        }
     }
 
     func fixedUpdate(_ time: FixedTime, lanes: Lanes) {
