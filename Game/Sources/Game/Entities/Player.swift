@@ -32,11 +32,11 @@ struct Player: Entity {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         elapsed = time.elapsedSeconds
-        let direction = bindings.direction
+        let target = bindings.velocity
 
         velocity = controller.velocity(
             source: velocity,
-            target: direction,
+            target: target,
             delta: time.delta
         )
 

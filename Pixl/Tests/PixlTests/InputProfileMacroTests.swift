@@ -9,7 +9,7 @@ private struct TestInputProfile {
         .button(.left),
         .axis(.leftStickX, direction: .negative)
     )
-    let left: Input
+    var left
 }
 
 @Suite("Input profile macro")

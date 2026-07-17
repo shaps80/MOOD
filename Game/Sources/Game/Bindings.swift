@@ -8,32 +8,32 @@ struct PlayerBindings {
         .key(.arrowLeft),
         .button(.left),
         .axis(.leftStickX, direction: .negative, deadZone: 0.12)
-    ) let left: Input
+    ) var left
 
     @Binding(
         .key(.d),
         .key(.arrowRight),
         .button(.right),
         .axis(.leftStickX, direction: .positive, deadZone: 0.12)
-    ) let right: Input
+    ) var right
 
     @Binding(
         .key(.w),
         .key(.arrowUp),
         .button(.up),
         .axis(.leftStickY, direction: .positive, deadZone: 0.12)
-    ) let up: Input
+    ) var up
 
     @Binding(
         .key(.s),
         .key(.arrowDown),
         .button(.down),
         .axis(.leftStickY, direction: .negative, deadZone: 0.12)
-    ) let down: Input
+    ) var down
 }
 
 extension PlayerBindings {
-    var direction: Vec2 {
+    var velocity: Vec2 {
         .init(
             x: right.value - left.value,
             y: up.value - down.value

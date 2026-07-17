@@ -24,14 +24,7 @@ public struct InputProfileMacro: MemberMacro {
 
         let access = declaration.generatedAccess
         let initialization = inputs.map { input in
-            let bindings = input.bindings.joined(separator: ",\n                ")
-            return """
-            self.\(input.name) = storage.input(
-                bindings: [
-                    \(bindings)
-                ]
-            )
-            """
+            "self._\(input.name)._resolve(in: storage)"
         }.joined(separator: "\n        ")
 
         return [
@@ -64,7 +57,6 @@ public struct InputProfileMacro: MemberMacro {
 
 private struct InputProperty {
     let name: String
-    let bindings: [String]
 }
 
 private extension DeclGroupSyntax {
@@ -77,18 +69,17 @@ private extension DeclGroupSyntax {
                     return nil
                 }
 
-                guard property.bindingSpecifier.tokenKind == .keyword(.let),
+                guard property.bindingSpecifier.tokenKind == .keyword(.var),
                       property.bindings.count == 1,
                       let binding = property.bindings.first,
                       let identifier = binding.pattern.as(
                         IdentifierPatternSyntax.self
                       ),
-                      binding.typeAnnotation?.type.trimmedDescription
-                        .hasSuffix("Input") == true,
+                      binding.typeAnnotation == nil,
                       binding.initializer == nil
                 else {
                     throw MacroExpansionErrorMessage(
-                        "@Binding requires an uninitialized `let` property of type Input"
+                        "@Binding requires an uninitialized `var` property without an explicit type"
                     )
                 }
 
@@ -101,10 +92,7 @@ private extension DeclGroupSyntax {
                 }
 
                 return InputProperty(
-                    name: identifier.identifier.text,
-                    bindings: arguments.map(
-                        \.expression.trimmedDescription
-                    )
+                    name: identifier.identifier.text
                 )
             }
         }
