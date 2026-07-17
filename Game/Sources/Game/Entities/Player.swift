@@ -26,21 +26,21 @@ struct Player: Entity {
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        let x: Double = (context.keyboard.contains(.d) ? 1 : 0)
+        let keyX: Double = (context.keyboard.contains(.d) ? 1 : 0)
         - (context.keyboard.contains(.a) ? 1 : 0)
 
         velocity.x = controller.velocity(
             current: velocity.x,
-            input: x,
+            input: keyX,
             delta: time.delta
         )
 
-        let y: Double = (context.keyboard.contains(.w) ? 1 : 0)
+        let keyY: Double = (context.keyboard.contains(.w) ? 1 : 0)
         - (context.keyboard.contains(.s) ? 1 : 0)
 
         velocity.y = controller.velocity(
             current: velocity.y,
-            input: y,
+            input: keyY,
             delta: time.delta
         )
 

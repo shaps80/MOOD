@@ -14,6 +14,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Build the same Game package for WASM and render its unchanged triangle through `PixlWasmPlatform` and WebGPU.
 - [x] Keep `PixlConcurrency` available under the supported single-threaded WASI SDK through its one-lane execution path.
 - [x] Add fixed-capacity physical keyboard state and coalesced per-frame key transitions for macOS and browser runtimes, including modifiers, native repeat, focus, and synthesized releases.
+- [x] Add dynamically connected physical-location gamepad state for macOS and browser standard mappings, including face/D-pad buttons, shoulders, normalized triggers, stick vectors/presses, menu/options, connection lifetime, and coalesced transitions.
 - [x] Refocus the portable recording interface on Metal-style encoder/resource-slot commands, using modern DirectX as the secondary alignment reference.
 - [x] Remove public `Pass`/`DrawCommand` storage details; record compact package-only commands through `RenderPassEncoder`.
 - [x] Move exact primitive topology to `drawPrimitives` and preserve line/triangle strip semantics.

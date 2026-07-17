@@ -11,6 +11,7 @@ final class MetalPlatform: @MainActor Platform {
     var device: any Device { metalDevice }
     var audioDevice: any AudioDevice { metalAudio }
     let keyboard = Keyboard()
+    let gamepads = Gamepads()
     nonisolated let assetSource: (any AssetSource)?
 
     @MainActor

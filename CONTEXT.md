@@ -78,6 +78,20 @@ Pixl has no dependency on or re-export of `PixlConcurrency`; games may depend on
 
 Keyboard event storage is runtime-owned, fixed-capacity, contiguous, and double-buffered. Native callbacks append into pending storage; presentation swaps it into the published frame without copying or allocating. At most one event per key and phase is retained each frame, so capacity derives from the closed `Key` vocabulary rather than game settings. Focus loss synthesizes `.up` for every down key before clearing state. `Keyboard.isFocused` reports keyboard focus.
 
+## Gamepad Input
+
+`Gamepads`
+: Platform-owned collection of connected controllers, exposed through `Platform` and `GameContext`. Slot storage grows only when a controller with a new index connects; connection/disconnection are cold paths. Player indices remain stable across disconnection and reconnection, while frame polling and per-controller state remain allocation-free.
+
+`Gamepad`
+: One physical controller with normalized button values, y-up left/right stick vectors, connection identity, and fixed-capacity contiguous per-frame transitions. Concrete adapters poll retained native controller state once per presentation; macOS connection notifications avoid allocating a controller list in the frame loop, while the browser consumes only its standard gamepad mapping.
+
+`Gamepad.Button`
+: Physical control location rather than vendor label. Face buttons are `.south`, `.east`, `.west`, and `.north`; D-pad buttons are `.up`, `.down`, `.left`, and `.right`. Shoulder, trigger, stick-press, menu, and options controls retain those portable physical names. Triggers always expose normalized `0...1` values, naturally representing either analogue hardware or digital `0`/`1` controls. Adaptive-trigger resistance, Home/system buttons, and haptics are not part of the current contract.
+
+`Gamepad.Button.Event`
+: A coalesced `.down` or `.up` transition carrying its normalized value. Current pressed state and continuous analogue values remain independently queryable in constant time. Stick displacement does not produce button events.
+
 ## Resource Ownership
 
 `ResourceID`

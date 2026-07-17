@@ -15,6 +15,7 @@ final class Runtime: NSObject {
     private var platform: MetalPlatform?
     private var window: NSWindow?
     private var gameView: GameView?
+    private var gamepadAdapter: MetalGamepads?
 
     init(
         gameSettings: GameSettings,
@@ -96,6 +97,7 @@ final class Runtime: NSObject {
             assetSourcePath: assetSourcePath
         )
         view.keyboard = platform?.keyboard
+        gamepadAdapter = MetalGamepads(gamepads: platform!.gamepads)
 
         do {
             game = try makeGame(platform!)
@@ -182,7 +184,9 @@ extension Runtime: MTKViewDelegate {
         guard let platform, let game else { return }
 
         do {
+            gamepadAdapter?.poll()
             platform.keyboard.publishPendingEvents()
+            platform.gamepads.publishPendingEvents()
             guard let drawable = platform.drawable() else { return }
 
             frame.reset()
