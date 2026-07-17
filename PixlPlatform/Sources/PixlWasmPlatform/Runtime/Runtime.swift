@@ -12,7 +12,12 @@ final class Runtime {
     private var animationFrame: JSClosure?
     private var adapterReady: JSClosure?
     private var deviceReady: JSClosure?
+    private var lifecycleChanged: JSClosure?
     private var lastPresentationMilliseconds: Double?
+
+    deinit {
+        removeLifecycleListeners()
+    }
 
     init(gameSettings: GameSettings, renderSettings: RenderSettings, audioSettings: AudioSettings, makeGame: @escaping (any Platform) throws -> any PlatformGame) {
         frame = Frame(
@@ -56,6 +61,8 @@ final class Runtime {
         let platform = WasmPlatform(device: device, context: context, canvas: canvas, format: format, renderSettings: renderSettings, audioSettings: audioSettings)
         do { game = try makeGame(platform) } catch { fatalError("Game initialization failed: \(error)") }
         self.platform = platform
+        installLifecycleListeners()
+        updatePhase()
         animationFrame = JSClosure { [unowned self] arguments in
             self.presentationFrame(milliseconds: arguments.first?.number ?? 0)
             return .undefined
@@ -81,5 +88,42 @@ final class Runtime {
             try game.render(on: platform, output: RenderTarget(texture: drawable.texture), frame: frame)
             try platform.present(frame, to: consume drawable)
         } catch { fatalError("Game rendering failed: \(error)") }
+    }
+
+    private func installLifecycleListeners() {
+        let closure = JSClosure { [weak self] _ in
+            self?.updatePhase()
+            return .undefined
+        }
+        lifecycleChanged = closure
+
+        let global = JSObject.global
+        _ = global.document.addEventListener("visibilitychange", closure)
+        _ = global.window.addEventListener("focus", closure)
+        _ = global.window.addEventListener("blur", closure)
+    }
+
+    private func removeLifecycleListeners() {
+        guard let lifecycleChanged else { return }
+        let global = JSObject.global
+        _ = global.document.removeEventListener(
+            "visibilitychange",
+            lifecycleChanged
+        )
+        _ = global.window.removeEventListener("focus", lifecycleChanged)
+        _ = global.window.removeEventListener("blur", lifecycleChanged)
+        self.lifecycleChanged = nil
+    }
+
+    private func updatePhase() {
+        game?.didEnter(currentPhase)
+    }
+
+    private var currentPhase: GamePhase {
+        let document = JSObject.global.document
+        if document.visibilityState.string == "hidden" {
+            return .background
+        }
+        return document.hasFocus().boolean == false ? .inactive : .active
     }
 }

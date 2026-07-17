@@ -21,7 +21,12 @@ struct Loop {
         self.settings = settings
     }
 
-    mutating func advance(to now: ContinuousClock.Instant) -> LoopSchedule {
+    mutating func advance(
+        to now: ContinuousClock.Instant,
+        timeScale: Double = 1
+    ) -> LoopSchedule {
+        precondition(timeScale.isFinite && timeScale >= 0)
+
         guard let previousInstant else {
             self.previousInstant = now
             return schedule(
@@ -38,7 +43,7 @@ struct Loop {
         frameIndex &+= 1
 
         let rawDelta = max(0, Self.seconds(now - previousInstant))
-        let delta = min(rawDelta, settings.maximumDeltaSeconds)
+        let delta = min(rawDelta, settings.maximumDeltaSeconds) * timeScale
         elapsedSeconds += delta
 
         guard let fixedStep = settings.fixedStep else {

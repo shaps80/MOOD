@@ -304,7 +304,10 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
         state.withLock { state in
             guard let finished = state.voices.withValue(
                 for: playback.id,
-                { $0.pointee.completion.isFinished }
+                {
+                    $0.pointee.completion.isFinished
+                        || state.backend.isFinished($0.pointee.resource)
+                }
             ) else {
                 return
             }
@@ -381,7 +384,11 @@ package final class AudioEngine<Backend: AudioBackend>: AudioDevice, @unchecked 
 
     private func reapFinishedVoices(_ state: State) {
         state.voices.removeAll { voice in
-            guard voice.pointee.completion.isFinished else { return false }
+            guard voice.pointee.completion.isFinished
+                    || state.backend.isFinished(voice.pointee.resource)
+            else {
+                return false
+            }
             state.backend.destroy(voice.pointee.resource)
             return true
         }

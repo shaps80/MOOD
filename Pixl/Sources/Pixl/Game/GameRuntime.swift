@@ -27,6 +27,7 @@ final class GameRuntime<G: Game>: PlatformGame {
     private let lanes: Lanes
     private var latestMetrics: PerformanceMetrics = .zero
     private var metricsCollector: PerformanceMetricsCollector
+    private var phase: GamePhase?
 
     init(platform: any Platform) throws {
         context = .init(platform: platform, renderSettings: G.renderSettings)
@@ -54,7 +55,10 @@ final class GameRuntime<G: Game>: PlatformGame {
         frame: borrowing Frame
     ) throws {
         let frameStart = ContinuousClock.now
-        let schedule = loop.advance(to: frameStart)
+        let schedule = loop.advance(
+            to: frameStart,
+            timeScale: game.timeScale
+        )
         let gameStart = ContinuousClock.now
 
         runLifecycle(schedule)
@@ -78,6 +82,12 @@ final class GameRuntime<G: Game>: PlatformGame {
             cpuRenderSeconds: Self.seconds(renderEnd - gameEnd),
             drawCount: frame.drawCount
         )
+    }
+
+    func didEnter(_ phase: GamePhase) {
+        guard phase != self.phase else { return }
+        self.phase = phase
+        game.didEnter(phase, context: context)
     }
 
     func runLifecycle(_ schedule: LoopSchedule) {

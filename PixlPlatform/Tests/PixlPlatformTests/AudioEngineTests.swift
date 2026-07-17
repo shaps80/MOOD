@@ -19,6 +19,7 @@ private final class TestVoice {
     var isPaused = false
     var isStopped = false
     var isDestroyed = false
+    var isBackendFinished = false
 
     init(
         sound: TestSound,
@@ -89,6 +90,10 @@ private final class TestAudioBackend: AudioBackend {
 
     func destroy(_ voice: TestVoice) {
         voice.isDestroyed = true
+    }
+
+    func isFinished(_ voice: TestVoice) -> Bool {
+        voice.isBackendFinished
     }
 
     func setVolume(_ volume: Float, for voice: TestVoice) {
@@ -236,6 +241,47 @@ struct AudioEngineTests {
         audio.stop(playback)
         #expect(voice.isStopped)
         #expect(voice.isDestroyed)
+    }
+
+    @Test
+    func reclaimsBackendFinishedVoiceOnCapacityPressure() throws {
+        let backend = TestAudioBackend()
+        let audio = AudioEngine(
+            backend: backend,
+            settings: AudioSettings(
+                maxSoundCount: 1,
+                maxVoiceCount: 1,
+                maxBusCount: 1
+            )
+        )
+        let sound = try audio.makeSound(
+            copying: [0],
+            descriptor: testSoundDescriptor
+        )
+
+        _ = try #require(
+            audio.play(
+                sound,
+                on: nil,
+                volume: 1,
+                pan: 0,
+                looping: false,
+                rate: 1
+            )
+        )
+        backend.voices[0].isBackendFinished = true
+
+        #expect(
+            audio.play(
+                sound,
+                on: nil,
+                volume: 1,
+                pan: 0,
+                looping: false,
+                rate: 1
+            ) != nil
+        )
+        #expect(backend.voices[0].isDestroyed)
     }
 
     @Test

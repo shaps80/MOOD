@@ -8,7 +8,17 @@ public protocol Game {
     static var loopSettings: LoopSettings { get }
     static var assetSettings: AssetSettings { get }
 
+    /// Multiplier applied to simulation time.
+    ///
+    /// Define a mutable stored property in the game to change it at runtime.
+    /// `0` pauses simulation time and fixed updates while variable updates and
+    /// rendering continue. Audio time is independent.
+    var timeScale: Double { get }
+
     init(context: GameContext) throws
+
+    /// Invoked when the platform enters a different lifecycle phase.
+    mutating func didEnter(_ phase: GamePhase, context: GameContext)
 
     /// Invoked serially for each fixed simulation tick.
     mutating func fixedUpdate(_ time: FixedTime, lanes: Lanes)

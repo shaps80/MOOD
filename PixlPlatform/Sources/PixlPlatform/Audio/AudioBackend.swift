@@ -42,6 +42,7 @@ package protocol AudioBackend: AnyObject {
     func resume(_ voice: VoiceResource)
     func stop(_ voice: VoiceResource)
     func destroy(_ voice: VoiceResource)
+    func isFinished(_ voice: VoiceResource) -> Bool
 
     func setVolume(_ volume: Float, for voice: VoiceResource)
     func setPan(_ pan: Float, for voice: VoiceResource)
@@ -49,4 +50,10 @@ package protocol AudioBackend: AnyObject {
 
     func setVolume(_ volume: Float, for bus: BusResource)
     func setMasterVolume(_ volume: Float)
+}
+
+extension AudioBackend {
+    package func isFinished(_ voice: VoiceResource) -> Bool {
+        false
+    }
 }

@@ -25,14 +25,12 @@ package final class WasmVoiceResource {
     private let panner: JSObject
     private let target: JSObject
     private let completion: AudioCompletion
-    private let looping: Bool
 
     private var source: JSObject?
     private var ended: JSClosure?
-    private var offset = 0.0
-    private var anchor = 0.0
-    private var rate: Float
-    private var paused = false
+    private var contextStateChanged: JSClosure?
+    private var timeline: PlaybackTimeline
+    private var finished = false
 
     init(
         context: JSObject,
@@ -48,39 +46,47 @@ package final class WasmVoiceResource {
         self.sound = sound
         self.target = target
         self.completion = completion
-        self.looping = looping
-        self.rate = rate
+        timeline = PlaybackTimeline(
+            duration: max(
+                sound.buffer.duration.number ?? 0,
+                Double.leastNonzeroMagnitude
+            ),
+            looping: looping,
+            rate: rate,
+            at: Self.now
+        )
         gain = context.createGain!().object!
         panner = context.createStereoPanner!().object!
         gain.gain.object!.value = .number(Double(volume))
         panner.pan.object!.value = .number(Double(pan))
         _ = gain.connect!(panner)
         _ = panner.connect!(target)
-        start()
+        installContextStateListener()
+        synchronizeOutput()
     }
 
     func pause() {
-        guard !paused, source != nil else { return }
-        advanceOffset()
-        paused = true
+        guard !isFinished() else { return }
+        timeline.pause(at: Self.now)
         releaseSource(stopping: true)
     }
 
     func resume() {
-        guard paused else { return }
-        paused = false
-        if !looping, offset >= duration {
-            completion.finish()
-            return
-        }
-        start()
+        guard !isFinished() else { return }
+        timeline.resume(at: Self.now)
+        synchronizeOutput()
     }
 
     func stop() {
+        timeline.stop()
+        finished = true
         releaseSource(stopping: true)
     }
 
     func destroy() {
+        removeContextStateListener()
+        timeline.stop()
+        finished = true
         releaseSource(stopping: true)
         _ = gain.disconnect!()
         _ = panner.disconnect!()
@@ -95,50 +101,74 @@ package final class WasmVoiceResource {
     }
 
     func setRate(_ rate: Float) {
-        advanceOffset()
-        self.rate = rate
+        guard !isFinished() else { return }
+        timeline.setRate(rate, at: Self.now)
         source?.playbackRate.object?.value = .number(Double(rate))
     }
 
-    private var duration: Double {
-        sound.buffer.duration.number ?? 0
+    func isFinished() -> Bool {
+        guard !finished else { return true }
+        guard timeline.currentOffset(at: Self.now) != nil else {
+            complete()
+            releaseSource(stopping: true)
+            return true
+        }
+        return false
     }
 
-    private func start() {
-        guard duration > 0,
-              let source = context.createBufferSource!().object
-        else {
-            completion.finish()
+    private func synchronizeOutput() {
+        guard !finished, !timeline.isPaused else {
+            releaseSource(stopping: true)
+            return
+        }
+        guard context.state.string == "running" else {
+            releaseSource(stopping: true)
+            return
+        }
+        guard source == nil else { return }
+        guard let offset = timeline.currentOffset(at: Self.now) else {
+            complete()
+            return
+        }
+        start(at: offset)
+    }
+
+    private func start(at offset: Double) {
+        guard let source = context.createBufferSource!().object else {
+            complete()
             return
         }
 
         source.buffer = .object(sound.buffer)
-        source.loop = .boolean(looping)
-        source.playbackRate.object!.value = .number(Double(rate))
+        source.loop = .boolean(timeline.looping)
+        source.playbackRate.object!.value = .number(Double(timeline.rate))
         _ = source.connect!(gain)
 
-        let ended = JSClosure { [completion] _ in
-            completion.finish()
+        let ended = JSClosure { [weak self] _ in
+            self?.sourceEnded()
             return .undefined
         }
         source.onended = .object(ended)
-        anchor = context.currentTime.number ?? 0
-        _ = source.start!(0, offset)
 
         self.source = source
         self.ended = ended
+        _ = source.start!(0, offset)
     }
 
-    private func advanceOffset() {
-        guard source != nil, !paused else { return }
-        let now = context.currentTime.number ?? anchor
-        offset += max(0, now - anchor) * Double(rate)
-        if looping, duration > 0 {
-            offset.formTruncatingRemainder(dividingBy: duration)
-        } else {
-            offset = min(offset, duration)
-        }
-        anchor = now
+    private func sourceEnded() {
+        guard let source else { return }
+        source.onended = .null
+        _ = source.disconnect!()
+        self.source = nil
+        ended = nil
+        complete()
+    }
+
+    private func complete() {
+        guard !finished else { return }
+        finished = true
+        timeline.stop()
+        completion.finish()
     }
 
     private func releaseSource(stopping: Bool) {
@@ -151,12 +181,32 @@ package final class WasmVoiceResource {
         self.source = nil
         ended = nil
     }
+
+    private func installContextStateListener() {
+        let closure = JSClosure { [weak self] _ in
+            self?.synchronizeOutput()
+            return .undefined
+        }
+        contextStateChanged = closure
+        _ = context.addEventListener!("statechange", closure)
+    }
+
+    private func removeContextStateListener() {
+        guard let contextStateChanged else { return }
+        _ = context.removeEventListener!("statechange", contextStateChanged)
+        self.contextStateChanged = nil
+    }
+
+    private static var now: Double {
+        (JSObject.global.performance.now().number ?? 0) * 0.001
+    }
 }
 
 package final class WasmAudioBackend: AudioBackend {
     private let context: JSObject
     private let master: JSObject
     private var unlockClosures: [String: JSClosure] = [:]
+    private var contextStateChanged: JSClosure?
 
     package init?() {
         let global = JSObject.global
@@ -175,10 +225,12 @@ package final class WasmAudioBackend: AudioBackend {
         self.master = master
         _ = master.connect!(destination)
         installUnlockListeners()
+        installContextStateListener()
     }
 
     deinit {
         removeUnlockListeners()
+        removeContextStateListener()
         _ = master.disconnect!()
         _ = context.close!()
     }
@@ -232,7 +284,6 @@ package final class WasmAudioBackend: AudioBackend {
         rate: Float,
         completion: AudioCompletion
     ) -> WasmVoiceResource? {
-        guard context.state.string == "running" else { return nil }
         return WasmVoiceResource(
             context: context,
             sound: sound,
@@ -259,6 +310,10 @@ package final class WasmAudioBackend: AudioBackend {
 
     package func destroy(_ voice: WasmVoiceResource) {
         voice.destroy()
+    }
+
+    package func isFinished(_ voice: WasmVoiceResource) -> Bool {
+        voice.isFinished()
     }
 
     package func setVolume(
@@ -294,12 +349,15 @@ package final class WasmAudioBackend: AudioBackend {
     }
 
     private func installUnlockListeners() {
+        guard unlockClosures.isEmpty else { return }
         let document = JSObject.global.document
         for event in ["pointerdown", "keydown", "touchstart"] {
             let closure = JSClosure { [weak self] _ in
                 guard let self else { return .undefined }
                 _ = self.context.resume!()
-                self.removeUnlockListeners()
+                if self.context.state.string == "running" {
+                    self.removeUnlockListeners()
+                }
                 return .undefined
             }
             unlockClosures[event] = closure
@@ -313,5 +371,25 @@ package final class WasmAudioBackend: AudioBackend {
             _ = document.removeEventListener(event, closure)
         }
         unlockClosures.removeAll(keepingCapacity: true)
+    }
+
+    private func installContextStateListener() {
+        let closure = JSClosure { [weak self] _ in
+            guard let self else { return .undefined }
+            if self.context.state.string == "running" {
+                self.removeUnlockListeners()
+            } else {
+                self.installUnlockListeners()
+            }
+            return .undefined
+        }
+        contextStateChanged = closure
+        _ = context.addEventListener!("statechange", closure)
+    }
+
+    private func removeContextStateListener() {
+        guard let contextStateChanged else { return }
+        _ = context.removeEventListener!("statechange", contextStateChanged)
+        self.contextStateChanged = nil
     }
 }

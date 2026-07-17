@@ -99,4 +99,58 @@ struct LoopTests {
         #expect(schedule.updateTime.deltaSeconds == 0.25)
         #expect(schedule.frameTimeSeconds == 1)
     }
+
+    @Test
+    func zeroTimeScalePausesSimulationWithoutPausingPresentation() {
+        var loop = Loop(settings: .default)
+        let start = ContinuousClock.now
+        _ = loop.advance(to: start)
+
+        let paused = loop.advance(
+            to: start.advanced(by: .seconds(1)),
+            timeScale: 0
+        )
+        #expect(paused.fixedUpdateCount == 0)
+        #expect(paused.updateTime.deltaSeconds == 0)
+        #expect(paused.updateTime.elapsedSeconds == 0)
+        #expect(paused.frameTimeSeconds == 1)
+
+        let resumed = loop.advance(
+            to: start.advanced(by: .seconds(1.02)),
+            timeScale: 1
+        )
+        #expect(resumed.fixedUpdateCount == 1)
+        #expect(abs(resumed.updateTime.deltaSeconds - 0.02) < 0.000_001)
+        #expect(abs(resumed.updateTime.elapsedSeconds - 0.02) < 0.000_001)
+    }
+
+    @Test
+    func timeScaleChangesSimulationSpeed() {
+        var loop = Loop(
+            settings: LoopSettings(
+                maximumDeltaSeconds: 1,
+                fixedStep: FixedStep(
+                    updatesPerSecond: 60,
+                    maximumUpdatesPerFrame: 8
+                )
+            )
+        )
+        let start = ContinuousClock.now
+        _ = loop.advance(to: start)
+
+        let slow = loop.advance(
+            to: start.advanced(by: .milliseconds(20)),
+            timeScale: 0.5
+        )
+        #expect(slow.fixedUpdateCount == 0)
+        #expect(abs(slow.updateTime.deltaSeconds - 0.01) < 0.000_001)
+
+        let fast = loop.advance(
+            to: start.advanced(by: .milliseconds(30)),
+            timeScale: 2
+        )
+        #expect(fast.fixedUpdateCount == 1)
+        #expect(abs(fast.updateTime.deltaSeconds - 0.02) < 0.000_001)
+        #expect(abs(fast.updateTime.elapsedSeconds - 0.03) < 0.000_001)
+    }
 }

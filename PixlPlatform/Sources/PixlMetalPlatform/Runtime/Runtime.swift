@@ -52,6 +52,7 @@ final class Runtime: NSObject {
     @MainActor
     private func configureApplication() {
         let application = NSApplication.shared
+        application.delegate = self
         application.setActivationPolicy(.regular)
         application.mainMenu = makeMainMenu()
     }
@@ -105,12 +106,13 @@ final class Runtime: NSObject {
         window.contentView = view
         window.delegate = self
 
+        self.window = window
+        self.gameView = view
+        updatePhase()
+
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view)
-
-        self.window = window
-        self.gameView = view
 
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
@@ -134,6 +136,41 @@ final class Runtime: NSObject {
         return mainMenu
     }
 
+    @MainActor
+    private func updatePhase() {
+        game?.didEnter(currentPhase)
+    }
+
+    @MainActor
+    private var currentPhase: GamePhase {
+        if NSApplication.shared.isHidden || window?.isMiniaturized == true {
+            return .background
+        }
+        return NSApplication.shared.isActive ? .active : .inactive
+    }
+
+}
+
+extension Runtime: NSApplicationDelegate {
+    func applicationDidBecomeActive(_ notification: Notification) {
+        updatePhase()
+    }
+
+    func applicationWillResignActive(_ notification: Notification) {
+        if NSApplication.shared.isHidden || window?.isMiniaturized == true {
+            game?.didEnter(.background)
+        } else {
+            game?.didEnter(.inactive)
+        }
+    }
+
+    func applicationDidHide(_ notification: Notification) {
+        game?.didEnter(.background)
+    }
+
+    func applicationDidUnhide(_ notification: Notification) {
+        updatePhase()
+    }
 }
 
 extension Runtime: MTKViewDelegate {
@@ -162,5 +199,13 @@ extension Runtime: MTKViewDelegate {
 extension Runtime: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         NSApplication.shared.terminate(nil)
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) {
+        game?.didEnter(.background)
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        updatePhase()
     }
 }

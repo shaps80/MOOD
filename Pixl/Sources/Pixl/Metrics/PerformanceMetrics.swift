@@ -69,7 +69,7 @@ public struct PerformanceMetrics: Hashable, Sendable {
             + "Frame max: \(Self.column(maximumFrameTimeSeconds * 1_000))ms | "
             + "Game avg: \(Self.column(averageCPUTimeSeconds * 1_000))ms | "
             + "Render avg: \(Self.column(averageRenderTimeSeconds * 1_000))ms | "
-            + "Hitcjhes: \(hitchCount)"
+            + "Window hitches: \(hitchCount)"
         }
 
         private static func column(_ value: Double) -> String {

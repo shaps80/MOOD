@@ -7,6 +7,8 @@ private final class LifecycleRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var fixedLanes: [Int] = []
     private var updateLanes: [Int] = []
+    private var phases: [GamePhase] = []
+    private var timeScales: [Double] = []
 
     func recordFixed() {
         lock.lock()
@@ -20,10 +22,28 @@ private final class LifecycleRecorder: @unchecked Sendable {
         lock.unlock()
     }
 
-    func snapshot() -> (fixed: [Int], update: [Int]) {
+    func recordPhase(_ phase: GamePhase, timeScale: Double) {
+        lock.lock()
+        phases.append(phase)
+        timeScales.append(timeScale)
+        lock.unlock()
+    }
+
+    var timeScale: Double {
         lock.lock()
         defer { lock.unlock() }
-        return (fixedLanes, updateLanes)
+        return timeScales.last ?? 1
+    }
+
+    func snapshot() -> (
+        fixed: [Int],
+        update: [Int],
+        phases: [GamePhase],
+        timeScales: [Double]
+    ) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (fixedLanes, updateLanes, phases, timeScales)
     }
 }
 
@@ -42,6 +62,10 @@ private struct LaneRecordingGame: Game {
         .init()
     }
 
+    var timeScale: Double {
+        recorder.timeScale
+    }
+
     init(context: GameContext) throws {
         recorder = .init()
     }
@@ -56,6 +80,13 @@ private struct LaneRecordingGame: Game {
 
     func update(_ time: UpdateTime, lanes: Lanes) {
         recorder.recordUpdate()
+    }
+
+    func didEnter(_ phase: GamePhase, context: GameContext) {
+        recorder.recordPhase(
+            phase,
+            timeScale: phase == .inactive ? 0 : 1
+        )
     }
 
     func render(
@@ -94,6 +125,24 @@ struct GameRuntimeTests {
         let recorded = recorder.snapshot()
         #expect(recorded.fixed == [0, 0])
         #expect(recorded.update == [0])
+    }
+
+    @Test
+    func phaseChangesAreDeliveredOnceWithRuntimeContext() {
+        let recorder = LifecycleRecorder()
+        let runtime = GameRuntime(
+            game: LaneRecordingGame(recorder: recorder),
+            executionSettings: .init(laneCount: .fixed(1))
+        )
+
+        runtime.didEnter(.active)
+        runtime.didEnter(.active)
+        runtime.didEnter(.inactive)
+        runtime.didEnter(.background)
+
+        let recorded = recorder.snapshot()
+        #expect(recorded.phases == [.active, .inactive, .background])
+        #expect(recorded.timeScales == [1, 0, 1])
     }
 
 }

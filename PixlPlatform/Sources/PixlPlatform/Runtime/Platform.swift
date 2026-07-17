@@ -9,6 +9,8 @@ public protocol PlatformGame {
 
     init(platform: any Platform) throws
 
+    func didEnter(_ phase: GamePhase)
+
     func render(
         on platform: any Platform,
         output: RenderTarget,

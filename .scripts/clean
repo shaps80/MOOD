@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PACKAGE="${1:-Game}"
+PRODUCT="${2:-${PACKAGE}}"
+PACKAGE_DIR="${ROOT_DIR}/${PACKAGE}"
+BUILD_DIR="${PACKAGE_DIR}/.build/wasm-${PRODUCT}"
+
+if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
+  echo "error: Package.swift not found at ${PACKAGE_DIR}" >&2
+  exit 1
+fi
+
+if [[ ! -d "${BUILD_DIR}" ]]; then
+  echo "Already clean: ${BUILD_DIR}"
+  exit 0
+fi
+
+rm -rf "${BUILD_DIR}"
+echo "Cleaned: ${BUILD_DIR}"
