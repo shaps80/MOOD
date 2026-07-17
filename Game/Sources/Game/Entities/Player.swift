@@ -16,18 +16,21 @@ struct Player: Entity {
 
     init(
         pipeline: RenderPipeline,
+        audio: GameAudio,
         context: GameContext
     ) throws {
         texture = try context.assets.load(texture: "player.png")
-        let jumpSound = try context.assets.load(sound: "jump.wav")
-        jump = context.audio.prepare(jumpSound)
-        jump.volume = 0.4
         quad = try .init(
             device: context.platform.device,
             color: .clear
         )
+
+        let jumpSound = try context.assets.load(sound: "jump.wav")
+        jump = context.audio.prepare(jumpSound)
+        jump.bus = audio.effects
+
         self.pipeline = pipeline
-        sampler = try context.platform.device.makeSampler(.init())
+        self.sampler = try context.platform.device.makeSampler(.init())
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {

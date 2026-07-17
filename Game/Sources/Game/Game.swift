@@ -6,17 +6,10 @@ struct Game: Pixl.Game {
     private let state: State
     private let pipeline: RenderPipeline
     private let music: Playback
-
-    static var gameSettings: GameSettings {
-        .init(
-            title: "Pixl",
-            resolution: .init(width: 800, height: 400),
-        )
-    }
-
-    static let assetSettings: AssetSettings = .init()
+    private let audio: GameAudio
 
     init(context: GameContext) throws {
+        audio = try .init(audio: context.audio, settings: .init())
         pipeline = try context.platform.device.makeRenderPipeline(
             .init(
                 vertex: .vertex,
@@ -25,11 +18,17 @@ struct Game: Pixl.Game {
                 colorFormat: context.renderSettings.drawableFormat
             )
         )
+
         let sound = try context.assets.load(sound: "music.wav")
         music = context.audio.prepare(sound)
         music.loop = true
+        music.bus = audio.music
 
-        self.state = try .init(pipeline: pipeline, context: context)
+        self.state = try .init(
+            pipeline: pipeline,
+            audio: audio,
+            context: context
+        )
     }
 
     func didEnter(_ phase: GamePhase, context: GameContext) {
@@ -103,16 +102,33 @@ struct Game: Pixl.Game {
     }
 }
 
-private extension Game {
-    final class State: @unchecked Sendable {
+extension Game {
+    private final class State: @unchecked Sendable {
         var metricsElapsed = 0.0
         var fade: Timer = .init(duration: 1)
         var timeScale = 1.0
         var player: Player
         var phase: GamePhase = .active
 
-        init(pipeline: RenderPipeline, context: GameContext) throws {
-            player = try .init(pipeline: pipeline, context: context)
+        init(
+            pipeline: RenderPipeline,
+            audio: GameAudio,
+            context: GameContext
+        ) throws {
+            player = try .init(
+                pipeline: pipeline,
+                audio: audio,
+                context: context
+            )
         }
     }
+
+    static var gameSettings: GameSettings {
+        .init(
+            title: "Pixl",
+            resolution: .init(width: 800, height: 400),
+        )
+    }
+
+    static let assetSettings: AssetSettings = .init()
 }

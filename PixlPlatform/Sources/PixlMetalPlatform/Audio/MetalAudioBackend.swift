@@ -16,6 +16,7 @@ package final class MetalSoundResource: @unchecked Sendable {
 
 package final class MetalBusResource: @unchecked Sendable {
     fileprivate var mixer: AVAudioMixerNode?
+    fileprivate var connectionCount = 0
     fileprivate var isDestroyed = false
 }
 
@@ -23,6 +24,7 @@ package final class MetalVoiceResource: @unchecked Sendable {
     let sound: MetalSoundResource
     fileprivate var player: AVAudioPlayerNode?
     fileprivate var varispeed: AVAudioUnitVarispeed?
+    fileprivate var bus: MetalBusResource?
     fileprivate var isDestroyed = false
 
     init(sound: MetalSoundResource) {
@@ -263,7 +265,6 @@ private final class MetalAudioState: @unchecked Sendable {
         guard !isShutdown, !bus.isDestroyed else { return }
         let mixer = AVAudioMixerNode()
         engine.attach(mixer)
-        engine.connect(mixer, to: engine.mainMixerNode, format: nil)
         bus.mixer = mixer
     }
 
@@ -319,7 +320,17 @@ private final class MetalAudioState: @unchecked Sendable {
             to: target,
             format: voice.sound.buffer.format
         )
-
+        if let bus, let mixer = bus.mixer {
+            if bus.connectionCount == 0 {
+                engine.connect(
+                    mixer,
+                    to: engine.mainMixerNode,
+                    format: nil
+                )
+            }
+            bus.connectionCount += 1
+            voice.bus = bus
+        }
         player.volume = volume
         player.pan = pan
         varispeed.rate = rate
@@ -365,8 +376,15 @@ private final class MetalAudioState: @unchecked Sendable {
             engine.disconnectNodeOutput(varispeed)
             engine.detach(varispeed)
         }
+        if let bus = voice.bus {
+            bus.connectionCount -= 1
+            if bus.connectionCount == 0, let mixer = bus.mixer {
+                engine.disconnectNodeOutput(mixer)
+            }
+        }
         voice.player = nil
         voice.varispeed = nil
+        voice.bus = nil
     }
 
     func setVolume(
