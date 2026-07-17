@@ -19,12 +19,26 @@ let package = Package(
         .package(
             url: "https://github.com/swiftwasm/JavaScriptKit.git",
             from: "0.55.0"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-atomics.git",
+            from: "1.3.0"
         )
     ],
     targets: [
         .target(
             name: "PixlPlatform",
+            dependencies: [
+                "PixlPlatformSynchronization"
+            ],
             swiftSettings: releaseFullCrossModuleOptimization() + defaultNonisolated()
+        ),
+        .target(
+            name: "PixlPlatformSynchronization",
+            dependencies: [
+                .product(name: "Atomics", package: "swift-atomics")
+            ],
+            swiftSettings: defaultNonisolated()
         ),
         .target(
             name: "PixlWasmPlatform",

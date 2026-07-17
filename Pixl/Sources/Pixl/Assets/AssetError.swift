@@ -9,6 +9,9 @@ public enum AssetError: Error, Hashable, Sendable {
     case unsupportedTexture(String)
     case invalidTexture(String)
     case textureCreation(DeviceError)
+    case unsupportedSound(String)
+    case invalidSound(String)
+    case soundCreation(AudioError)
 }
 
 extension AssetError: CustomStringConvertible {
@@ -28,6 +31,12 @@ extension AssetError: CustomStringConvertible {
             "Texture '\(path)' is invalid"
         case .textureCreation(let error):
             "Texture creation failed: \(error)"
+        case .unsupportedSound(let path):
+            "Sound format for '\(path)' is unsupported"
+        case .invalidSound(let path):
+            "Sound '\(path)' is invalid"
+        case .soundCreation(let error):
+            "Sound creation failed: \(error)"
         }
     }
 }

@@ -10,6 +10,10 @@ import PixlWasmPlatform
 #endif
 
 public extension Game {
+    static var audioSettings: AudioSettings {
+        .default
+    }
+
     static var renderSettings: RenderSettings {
         .default
     }

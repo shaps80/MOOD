@@ -9,6 +9,10 @@ final class GameRuntime<G: Game>: PlatformGame {
         G.renderSettings
     }
 
+    static var audioSettings: AudioSettings {
+        G.audioSettings
+    }
+
     static var assetPath: String? {
         G.assetSettings.path
     }

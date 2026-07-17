@@ -3,6 +3,7 @@ import Swift
 public protocol PlatformGame {
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
+    static var audioSettings: AudioSettings { get }
     static var assetPath: String? { get }
     static var assetSourcePath: String? { get }
 
@@ -22,6 +23,7 @@ public extension PlatformGame {
 
 public protocol Platform: AnyObject {
     var device: any Device { get }
+    var audioDevice: any AudioDevice { get }
     var assetSource: (any AssetSource)? { get }
 
     func drawable() -> Drawable?

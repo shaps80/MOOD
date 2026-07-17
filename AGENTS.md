@@ -74,7 +74,7 @@ Implemented/decided so far:
 - `Platform` is the platform-neutral frame boundary. It exposes a device, acquires a frame-scoped `Drawable`, and presents a `Frame` to that drawable.
 - `Drawable` owns a frame-scoped presentable texture. It is noncopyable and consumed by `Platform.present`.
 - `Game` is the game-facing lifecycle. `GameRuntime<G: Game>` owns the concrete mutable game and platform-neutral `Loop`, implements `PlatformGame`, and is what concrete platform runtimes receive. Game initialization still runs after the platform and built-in shaders exist, allowing immutable startup resources without optional storage.
-- `GameRuntime` has no asset polling or reload work in its presentation callback. Texture reloads are event-driven and remain outside simulation and render traversal.
+- `GameRuntime` has no asset polling or reload work in its presentation callback. Texture and sound reloads are event-driven and remain outside simulation and render traversal.
 - Public resource creation should flow through `Device`, not direct initializers.
 - `DeviceError` is the public error surface for device/resource creation failures. Keep texture-specific detail as cases inside `DeviceError` rather than creating separate texture errors for now.
 - `PixlMetalPlatform` has begun as the first concrete platform target. `MetalDevice` owns fixed-capacity buffer, texture, sampler, and pipeline pools whose capacities are supplied explicitly at initialization. GPU-only buffers and initial texture pixels use staging/blit uploads.
@@ -90,6 +90,8 @@ Implemented/decided so far:
 - `GameSettings` configures startup window/runtime values such as title, initial resolution, resizability, and preferred frame rate. `Game` supplies it with a default implementation.
 - `PixlPlatform.AssetSource` is a rooted byte-read capability with optional asynchronous file changes. `PixlMetalPlatform` supplies a project-relative directory source backed by recursive file-level FSEvents.
 - `Pixl.Assets` owns PNG decoding, caching, stable `TextureAsset` identities, background reload processing, and last-good retention. Same-size texture changes write asynchronously into the existing texture through a backend-owned `TextureWriter`; dimension changes are rejected for now. Games load through `context.assets.load(texture:)`.
+- `PixlPlatform.AudioEngine` owns fixed-capacity resident sounds, voices, flat buses, portable playback semantics, and stable sound replacement. Native completion handlers only set atomic flags; finished voices are reclaimed on demand without a frame-time reaper.
+- `Pixl` decodes mono/stereo WAV into planar `Float32`, loads it as `SoundAsset`, and hot-reloads it through the existing recursive asset event stream. Metal lowers the portable contract through AVFAudio and the browser through Web Audio; native graph types remain adapter-private.
 - Metal implementation types and protocol witnesses remain internal. Keep the cross-platform public API in `PixlPlatform`; expose only the smallest deliberate platform construction boundary from `PixlMetalPlatform`.
 
 ## Naming

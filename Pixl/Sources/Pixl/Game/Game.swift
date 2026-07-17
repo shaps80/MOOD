@@ -4,6 +4,7 @@ import PixlPlatform
 public protocol Game {
     static var gameSettings: GameSettings { get }
     static var renderSettings: RenderSettings { get }
+    static var audioSettings: AudioSettings { get }
     static var loopSettings: LoopSettings { get }
     static var assetSettings: AssetSettings { get }
 

@@ -5,6 +5,7 @@ final class Runtime {
     private let frame: Frame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
+    private let audioSettings: AudioSettings
     private let makeGame: (any Platform) throws -> any PlatformGame
     private var platform: WasmPlatform?
     private var game: (any PlatformGame)?
@@ -13,13 +14,13 @@ final class Runtime {
     private var deviceReady: JSClosure?
     private var lastPresentationMilliseconds: Double?
 
-    init(gameSettings: GameSettings, renderSettings: RenderSettings, makeGame: @escaping (any Platform) throws -> any PlatformGame) {
+    init(gameSettings: GameSettings, renderSettings: RenderSettings, audioSettings: AudioSettings, makeGame: @escaping (any Platform) throws -> any PlatformGame) {
         frame = Frame(
             passCapacity: renderSettings.framePassCapacity,
             commandCapacity: renderSettings.frameCommandCapacity,
             byteCapacity: renderSettings.frameByteCapacity
         )
-        self.gameSettings = gameSettings; self.renderSettings = renderSettings; self.makeGame = makeGame
+        self.gameSettings = gameSettings; self.renderSettings = renderSettings; self.audioSettings = audioSettings; self.makeGame = makeGame
     }
 
     func start() {
@@ -52,7 +53,7 @@ final class Runtime {
         let format: PixelFormat = preferred == "rgba8unorm" ? .rgba8Unorm : .bgra8Unorm
         guard format == renderSettings.drawableFormat else { fatalError("WebGPU preferred canvas format does not match RenderSettings.drawableFormat") }
         let configuration = object(); configuration["device"] = .object(device); configuration["format"] = .string(preferred); configuration["alphaMode"] = .string("opaque"); _ = context.configure!(configuration)
-        let platform = WasmPlatform(device: device, context: context, canvas: canvas, format: format, settings: renderSettings)
+        let platform = WasmPlatform(device: device, context: context, canvas: canvas, format: format, renderSettings: renderSettings, audioSettings: audioSettings)
         do { game = try makeGame(platform) } catch { fatalError("Game initialization failed: \(error)") }
         self.platform = platform
         animationFrame = JSClosure { [unowned self] arguments in

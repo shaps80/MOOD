@@ -3,6 +3,7 @@ import PixlPlatform
 
 final class WasmPlatform: Platform {
     private let wasmDevice: WasmDevice
+    private let wasmAudio: AudioEngine<WasmAudioBackend>
     private let queue: WasmQueue
     private let context: JSObject
     private let canvas: JSObject
@@ -10,13 +11,21 @@ final class WasmPlatform: Platform {
     private let drawables: ResourcePool<JSObject>
 
     var device: any Device { wasmDevice }
+    var audioDevice: any AudioDevice { wasmAudio }
     let assetSource: (any AssetSource)?
 
-    init(device: JSObject, context: JSObject, canvas: JSObject, format: PixelFormat, settings: RenderSettings) {
-        wasmDevice = WasmDevice(device: device, settings: settings)
+    init(device: JSObject, context: JSObject, canvas: JSObject, format: PixelFormat, renderSettings: RenderSettings, audioSettings: AudioSettings) {
+        wasmDevice = WasmDevice(device: device, settings: renderSettings)
+        guard let audioBackend = WasmAudioBackend() else {
+            fatalError("Web Audio is not available")
+        }
+        wasmAudio = AudioEngine(
+            backend: audioBackend,
+            settings: audioSettings
+        )
         queue = wasmDevice.makeWasmQueue()
         self.context = context; self.canvas = canvas; self.format = format
-        drawables = ResourcePool(capacity: settings.drawableCapacity)
+        drawables = ResourcePool(capacity: renderSettings.drawableCapacity)
         assetSource = WasmAssetSource()
     }
 

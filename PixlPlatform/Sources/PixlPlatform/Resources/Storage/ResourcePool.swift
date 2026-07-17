@@ -116,4 +116,26 @@ package final class ResourcePool<Value> {
         let slot = slots[Int(id.index)]
         return slot.state == Self.occupied && slot.generation == id.generation
     }
+
+    /// Removes every value selected by `body` without allocating temporary
+    /// storage. The body may dispose backend state before the slot is retired.
+    package func removeAll(
+        where body: (UnsafeMutablePointer<Value>) -> Bool
+    ) {
+        var index: UInt32 = 0
+        while index < nextUnused {
+            defer { index += 1 }
+            guard slots[Int(index)].state == Self.occupied else { continue }
+
+            let value = values.advanced(by: Int(index))
+            guard body(value) else { continue }
+
+            _ = remove(
+                ResourceID(
+                    index: index,
+                    generation: slots[Int(index)].generation
+                )
+            )
+        }
+    }
 }

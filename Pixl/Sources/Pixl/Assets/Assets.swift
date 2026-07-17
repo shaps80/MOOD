@@ -3,25 +3,37 @@ import Swift
 
 public final class Assets {
     private let device: (any Device)?
+    private let audioDevice: (any AudioDevice)?
     private let source: (any AssetSource)?
     private let decode: TextureDecode
+    private let decodeSound: SoundDecode
     private let textureWriter: (Texture) -> (any TextureWriter)?
+    private let soundWriter: (Sound) -> (any SoundWriter)?
     private var textures: [AssetPath: TextureAsset] = [:]
+    private var sounds: [AssetPath: SoundAsset] = [:]
     private var reloadContinuation: AsyncStream<ReloadEvent>.Continuation?
     private var changeTask: Task<Void, Never>?
     private var monitorTask: Task<Void, Never>?
 
     init(
         device: (any Device)?,
+        audioDevice: (any AudioDevice)? = nil,
         source: (any AssetSource)?,
         decode: @escaping TextureDecode = PNGDecoder.decode,
-        textureWriter: ((Texture) -> (any TextureWriter)?)? = nil
+        decodeSound: @escaping SoundDecode = WAVDecoder.decode,
+        textureWriter: ((Texture) -> (any TextureWriter)?)? = nil,
+        soundWriter: ((Sound) -> (any SoundWriter)?)? = nil
     ) {
         self.device = device
+        self.audioDevice = audioDevice
         self.source = source
         self.decode = decode
+        self.decodeSound = decodeSound
         self.textureWriter = textureWriter ?? { texture in
             device?.textureWriter(for: texture)
+        }
+        self.soundWriter = soundWriter ?? { sound in
+            audioDevice?.soundWriter(for: sound)
         }
 
         guard let source, let changes = source.changes else { return }
@@ -30,7 +42,8 @@ public final class Assets {
 
         let monitor = ReloadMonitor(
             source: source,
-            decode: decode
+            decodeTexture: decode,
+            decodeSound: decodeSound
         )
         monitorTask = Task.detached(priority: .utility) {
             await monitor.run(events)
@@ -47,9 +60,15 @@ public final class Assets {
         changeTask?.cancel()
         reloadContinuation?.finish()
         monitorTask?.cancel()
-        guard let device else { return }
-        for asset in textures.values {
-            device.destroy(asset.texture)
+        if let device {
+            for asset in textures.values {
+                device.destroy(asset.texture)
+            }
+        }
+        if let audioDevice {
+            for asset in sounds.values {
+                audioDevice.destroy(asset.sound)
+            }
         }
     }
 
@@ -60,6 +79,17 @@ public final class Assets {
             return try loadTexture(path)
         } catch {
             print("Unable to load texture '\(path)': \(error)")
+            return nil
+        }
+    }
+
+    public func load(
+        sound path: String
+    ) -> SoundAsset? {
+        do {
+            return try loadSound(path)
+        } catch {
+            print("Unable to load sound '\(path)': \(error)")
             return nil
         }
     }
@@ -89,11 +119,51 @@ public final class Assets {
         textures[path] = asset
         if let writer = textureWriter(texture) {
             reloadContinuation?.yield(
-                .register(
+                .registerTexture(
                     path: path,
                     size: texture.descriptor.size,
                     writer: writer
                 )
+            )
+        }
+        return asset
+    }
+
+    private func loadSound(
+        _ value: String
+    ) throws(AssetError) -> SoundAsset {
+        let path = try makePath(value)
+        if let sound = sounds[path] {
+            return sound
+        }
+
+        guard let audioDevice, let source else {
+            throw .unavailable
+        }
+
+        let bytes: [UInt8]
+        do {
+            bytes = try source.read(path)
+        } catch {
+            throw assetError(error)
+        }
+
+        let decoded = try decodeSound(bytes, path)
+        let sound: Sound
+        do {
+            sound = try audioDevice.makeSound(
+                copying: decoded.samples,
+                descriptor: decoded.descriptor
+            )
+        } catch {
+            throw .soundCreation(error)
+        }
+
+        let asset = SoundAsset(path: path, sound: sound)
+        sounds[path] = asset
+        if let writer = soundWriter(sound) {
+            reloadContinuation?.yield(
+                .registerSound(path: path, writer: writer)
             )
         }
         return asset

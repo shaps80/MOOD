@@ -8,7 +8,8 @@ typealias TextureDecode = @Sendable (
 
 struct ReloadMonitor: Sendable {
     let source: any AssetSource
-    let decode: TextureDecode
+    let decodeTexture: TextureDecode
+    let decodeSound: SoundDecode
 
     func run(_ events: AsyncStream<ReloadEvent>) async {
         var targets: [AssetPath: ReloadTarget] = [:]
@@ -17,8 +18,11 @@ struct ReloadMonitor: Sendable {
             guard !Task.isCancelled else { return }
 
             switch event {
-            case .register(let path, let size, let writer):
-                targets[path] = ReloadTarget(size: size, writer: writer)
+            case .registerTexture(let path, let size, let writer):
+                targets[path] = .texture(size: size, writer: writer)
+
+            case .registerSound(let path, let writer):
+                targets[path] = .sound(writer: writer)
 
             case .change(let change):
                 guard let target = targets[change.path] else { continue }
@@ -47,66 +51,119 @@ struct ReloadMonitor: Sendable {
             return
         }
 
+        switch target {
+        case .texture(let size, let writer):
+            await reloadTexture(
+                bytes,
+                path: path,
+                size: size,
+                writer: writer
+            )
+
+        case .sound(let writer):
+            await reloadSound(bytes, path: path, writer: writer)
+        }
+    }
+
+    private func reloadTexture(
+        _ bytes: [UInt8],
+        path: AssetPath,
+        size: TextureSize,
+        writer: any TextureWriter
+    ) async {
         let decoded: DecodedTexture
         do {
-            decoded = try decode(bytes, path)
+            decoded = try decodeTexture(bytes, path)
         } catch {
-            report(error, for: path)
+            report(error, kind: "texture", for: path)
             return
         }
 
-        guard decoded.width == target.size.width,
-              decoded.height == target.size.height
+        guard decoded.width == size.width,
+              decoded.height == size.height
         else {
             report(
                 AssetError.invalidTexture(path.value),
+                kind: "texture",
                 for: path,
                 reason: "dimensions changed from "
-                    + "\(target.size.width)x\(target.size.height) to "
+                    + "\(size.width)x\(size.height) to "
                     + "\(decoded.width)x\(decoded.height)"
             )
             return
         }
 
         do {
-            try await target.writer.write(
+            try await writer.write(
                 copying: decoded.bytes,
                 bytesPerRow: decoded.bytesPerRow
             )
             print("Reloaded texture '\(path.value)'")
         } catch {
-            report(error, for: path)
+            report(error, kind: "texture", for: path)
+        }
+    }
+
+    private func reloadSound(
+        _ bytes: [UInt8],
+        path: AssetPath,
+        writer: any SoundWriter
+    ) async {
+        let decoded: DecodedSound
+        do {
+            decoded = try decodeSound(bytes, path)
+        } catch {
+            report(error, kind: "sound", for: path)
+            return
+        }
+
+        do {
+            try await writer.write(
+                copying: decoded.samples,
+                descriptor: decoded.descriptor
+            )
+            print("Reloaded sound '\(path.value)'")
+        } catch {
+            report(error, kind: "sound", for: path)
         }
     }
 
     private func report(
         _ error: any Error,
+        kind: String = "asset",
         for path: AssetPath,
         reason: String? = nil
     ) {
         if let reason {
             print(
-                "Unable to reload texture '\(path.value)': "
+                "Unable to reload \(kind) '\(path.value)': "
                     + "\(error) (\(reason))"
             )
         } else {
-            print("Unable to reload texture '\(path.value)': \(error)")
+            print("Unable to reload \(kind) '\(path.value)': \(error)")
         }
     }
 }
 
 enum ReloadEvent: Sendable {
-    case register(
+    case registerTexture(
         path: AssetPath,
         size: TextureSize,
         writer: any TextureWriter
     )
+    case registerSound(
+        path: AssetPath,
+        writer: any SoundWriter
+    )
     case change(AssetChange)
 }
 
-private struct ReloadTarget: Sendable {
-    let size: TextureSize
-    let writer: any TextureWriter
+private enum ReloadTarget: Sendable {
+    case texture(
+        size: TextureSize,
+        writer: any TextureWriter
+    )
+    case sound(writer: any SoundWriter)
 }
 
 func assetError(_ error: AssetSourceError) -> AssetError {

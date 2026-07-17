@@ -9,6 +9,7 @@ public func run<Game: PlatformGame>(_ game: Game.Type) {
     let runtime: Runtime = .init(
         gameSettings: Game.gameSettings,
         renderSettings: Game.renderSettings,
+        audioSettings: Game.audioSettings,
         assetPath: Game.assetPath,
         assetSourcePath: Game.assetSourcePath,
         makeGame: { platform in

@@ -3,17 +3,20 @@ import PixlPlatform
 
 final class MetalPlatform: @MainActor Platform {
     private let metalDevice: MetalDevice
+    private let metalAudio: AudioEngine<MetalAudioBackend>
     private let queue: MetalQueue
     private let view: MTKView
     private let drawables: ResourcePool<any CAMetalDrawable>
 
     var device: any Device { metalDevice }
+    var audioDevice: any AudioDevice { metalAudio }
     nonisolated let assetSource: (any AssetSource)?
 
     @MainActor
     init(
         view: MTKView,
         renderSettings: RenderSettings,
+        audioSettings: AudioSettings,
         assetPath: String?,
         assetSourcePath: String?
     ) {
@@ -29,6 +32,13 @@ final class MetalPlatform: @MainActor Platform {
             textureCapacity: renderSettings.textureCapacity
         )
         self.metalDevice = metalDevice
+        guard let audioBackend = MetalAudioBackend() else {
+            fatalError("Audio output creation failed")
+        }
+        metalAudio = AudioEngine(
+            backend: audioBackend,
+            settings: audioSettings
+        )
         queue = metalDevice.makeMetalQueue()
         self.view = view
         drawables = ResourcePool(capacity: renderSettings.drawableCapacity)

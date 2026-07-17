@@ -1,4 +1,4 @@
-# PixlPlatform GPU Vocabulary
+# PixlPlatform Vocabulary
 
 PixlPlatform is the lowest platform-agnostic GPU layer in Pixl. Its public interface follows Metal's direct encoder/resource-slot model, with modern DirectX used as a second alignment reference. WebGPU and Vulkan must implement the same capabilities, but their bind groups, descriptor sets, layout declarations, and pipeline variants are adapter machinery unless a future cross-platform requirement proves otherwise.
 
@@ -95,6 +95,28 @@ macOS resolves the game-provided asset path relative to the Game package that de
 Browser packaging copies `Game/Assets`, generates a manifest, and preloads those files before starting WASM. `PixlWasmPlatform` exposes the resulting in-memory bytes through the same synchronous `AssetSource` contract used by Pixl during game initialization. Browser builds do not monitor assets for changes.
 
 PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`. It uses the vendored Apple Swift Binary Parsing core and a Pixl-owned zlib/DEFLATE, scanline-filter, colour, transparency, and Adam7 implementation. Platform image frameworks are not part of PNG decoding.
+
+## Portable Audio
+
+`AudioSettings`
+: Startup-only fixed capacities. `maxSoundCount` is the total number of resident `Sound` resources, `maxVoiceCount` is the simultaneous playback/voice limit, and `maxBusCount` is the number of game-created flat buses. The master output is separate and does not consume a bus slot.
+
+`Sound`
+: Opaque generational handle for decoded resident samples. Pixl currently decodes WAV in shared Swift code into planar `Float32`, mono or stereo. Supported WAV payloads are 8/16/24/32-bit integer PCM and 32-bit IEEE float. Compressed formats and streaming sources remain future additions.
+
+`Playback`
+: Opaque handle for one voice. Games may pause, resume, stop, and change volume, pan, or `rate`. Rate is constrained to `0.25...4`; pitch shifts naturally with speed. A finished voice is retired lazily when controlled or when voice capacity is needed, so there is no per-frame reaper.
+
+`Bus`
+: Optional flat routing target with independent volume. Buses feed the master output; nested graphs and effects are not part of the current contract.
+
+`AudioDevice`
+: Portable low-level resource/playback boundary. Shared `AudioEngine` owns handles, capacity, validation, buses, voice lifetime, and sound replacement. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations. Metal uses AVFAudio; the browser uses Web Audio.
+
+`SoundWriter`
+: Optional backend-owned replacement capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl debounces, reads, and decodes off the game loop, then swaps the resident sound. Existing voices retain their original samples, later voices use the replacement, and failures retain the last valid sound. Browser-packaged assets remain immutable for now.
+
+Native completion handlers only set an atomic flag. Cleanup is demand-driven; completion performs no task creation, logging, allocation, or engine lock acquisition.
 
 ## Shaders and Pipelines
 

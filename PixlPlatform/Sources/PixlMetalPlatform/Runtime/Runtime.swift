@@ -7,6 +7,7 @@ final class Runtime: NSObject {
     private let frame: Frame
     private let gameSettings: GameSettings
     private let renderSettings: RenderSettings
+    private let audioSettings: AudioSettings
     private let assetPath: String?
     private let assetSourcePath: String?
     private let makeGame: (any Platform) throws -> any PlatformGame
@@ -18,6 +19,7 @@ final class Runtime: NSObject {
     init(
         gameSettings: GameSettings,
         renderSettings: RenderSettings,
+        audioSettings: AudioSettings,
         assetPath: String?,
         assetSourcePath: String?,
         makeGame: @escaping (any Platform) throws -> any PlatformGame
@@ -34,6 +36,7 @@ final class Runtime: NSObject {
         )
         self.gameSettings = gameSettings
         self.renderSettings = renderSettings
+        self.audioSettings = audioSettings
         self.assetPath = assetPath
         self.assetSourcePath = assetSourcePath
         self.makeGame = makeGame
@@ -87,6 +90,7 @@ final class Runtime: NSObject {
         platform = MetalPlatform(
             view: view,
             renderSettings: renderSettings,
+            audioSettings: audioSettings,
             assetPath: assetPath,
             assetSourcePath: assetSourcePath
         )

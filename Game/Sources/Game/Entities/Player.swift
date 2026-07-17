@@ -6,9 +6,12 @@ struct Player: Entity {
     private let pipeline: RenderPipeline
     private let sampler: Sampler
     private let texture: TextureAsset?
+    private let audio: Audio
+    private let jump: SoundAsset?
 
     private let camera = OrthographicCamera(halfHeight: 1)
     private var rotation: Double = .zero
+    private var nextJumpSoundElapsed = Double.pi
     private let position = Vec2.zero
 
     init(
@@ -16,6 +19,8 @@ struct Player: Entity {
         context: GameContext
     ) throws {
         texture = context.assets.load(texture: "player.png")
+        audio = context.audio
+        jump = context.assets.load(sound: "jump.wav")
         quad = try .init(
             device: context.platform.device,
             color: .clear
@@ -26,6 +31,16 @@ struct Player: Entity {
 
     mutating func update(_ time: UpdateTime, lanes: Lanes) {
         rotation = -time.elapsedSeconds
+        guard time.elapsedSeconds >= nextJumpSoundElapsed else { return }
+
+        if let jump {
+            audio.play(jump)
+        }
+        let fullTurn = Double.pi * 2
+        let completedMarkers = (
+            (time.elapsedSeconds - Double.pi) / fullTurn
+        ).rounded(.down) + 1
+        nextJumpSoundElapsed = Double.pi + completedMarkers * fullTurn
     }
 
     func render(
@@ -48,7 +63,7 @@ struct Player: Entity {
             transform: camera
                 .projection(for: output)
                 .translated(by: position)
-                .scaled(x: -1, y: 1) // flip horizontally
+//                .scaled(x: -1, y: 1) // flip horizontally
                 .rotated(by: rotation)
         )
     }

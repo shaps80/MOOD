@@ -18,6 +18,9 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Move exact primitive topology to `drawPrimitives` and preserve line/triangle strip semantics.
 - [x] Add Metal-shaped indexed primitive draws with portable 16- and 32-bit index types; keep adapter index-buffer binding private.
 - [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
+- [x] Add portable resident sound resources, fixed-capacity voices, flat buses, playback controls, and natural-pitch `rate` control.
+- [x] Decode mono/stereo WAV into planar `Float32` in shared Swift code and lower playback through simple AVFAudio and Web Audio adapters.
+- [x] Hot-reload sounds from recursive macOS asset events without frame polling, retaining the last valid sound and existing active voices.
 
 ## Product Refocus — 15 July 2026
 
@@ -80,6 +83,7 @@ Camera constraint:
 
 - [x] Add macOS project-relative asset reads and recursive file-level monitoring without tying hot reload to Debug configuration.
 - [x] Decode changed PNGs away from the game loop, retain the last valid texture on failure, and asynchronously write same-size changes into stable texture handles without polling.
+- [x] Decode changed WAVs away from the game loop and atomically replace stable resident sound handles without polling; active voices retain their original samples.
 - [ ] Treat the editor as an optional in-game Pixl subsystem so its core UI and behavior can run across supported platforms.
 - [ ] Keep the in-game editor's state isolated from live game state; inspect snapshots and issue commands rather than sharing mutable ownership.
 - [ ] Keep the host process focused on capabilities the game cannot provide itself: file watching, builds, diagnostics, remote transport, and optional source writeback.
@@ -108,6 +112,13 @@ Camera constraint:
 - [ ] Keep all GPU concepts and platform implementations dimension-agnostic in `PixlPlatform`.
 - [ ] Add reusable internal upload-ring and readback lifetimes before exposing stage-specific dynamic bytes, buffer writes, or copy commands. Do not expose `upload` as game-facing render intent.
 - [ ] Use Cubano Regular as Pixl's official font. The local source file is `/Users/shaps/Library/Fonts/Cubano-Regular.otf`; the future font build pipeline should compile it into portable generated atlas and glyph artifacts rather than depending on that runtime path.
+
+## Audio Follow-up
+
+- [x] Prove the portable sound path in Game by loading `jump.wav` and playing it when the player rotation crosses 180°.
+- [ ] Add an explicit streaming sound source after resident sound effects are established; music should use streaming by default.
+- [ ] Add compressed formats only when a playable Game need justifies their decoder and packaging costs.
+- [ ] Let game needs determine effects and richer routing without exposing platform audio graphs in `PixlPlatform`.
 
 ## Guiding Constraints
 
