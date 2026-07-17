@@ -2,10 +2,16 @@ import Pixl
 import Pixl2D
 
 struct Player: Entity {
-    private let sprite: Sprite
-    private let camera = OrthographicCamera(halfHeight: 1)
+    private var sprite: Sprite
+    private let camera = OrthographicCamera(halfHeight: 200)
+
     private var position = Vec2.zero
     private var velocity: Vec2 = .zero
+    private let controller: AxisController = .init(
+        maxSpeed: 300,
+        acceleration: 1000,
+        deceleration: 1000
+    )
 
     init(
         pipeline: RenderPipeline,
@@ -19,16 +25,32 @@ struct Player: Entity {
         )
     }
 
-    mutating func update(_ time: UpdateTime, context: GameContext) {
-        if let key = context.keyboard.key(.a, phase: .down), !key.isRepeat {
-            velocity.x -= 1
-        }
+    mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
+        let x: Double = (context.keyboard.contains(.d) ? 1 : 0)
+        - (context.keyboard.contains(.a) ? 1 : 0)
 
-        if let key = context.keyboard.key(.d, phase: .down), !key.isRepeat {
-            velocity.x += 1
-        }
+        velocity.x = controller.velocity(
+            current: velocity.x,
+            input: x,
+            delta: time.delta
+        )
 
-        position += velocity
+        let y: Double = (context.keyboard.contains(.w) ? 1 : 0)
+        - (context.keyboard.contains(.s) ? 1 : 0)
+
+        velocity.y = controller.velocity(
+            current: velocity.y,
+            input: y,
+            delta: time.delta
+        )
+
+        position += velocity * time.delta
+
+        if velocity.x > 0 {
+            sprite.isFlipped = false
+        } else if velocity.x < 0 {
+            sprite.isFlipped = true
+        }
     }
 
     func render(

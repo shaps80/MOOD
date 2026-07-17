@@ -59,17 +59,4 @@ public struct TopPlayerController: Equatable, Sendable {
             deceleration: 1500
         )
     )
-
-    public static let slippery = TopPlayerController(
-        horizontal: AxisController(
-            maxSpeed: 600,
-            acceleration: 1000,
-            deceleration: 1500
-        ),
-        vertical: AxisController(
-            maxSpeed: 300,
-            acceleration: 2000,
-            deceleration: 2000
-        )
-    )
 }

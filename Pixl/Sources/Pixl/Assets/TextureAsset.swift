@@ -2,8 +2,8 @@ import PixlPlatform
 import Swift
 
 public final class TextureAsset: Hashable {
-    public let path: String
-    public let texture: Texture
+    internal let path: String
+    internal let texture: Texture
 
     public var size: TextureSize {
         texture.descriptor.size
