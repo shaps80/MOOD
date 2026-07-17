@@ -23,6 +23,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Decode mono/stereo WAV into planar `Float32` in shared Swift code and lower playback through simple AVFAudio and Web Audio adapters.
 - [x] Hot-reload sounds from coalesced recursive macOS asset events without frame polling: removal stops voices and marks the stable sound unavailable; valid replacement restarts active voices; invalid data retains last-good content.
 - [x] Add coarse `GamePhase`, scaled and unscaled update deltas, zero-scale simulation pause, and stable `GameContext` access in every game callback.
+- [x] Let value-type games own mutable state directly through mutating lifecycle/update callbacks while keeping render read-only; move runtime-adjustable time scale onto `GameContext`.
 - [x] Keep `PixlConcurrency` standalone without coupling or re-export from Pixl; games opt into it directly.
 
 ## Product Refocus — 15 July 2026
@@ -121,7 +122,10 @@ Camera constraint:
 ## Audio Follow-up
 
 - [x] Prove the portable sound path in Game by loading `jump.wav` and playing it when the player rotation crosses 180°.
+- [x] Prove game-owned music, effects, and voice bus routing with restorable volume values; keep semantic categories and persistence outside the engine.
 - [x] Run all macOS AVFAudio work on a private serial `.utility` queue and recover output hardware configuration changes there, never blocking game/render frame work.
+- [x] Keep Metal bus mixers disconnected while empty so later voices never start against a disconnected native graph.
+- [x] Preserve logical browser playback while Web Audio awaits its required user gesture, then start or resume output when the context runs.
 - [ ] Move browser-side Web Audio graph control behind an AudioWorklet/worker message boundary if profiling proves its small control-thread sections interfere with frame work; browser audio rendering is already off-thread.
 - [ ] Add an explicit streaming sound source after resident sound effects are established; music should use streaming by default.
 - [ ] Add compressed formats only when a playable Game need justifies their decoder and packaging costs.

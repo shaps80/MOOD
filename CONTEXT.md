@@ -48,8 +48,11 @@ WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to impleme
 `GamePhase`
 : Coarse platform lifecycle: `background`, `active`, or `inactive`. Loading and preparation remain game-owned state. Phase transitions are delivered once through `Game.didEnter(_:context:)`.
 
+`GameContext`
+: Stable runtime-owned reference supplied during game initialization and as the final argument to every lifecycle, update, and render callback. It exposes the platform, drawable format, audio, assets, and mutable time scale; it does not expose all startup `RenderSettings`. `Game.didEnter`, `fixedUpdate`, and `update` mutate the game value directly, while `render` is read-only.
+
 `GameContext.timeScale`
-: Nonnegative simulation-time multiplier. `0` suppresses fixed updates while presentation updates and rendering continue. Audio and unscaled time remain independent.
+: Nonnegative simulation-time multiplier. `0` suppresses fixed updates while presentation updates and rendering continue. Audio and unscaled time remain independent. Changes made by a callback affect the next presentation schedule, allowing `UpdateTime.unscaledDelta` to drive pause and slow-motion ramps.
 
 `FixedTime.delta`
 : Fixed simulation step after game time scaling determines whether a tick occurs.
@@ -60,7 +63,7 @@ WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to impleme
 `UpdateTime.unscaledDelta`
 : The same clamped presentation delta before `GameContext.timeScale`. Lifecycle fades and other work that must continue while simulation is paused use this value.
 
-Every `Game.fixedUpdate`, `Game.update`, and `Game.render` callback receives the runtime's stable `GameContext` as its final argument. Pixl has no dependency on or re-export of `PixlConcurrency`; games may depend on that standalone package directly when they need explicit lanes.
+Pixl has no dependency on or re-export of `PixlConcurrency`; games may depend on that standalone package directly when they need explicit lanes.
 
 ## Resource Ownership
 
@@ -126,22 +129,22 @@ PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`
 : Opaque generational handle for decoded resident samples. Pixl currently decodes WAV in shared Swift code into planar `Float32`, mono or stereo. Supported WAV payloads are 8/16/24/32-bit integer PCM and 32-bit IEEE float. Compressed formats and streaming sources remain future additions.
 
 `Playback`
-: Reusable reference controller created by `Audio.prepare` without starting or allocating a native voice. It strongly retains the shared audio controller and owns `play`, `pause`, `stop`, `volume`, `pan`, `rate`, `loop`, and `bus`. `play` starts a new voice or resumes a paused live voice; `pause` preserves its playhead; `stop` destroys the active voice but leaves the controller reusable. Volume, pan, and rate changes update both stored configuration and a live voice. Loop and bus configuration apply when a new voice starts. Pitch shifts naturally with rate. A finished voice is retired lazily when controlled or when voice capacity is needed, so there is no per-frame reaper.
+: Reusable reference controller created by `Audio.prepare` without starting or allocating a native voice. It strongly retains the shared audio controller and owns `play`, `pause`, `stop`, `volume`, `pan`, `rate`, `loop`, and `bus`. Initial configuration is volume `1`, pan `0`, rate `1`, looping disabled, and the master bus. `play` starts a new voice or resumes a paused live voice; `pause` preserves its playhead; `stop` destroys the active voice but leaves the controller reusable, and controller deinitialization also stops its active voice. Volume, pan, and rate changes update both stored configuration and a live voice. Loop and bus configuration apply when a new voice starts. Pitch shifts naturally with rate. A finished voice is retired lazily when controlled or when voice capacity is needed, so there is no per-frame reaper.
 
 `Bus`
-: Nonoptional flat routing target with an owned volume property. Every prepared playback defaults to `Audio.masterBus`; game-created buses come from throwing, nonoptional `Audio.makeBus()`. Backends may still represent direct master routing with an internal absent handle. Buses feed the master output; nested graphs and effects are not part of the current contract.
+: Nonoptional flat routing target with an owned volume property initially set to `1`. Every prepared playback defaults to `Audio.masterBus`; game-created buses come from throwing, nonoptional `Audio.makeBus()`. Games assign semantic meaning such as music, effects, or voices, persist their volume values, then recreate buses and restore those values on launch; bus identities are runtime-only. Backends may still represent direct master routing with an internal absent handle. Buses feed the master output; nested graphs and effects are not part of the current contract.
 
 `AudioDevice`
-: Portable low-level resource/playback boundary. Shared `AudioEngine` creates prepared controllers and owns active handles, capacity, validation, buses, voice lifetime, control values, master volume, and sound replacement. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations when a controller becomes active. Controller getters use portable stored state and never synchronously query a native audio graph. Metal uses AVFAudio; the browser uses Web Audio.
+: Portable low-level resource/playback boundary. Shared `AudioEngine` creates prepared controllers and owns active handles, capacity, validation, buses, voice lifetime, control values, master volume, and sound replacement. Master volume starts at `1`. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations when a controller becomes active. Controller getters use portable stored state and never synchronously query a native audio graph. Metal uses AVFAudio; the browser uses Web Audio.
 
 `SoundWriter`
 : Optional backend-owned replacement/invalidation capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl coalesces each per-path event burst, reads, and decodes off the game loop. A valid content replacement restarts active voices from the beginning with their existing playback controllers and controls; paused voices remain paused. Removal immediately stops and retires active voices but retains prepared controllers and configuration. Their next `play` throws `AudioError.resourceUnavailable(.sound)` until valid content reappears, then explicitly playing uses the replacement. Invalid replacement data retains the last valid sound. Browser-packaged assets remain an immutable build-time snapshot for now.
 
 Native completion handlers only set an atomic flag. Cleanup is demand-driven; completion performs no task creation, logging, allocation, or engine lock acquisition.
 
-The macOS adapter owns one private serial `.utility` QoS audio-control queue. It creates and operates every AVFAudio engine, buffer, mixer, player, and varispeed node on that queue; game/render callers only perform fixed-capacity handle bookkeeping and enqueue commands. Audio hardware configuration notifications enqueue recovery on the same queue, so preparing or restarting a stopped engine never blocks frame work. Core Audio owns the real-time rendering thread. No route polling runs in the game loop.
+The macOS adapter owns one private serial `.utility` QoS audio-control queue. It creates and operates every AVFAudio engine, buffer, mixer, player, and varispeed node on that queue; game/render callers only perform fixed-capacity handle bookkeeping and enqueue commands. A native bus mixer is attached when created but connects downstream only while at least one voice is connected; its final voice removal disconnects it again. Audio hardware configuration notifications enqueue recovery on the same queue, so preparing or restarting a stopped engine never blocks frame work. Core Audio owns the real-time rendering thread. No route polling runs in the game loop.
 
-Web Audio already separates its control and rendering threads internally. The current single-threaded WASM adapter issues lightweight `AudioContext` graph-control calls from the browser control thread; a stricter separation of those calls requires a future AudioWorklet/worker messaging backend.
+Web Audio already separates its control and rendering threads internally. The current single-threaded WASM adapter issues lightweight `AudioContext` graph-control calls from the browser control thread; a stricter separation of those calls requires a future AudioWorklet/worker messaging backend. Browsers may initially suspend the context until a user gesture. Pixl keeps the game running and retains logical voice timelines while output is unavailable, then starts or resumes their sources when the context becomes active.
 
 ## Shaders and Pipelines
 

@@ -1,12 +1,13 @@
 import PixlPlatform
 
-/// Runtime services available while a game constructs its persistent state.
+/// Stable runtime services and controls supplied throughout the game lifecycle.
 public final class GameContext {
     public let platform: any Platform
     public let drawableFormat: PixelFormat
     public let audio: Audio
     public let assets: Assets
 
+    /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
     public var timeScale: Double = 1 {
         didSet {
             precondition(
