@@ -8,6 +8,7 @@ public final class GameContext {
     public let assets: Assets
     public let keyboard: Keyboard
     public let gamepads: Gamepads
+    public let inputs: Input.Map
 
     /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
     public var timeScale: Double = 1 {
@@ -27,6 +28,7 @@ public final class GameContext {
         self.drawableFormat = format
         keyboard = platform.keyboard
         gamepads = platform.gamepads
+        inputs = Input.Map(keyboard: keyboard, gamepads: gamepads)
         audio = Audio(device: platform.audioDevice)
         assets = Assets(
             device: platform.device,

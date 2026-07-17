@@ -1,4 +1,5 @@
 import Swift
+import Pixl2D
 
 /// One-dimensional acceleration and deceleration for axis-based movement.
 public struct AxisController: Equatable, Sendable {
@@ -26,21 +27,27 @@ public struct AxisController: Equatable, Sendable {
         self.reverseDeceleration = reverseDeceleration ?? deceleration
     }
 
+    public func velocity(source: Vec2, target: Vec2, delta: Double) -> Vec2 {
+        let x = velocity(source: source.x, target: target.x, delta: delta)
+        let y = velocity(source: source.y, target: target.y, delta: delta)
+        return .init(x, y)
+    }
+
     /// Calculates the next velocity for a scalar input axis.
     ///
     /// `input` is usually `-1...1`, where negative and positive values move in
     /// opposite directions.
-    public func velocity(current: Double, input: Double, delta: Double) -> Double {
-        guard input != 0 else {
-            return move(current, toward: 0, by: deceleration * delta)
+    public func velocity(source: Double, target: Double, delta: Double) -> Double {
+        guard target != 0 else {
+            return move(source, toward: 0, by: deceleration * delta)
         }
 
-        let target = input * maxSpeed
-        if isReversing(current: current, target: target) {
-            return move(current, toward: 0, by: reverseDeceleration * delta)
+        let target = target * maxSpeed
+        if isReversing(current: source, target: target) {
+            return move(source, toward: 0, by: reverseDeceleration * delta)
         }
 
-        return move(current, toward: target, by: acceleration * delta)
+        return move(source, toward: target, by: acceleration * delta)
     }
 
     private func move(_ current: Double, toward target: Double, by step: Double) -> Double {

@@ -7,11 +7,14 @@ struct Player: Entity {
 
     private var position = Vec2.zero
     private var velocity: Vec2 = .zero
+    private let profile: PlayerProfile = .init()
     private let controller: AxisController = .init(
         maxSpeed: 300,
         acceleration: 1000,
         deceleration: 1000
     )
+
+    private var elapsed: Double = 0
 
     init(
         pipeline: RenderPipeline,
@@ -23,38 +26,17 @@ struct Player: Entity {
             pipeline: pipeline,
             context: context
         )
+
+        context.inputs.bind(profile.storage)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
-        let key: Vec2 = .init(
-            x: (context.keyboard.contains(.d) ? 1.0 : 0)
-            - (context.keyboard.contains(.a) ? 1.0 : 0),
-            y: (context.keyboard.contains(.w) ? 1 : 0)
-            - (context.keyboard.contains(.s) ? 1 : 0)
-        )
+        elapsed = time.elapsedSeconds
+        let direction = profile.direction
 
-        let stick = context.gamepads.first?.leftStick ?? .zero
-        let deadzone = 0.12
-
-        let x, y: Double
-
-        if abs(stick.x) >= deadzone || abs(stick.y) >= deadzone {
-            x = stick.x
-            y = stick.y
-        } else {
-            x = key.x
-            y = key.y
-        }
-
-        velocity.x = controller.velocity(
-            current: velocity.x,
-            input: x,
-            delta: time.delta
-        )
-
-        velocity.y = controller.velocity(
-            current: velocity.y,
-            input: y,
+        velocity = controller.velocity(
+            source: velocity,
+            target: direction,
             delta: time.delta
         )
 
