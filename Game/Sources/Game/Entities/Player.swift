@@ -7,7 +7,7 @@ struct Player: Entity {
 
     private var position = Vec2.zero
     private var velocity: Vec2 = .zero
-    private let profile: PlayerProfile = .init()
+    private let bindings: PlayerBindings = .init()
     private let controller: AxisController = .init(
         maxSpeed: 300,
         acceleration: 1000,
@@ -27,12 +27,12 @@ struct Player: Entity {
             context: context
         )
 
-        profile.bind(to: context.inputs)
+        bindings.bind(to: context.inputs)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         elapsed = time.elapsedSeconds
-        let direction = profile.direction
+        let direction = bindings.direction
 
         velocity = controller.velocity(
             source: velocity,
