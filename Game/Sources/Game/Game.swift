@@ -47,11 +47,21 @@ struct Game: Pixl.Game {
 
         switch state.phase {
         case .active:
+#if os(macOS)
             let volume = lerp(from: 0.15, to: 1, by: state.fade.progress)
             context.audio.masterVolume = .init(volume)
+#else
+            if let music = state.musicPlayback {
+                context.audio.resume(music)
+            }
+#endif
         case .inactive, .background:
+#if os(macOS)
             let volume = lerp(from: 1.0, to: 0.15, by: state.fade.progress)
             context.audio.masterVolume = .init(volume)
+#else
+            context.audio.pause(state.musicPlayback)
+#endif
         }
     }
 
