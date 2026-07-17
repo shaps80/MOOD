@@ -95,6 +95,7 @@ final class Runtime: NSObject {
             assetPath: assetPath,
             assetSourcePath: assetSourcePath
         )
+        view.keyboard = platform?.keyboard
 
         do {
             game = try makeGame(platform!)
@@ -113,6 +114,7 @@ final class Runtime: NSObject {
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view)
+        platform?.keyboard.focus(true)
 
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
@@ -180,6 +182,7 @@ extension Runtime: MTKViewDelegate {
         guard let platform, let game else { return }
 
         do {
+            platform.keyboard.publishPendingEvents()
             guard let drawable = platform.drawable() else { return }
 
             frame.reset()
@@ -202,10 +205,21 @@ extension Runtime: NSWindowDelegate {
     }
 
     func windowDidMiniaturize(_ notification: Notification) {
+        platform?.keyboard.focus(false)
         game?.didEnter(.background)
     }
 
     func windowDidDeminiaturize(_ notification: Notification) {
+        platform?.keyboard.focus(true)
         updatePhase()
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        platform?.keyboard.focus(true)
+        window?.makeFirstResponder(gameView)
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        platform?.keyboard.focus(false)
     }
 }

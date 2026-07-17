@@ -13,6 +13,7 @@ final class Runtime {
     private var adapterReady: JSClosure?
     private var deviceReady: JSClosure?
     private var lifecycleChanged: JSClosure?
+    private var keyboardAdapter: WasmKeyboard?
     private var lastPresentationMilliseconds: Double?
 
     deinit {
@@ -59,6 +60,7 @@ final class Runtime {
         guard format == renderSettings.drawableFormat else { fatalError("WebGPU preferred canvas format does not match RenderSettings.drawableFormat") }
         let configuration = object(); configuration["device"] = .object(device); configuration["format"] = .string(preferred); configuration["alphaMode"] = .string("opaque"); _ = context.configure!(configuration)
         let platform = WasmPlatform(device: device, context: context, canvas: canvas, format: format, renderSettings: renderSettings, audioSettings: audioSettings)
+        keyboardAdapter = WasmKeyboard(keyboard: platform.keyboard, canvas: canvas)
         do { game = try makeGame(platform) } catch { fatalError("Game initialization failed: \(error)") }
         self.platform = platform
         installLifecycleListeners()
@@ -84,6 +86,7 @@ final class Runtime {
     private func draw() {
         guard let platform, let game, let drawable = platform.drawable() else { return }
         do {
+            platform.keyboard.publishPendingEvents()
             frame.reset()
             try game.render(on: platform, output: RenderTarget(texture: drawable.texture), frame: frame)
             try platform.present(frame, to: consume drawable)

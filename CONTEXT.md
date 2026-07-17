@@ -65,6 +65,19 @@ WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to impleme
 
 Pixl has no dependency on or re-export of `PixlConcurrency`; games may depend on that standalone package directly when they need explicit lanes.
 
+## Keyboard Input
+
+`Keyboard`
+: Platform-owned physical keyboard state exposed through `Platform` and `GameContext`. `contains(_:)` reads current down-state in constant time. `events` is the ordered, contiguous transition batch published for the current presentation frame; `key(_:phase:)` and `contains(_:phase:)` use constant-time per-key/per-phase lookup.
+
+`Key`
+: Portable physical key position, independent of produced character and active keyboard layout. macOS translates `NSEvent.keyCode`; the browser translates `KeyboardEvent.code`.
+
+`Key.Event`
+: One `.down` or `.up` transition with the complete `Key.Modifiers` snapshot. The first down has `isRepeat == false`; native auto-repeat downs have `isRepeat == true` and coalesce to at most one event per key per frame. Current held state remains separate from event phase.
+
+Keyboard event storage is runtime-owned, fixed-capacity, contiguous, and double-buffered. Native callbacks append into pending storage; presentation swaps it into the published frame without copying or allocating. At most one event per key and phase is retained each frame, so capacity derives from the closed `Key` vocabulary rather than game settings. Focus loss synthesizes `.up` for every down key before clearing state. `Keyboard.isFocused` reports keyboard focus.
+
 ## Resource Ownership
 
 `ResourceID`

@@ -2,28 +2,33 @@ import Pixl
 import Pixl2D
 
 struct Player: Entity {
-    private let pipeline: RenderPipeline
-    
-    private let quad: Quad
-    private let texture: TextureAsset
-    private let sampler: Sampler
-
+    private let sprite: Sprite
     private let camera = OrthographicCamera(halfHeight: 1)
-    private let position = Vec2.zero
+    private var position = Vec2.zero
+    private var velocity: Vec2 = .zero
 
     init(
         pipeline: RenderPipeline,
         audio: GameAudio,
         context: GameContext
     ) throws {
-        texture = try context.assets.load(texture: "player.png")
-        quad = try .init(
-            device: context.platform.device,
-            color: .clear
+        sprite = try .init(
+            named: "player.png",
+            pipeline: pipeline,
+            context: context
         )
+    }
 
-        self.pipeline = pipeline
-        self.sampler = try context.platform.device.makeSampler(.init())
+    mutating func update(_ time: UpdateTime, context: GameContext) {
+        if let key = context.keyboard.key(.a, phase: .down), !key.isRepeat {
+            velocity.x -= 1
+        }
+
+        if let key = context.keyboard.key(.d, phase: .down), !key.isRepeat {
+            velocity.x += 1
+        }
+
+        position += velocity
     }
 
     func render(
@@ -33,15 +38,9 @@ struct Player: Entity {
         time: RenderTime,
         context: GameContext
     ) throws {
-        let pass = frame.beginRenderPass(
-            .init(.init(target: output, loadAction: .load))
-        )
-
-        pass.setRenderPipeline(pipeline)
-        pass.setFragmentTexture(texture, index: 0)
-        pass.setFragmentSampler(sampler, index: 0)
-        quad.draw(
-            on: pass,
+        sprite.draw(
+            frame: frame,
+            output: output,
             transform: camera
                 .projection(for: output)
                 .translated(by: position)

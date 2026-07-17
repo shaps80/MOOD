@@ -3,6 +3,8 @@
 import PixlPlatform
 
 final class GameView: MTKView {
+    var keyboard: Keyboard?
+
     init(
         frame frameRect: NSRect,
         device: MTLDevice,
@@ -30,5 +32,52 @@ final class GameView: MTKView {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard let key = Key(macKeyCode: event.keyCode) else {
+            super.keyDown(with: event)
+            return
+        }
+        keyboard?.handle(.init(
+            key: key,
+            phase: .down,
+            modifiers: .init(event.modifierFlags),
+            isRepeat: event.isARepeat
+        ))
+    }
+
+    override func keyUp(with event: NSEvent) {
+        guard let key = Key(macKeyCode: event.keyCode) else {
+            super.keyUp(with: event)
+            return
+        }
+        keyboard?.handle(.init(
+            key: key,
+            phase: .up,
+            modifiers: .init(event.modifierFlags)
+        ))
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        guard let keyboard, let key = Key(macKeyCode: event.keyCode) else {
+            super.flagsChanged(with: event)
+            return
+        }
+        keyboard.handle(.init(
+            key: key,
+            phase: keyboard.contains(key) ? .up : .down,
+            modifiers: .init(event.modifierFlags)
+        ))
+    }
+}
+
+private extension Key.Modifiers {
+    init(_ flags: NSEvent.ModifierFlags) {
+        self = []
+        if flags.contains(.command) { insert(.command) }
+        if flags.contains(.control) { insert(.control) }
+        if flags.contains(.option) { insert(.option) }
+        if flags.contains(.shift) { insert(.shift) }
     }
 }

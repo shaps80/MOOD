@@ -27,6 +27,7 @@ public protocol Platform: AnyObject {
     var device: any Device { get }
     var audioDevice: any AudioDevice { get }
     var assetSource: (any AssetSource)? { get }
+    var keyboard: Keyboard { get }
 
     func drawable() -> Drawable?
 

@@ -6,6 +6,7 @@ public final class GameContext {
     public let drawableFormat: PixelFormat
     public let audio: Audio
     public let assets: Assets
+    public let keyboard: Keyboard
 
     /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
     public var timeScale: Double = 1 {
@@ -23,6 +24,7 @@ public final class GameContext {
     ) {
         self.platform = platform
         self.drawableFormat = format
+        keyboard = platform.keyboard
         audio = Audio(device: platform.audioDevice)
         assets = Assets(
             device: platform.device,

@@ -12,6 +12,7 @@ final class WasmPlatform: Platform {
 
     var device: any Device { wasmDevice }
     var audioDevice: any AudioDevice { wasmAudio }
+    let keyboard = Keyboard()
     let assetSource: (any AssetSource)?
 
     init(device: JSObject, context: JSObject, canvas: JSObject, format: PixelFormat, renderSettings: RenderSettings, audioSettings: AudioSettings) {
