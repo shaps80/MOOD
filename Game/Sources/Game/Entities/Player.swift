@@ -6,7 +6,7 @@ struct Player: Entity {
     private let pipeline: RenderPipeline
     private let sampler: Sampler
     private let texture: TextureAsset
-    private let jump: SoundAsset
+    private let jump: Playback
 
     private let camera = OrthographicCamera(halfHeight: 1)
     private var rotation: Double = .zero
@@ -19,7 +19,9 @@ struct Player: Entity {
         context: GameContext
     ) throws {
         texture = try context.assets.load(texture: "player.png")
-        jump = try context.assets.load(sound: "jump.wav")
+        let jumpSound = try context.assets.load(sound: "jump.wav")
+        jump = context.audio.prepare(jumpSound)
+        jump.volume = 0.4
         quad = try .init(
             device: context.platform.device,
             color: .clear
@@ -32,7 +34,7 @@ struct Player: Entity {
         rotation = -time.elapsedSeconds
 
         if time.elapsedSeconds >= nextJumpSoundElapsed {
-            _ = try? context.audio.play(jump, volume: 0.4)
+            try? jump.play()
             rotationDirection *= -1
         }
 

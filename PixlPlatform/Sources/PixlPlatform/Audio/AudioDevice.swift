@@ -10,26 +10,11 @@ public protocol AudioDevice: AnyObject {
 
     func destroy(_ sound: Sound)
 
-    func makeBus() -> Bus?
+    func prepare(_ sound: Sound, on bus: Bus) -> Playback
 
-    func play(
-        _ sound: Sound,
-        on bus: Bus?,
-        volume: Float,
-        pan: Float,
-        loop: Bool,
-        rate: Float
-    ) throws(AudioError) -> Playback
+    func makeBus() throws(AudioError) -> Bus
 
-    func pause(_ playback: Playback)
-    func resume(_ playback: Playback)
-    func stop(_ playback: Playback)
-
-    subscript(volume playback: Playback) -> Float { get set }
-    subscript(pan playback: Playback) -> Float { get set }
-    subscript(rate playback: Playback) -> Float { get set }
-    subscript(volume bus: Bus) -> Float { get set }
-
+    var masterBus: Bus { get }
     var masterVolume: Float { get set }
 }
 

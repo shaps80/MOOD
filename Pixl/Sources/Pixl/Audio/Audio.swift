@@ -3,80 +3,19 @@ import Swift
 
 public final class Audio {
     private let device: any AudioDevice
+    public let masterBus: Bus
 
     init(device: any AudioDevice) {
         self.device = device
+        masterBus = device.masterBus
     }
 
-    public func makeBus() -> Bus? {
-        device.makeBus()
+    public func prepare(_ sound: SoundAsset) -> Playback {
+        device.prepare(sound.sound, on: masterBus)
     }
 
-    @discardableResult
-    public func play(
-        _ sound: SoundAsset,
-        on bus: Bus? = nil,
-        volume: Float = 1,
-        pan: Float = 0,
-        loop: Bool = false,
-        rate: Float = 1
-    ) throws(AudioError) -> Playback {
-        try device.play(
-            sound.sound,
-            on: bus,
-            volume: volume,
-            pan: pan,
-            loop: loop,
-            rate: rate
-        )
-    }
-
-    public func pause(_ playback: Playback) {
-        device.pause(playback)
-    }
-
-    public func resume(_ playback: Playback) {
-        device.resume(playback)
-    }
-
-    public func stop(_ playback: Playback) {
-        device.stop(playback)
-    }
-
-    public subscript(volume playback: Playback) -> Float {
-        get {
-            device[volume: playback]
-        }
-        set {
-            device[volume: playback] = newValue
-        }
-    }
-
-    public subscript(pan playback: Playback) -> Float {
-        get {
-            device[pan: playback]
-        }
-        set {
-            device[pan: playback] = newValue
-        }
-    }
-
-    public subscript(rate playback: Playback) -> Float {
-        get {
-            device[rate: playback]
-        }
-        set {
-            device[rate: playback] = newValue
-        }
-    }
-
-    public subscript(volume bus: Bus) -> Float {
-        get {
-            device[volume: bus]
-        }
-        set {
-            device[volume: bus] = newValue
-        }
+    public func makeBus() throws(AudioError) -> Bus {
+        try device.makeBus()
     }
 
     public var masterVolume: Float {

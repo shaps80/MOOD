@@ -4,6 +4,8 @@ import Pixl2D
 @main
 struct Game: Pixl.Game {
     private let state: State
+    private let pipeline: RenderPipeline
+    private let music: Playback
 
     static var gameSettings: GameSettings {
         .init(
@@ -15,7 +17,19 @@ struct Game: Pixl.Game {
     static let assetSettings: AssetSettings = .init()
 
     init(context: GameContext) throws {
-        self.state = try .init(context: context)
+        pipeline = try context.platform.device.makeRenderPipeline(
+            .init(
+                vertex: .vertex,
+                fragment: .fragment,
+                vertexLayout: .primitive,
+                colorFormat: context.renderSettings.drawableFormat
+            )
+        )
+        let sound = try context.assets.load(sound: "music.wav")
+        music = context.audio.prepare(sound)
+        music.loop = true
+
+        self.state = try .init(pipeline: pipeline, context: context)
     }
 
     func didEnter(_ phase: GamePhase, context: GameContext) {
@@ -24,16 +38,16 @@ struct Game: Pixl.Game {
 
         switch phase {
         case .active:
-            context.audio[rate: state.musicPlayback] = 1
-            
-#if os(wasi)
-            context.audio.resume(state.musicPlayback)
-#endif
+            do {
+                try music.play()
+            } catch {
+                print("Unable to play music: \(error)")
+            }
             state.timeScale = 1
 
         case .background, .inactive:
 #if os(wasi)
-            context.audio.pause(state.musicPlayback)
+            music.pause()
 #endif
             state.timeScale = 0
         }
@@ -94,24 +108,11 @@ private extension Game {
         var metricsElapsed = 0.0
         var fade: Timer = .init(duration: 1)
         var timeScale = 1.0
-        var pipeline: RenderPipeline
         var player: Player
-        let music: SoundAsset
-        var musicPlayback: Playback
         var phase: GamePhase = .active
 
-        init(context: GameContext) throws {
-            pipeline = try context.platform.device.makeRenderPipeline(
-                .init(
-                    vertex: .vertex,
-                    fragment: .fragment,
-                    vertexLayout: .primitive,
-                    colorFormat: context.renderSettings.drawableFormat
-                )
-            )
+        init(pipeline: RenderPipeline, context: GameContext) throws {
             player = try .init(pipeline: pipeline, context: context)
-            music = try context.assets.load(sound: "music.wav")
-            musicPlayback = try context.audio.play(music, loop: true)
         }
     }
 }

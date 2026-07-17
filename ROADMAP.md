@@ -19,6 +19,7 @@ This file tracks architectural work across sessions. It records direction and de
 - [x] Add Metal-shaped indexed primitive draws with portable 16- and 32-bit index types; keep adapter index-buffer binding private.
 - [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
 - [x] Add portable resident sound resources, fixed-capacity voices, flat buses, playback controls, and natural-pitch `rate` control.
+- [x] Separate silent playback preparation from active native voices through reusable object-based `Playback` and nonoptional `Bus` controllers.
 - [x] Decode mono/stereo WAV into planar `Float32` in shared Swift code and lower playback through simple AVFAudio and Web Audio adapters.
 - [x] Hot-reload sounds from coalesced recursive macOS asset events without frame polling: removal stops voices and marks the stable sound unavailable; valid replacement restarts active voices; invalid data retains last-good content.
 - [x] Add coarse `GamePhase`, scaled and unscaled update deltas, zero-scale simulation pause, and stable `GameContext` access in every game callback.

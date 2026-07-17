@@ -120,22 +120,22 @@ PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`
 ## Portable Audio
 
 `AudioSettings`
-: Startup-only fixed capacities. `maxSoundCount` is the total number of resident `Sound` resources, `maxVoiceCount` is the simultaneous playback/voice limit, and `maxBusCount` is the number of game-created flat buses. The master output is separate and does not consume a bus slot.
+: Startup-only fixed capacities. `maxSoundCount` is the total number of resident `Sound` resources, `maxVoiceCount` is the simultaneous active native-voice limit, and `maxBusCount` is the number of game-created flat buses. Prepared playback controllers consume no voice slot. The master output is separate and does not consume a bus slot.
 
 `Sound`
 : Opaque generational handle for decoded resident samples. Pixl currently decodes WAV in shared Swift code into planar `Float32`, mono or stereo. Supported WAV payloads are 8/16/24/32-bit integer PCM and 32-bit IEEE float. Compressed formats and streaming sources remain future additions.
 
 `Playback`
-: Opaque handle for one voice. Games may pause, resume, stop, and get or set volume, pan, or `rate` through labeled `Audio`/`AudioDevice` subscripts. Missing, stale, or finished handles read as `0`; writes to them do nothing. Pitch shifts naturally with rate. A finished voice is retired lazily when controlled or when voice capacity is needed, so there is no per-frame reaper.
+: Reusable reference controller created by `Audio.prepare` without starting or allocating a native voice. It strongly retains the shared audio controller and owns `play`, `pause`, `stop`, `volume`, `pan`, `rate`, `loop`, and `bus`. `play` starts a new voice or resumes a paused live voice; `pause` preserves its playhead; `stop` destroys the active voice but leaves the controller reusable. Volume, pan, and rate changes update both stored configuration and a live voice. Loop and bus configuration apply when a new voice starts. Pitch shifts naturally with rate. A finished voice is retired lazily when controlled or when voice capacity is needed, so there is no per-frame reaper.
 
 `Bus`
-: Optional flat routing target with independent volume. Buses feed the master output; nested graphs and effects are not part of the current contract.
+: Nonoptional flat routing target with an owned volume property. Every prepared playback defaults to `Audio.masterBus`; game-created buses come from throwing, nonoptional `Audio.makeBus()`. Backends may still represent direct master routing with an internal absent handle. Buses feed the master output; nested graphs and effects are not part of the current contract.
 
 `AudioDevice`
-: Portable low-level resource/playback boundary. Shared `AudioEngine` owns handles, capacity, validation, buses, voice lifetime, control values, master volume, and sound replacement. Playback throws `AudioError` and returns a nonoptional handle; unavailable resources and voice-creation failures are explicit. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations. Getters return engine-owned portable state and never synchronously query a native audio graph. Metal uses AVFAudio; the browser uses Web Audio.
+: Portable low-level resource/playback boundary. Shared `AudioEngine` creates prepared controllers and owns active handles, capacity, validation, buses, voice lifetime, control values, master volume, and sound replacement. Concrete adapters only create native sample/voice/bus resources and perform primitive playback operations when a controller becomes active. Controller getters use portable stored state and never synchronously query a native audio graph. Metal uses AVFAudio; the browser uses Web Audio.
 
 `SoundWriter`
-: Optional backend-owned replacement/invalidation capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl coalesces each per-path event burst, reads, and decodes off the game loop. A valid content replacement restarts active voices from the beginning with their existing playback handles and controls. Removal immediately stops and retires active voices, marks the sound unavailable, and makes `play` throw `AudioError.resourceUnavailable(.sound)` until valid content reappears. Invalid replacement data retains the last valid sound. Browser-packaged assets remain an immutable build-time snapshot for now.
+: Optional backend-owned replacement/invalidation capability for a stable `Sound` handle. macOS asset changes arrive from the existing recursive event stream; Pixl coalesces each per-path event burst, reads, and decodes off the game loop. A valid content replacement restarts active voices from the beginning with their existing playback controllers and controls; paused voices remain paused. Removal immediately stops and retires active voices but retains prepared controllers and configuration. Their next `play` throws `AudioError.resourceUnavailable(.sound)` until valid content reappears, then explicitly playing uses the replacement. Invalid replacement data retains the last valid sound. Browser-packaged assets remain an immutable build-time snapshot for now.
 
 Native completion handlers only set an atomic flag. Cleanup is demand-driven; completion performs no task creation, logging, allocation, or engine lock acquisition.
 
