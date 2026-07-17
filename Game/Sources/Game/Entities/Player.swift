@@ -25,22 +25,36 @@ struct Player: Entity {
         )
     }
 
-    mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        let keyX: Double = (context.keyboard.contains(.d) ? 1 : 0)
-        - (context.keyboard.contains(.a) ? 1 : 0)
+    mutating func update(_ time: UpdateTime, context: GameContext) {
+        let key: Vec2 = .init(
+            x: (context.keyboard.contains(.d) ? 1.0 : 0)
+            - (context.keyboard.contains(.a) ? 1.0 : 0),
+            y: (context.keyboard.contains(.w) ? 1 : 0)
+            - (context.keyboard.contains(.s) ? 1 : 0)
+        )
+
+        let stick = context.gamepads.first?.leftStick ?? .zero
+        let deadzone = 0.12
+
+        let x, y: Double
+
+        if abs(stick.x) >= deadzone || abs(stick.y) >= deadzone {
+            x = stick.x
+            y = stick.y
+        } else {
+            x = key.x
+            y = key.y
+        }
 
         velocity.x = controller.velocity(
             current: velocity.x,
-            input: keyX,
+            input: x,
             delta: time.delta
         )
 
-        let keyY: Double = (context.keyboard.contains(.w) ? 1 : 0)
-        - (context.keyboard.contains(.s) ? 1 : 0)
-
         velocity.y = controller.velocity(
             current: velocity.y,
-            input: keyY,
+            input: y,
             delta: time.delta
         )
 

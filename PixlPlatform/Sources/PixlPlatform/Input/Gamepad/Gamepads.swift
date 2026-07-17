@@ -17,6 +17,13 @@ public final class Gamepads: RandomAccessCollection {
         connected[position]
     }
 
+    public subscript(safe position: Int) -> Gamepad {
+        guard indices.contains(position) else {
+            return .init(index: -1, name: "No Gamepad")
+        }
+        return self[position]
+    }
+
     package func gamepad(at index: Int, name: String) -> Gamepad? {
         guard index >= 0 else { return nil }
         if index >= slots.count {
@@ -42,7 +49,10 @@ public final class Gamepads: RandomAccessCollection {
     }
 
     package func disconnect(at index: Int) {
-        guard slots.indices.contains(index), let gamepad = slots[index] else {
+        guard slots.indices.contains(index),
+              let gamepad = slots[index],
+              gamepad.isConnected
+        else {
             return
         }
         gamepad.disconnect()

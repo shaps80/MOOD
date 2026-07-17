@@ -29,8 +29,8 @@ public final class Gamepad {
     public package(set) var name: String
     public package(set) var isConnected: Bool
 
-    public private(set) var leftStick = SIMD2<Float>.zero
-    public private(set) var rightStick = SIMD2<Float>.zero
+    public private(set) var leftStick = SIMD2<Double>.zero
+    public private(set) var rightStick = SIMD2<Double>.zero
 
     private static let eventCapacity = Button.allCases.count * 2
     private static let buttonWordCount = (Button.allCases.count + 63) / 64
@@ -51,7 +51,7 @@ public final class Gamepad {
 
     private let storage = Storage(capacity: eventCapacity)
     private var pressed: ContiguousArray<UInt64>
-    private var values: ContiguousArray<Float>
+    private var values: ContiguousArray<Double>
 
     package init(index: Int, name: String) {
         self.index = index
@@ -80,7 +80,7 @@ public final class Gamepad {
         self.button(button, phase: phase) != nil
     }
 
-    public func value(for button: Button) -> Float {
+    public func value(for button: Button) -> Double {
         values[Int(button.rawValue)]
     }
 
@@ -92,7 +92,7 @@ public final class Gamepad {
 
     package func update(
         _ button: Button,
-        value: Float,
+        value: Double,
         pressed isPressed: Bool
     ) {
         let normalizedValue = min(max(value, 0), 1)
@@ -116,8 +116,8 @@ public final class Gamepad {
     }
 
     package func updateSticks(
-        left: SIMD2<Float>,
-        right: SIMD2<Float>
+        left: SIMD2<Double>,
+        right: SIMD2<Double>
     ) {
         leftStick = left
         rightStick = right
@@ -167,9 +167,9 @@ public extension Gamepad.Button {
     struct Event: Hashable, Sendable {
         public let button: Gamepad.Button
         public let phase: Phase
-        public let value: Float
+        public let value: Double
 
-        public init(button: Gamepad.Button, phase: Phase, value: Float) {
+        public init(button: Gamepad.Button, phase: Phase, value: Double) {
             self.button = button
             self.phase = phase
             self.value = value

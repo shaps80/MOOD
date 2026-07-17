@@ -99,12 +99,12 @@ final class MetalGamepads: NSObject {
 
         gamepad.updateSticks(
             left: .init(
-                native.leftThumbstick.xAxis.value,
-                native.leftThumbstick.yAxis.value
+                Double(native.leftThumbstick.xAxis.value),
+                Double(native.leftThumbstick.yAxis.value)
             ),
             right: .init(
-                native.rightThumbstick.xAxis.value,
-                native.rightThumbstick.yAxis.value
+                Double(native.rightThumbstick.xAxis.value),
+                Double(native.rightThumbstick.yAxis.value)
             )
         )
     }
@@ -116,7 +116,7 @@ final class MetalGamepads: NSObject {
     ) {
         gamepad.update(
             button,
-            value: native.value,
+            value: Double(native.value),
             pressed: native.isPressed
         )
     }

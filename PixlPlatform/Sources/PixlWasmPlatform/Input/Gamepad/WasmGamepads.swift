@@ -3,9 +3,54 @@ import PixlPlatform
 
 final class WasmGamepads {
     private let gamepads: Gamepads
+    private var connected: JSClosure?
+    private var disconnected: JSClosure?
 
     init(gamepads: Gamepads) {
         self.gamepads = gamepads
+        installConnectionListeners()
+    }
+
+    deinit {
+        let window = JSObject.global.window
+        if let connected {
+            _ = window.removeEventListener("gamepadconnected", connected)
+        }
+        if let disconnected {
+            _ = window.removeEventListener("gamepaddisconnected", disconnected)
+        }
+    }
+
+    private func installConnectionListeners() {
+        connected = JSClosure { [weak self] arguments in
+            guard let native = arguments.first?.object?.gamepad.object else {
+                return .undefined
+            }
+            self?.connect(native)
+            return .undefined
+        }
+        disconnected = JSClosure { [weak self] arguments in
+            guard let native = arguments.first?.object?.gamepad.object,
+                  let index = native.index.number
+            else { return .undefined }
+            self?.gamepads.disconnect(at: Int(index))
+            return .undefined
+        }
+
+        let window = JSObject.global.window
+        _ = window.addEventListener("gamepadconnected", connected!)
+        _ = window.addEventListener("gamepaddisconnected", disconnected!)
+    }
+
+    private func connect(_ native: JSObject) {
+        guard native.connected.boolean == true,
+              native.mapping.string == "standard",
+              let index = native.index.number
+        else { return }
+        _ = gamepads.gamepad(
+            at: Int(index),
+            name: native.id.string ?? "Gamepad"
+        )
     }
 
     func poll() {
@@ -74,13 +119,13 @@ final class WasmGamepads {
         }
         gamepad.update(
             button,
-            value: Float(native.value.number ?? 0),
+            value: native.value.number ?? 0,
             pressed: native.pressed.boolean == true
         )
     }
 
-    private func axis(_ index: Int, _ axes: JSArray) -> Float {
+    private func axis(_ index: Int, _ axes: JSArray) -> Double {
         guard axes.indices.contains(index) else { return 0 }
-        return Float(axes[index].number ?? 0)
+        return axes[index].number ?? 0
     }
 }
