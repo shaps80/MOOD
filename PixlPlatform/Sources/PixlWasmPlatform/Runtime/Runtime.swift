@@ -52,7 +52,7 @@ final class Runtime {
         document.title = .string(gameSettings.title)
         let canvas = document.createElement("canvas").object!
         let canvasStyle = canvas.style.object!
-        canvasStyle.width = .string("100vw"); canvasStyle.height = .string("100vh"); canvasStyle.display = .string("block")
+        canvasStyle.width = .string("100vw"); canvasStyle.height = .string("100vh"); canvasStyle.display = .string("block"); canvasStyle.outline = .string("none")
         let body = document.body.object!; let bodyStyle = body.style.object!
         bodyStyle.margin = .string("0"); bodyStyle.overflow = .string("hidden"); _ = body.appendChild!(canvas)
         guard let context = canvas.getContext!("webgpu").object else { fatalError("WebGPU canvas context creation failed") }
