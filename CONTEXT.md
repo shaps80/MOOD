@@ -136,6 +136,9 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 
 ## Platform Asset Capability
 
+`TextureRegion`
+: Pixl-owned rectangular pixel selection within a stable `TextureAsset`. Its top-left image-space source rectangle lowers to per-draw normalized texture-coordinate offset and scale through existing vertex bytes. Sprite sheets, atlases, animations, tiles, and future glyph atlases can share this primitive without adding region vocabulary to `PixlPlatform`.
+
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
 

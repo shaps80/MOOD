@@ -27,6 +27,16 @@ struct Player: Entity {
             pipeline: pipeline,
             context: context
         )
+        let frameWidth = sprite.asset.size.width / 4
+        sprite.region = TextureRegion(
+            asset: sprite.asset,
+            source: Rect(
+                x: 0,
+                y: 0,
+                width: Double(frameWidth),
+                height: Double(sprite.asset.size.height)
+            )
+        )
 
         bindings.bind(to: context.inputs)
     }
@@ -62,7 +72,8 @@ struct Player: Entity {
         sprite.draw(
             frame: frame,
             output: output,
-            transform: camera
+            transform:
+                camera
                 .projection(for: output)
                 .translated(by: position)
                 .rotated(by: rotation.radians)

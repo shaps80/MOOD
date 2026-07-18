@@ -10,8 +10,14 @@ struct VertexOutput {
     @location(1) textureCoordinate: vec2f,
 }
 
+struct PrimitiveParameters {
+    transform: mat3x3f,
+    textureOrigin: vec2f,
+    textureScale: vec2f,
+}
+
 @group(0) @binding(0)
-var<uniform> transform: mat3x3f;
+var<uniform> parameters: PrimitiveParameters;
 
 @group(0) @binding(1)
 var texture: texture_2d<f32>;
@@ -22,10 +28,11 @@ var textureSampler: sampler;
 @vertex
 fn pixlVertex(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
-    let position = transform * vec3f(input.position, 1.0);
+    let position = parameters.transform * vec3f(input.position, 1.0);
     output.position = vec4f(position.xy, 0.0, 1.0);
     output.color = input.color;
-    output.textureCoordinate = input.textureCoordinate;
+    output.textureCoordinate = parameters.textureOrigin
+        + input.textureCoordinate * parameters.textureScale;
     return output;
 }
 

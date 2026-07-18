@@ -4,13 +4,18 @@ import PixlPlatform
 public struct Sprite {
     private let pipeline: RenderPipeline
     private let quad: Quad
-    public let asset: TextureAsset
     private let sampler: Sampler
+    public var region: TextureRegion
     public var isFlipped: Bool = false
+
+    public var asset: TextureAsset {
+        region.asset
+    }
 
     public init(named name: String, pipeline: RenderPipeline, context: GameContext) throws {
         self.pipeline = pipeline
-        asset = try context.assets.load(texture: name)
+        let asset = try context.assets.load(texture: name)
+        region = TextureRegion(asset: asset)
         quad = try .init(
             device: context.platform.device,
             color: .clear
@@ -22,12 +27,11 @@ public struct Sprite {
         let pass = frame.beginRenderPass(
             .init(.init(target: output, loadAction: .load))
         )
-        let size = asset.texture.descriptor.size
-        let width = Double(size.width) * (isFlipped ? -1 : 1)
-        let height = Double(size.height)
+        let width = region.source.size.x * (isFlipped ? -1 : 1)
+        let height = region.source.size.y
 
         pass.setRenderPipeline(pipeline)
-        pass.setFragmentTexture(asset, index: 0)
+        pass.setFragmentTexture(region.asset, index: 0)
         pass.setFragmentSampler(sampler, index: 0)
         quad.draw(
             on: pass,
@@ -35,7 +39,8 @@ public struct Sprite {
                 .scaled(
                     x: .init(width),
                     y: .init(height)
-                )
+                ),
+            textureCoordinates: region.textureCoordinates
         )
     }
 }

@@ -1,6 +1,24 @@
 import PixlPlatform
 import Swift
 
+package struct TextureCoordinates: BitwiseCopyable, Sendable {
+    package var origin: SIMD2<Float>
+    package var scale: SIMD2<Float>
+
+    package init(
+        origin: SIMD2<Float> = .zero,
+        scale: SIMD2<Float> = .init(repeating: 1)
+    ) {
+        self.origin = origin
+        self.scale = scale
+    }
+}
+
+private struct PrimitiveParameters: BitwiseCopyable {
+    let transform: Transform2D
+    let textureCoordinates: TextureCoordinates
+}
+
 /// Immutable coloured triangle geometry centred at the world origin.
 public struct Triangle: Sendable {
     private let vertexBuffer: Buffer
@@ -43,7 +61,13 @@ public struct Triangle: Sendable {
     ///   - pass: Render-pass encoder that already has a compatible pipeline.
     ///   - transform: Transform uploaded to the built-in coloured vertex shader.
     public func draw(on pass: RenderPassEncoder, transform: Transform2D) {
-        pass.setVertexBytes(of: transform, index: 1)
+        pass.setVertexBytes(
+            of: PrimitiveParameters(
+                transform: transform,
+                textureCoordinates: .init()
+            ),
+            index: 1
+        )
         pass.setVertexBuffer(vertexBuffer, index: 0)
         pass.drawPrimitives(.triangle, vertexCount: 3)
     }
@@ -116,7 +140,25 @@ public struct Quad: Sendable {
     ///   - pass: Render-pass encoder that already has a compatible pipeline.
     ///   - transform: Transform uploaded to the built-in coloured vertex shader.
     public func draw(on pass: RenderPassEncoder, transform: Transform2D) {
-        pass.setVertexBytes(of: transform, index: 1)
+        draw(
+            on: pass,
+            transform: transform,
+            textureCoordinates: .init()
+        )
+    }
+
+    package func draw(
+        on pass: RenderPassEncoder,
+        transform: Transform2D,
+        textureCoordinates: TextureCoordinates
+    ) {
+        pass.setVertexBytes(
+            of: PrimitiveParameters(
+                transform: transform,
+                textureCoordinates: textureCoordinates
+            ),
+            index: 1
+        )
         pass.setVertexBuffer(vertexBuffer, index: 0)
         pass.drawIndexedPrimitives(
             .triangle,
