@@ -54,6 +54,9 @@ let package = Package(
                 "PixlPlatform",
                 "PixlPlatformSynchronization"
             ],
+            resources: [
+                .process("Shaders")
+            ],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(
