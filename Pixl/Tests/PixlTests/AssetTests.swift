@@ -348,61 +348,19 @@ struct AssetTests {
     }
 
     @Test
-    func createsBuiltInTexturedPipelineAndSampler() throws {
+    func createsSharedSpriteRenderer() throws {
         let device = try #require(
             MetalDevice(
-                bufferCapacity: 1,
+                bufferCapacity: 2,
                 pipelineCapacity: 1,
                 samplerCapacity: 1,
                 textureCapacity: 1
             )
         )
-        let layout = VertexLayout(
-            bufferCapacity: 1,
-            attributeCapacity: 3
+        _ = try SpriteRenderer(
+            device: device,
+            colorFormat: .bgra8Unorm
         )
-        layout.append(
-            VertexBufferLayout(bufferIndex: 0, stride: 32)
-        )
-        layout.append(
-            VertexAttribute(
-                location: 0,
-                bufferIndex: 0,
-                format: .float32x2,
-                offset: 0
-            )
-        )
-        layout.append(
-            VertexAttribute(
-                location: 1,
-                bufferIndex: 0,
-                format: .float32x4,
-                offset: 8
-            )
-        )
-        layout.append(
-            VertexAttribute(
-                location: 2,
-                bufferIndex: 0,
-                format: .float32x2,
-                offset: 24
-            )
-        )
-
-        let pipeline = try device.makeRenderPipeline(
-            RenderPipelineDescriptor(
-                vertex: .vertex,
-                fragment: .fragment,
-                vertexLayout: layout,
-                colorFormat: .bgra8Unorm
-            )
-        )
-        let sampler = try device.makeSampler(
-            SamplerDescriptor()
-        )
-
-        device.destroy(pipeline)
-        device.destroy(sampler)
     }
 
     @Test

@@ -145,6 +145,9 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `SpriteAnimation` / `SpriteAnimation.Timeline`
 : Immutable uniformly timed region sequence and its mutable playback position. Games own timelines and animation switching; sprites remain render state rather than update-owning objects. The generic `Timer` remains a clamped one-shot progress value rather than gaining animation looping or frame-selection semantics.
 
+`SpriteRenderer`
+: Pixl-owned shared sprite recording state. One renderer owns the built-in pipeline, quad geometry, and sampler, while lightweight `Sprite` values contain region and presentation state. Games own render-pass boundaries and submit ordered sprites through the same renderer. Future batch compatibility may split draws internally but does not require renderers per texture, layer, or game category.
+
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
 

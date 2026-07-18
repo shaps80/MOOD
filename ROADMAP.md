@@ -117,6 +117,11 @@ Camera constraint:
 - [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
 - [x] Add Pixl-owned texture regions and prove first-frame selection from a four-frame sprite sheet through existing vertex bytes.
 - [x] Add regular sprite sheets and game-owned sprite-animation timelines; prove the four-frame player animation without platform changes.
+- [x] Make `Sprite` lightweight render data and add one shared `SpriteRenderer` owning the quad, sampler, and pipeline.
+- [ ] Record background, tile, player, and enemy sprites into one ordered render pass through the shared renderer; keep one draw per sprite initially.
+- [ ] Add fixed-capacity sprite submission and instanced batching for compatible consecutive sprites, including atlas regions sharing one texture.
+- [ ] Add named irregular `TextureAtlas` regions over the existing `TextureRegion` primitive.
+- [ ] Add visual `TileSet` mapping from game-owned tile identifiers to atlas regions; keep tilemap/world ownership outside Pixl.
 - [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
 - [ ] Keep all GPU concepts and platform implementations dimension-agnostic in `PixlPlatform`.

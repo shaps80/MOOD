@@ -3,7 +3,7 @@ import Pixl2D
 
 @main
 struct Game: Pixl.Game {
-    private let pipeline: RenderPipeline
+    private let spriteRenderer: SpriteRenderer
     private let music: Playback
     private let mixer: Mixer
     private var fade: Timer = .init(duration: 1)
@@ -19,24 +19,14 @@ struct Game: Pixl.Game {
         mixer = try .init(audio: context.audio, settings: .init())
         playingVolume = .init(context.audio.masterVolume)
         fadeStartVolume = playingVolume
-        pipeline = try context.platform.device.makeRenderPipeline(
-            .init(
-                vertex: .vertex,
-                fragment: .fragment,
-                vertexLayout: .primitive,
-                colorFormat: context.drawableFormat
-            )
-        )
+        spriteRenderer = try .init(context: context)
 
         let sound = try context.assets.load(sound: "music.wav")
         music = context.audio.prepare(sound)
         music.loop = true
         music.bus = mixer.music
 
-        player = try .init(
-            pipeline: pipeline,
-            context: context
-        )
+        player = try .init(context: context)
 
         bindings.bind(to: context.inputs)
     }
@@ -88,14 +78,11 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-        _ = frame.clear(target: output)
-
-        try player.render(
-            on: platform,
-            output: output,
-            frame: frame,
-            time: time,
-            context: context
+        let pass = frame.clear(target: output)
+        player.draw(
+            on: pass,
+            using: spriteRenderer,
+            output: output
         )
 
         logMetrics(time)

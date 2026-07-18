@@ -16,13 +16,9 @@ struct Player: Entity {
         deceleration: 1000
     )
 
-    init(
-        pipeline: RenderPipeline,
-        context: GameContext
-    ) throws {
+    init(context: GameContext) throws {
         sprite = try .init(
             named: "player.png",
-            pipeline: pipeline,
             context: context
         )
         let sheet = SpriteSheet(
@@ -61,16 +57,14 @@ struct Player: Entity {
         }
     }
 
-    func render(
-        on platform: any Platform,
+    func draw(
+        on pass: RenderPassEncoder,
+        using renderer: SpriteRenderer,
         output: RenderTarget,
-        frame: borrowing Frame,
-        time: RenderTime,
-        context: GameContext
-    ) throws {
-        sprite.draw(
-            frame: frame,
-            output: output,
+    ) {
+        renderer.draw(
+            sprite,
+            on: pass,
             transform:
                 camera
                 .projection(for: output)
