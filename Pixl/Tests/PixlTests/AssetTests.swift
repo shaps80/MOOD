@@ -69,6 +69,17 @@ private func decodeResizableTestTexture(
     return try decodeTestTexture(bytes, path: path)
 }
 
+private func decodeSpriteSheetTestTexture(
+    _ bytes: [UInt8],
+    path: AssetPath
+) throws(AssetError) -> DecodedTexture {
+    DecodedTexture(
+        width: 4,
+        height: 2,
+        bytes: Array(repeating: bytes.first ?? 0, count: 4 * 2 * 4)
+    )
+}
+
 private func decodeTestSound(
     _ bytes: [UInt8],
     path: AssetPath
@@ -154,6 +165,53 @@ private func waitForInvalidation(
 
 @Suite("Assets")
 struct AssetTests {
+    @Test
+    func createsSpriteSheetAndAdvancesAnimationTimeline() throws {
+        let path = try AssetPath("player.png")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let device = try #require(
+            MetalDevice(
+                bufferCapacity: 1,
+                pipelineCapacity: 1,
+                samplerCapacity: 1,
+                textureCapacity: 1
+            )
+        )
+        let assets = Assets(
+            device: device,
+            source: source,
+            decode: decodeSpriteSheetTestTexture
+        )
+        let asset = try assets.load(texture: path.value)
+        let sheet = SpriteSheet(asset: asset, columns: 4, rows: 1)
+
+        #expect(sheet.regions.count == 4)
+        #expect(sheet.region(column: 2, row: 0).source.origin.x == 2)
+        #expect(sheet.region(column: 2, row: 0).source.size.y == 2)
+
+        var looping = SpriteAnimation.Timeline(
+            animation: SpriteAnimation(
+                frames: sheet.regions,
+                frameDuration: 1
+            )
+        )
+        looping.advance(by: 1)
+        #expect(looping.region.source.origin.x == 1)
+        looping.advance(by: 3)
+        #expect(looping.region.source.origin.x == 0)
+
+        var oneShot = SpriteAnimation.Timeline(
+            animation: SpriteAnimation(
+                frames: sheet.regions,
+                frameDuration: 1,
+                loops: false
+            )
+        )
+        oneShot.advance(by: 10)
+        #expect(oneShot.isFinished)
+        #expect(oneShot.region.source.origin.x == 3)
+    }
+
     @Test
     func decodesStereoPCM16WAVToPlanarFloatSamples() throws {
         let bytes = makePCM16WAV(

@@ -139,6 +139,12 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `TextureRegion`
 : Pixl-owned rectangular pixel selection within a stable `TextureAsset`. Its top-left image-space source rectangle lowers to per-draw normalized texture-coordinate offset and scale through existing vertex bytes. Sprite sheets, atlases, animations, tiles, and future glyph atlases can share this primitive without adding region vocabulary to `PixlPlatform`.
 
+`SpriteSheet`
+: Pixl-owned regular row-major grid that derives equally sized `TextureRegion` values from one texture. Irregular named atlas metadata remains a later layer over the same region primitive.
+
+`SpriteAnimation` / `SpriteAnimation.Timeline`
+: Immutable uniformly timed region sequence and its mutable playback position. Games own timelines and animation switching; sprites remain render state rather than update-owning objects. The generic `Timer` remains a clamped one-shot progress value rather than gaining animation looping or frame-selection semantics.
+
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
 

@@ -1,61 +1,103 @@
-//import Swift
-//
-//public struct SpriteAnimation: Equatable, Sendable {
-//    public let textureID: TextureID
-//    public let frames: [Rect]
-//    public let frameDuration: Double
-//    public let loops: Bool
-//    public let duration: Double
-//
-//    public init(
-//        textureID: TextureID,
-//        frames: [Rect],
-//        frameDuration: Double,
-//        loops: Bool = true
-//    ) {
-//        self.textureID = textureID
-//        self.frames = frames
-//        self.frameDuration = frameDuration
-//        self.loops = loops
-//        self.duration = Double(frames.count) * max(frameDuration, 0)
-//    }
-//
-//    public func frame(at elapsedTime: Double) -> Rect? {
-//        guard !frames.isEmpty else { return nil }
-//        guard frameDuration > 0 else { return frames.first }
-//
-//        let frameIndex = Int(max(elapsedTime, 0) / frameDuration)
-//
-//        if loops {
-//            return frames[frameIndex % frames.count]
-//        }
-//
-//        return frames[min(frameIndex, frames.count - 1)]
-//    }
-//}
-//
-//extension SpriteAnimation {
-//    public struct Timeline: Equatable, Sendable {
-//        public let animation: SpriteAnimation
-//        public var speed: Double
-//        public private(set) var elapsedTime: Double
-//
-//        public init(animation: SpriteAnimation, timeScale: Double = 1, elapsedTime: Double = 0) {
-//            self.animation = animation
-//            self.speed = timeScale
-//            self.elapsedTime = elapsedTime
-//        }
-//
-//        public mutating func update(delta: Double) {
-//            elapsedTime += max(delta, 0) * max(speed, 0)
-//        }
-//
-//        public mutating func reset() {
-//            elapsedTime = 0
-//        }
-//
-//        public var frame: Rect? {
-//            animation.frame(at: elapsedTime)
-//        }
-//    }
-//}
+import Swift
+
+/// An immutable sequence of sprite regions with uniform frame timing.
+public struct SpriteAnimation {
+    public let frames: [TextureRegion]
+    public let frameDuration: Double
+    public let loops: Bool
+
+    public var duration: Double {
+        Double(frames.count) * frameDuration
+    }
+
+    public init(
+        frames: [TextureRegion],
+        frameDuration: Double,
+        loops: Bool = true
+    ) {
+        precondition(!frames.isEmpty, "Sprite animation must contain a frame")
+        precondition(
+            frameDuration.isFinite && frameDuration > 0,
+            "Sprite animation frame duration must be finite and positive"
+        )
+
+        self.frames = frames
+        self.frameDuration = frameDuration
+        self.loops = loops
+    }
+
+    public func region(at elapsed: Double) -> TextureRegion {
+        precondition(elapsed.isFinite, "Sprite animation time must be finite")
+        let elapsed = max(elapsed, 0)
+        let animationTime = loops
+            ? elapsed.truncatingRemainder(dividingBy: duration)
+            : min(elapsed, duration)
+        let frameIndex = min(
+            Int(animationTime / frameDuration),
+            frames.count - 1
+        )
+        return frames[frameIndex]
+    }
+}
+
+public extension SpriteAnimation {
+    /// Mutable playback position for one animation.
+    struct Timeline {
+        public let animation: SpriteAnimation
+        public private(set) var elapsed: Double
+        public var speed: Double {
+            didSet {
+                precondition(
+                    speed.isFinite && speed >= 0,
+                    "Sprite animation speed must be finite and nonnegative"
+                )
+            }
+        }
+
+        public init(
+            animation: SpriteAnimation,
+            speed: Double = 1,
+            elapsed: Double = 0
+        ) {
+            precondition(
+                speed.isFinite && speed >= 0,
+                "Sprite animation speed must be finite and nonnegative"
+            )
+            precondition(
+                elapsed.isFinite && elapsed >= 0,
+                "Sprite animation elapsed time must be finite and nonnegative"
+            )
+
+            self.animation = animation
+            self.speed = speed
+            self.elapsed = animation.loops
+                ? elapsed.truncatingRemainder(dividingBy: animation.duration)
+                : min(elapsed, animation.duration)
+        }
+
+        public var region: TextureRegion {
+            animation.region(at: elapsed)
+        }
+
+        public var isFinished: Bool {
+            !animation.loops && elapsed >= animation.duration
+        }
+
+        public mutating func advance(by delta: Double) {
+            precondition(
+                delta.isFinite && delta >= 0,
+                "Sprite animation delta must be finite and nonnegative"
+            )
+            let advance = delta * speed
+            precondition(advance.isFinite, "Sprite animation advance must be finite")
+            let elapsed = self.elapsed + advance
+            self.elapsed = animation.loops
+                ? elapsed.truncatingRemainder(dividingBy: animation.duration)
+                : min(elapsed, animation.duration)
+        }
+
+        public mutating func reset() {
+            elapsed = 0
+        }
+    }
+}

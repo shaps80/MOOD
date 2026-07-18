@@ -3,11 +3,11 @@ import Pixl2D
 
 struct Player: Entity {
     private var sprite: Sprite
-    private let camera = OrthographicCamera(halfHeight: 200)
+    private var animation: SpriteAnimation.Timeline
+    private let camera: OrthographicCamera = .init(halfHeight: 200)
 
-    private var position = Vec2.zero
+    private var position: Vec2 = .zero
     private var velocity: Vec2 = .zero
-    private var rotation: Angle = .zero
 
     private let bindings: PlayerBindings = .init()
     private let controller: AxisController = .init(
@@ -15,8 +15,6 @@ struct Player: Entity {
         acceleration: 1000,
         deceleration: 1000
     )
-
-    private var elapsed: Double = 0
 
     init(
         pipeline: RenderPipeline,
@@ -27,24 +25,25 @@ struct Player: Entity {
             pipeline: pipeline,
             context: context
         )
-        let frameWidth = sprite.asset.size.width / 4
-        sprite.region = TextureRegion(
+        let sheet = SpriteSheet(
             asset: sprite.asset,
-            source: Rect(
-                x: 0,
-                y: 0,
-                width: Double(frameWidth),
-                height: Double(sprite.asset.size.height)
+            columns: 4,
+            rows: 1
+        )
+        animation = SpriteAnimation.Timeline(
+            animation: SpriteAnimation(
+                frames: sheet.regions,
+                frameDuration: 0.125
             )
         )
+        sprite.region = animation.region
 
         bindings.bind(to: context.inputs)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
-        rotation = .radians(time.elapsedSeconds)
-
-        elapsed = time.elapsedSeconds
+        animation.advance(by: time.delta)
+        sprite.region = animation.region
         let target = bindings.velocity
 
         velocity = controller.velocity(
@@ -76,7 +75,6 @@ struct Player: Entity {
                 camera
                 .projection(for: output)
                 .translated(by: position)
-                .rotated(by: rotation.radians)
         )
     }
 }

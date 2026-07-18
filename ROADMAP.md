@@ -116,6 +116,7 @@ Camera constraint:
 - [ ] Lower texture upload and fragment texture/sampler bindings through WebGPU.
 - [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
 - [x] Add Pixl-owned texture regions and prove first-frame selection from a four-frame sprite sheet through existing vertex bytes.
+- [x] Add regular sprite sheets and game-owned sprite-animation timelines; prove the four-frame player animation without platform changes.
 - [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
 - [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
 - [ ] Keep all GPU concepts and platform implementations dimension-agnostic in `PixlPlatform`.
