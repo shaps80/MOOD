@@ -4,7 +4,7 @@ import Pixl2D
 @main
 struct Game: Pixl.Game {
     private let pipeline: RenderPipeline
-    private let music: Playback
+   private let music: Playback
     private let mixer: Mixer
     private var fade: Timer = .init(duration: 1)
     private var player: Player
@@ -28,10 +28,10 @@ struct Game: Pixl.Game {
             )
         )
 
-        let sound = try context.assets.load(sound: "music.wav")
-        music = context.audio.prepare(sound)
-        music.loop = true
-        music.bus = mixer.music
+       let sound = try context.assets.load(sound: "music.wav")
+       music = context.audio.prepare(sound)
+       music.loop = true
+       music.bus = mixer.music
 
         player = try .init(
             pipeline: pipeline,
@@ -46,7 +46,7 @@ struct Game: Pixl.Game {
 
         switch phase {
         case .active:
-            try? music.play()
+           try? music.play()
         case .background, .inactive:
             break
         }
