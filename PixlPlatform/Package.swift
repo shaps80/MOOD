@@ -8,12 +8,12 @@ let package = Package(
         .watchOS(.v9),
         .tvOS(.v16),
         .iOS(.v16),
-        .visionOS(.v1)
+        .visionOS(.v1),
     ],
     products: [
         .library(name: "PixlPlatform", targets: ["PixlPlatform"]),
         .library(name: "PixlWasmPlatform", targets: ["PixlWasmPlatform"]),
-        .library(name: "PixlMetalPlatform", targets: ["PixlMetalPlatform"])
+        .library(name: "PixlMetalPlatform", targets: ["PixlMetalPlatform"]),
     ],
     dependencies: [
         .package(
@@ -23,7 +23,7 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-atomics.git",
             from: "1.3.0"
-        )
+        ),
     ],
     targets: [
         .target(
@@ -44,15 +44,16 @@ let package = Package(
             name: "PixlWasmPlatform",
             dependencies: [
                 "PixlPlatform",
-                .product(name: "JavaScriptKit", package: "JavaScriptKit")
+                .product(name: "JavaScriptKit", package: "JavaScriptKit"),
             ],
+            exclude: ["Shaders"],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlMetalPlatform",
             dependencies: [
                 "PixlPlatform",
-                "PixlPlatformSynchronization"
+                "PixlPlatformSynchronization",
             ],
             resources: [
                 .process("Shaders")
@@ -66,10 +67,10 @@ let package = Package(
                 .target(
                     name: "PixlMetalPlatform",
                     condition: .when(platforms: [.macOS])
-                )
+                ),
             ],
             swiftSettings: defaultNonisolated()
-        )
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

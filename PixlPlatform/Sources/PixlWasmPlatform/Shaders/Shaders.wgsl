@@ -1,4 +1,3 @@
-let pixlGraphicsShaderSource = """
 struct VertexInput {
     @location(0) position: vec2f,
     @location(1) color: vec4f,
@@ -35,4 +34,3 @@ fn pixlFragment(input: VertexOutput) -> @location(0) vec4f {
     return textureSample(texture, textureSampler, input.textureCoordinate)
         * input.color;
 }
-"""

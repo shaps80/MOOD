@@ -124,8 +124,13 @@ final class WasmDevice: Device {
         }
         self.defaultSampler = defaultSampler
 
+        guard let shaderBytes = WasmBuiltinAssets.read("__pixl/Shaders.wgsl") else {
+            fatalError("Pixl WebGPU shader source could not be loaded")
+        }
         let shaderDescriptor = object()
-        shaderDescriptor["code"] = .string(pixlGraphicsShaderSource)
+        shaderDescriptor["code"] = .string(
+            String(decoding: shaderBytes, as: UTF8.self)
+        )
         guard let shaderModule = device.createShaderModule!(shaderDescriptor).object else {
             fatalError("Pixl WebGPU shader module creation failed")
         }

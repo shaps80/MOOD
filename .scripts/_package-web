@@ -55,12 +55,21 @@ HTML
 copy_assets() {
   local assets_dir="${PROJECT_DIR}/Assets"
 
-  if [[ ! -d "${assets_dir}" ]]; then
-    printf '[]\n' > "${DIST_DIR}/assets.json"
-    return
-  fi
+  mkdir -p "${DIST_DIR}/Assets"
 
-  cp -R "${assets_dir}" "${DIST_DIR}/Assets"
+  if [[ -d "${assets_dir}" ]]; then
+    cp -R "${assets_dir}/." "${DIST_DIR}/Assets/"
+  fi
+}
+
+copy_builtin_assets() {
+  local shader_path="${ROOT_DIR}/PixlPlatform/Sources/PixlWasmPlatform/Shaders/Shaders.wgsl"
+
+  mkdir -p "${DIST_DIR}/Assets/__pixl"
+  cp "${shader_path}" "${DIST_DIR}/Assets/__pixl/Shaders.wgsl"
+}
+
+write_assets_manifest() {
   python3 -c '
 import json
 import pathlib
@@ -74,7 +83,7 @@ paths = sorted(
     and not any(part.startswith(".") for part in path.relative_to(root).parts)
 )
 pathlib.Path(sys.argv[2]).write_text(json.dumps(paths), encoding="utf-8")
-' "${assets_dir}" "${DIST_DIR}/assets.json"
+' "${DIST_DIR}/Assets" "${DIST_DIR}/assets.json"
 }
 
 copy_target_resources() {
@@ -153,6 +162,8 @@ npx --yes esbuild "${PACKAGE_DIR}/index.js"   --bundle   --format=esm   --minify
 
 cp "${PACKAGE_DIR}/${PRODUCT}.wasm" "${DIST_DIR}/${PRODUCT}.wasm"
 copy_assets
+copy_builtin_assets
+write_assets_manifest
 copy_target_resources
 write_index_html "${DIST_DIR}/index.html"
 

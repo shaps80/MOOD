@@ -2,6 +2,16 @@ import JavaScriptKit
 import PixlPlatform
 import Swift
 
+enum WasmBuiltinAssets {
+    static func read(_ path: String) -> [UInt8]? {
+        guard let assets = JSObject.global.__pixlAssets.object,
+              let bytes = JSUint8Array(from: assets[path]) else {
+            return nil
+        }
+        return bytes.withUnsafeBytes(Array.init)
+    }
+}
+
 final class WasmAssetSource: AssetSource, @unchecked Sendable {
     private let assets: JSObject
 
@@ -15,6 +25,9 @@ final class WasmAssetSource: AssetSource, @unchecked Sendable {
     func read(
         _ path: AssetPath
     ) throws(AssetSourceError) -> [UInt8] {
+        guard !path.value.hasPrefix("__pixl/") else {
+            throw .notFound(path)
+        }
         guard let bytes = JSUint8Array(from: assets[path.value]) else {
             throw .notFound(path)
         }
