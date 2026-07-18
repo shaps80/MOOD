@@ -7,7 +7,7 @@ struct AudioSettings: Codable {
     var voices: Float = 1
 }
 
-final class GameAudio {
+final class Mixer {
     let master: Bus
     let music: Bus
     let effects: Bus

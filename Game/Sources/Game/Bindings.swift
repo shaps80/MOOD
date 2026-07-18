@@ -40,3 +40,11 @@ extension PlayerBindings {
         )
     }
 }
+
+@InputProfile
+struct GameBindings {
+    @Binding(
+        .key(.escape),
+        .button(.menu)
+    ) var menu
+}

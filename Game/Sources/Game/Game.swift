@@ -5,14 +5,20 @@ import Pixl2D
 struct Game: Pixl.Game {
     private let pipeline: RenderPipeline
     private let music: Playback
-    private let audio: GameAudio
+    private let mixer: Mixer
     private var fade: Timer = .init(duration: 1)
     private var player: Player
     private var phase: GamePhase = .active
-    private var previousVolume: Double = 1
+    private var isPaused = false
+    private var wasEffectivelyPaused = false
+    private var playingVolume: Double
+    private var fadeStartVolume: Double
+    private var bindings: GameBindings = .init()
 
     init(context: GameContext) throws {
-        audio = try .init(audio: context.audio, settings: .init())
+        mixer = try .init(audio: context.audio, settings: .init())
+        playingVolume = .init(context.audio.masterVolume)
+        fadeStartVolume = playingVolume
         pipeline = try context.platform.device.makeRenderPipeline(
             .init(
                 vertex: .vertex,
@@ -25,24 +31,24 @@ struct Game: Pixl.Game {
         let sound = try context.assets.load(sound: "music.wav")
         music = context.audio.prepare(sound)
         music.loop = true
-        music.bus = audio.music
+        music.bus = mixer.music
 
         player = try .init(
             pipeline: pipeline,
-            audio: audio,
             context: context
         )
+
+        bindings.bind(to: context.inputs)
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
         self.phase = phase
-        fade.invalidate()
 
         switch phase {
         case .active:
             try? music.play()
         case .background, .inactive:
-            previousVolume = .init(context.audio.masterVolume)
+            break
         }
     }
 
@@ -52,20 +58,27 @@ struct Game: Pixl.Game {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
-        fade.advance(by: time.unscaledDelta)
 
-        switch phase {
-        case .active:
-#if os(macOS)
-            let volume = lerp(from: 0, to: previousVolume, by: fade.progress)
-            context.audio.masterVolume = .init(volume)
-#endif
-        case .inactive, .background:
-#if os(macOS)
-            let volume = lerp(from: previousVolume, to: 0, by: fade.progress)
-            context.audio.masterVolume = .init(volume)
-#endif
+        if bindings.menu.is(.down) {
+            isPaused.toggle()
         }
+
+        let shouldPause = isPaused || phase != .active
+        if shouldPause != wasEffectivelyPaused {
+            fadeStartVolume = .init(context.audio.masterVolume)
+            fade.invalidate()
+            wasEffectivelyPaused = shouldPause
+        }
+
+        fade.advance(by: time.unscaledDelta)
+        let volume = lerp(
+            from: fadeStartVolume,
+            to: shouldPause ? 0 : playingVolume,
+            by: fade.progress
+        )
+
+        context.audio.masterVolume = .init(volume)
+        context.pause(shouldPause)
     }
 
     func render(

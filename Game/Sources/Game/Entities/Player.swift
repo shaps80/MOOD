@@ -7,6 +7,8 @@ struct Player: Entity {
 
     private var position = Vec2.zero
     private var velocity: Vec2 = .zero
+    private var rotation: Angle = .zero
+
     private let bindings: PlayerBindings = .init()
     private let controller: AxisController = .init(
         maxSpeed: 300,
@@ -18,7 +20,6 @@ struct Player: Entity {
 
     init(
         pipeline: RenderPipeline,
-        audio: GameAudio,
         context: GameContext
     ) throws {
         sprite = try .init(
@@ -31,6 +32,8 @@ struct Player: Entity {
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
+        rotation = .radians(time.elapsedSeconds)
+
         elapsed = time.elapsedSeconds
         let target = bindings.velocity
 
@@ -62,6 +65,7 @@ struct Player: Entity {
             transform: camera
                 .projection(for: output)
                 .translated(by: position)
+                .rotated(by: rotation.radians)
         )
     }
 }

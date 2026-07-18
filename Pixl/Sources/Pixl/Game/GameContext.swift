@@ -36,4 +36,8 @@ public final class GameContext {
             source: platform.assetSource
         )
     }
+
+    public func pause(_ paused: Bool) {
+        timeScale = paused ? 0 : 1
+    }
 }
