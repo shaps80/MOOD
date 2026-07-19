@@ -1,7 +1,7 @@
 import Pixl2D
 
-public extension Sprite {
-    init(
+extension Sprite {
+    public init(
         named name: String,
         context: GameContext
     ) throws {

@@ -7,6 +7,8 @@ PixlPlatform is Pixl's lowest platform-agnostic API boundary. It defines the min
 `Pixl`
 : Pixl's primary game-facing entry point. Its purpose is to make game development intuitive, fun, and easy through obvious Swift value construction, useful defaults, common rendering and runtime conveniences, and direct explicit control where that improves the game-authoring experience. A game should normally begin with `import Pixl` and discover its common path without understanding engine resource resolution or platform APIs.
 
+Game-facing value initializers require only the minimum structurally necessary inputs and expose remaining stored properties as parameters whenever those properties have reasonable defaults. Such parameters retain their defaults so ordinary construction stays concise while one-off overrides remain direct. Properties are mutable unless post-initialization mutation would violate the value's invariants; callers may always construct simply and then mutate ordinary state.
+
 `PixlFoundation`
 : Pixl's platform-independent engine infrastructure and lower-level game-engine mechanics required for games to function. It owns deliberate direct engine abstractions, engine descriptors, resource resolution and cache machinery, render keys and records, and other mechanisms used beneath Pixl conveniences. It may expose low-level public APIs for games that intentionally import it, and use `package` access for implementation shared by sibling targets in the Pixl package.
 
@@ -211,10 +213,10 @@ Pixl may add public convenience initializers or methods to domain types it impor
 `Sprite`
 : Pixl2D's obvious construction and discovery point for sprite rendering. It is an ordinary game-owned Swift value containing its region, nested `Sprite.Material`, layer, and presentation state. Games mutate those properties directly during update and explicitly submit the latest value during rendering. They do not register ordinary sprites, receive internal material keys, or return mutated values through `GameContext`.
 
-Pixl's asset-loading convenience constructs a sprite with its default layer; game code changes `sprite.layer` as ordinary state rather than passing ordering policy into `Sprite(named:context:)`. Whether Pixl2D's lower-level region initializer should also accept a layer remains an explicit part of the upcoming sprite material and blend-mode API discussion.
+Pixl's asset-loading convenience constructs a sprite with its default state; game code changes properties such as `sprite.layer` rather than passing them into `Sprite(named:context:)`. Pixl2D's designated initializer requires only a region and exposes material, layer, and flip state through defaulted parameters.
 
 `Sprite.Material`
-: Pixl2D's value-semantic description of Pixl-provided sprite shading and composition intent. Its first implementation covers texture, filtering, addressing, and `BlendMode`, with useful defaults preserving the ordinary pixel-art path. Independently constructed equivalent descriptions are value-equivalent. Future material families may expose their own typed descriptions rather than widening one universal public material bag.
+: Pixl2D's value-semantic description of how a sprite's primary image is sampled and composed. The primary `TextureAsset` remains solely in `TextureRegion`; it is not duplicated in the material. Filtering independently describes minification and magnification, while addressing independently describes horizontal and vertical behavior. Uniform `.nearest`, `.linear`, `.clampToEdge`, `.repeat`, and `.mirrorRepeat` presets keep common construction concise. Mip filtering remains absent until Pixl textures support mipmaps. The pixel-art default is nearest filtering, edge clamping, and straight-alpha `.normal` blending; `.replace` disables blending. Independently constructed equivalent descriptions are value-equivalent. Future material families may expose their own typed descriptions rather than widening one universal public material bag.
 
 The intended material capability direction includes tint/modulation, opacity, normal maps and strength, emission maps, colour, and strength, mask textures, roughness, alpha cutoff, and other shader-specific parameters justified by Pixl-provided material families. This records the intended feature horizon, not final property placement. Before implementing that fuller material phase, stop for a dedicated design session covering which values belong to `Sprite`, `Sprite.Material`, per-instance records, shared material records, or texture maps; how lit/unlit behavior is selected; how mask channels are defined; and how sharing and mutation behave. Do not infer those decisions during implementation.
 
@@ -244,8 +246,8 @@ Pixl uses distinct shader families when shading algorithms materially differ, su
 
 Differences in texture, sampler, blend mode, layer, or game category do not require independent submission systems. Separate ordered submission domains are useful for genuinely independent destinations, such as a low-resolution offscreen pixel-art world and native-resolution window UI; they may still share Foundation caches. Within a domain, batching preserves authoritative `(layer, submission ordinal)` order and combines only consecutive compatible submissions. It never reorders sprites merely to manufacture larger batches.
 
-`BlendMode`
-: Portable fixed-function render-pipeline composition intent selected by `Sprite.Material`. PixlFoundation resolves it into the corresponding built-in pipeline variant, while Metal and WebGPU lower that shared state to native APIs. The fuller supported mode set remains part of sprite-material design rather than being fixed by the initial `.replace` and straight-alpha `.normal` proof.
+`Sprite.Material.BlendMode`
+: Portable fixed-function composition intent selected by a sprite material. Its initial cases are `.replace` and straight-alpha source-over `.normal`, matching the currently defined platform operations. PixlFoundation will resolve it into the corresponding built-in pipeline variant, while Metal and WebGPU lower that shared state to native APIs. Additional modes require their colour and alpha equations to be agreed before expanding this enum.
 
 ## Platform Asset Capability
 

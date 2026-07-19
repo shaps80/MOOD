@@ -79,6 +79,63 @@ struct SpriteAuthoringTests {
     }
 
     @Test
+    func spriteInitializerAcceptsEveryDefaultableProperty() {
+        let region = TextureRegion(asset: asset)
+        let material = Sprite.Material(
+            filtering: .linear,
+            addressing: .repeat,
+            blendMode: .replace
+        )
+        let sprite = Sprite(
+            region: region,
+            material: material,
+            layer: 10,
+            isFlipped: true
+        )
+
+        #expect(sprite.material == material)
+        #expect(sprite.layer == 10)
+        #expect(sprite.isFlipped)
+    }
+
+    @Test
+    func materialDefaultsToPixelArtSamplingAndNormalBlending() {
+        let material = Sprite.Material()
+
+        #expect(material.filtering == .nearest)
+        #expect(material.addressing == .clampToEdge)
+        #expect(material.blendMode == .normal)
+    }
+
+    @Test
+    func materialAllowsIndependentSamplingAxes() {
+        var material = Sprite.Material(
+            filtering: .init(
+                minification: .linear,
+                magnification: .nearest
+            ),
+            addressing: .init(
+                horizontal: .repeat,
+                vertical: .mirrorRepeat
+            )
+        )
+
+        #expect(material.filtering.minification == .linear)
+        #expect(material.filtering.magnification == .nearest)
+        #expect(material.addressing.horizontal == .repeat)
+        #expect(material.addressing.vertical == .mirrorRepeat)
+
+        material.filtering.magnification = .linear
+        material.addressing.vertical = .clampToEdge
+
+        #expect(material.filtering == .linear)
+        #expect(material.addressing == .init(
+            horizontal: .repeat,
+            vertical: .clampToEdge
+        ))
+    }
+
+    @Test
     func renderLayersSupportOrderingAndOffsets() {
         let background: RenderLayer = 0
         let player: RenderLayer = 100
