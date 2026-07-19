@@ -1,152 +1,55 @@
 # Pixl Roadmap
 
-This file tracks architectural work across sessions. It records direction and decision gates, not delivery promises. Concrete APIs should still emerge from playable Game needs.
+This file is a compact view of where Pixl is and what should happen next. It is not a history of completed work.
 
-## Current Foundation
+## Maintenance
 
-- [x] Separate dimension-agnostic `PixlPlatform` GPU layer from higher-level graphics APIs.
-- [x] Add `Pixl2D` and `Pixl3D` targets above shared `PixlGraphics` infrastructure.
-- [x] Extract the platform-agnostic lane-based execution layer into the standalone `PixlConcurrency` sibling package.
-- [x] Add native performance coverage and native/WASM Swift Testing correctness coverage for `PixlConcurrency`.
-- [x] Prototype static lane programs, balanced ranges, leader-only work, and reusable barriers; retain the API direction but reject the initial condition-variable barrier.
-- [x] Validate the first Metal path with compiled shaders, a GPU-only vertex buffer, a render pipeline, and a visible triangle.
-- [x] Establish explicit buffer memory intent: GPU-only, CPU-visible, and GPU-to-CPU.
-- [x] Build the same Game package for WASM and render its unchanged triangle through `PixlWasmPlatform` and WebGPU.
-- [x] Keep `PixlConcurrency` available under the supported single-threaded WASI SDK through its one-lane execution path.
-- [x] Add fixed-capacity physical keyboard state and coalesced per-frame key transitions for macOS and browser runtimes, including modifiers, native repeat, focus, and synthesized releases.
-- [x] Add dynamically connected physical-location gamepad state for macOS and browser standard mappings, including face/D-pad buttons, shoulders, normalized triggers, stick vectors/presses, menu/options, connection lifetime, and coalesced transitions.
-- [x] Refocus the portable recording interface on Metal-style encoder/resource-slot commands, using modern DirectX as the secondary alignment reference.
-- [x] Remove public `Pass`/`DrawCommand` storage details; record compact package-only commands through `RenderPassEncoder`.
-- [x] Move exact primitive topology to `drawPrimitives` and preserve line/triangle strip semantics.
-- [x] Add Metal-shaped indexed primitive draws with portable 16- and 32-bit index types; keep adapter index-buffer binding private.
-- [x] Add explicit destruction for pooled buffer, texture, and render-pipeline handles.
-- [x] Add portable resident sound resources, fixed-capacity voices, flat buses, playback controls, and natural-pitch `rate` control.
-- [x] Separate silent playback preparation from active native voices through reusable object-based `Playback` and nonoptional `Bus` controllers.
-- [x] Decode mono/stereo WAV into planar `Float32` in shared Swift code and lower playback through simple AVFAudio and Web Audio adapters.
-- [x] Hot-reload sounds from coalesced recursive macOS asset events without frame polling: removal stops voices and marks the stable sound unavailable; valid replacement restarts active voices; invalid data retains last-good content.
-- [x] Add coarse `GamePhase`, scaled and unscaled update deltas, zero-scale simulation pause, and stable `GameContext` access in every game callback.
-- [x] Let value-type games own mutable state directly through mutating lifecycle/update callbacks while keeping render read-only; move runtime-adjustable time scale onto `GameContext`.
-- [x] Keep `PixlConcurrency` standalone without coupling or re-export from Pixl; games opt into it directly.
+- Keep **Current State** short enough to read at the start of every session.
+- When work completes, fold its lasting capability into **Current State**, then remove its checkbox. Do not retain completed-task history here.
+- Keep checklists limited to concrete, unfinished outcomes. Put stable architecture and vocabulary in `CONTEXT.md`, accepted measurements in `PERF.md`, and implementation detail in code and tests.
+- Rewrite or remove stale items as the product direction changes; do not preserve abandoned plans for continuity.
+- Update this file whenever a completed vertical slice materially changes the current state or next priority.
 
-## Product Refocus — 15 July 2026
+## Current State
 
-Use Raylib as the benchmark for how quickly a developer can begin making a game, not as an architectural model. Keep Pixl's modern Metal-shaped GPU approach and cross-platform contract, while making the eventual game-facing experience equally direct.
+- Pixl is a cross-platform Swift game engine with one game-facing source path running on macOS through Metal and in browsers through WebGPU.
+- `PixlPlatform` provides low-level portable GPU, runtime, raw-input, audio, and asset-source contracts. Concrete adapters own native framework code and backend-specific lowering.
+- The GPU path supports fixed-capacity frame recording, render passes, buffers, textures, samplers, pipelines, vertex bytes, indexed and non-indexed draws, alpha blending, and explicit pooled-resource destruction on Metal and WebGPU.
+- Pixl owns the game lifecycle, fixed and variable updates, pause/time scaling, CPU frame metrics, PNG/WAV loading, stable texture and sound assets, and event-driven same-size hot reload on macOS. Browser assets remain packaged and static.
+- Raw keyboard and gamepad state is portable across macOS and browsers. Pixl adds game-defined semantic input profiles, remapping, generated bindings, and axis movement helpers.
+- Resident audio, reusable playback controllers, flat buses, rate/pan/volume/loop controls, and game-owned mixing work through AVFAudio and Web Audio. Streaming and compressed formats are not yet supported.
+- The 2D stack includes transforms, an orthographic camera, texture regions, regular sprite sheets, animation timelines, render layers, and a shared retained `SpriteRenderer`. It currently records one draw per sprite.
+- The Game proof exercises character movement, keyboard/gamepad bindings, layered animated sprites, pause/time scaling, music, asset loading, and frame metrics without backend-specific game code.
+- `PixlConcurrency` is an optional standalone package with persistent lane groups, static and dynamic partitioning, reusable barriers, native worker threads, and a single-lane WASI path. Pixl does not depend on or re-export it.
 
-Near-term foundation scope:
+## Next Priority — Instanced Sprite Batching
 
-- Bring rendering to a useful game-building baseline, including textures and the primitives needed by higher-level sprite APIs.
-- Restore cross-platform audio.
-- Provide raw cross-platform input.
-- Establish an asset pipeline and straightforward loading for textures, sprites, audio, shaders, and generated text assets.
-- Keep `PixlText`; defer `PixlUI` until debugging/tooling work needs it.
-- Prove the combined foundations in a small playable demo before expanding engine scope.
-- After the portable contract is proven on macOS and WebAssembly, carry it to Windows, iOS, tvOS, and visionOS without leaking platform-specific concepts upward.
+- [ ] Batch compatible consecutive sprite submissions without changing Game's `submit` API.
+  - Preserve authoritative layer and submission order; never reorder sprites to create larger batches.
+  - Begin with compatibility across render pass, pipeline, texture, sampler, and blend state. Incompatible state flushes the current batch rather than requiring another renderer.
+  - Move per-sprite transforms and texture coordinates into retained high-water instance storage, then emit one instanced draw per compatible run.
+  - Keep platform work to portable instanced vertex-layout and draw capability plus minimal Metal/WebGPU lowering.
+  - Verify no steady-state CPU allocation. Measure the representative bullets/enemies workload and separate 10,000-visible-sprite stress case on native and browser before recording accepted baselines in `PERF.md`.
+  - Keep entity storage, simulation, collision, culling, atlases, and tile sets outside this slice.
 
-Explicit non-goals:
+## Near-Term Work
 
-- Entities, spawning, despawning, and world ownership. These belong to games; remove the experimental engine-level `World` direction during the refocus.
-- Physics and particle simulation. These may become separate libraries using Pixl's rendering facilities later.
-- A Raylib/OpenGL-shaped abstraction or legacy rendering fallback.
-- Building convenience APIs before the low-level cross-platform rendering, input, audio, and asset foundations can support them cleanly.
+### First Game and 2D Rendering
 
-Camera constraint:
+- [ ] Route future backgrounds, tiles, players, enemies, and UI through the shared renderer as the Game needs them.
+- [ ] Add named irregular `TextureAtlas` regions when the Game needs them.
+- [ ] Add a visual `TileSet` mapping from game-owned tile identifiers to atlas regions without introducing engine-owned world or tilemap storage.
 
-- `PixlPlatform` and its adapters must remain camera-agnostic.
-- Rendering, transforms, resource binding, depth, render targets, and frame data must remain expressive enough for higher layers to build sophisticated 2D and 3D camera systems without backend changes.
-- Validate future graphics API choices against flexible multi-camera, off-screen, layered, and 3D rendering needs even though the camera system itself is out of scope.
+### GPU Foundations
 
-## Next Architectural Decisions
+- [ ] Add reusable internal upload-ring and readback lifetimes before exposing stage-specific larger dynamic bytes, buffer writes, copy commands, or readback.
 
-### Runtime Loop and Timing
+### Audio
 
-- [x] Define a platform-neutral Pixl loop driven by each platform's presentation callback.
-- [x] Define variable-step and optional fixed-step update behavior.
-- [x] Define elapsed time, accumulator limits, interpolation, and long-frame handling.
-- [x] Keep same-size texture hot reload event-driven and entirely outside presentation, simulation, and render traversal.
-- [x] Expose `UpdateTime.delta` and `unscaledDelta`, with `GameContext.timeScale` affecting only simulation time.
-- [ ] Define deterministic safe points where queued editor/live-development changes may be applied without racing simulation or render preparation.
-- [ ] Define development hooks as part of the loop lifecycle without making editor behavior part of release-game policy.
-- [ ] Keep editor mutations queued until a safe point; never let editor code mutate live simulation state concurrently.
-- [ ] Keep platform presentation callbacks separate from game simulation policy.
-- [ ] Make the loop boundaries suitable for later parallel work without requiring a job system now.
+- [ ] Add an explicit streaming sound source; music should use streaming by default.
+- [ ] Add compressed formats only when a playable Game need justifies decoder and packaging costs.
+- [ ] Move Web Audio graph control behind an AudioWorklet or worker boundary only if profiling shows current control-thread work affecting frames.
 
-### Parallel Execution
+### Platform Reach
 
-- [ ] Design an explicit lane model rather than a conventional generic job system.
-- [ ] Define persistent lane-group lifetime, lane index/count, barriers, range partitioning, and narrow execution.
-- [x] Keep the `Game` lifecycle serial by default; games may depend on `PixlConcurrency` directly for partitioned work.
-- [x] Keep `PixlConcurrency` portable and independent of `PixlMetalPlatform` or another concrete platform.
-- [ ] Decide the portable worker launch/parking backend only when the lane model requires it; add Swift Atomics only when an atomic primitive is implemented.
-- [ ] Prefer explicit ownership, dependencies, and deterministic synchronization over task-per-entity or allocation-heavy scheduling.
-- [ ] Decide which work can run concurrently: simulation systems, culling, batching, asset processing, and render preparation.
-- [ ] Keep UI, drawable acquisition, and platform-required presentation work on the platform's required executor.
-- [ ] Define an optional serial editor executor/lane, distinct from the OS UI thread and without reserving a CPU core.
-- [ ] Give the editor separate CPU-memory and work budgets; run it event-driven or at a lower update rate when appropriate.
-- [ ] Exchange immutable snapshots/events from game to editor and fixed-capacity mutation commands from editor to game.
-- [ ] Keep editor overlays on the normal render submission path; do not create a competing GPU queue.
-- [ ] Measure representative workloads before committing to scheduler complexity.
-
-### Live Development
-
-- [x] Add macOS project-relative asset reads and recursive file-level monitoring without tying hot reload to Debug configuration.
-- [x] Decode changed PNGs away from the game loop, retain the last valid texture on failure, and asynchronously write same-size changes into stable texture handles without polling.
-- [x] Decode changed WAVs away from the game loop, invalidate removed sounds immediately, and restart active voices from valid replacement content while preserving playback handles and controls.
-- [ ] Add a browser development server channel that watches source assets, updates served bytes, and notifies the running WASM game; packaged browser assets are currently static.
-- [ ] Treat the editor as an optional in-game Pixl subsystem so its core UI and behavior can run across supported platforms.
-- [ ] Keep the in-game editor's state isolated from live game state; inspect snapshots and issue commands rather than sharing mutable ownership.
-- [ ] Keep the host process focused on capabilities the game cannot provide itself: file watching, builds, diagnostics, remote transport, and optional source writeback.
-- [ ] Design a host/client development connection for file watching, change notification, diagnostics, and remote targets.
-- [ ] Queue remote/editor mutations and apply them only at explicit loop safe points.
-- [ ] Support genuine live reload for assets, generated shader artifacts, data, and configuration.
-- [ ] Define the Swift source-change workflow separately: fast rebuild/relaunch with optional state restoration rather than promising portable native-code replacement.
-- [ ] Explore stable, serializable editable-state metadata generated by macros or property wrappers.
-- [ ] Explore an in-game editor for changing registered values while the game runs.
-- [ ] Persist edited values as development overrides so they survive relaunches.
-- [ ] Consider source-code writeback tooling only after the editable-state workflow proves useful.
-
-## Graphics Follow-up
-
-- [x] Surface allocation-free portable frame interval, FPS, CPU game-update, and CPU render-recording metrics through `RenderTime`; GPU timing remains a later backend capability.
-- [x] Revalidate the static triangle through the refocused `PixlPlatform` and `PixlMetalPlatform` API before adapting the WebGPU backend.
-- [x] Adapt `PixlWasmPlatform` to the accepted Metal-first portable command interface; keep WebGPU bind-group/pipeline-layout machinery private to the adapter.
-- [x] Prove dynamic per-frame data by rotating the existing triangle without backend-specific Game code through fixed-capacity `setVertexBytes` recording; do not recreate immutable buffers each frame.
-- [x] Add y-up aspect-correct `OrthographicCamera` and reusable immutable coloured `Triangle` and indexed `Quad` primitives in `Pixl2D`.
-- [x] Prototype opt-in fixed-capacity `World` storage; the July product refocus rejects entities/world ownership as engine scope and schedules this direction for removal.
-- [x] Add initial texture-pixel upload, pooled samplers, fragment texture/sampler bindings, and built-in textured Metal shaders.
-- [ ] Lower texture upload and fragment texture/sampler bindings through WebGPU.
-- [ ] Let real `Pixl2D` needs determine sprites, batching, 2D transforms, cameras, and texture workflows.
-- [x] Add Pixl-owned texture regions and prove first-frame selection from a four-frame sprite sheet through existing vertex bytes.
-- [x] Add regular sprite sheets and game-owned sprite-animation timelines; prove the four-frame player animation without platform changes.
-- [x] Make `Sprite` lightweight render data and add one shared `SpriteRenderer` owning the quad, sampler, and pipeline.
-- [x] Add game-defined `RenderLayer` and retained sprite submissions with a monotonic-order fast path plus stable `(layer, ordinal)` fallback ordering.
-- [x] Add packed horizontal/vertical sprite-sheet animation strips and portable normal alpha blending for sprites.
-- [ ] Record background, tile, player, and enemy sprites into one ordered render pass through the shared renderer; keep one draw per sprite initially.
-- [ ] Add retained high-water sprite submission storage and instanced batching for compatible consecutive sprites, including atlas regions sharing one texture.
-- [ ] Validate the first-game scalability goal of 10,000 live game-owned entities: measure the representative hundreds-of-bullets plus roughly 50 visible enemies workload, and require the separate 10,000-visible-sprite renderer stress case to remain comfortably below frame budget without steady-state allocation; measure CPU preparation, upload/recording, GPU work, culling, and collision independently.
-- [ ] Add named irregular `TextureAtlas` regions over the existing `TextureRegion` primitive.
-- [ ] Add visual `TileSet` mapping from game-owned tile identifiers to atlas regions; keep tilemap/world ownership outside Pixl.
-- [ ] Let real `Pixl3D` needs determine meshes, materials, depth, 3D transforms, cameras, and lighting.
-- [ ] Keep shared, dimension-independent facilities in `PixlGraphics`.
-- [ ] Keep all GPU concepts and platform implementations dimension-agnostic in `PixlPlatform`.
-- [ ] Add reusable internal upload-ring and readback lifetimes before exposing stage-specific dynamic bytes, buffer writes, or copy commands. Do not expose `upload` as game-facing render intent.
-- [ ] Use Cubano Regular as Pixl's official font. The local source file is `/Users/shaps/Library/Fonts/Cubano-Regular.otf`; the future font build pipeline should compile it into portable generated atlas and glyph artifacts rather than depending on that runtime path.
-
-## Audio Follow-up
-
-- [x] Prove the portable sound path in Game by loading `jump.wav` and playing it when the player rotation crosses 180°.
-- [x] Prove game-owned music, effects, and voice bus routing with restorable volume values; keep semantic categories and persistence outside the engine.
-- [x] Run all macOS AVFAudio work on a private serial `.utility` queue and recover output hardware configuration changes there, never blocking game/render frame work.
-- [x] Keep Metal bus mixers disconnected while empty so later voices never start against a disconnected native graph.
-- [x] Preserve logical browser playback while Web Audio awaits its required user gesture, then start or resume output when the context runs.
-- [ ] Move browser-side Web Audio graph control behind an AudioWorklet/worker message boundary if profiling proves its small control-thread sections interfere with frame work; browser audio rendering is already off-thread.
-- [ ] Add an explicit streaming sound source after resident sound effects are established; music should use streaming by default.
-- [ ] Add compressed formats only when a playable Game need justifies their decoder and packaging costs.
-- [ ] Let game needs determine effects and richer routing without exposing platform audio graphs in `PixlPlatform`.
-
-## Guiding Constraints
-
-- Obvious, intuitive, and fast APIs.
-- Multi-core capable by design; parallelism must earn its synchronization and scheduling costs.
-- No avoidable allocation or dynamic dispatch in hot paths.
-- Metal-first API development, modern-DirectX alignment, then adapter-owned WebGPU/Vulkan lowering.
-- Playable Game targets remain the proof of every abstraction.
+- [ ] Carry the proven portable contract beyond macOS and WebAssembly to Windows, iOS, tvOS, and visionOS without leaking platform concepts upward.
