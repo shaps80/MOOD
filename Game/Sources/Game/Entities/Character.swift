@@ -22,6 +22,7 @@ struct Character: Entity {
 
     init(camera: OrthographicCamera, context: GameContext) throws {
         self.camera = camera
+
         sprite = try .init(named: "character.png", context: context)
         sprite.layer = .player
 

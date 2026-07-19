@@ -1,5 +1,14 @@
-@_exported import PixlPlatform
-@_exported import PixlGraphics
+import PixlPlatform
+import PixlGraphics
+
+public typealias RenderTarget = PixlPlatform.RenderTarget
+public typealias Bus = PixlPlatform.Bus
+public typealias Playback = PixlPlatform.Playback
+public typealias GamePhase = PixlPlatform.GamePhase
+public typealias Platform = PixlPlatform.Platform
+public typealias GameSettings = PixlPlatform.GameSettings
+public typealias Frame = PixlPlatform.Frame
+public typealias Color = PixlGraphics.Color
 
 #if canImport(PixlMetalPlatform)
 import PixlMetalPlatform

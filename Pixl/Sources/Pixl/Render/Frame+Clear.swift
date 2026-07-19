@@ -1,7 +1,11 @@
+import PixlGraphics
 import PixlPlatform
 
-extension Frame {
-    public func clear(_ color: Color = .black, target: RenderTarget) -> RenderPassEncoder {
+public extension Frame {
+    func clear(
+        _ color: PixlGraphics.Color = .init(0, 0, 0, 1),
+        target: RenderTarget
+    ) -> RenderPassEncoder {
         beginRenderPass(
             RenderPassDescriptor(
                 ColorAttachment(

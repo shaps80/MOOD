@@ -1,4 +1,3 @@
-import PixlPlatform
 import PixlMath
 
 /// A y-up orthographic camera centred on a world-space position.
@@ -30,16 +29,23 @@ public struct OrthographicCamera: Sendable {
         self.halfHeight = halfHeight
     }
 
-    /// Returns the world-to-clip transform for a render target.
-    ///
-    /// - Parameter output: Current render target. Its dimensions determine the
-    ///   visible width, preserving world-space aspect ratio.
-    public func projection(for output: RenderTarget) -> Transform2D {
-        let size = output.texture.descriptor.size
-        precondition(size.width > 0)
-        precondition(size.height > 0)
+    /// Returns the world-to-clip transform for a viewport size.
+    public func projection(in size: Vec2) -> Transform2D {
+        precondition(
+            size.x.isFinite && size.y.isFinite && size.x > 0 && size.y > 0,
+            "Viewport size must be finite and greater than zero"
+        )
+        return projection(aspectRatio: size.x / size.y)
+    }
 
-        let halfWidth = halfHeight * Double(size.width) / Double(size.height)
+    /// Returns the world-to-clip transform for a viewport aspect ratio.
+    public func projection(aspectRatio: Double) -> Transform2D {
+        precondition(
+            aspectRatio.isFinite && aspectRatio > 0,
+            "Aspect ratio must be finite and greater than zero"
+        )
+
+        let halfWidth = halfHeight * aspectRatio
         let xScale = Float(1 / halfWidth)
         let yScale = Float(1 / halfHeight)
 

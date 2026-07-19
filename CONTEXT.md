@@ -2,6 +2,49 @@
 
 PixlPlatform is Pixl's lowest platform-agnostic API boundary. It defines the minimum portable building blocks for graphics, input, audio, assets, and runtime integration, with concrete platform targets providing their native implementations. Higher-level conveniences and game-facing abstractions belong above it so every platform benefits from the same shared functionality.
 
+## Package Responsibilities
+
+`Pixl`
+: Pixl's primary game-facing entry point. Its purpose is to make game development intuitive, fun, and easy through obvious Swift value construction, useful defaults, common rendering and runtime conveniences, and direct explicit control where that improves the game-authoring experience. A game should normally begin with `import Pixl` and discover its common path without understanding engine resource resolution or platform APIs.
+
+`PixlFoundation`
+: Pixl's platform-independent engine infrastructure and lower-level game-engine mechanics required for games to function. It owns deliberate direct engine abstractions, engine descriptors, resource resolution and cache machinery, render keys and records, and other mechanisms used beneath Pixl conveniences. It may expose low-level public APIs for games that intentionally import it, and use `package` access for implementation shared by sibling targets in the Pixl package.
+
+`PixlPlatform`
+: Pixl's minimum platform-agnostic input/output boundary over platform APIs. It defines portable contracts and raw explicit resource operations; concrete adapters implement those contracts with Metal, WebGPU, native audio, windows, devices, files, and other platform facilities. It does not own engine convenience, material interpretation, batching policy, or engine resource deduplication.
+
+The domain libraries remain independent horizontal streams:
+
+```text
+Pixl2D -> PixlGraphics + PixlMath
+Pixl3D -> PixlGraphics
+future PixlPhysics -> PixlMath
+```
+
+Domain targets add PixlMath directly when their implementation needs its shared operations; they do not acquire unrelated dependencies merely to anticipate future work.
+
+They define convenient, efficient domain values and algorithms without depending on engine execution infrastructure. `Pixl` is the orchestrator and bridge: it consumes domain values, lowers them into optimized `PixlFoundation` representations and lifetimes, then `PixlFoundation` resolves those through `PixlPlatform`. Domain targets do not depend on `PixlFoundation`; package access does not bypass target dependencies.
+
+Pixl deliberately depends on PixlGraphics, Pixl2D, and Pixl3D even before every bridge exists. These are orchestration edges: Pixl is where domain values meet Foundation execution mechanisms. They are not module re-exports, and the Game needs only the Pixl product while explicitly importing whichever domain modules its source uses.
+
+```text
+domain values -> Pixl bridge -> PixlFoundation -> PixlPlatform -> native APIs
+```
+
+A type belongs in `PixlFoundation` only when it is engine-specific rather than platform I/O, provides infrastructure beneath Pixl conveniences or deliberate direct engine control, excludes gameplay and scene ownership, and preserves this execution direction. `PixlFoundation` is not a home for miscellaneous utilities, convenience extracted merely for file sharing, platform/backend concepts, game-owned state, entities, scenes, or abstractions without a concrete engine consumer. It is predominantly package-scoped initially, but public direct APIs are valid when a concrete need justifies them.
+
+`Pixl` does not re-export its dependency targets. It selectively exposes only the shared types required by its intuitive game-facing API, using zero-cost public type aliases where the underlying type already has the correct semantics. Game source explicitly imports PixlGraphics, Pixl2D, Pixl3D, PixlFoundation, or PixlPlatform when using those modules directly; Pixl's product supplies its orchestration dependencies without making their declarations implicit. Resource-resolution methods remain internal or package-scoped even when their descriptor types are public.
+
+`PixlGraphics`
+: Dimension-independent graphics vocabulary and algorithms shared by 2D and 3D, such as `Color`, `Angle`, image representations, and decoding. It is a domain library, not engine execution infrastructure. `PixlGraphics.Color` and `PixlPlatform.Color` are independent aliases of `SIMD4<Float>`: they have identical Swift type identity and require no conversion, while each module can present vocabulary appropriate to its boundary. Code importing both modules qualifies or constructs primitive SIMD values where duplicate extension member names would be ambiguous.
+
+`Pixl2D`
+: Pure two-dimensional domain values and operations. `Triangle` and `Quad` are ordinary mutable geometry values containing points and per-vertex colours; they do not create buffers, retain devices, throw during construction, or record draws. `OrthographicCamera` computes projection transforms from a `Vec2` viewport size or a positive aspect ratio and has no render-target knowledge. Pixl owns the convenience bridge that extracts a `RenderTarget` size and calls the pure camera API. Pixl2D depends on PixlGraphics and PixlMath, not PixlPlatform or PixlFoundation.
+
+PixlPlatform convenience may normalize awkward native APIs into coherent Swift values such as `GamePhase`, `Keyboard`, or direct encoder commands. The abstraction must remain at the platform capability level and must not add engine policy. Portable normalization must introduce the minimum measurable overhead required by the boundary; ergonomics never justify avoidable hot-path allocation, copying, synchronization, dynamic dispatch, hashing, or state translation.
+
+PixlPlatform is state-minimal and ownership-explicit rather than literally stateless. It owns native state required by windows, devices, queues, input snapshots, resources, callbacks, and frame recording, but avoids implicit caches, undocumented retention, automatic batching or deduplication, engine-level lifecycle policy, and hidden mutation. Higher layers own those concerns.
+
 Its GPU interface follows Metal's direct encoder/resource-slot model, with modern DirectX used as a second alignment reference. WebGPU and Vulkan must implement the same capabilities, but their bind groups, descriptor sets, layout declarations, and pipeline variants are adapter machinery unless a future cross-platform requirement proves otherwise.
 
 This is not a legacy OpenGL/WebGL state-machine abstraction. The platform boundary is dimension-agnostic and camera-agnostic; 2D, 3D, and camera meaning belongs in higher layers.
@@ -151,10 +194,42 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 : Integer-backed game-defined sprite ordering. Pixl defines no named layers. Lower values render first; equal values retain submission order. Layers are CPU draw-order semantics, not GPU depth.
 
 `SpriteRenderer`
-: Pixl-owned shared sprite recording state. One renderer owns the built-in pipeline, white-tinted quad geometry, sampler, and retained high-water contiguous submission storage, while lightweight `Sprite` values contain region, game-defined `RenderLayer`, and presentation state. White is the neutral texture tint because the built-in fragment shader multiplies sampled RGBA by vertex colour; transparent tint would erase sprite alpha under normal blending. Submission resolves compact render data immediately. Already monotonic layers take the linear fast path; otherwise ordering uses `(layer, submission ordinal)`, so lower layers render first and equal layers retain insertion order. Games own render-pass boundaries. Future batch compatibility may split draws internally but does not require renderers per texture, layer, or game category.
+: Pixl-owned shared sprite recording state. One renderer owns the built-in white-tinted quad geometry, retained high-water contiguous submission and instance storage, and references to engine-resolved sprite pipeline and sampler resources. Lightweight `Sprite` values contain region, `Sprite.Material`, game-defined `RenderLayer`, and presentation state. White is the neutral texture tint because the built-in fragment shader multiplies sampled RGBA by vertex colour; transparent tint would erase sprite alpha under normal blending. Submission resolves compact render data immediately. Already monotonic layers take the linear fast path; otherwise ordering uses `(layer, submission ordinal)`, so lower layers render first and equal layers retain insertion order. Games own render-pass boundaries. Batch compatibility may split draws internally but does not require renderers per texture, layer, blend mode, sampler, or game category.
+
+The current built-in sprite quad is a temporary internal Pixl type containing the existing vertex/index buffers, packed shader parameters, vertex layout, and draw recording formerly exposed from Pixl2D. It exists only to preserve the working renderer while PixlFoundation execution storage is designed. It is not a public geometry model or the intended final Foundation representation. Pixl will lower domain values into primitive SIMD/matrix records, resolved handles, ranges, and byte storage appropriate to Foundation; Foundation does not store semantic `Triangle`, `Quad`, or `Sprite` values merely because those were the game-facing source.
+
+## 2D Render Intent and Resolution
+
+Pixl's game-facing 2D API uses ordinary Swift values to describe render intent. `Sprite` is the obvious construction and discovery point. A sprite owns lightweight presentation state and a nested `Sprite.Material` description; games construct and mutate those values directly, then explicitly submit them to a shared `SpriteRenderer`. Useful defaults keep `Sprite(region:)` sufficient for the ordinary path. The public description does not expose native-resource creation, cache ownership, or backend storage.
+
+The existing sprite renderer, sampler ownership, and blend-mode implementation are provisional foundations, not compatibility constraints. Change or replace their concrete APIs, storage, and lowering where required to realise this design. Preserve the explicit game-owned value and renderer-submission model, not accidental details of the initial implementation.
+
+`Sprite.Material`
+: Pixl-provided sprite shading and composition intent. Its initial state selects texture filtering, texture addressing, and `BlendMode`, with defaults preserving the ordinary pixel-art sprite path. Equivalent descriptions are value-equivalent even when independently constructed throughout game code. Future Pixl-provided material families may expose their own typed descriptions rather than widening one universal public material bag.
+
+The intended material capability direction includes tint/modulation, opacity, normal maps and strength, emission maps, colour, and strength, mask textures, roughness, alpha cutoff, and other shader-specific parameters justified by Pixl-provided material families. This records the intended feature horizon, not final property placement. Before implementing that fuller material phase, stop for a dedicated design session covering which values belong to `Sprite`, `Sprite.Material`, per-instance records, shared material records, or texture maps; how lit/unlit behavior is selected; how mask channels are defined; and how sharing and mutation behave. Do not infer those decisions during implementation.
+
+`SpriteRenderer.submit`
+: The immediate, explicit path from a game-owned sprite and transform to the current frame's retained submission storage. Position, scale, rotation, flip, tint, and texture coordinates resolve into per-instance data. Shader family, blend mode, sampler state, texture, target format, and other draw compatibility state resolve into a compact internal key. Changing a public value affects its next submission; games do not register sprites, receive material keys, or return mutated values through `GameContext`.
+
+Pixl resolves public descriptions into engine-owned resources. Equivalent `SamplerDescriptor` values share one native `Sampler`; equivalent complete render-pipeline descriptions share one `RenderPipeline`. Sprite renderers retain resolved handles. The first submission of a previously unseen description may take a cold resolution path and create its required native resources; later equivalent submissions perform the minimum bounded work needed to derive compact state and reuse the resolved handles. Steady-state submission performs no native-resource creation or allocation, but is not assumed to be zero-cost; key derivation, lookup, ordering, and instance writes must remain measurable and open to profiling-driven reduction. Cached-resource ownership prevents one consumer from invalidating a resource shared by another; explicit low-level resources created directly through `PixlPlatform.Device` retain their existing caller-owned lifecycle.
+
+Render data is separated by update frequency and stored as fixed-stride interleaved records:
+
+- Frame/pass records contain values such as camera transforms, time, and lighting shared by many draws.
+- Material records contain values and resolved resources shared by a compatible batch.
+- Instance records contain transform, texture coordinates, tint, and other values unique to one submitted sprite.
+
+Public descriptions, retained CPU records, and GPU upload layouts are deliberately separate representations. Internal records use explicit, verified alignment and padding appropriate to Swift and each shader ABI. Build frame or material GPU records only when concrete shader data requires them. If mutable material records later exist, update only dirty GPU regions; rebinding is required only when a draw changes its bound resource, offset, or pipeline. Reusable per-frame or ring-buffer regions prevent CPU writes from overwriting data still consumed by submitted GPU work.
+
+Pixl uses distinct shader families when shading algorithms are materially different, such as textured sprites, lit sprites, or signed-distance-field rendering. Frame/material/instance frequency does not imply separate shaders: one shader family may consume all three record types. Small feature selections may lower without divergent control flow, but material flags do not replace fixed-function pipeline variants such as blend state.
+
+One `SpriteRenderer` normally serves one ordered sprite-submission domain and render-target configuration. Differences in texture, sampler, blend mode, layer, or game category do not require separate renderers. Multiple renderers remain valid for genuinely independent destinations, such as a low-resolution offscreen pixel-art world and native-resolution window UI, and may share device-level sampler and pipeline caches.
+
+Sprite batching preserves authoritative render order. After ordering by `(layer, submission ordinal)` when required, the renderer combines only consecutive compatible submissions. It never reorders sprites to manufacture larger batches. A compatibility change ends the current batch and begins another. Games continue to own render-pass boundaries, while direct `PixlPlatform` APIs remain available for custom rendering outside Pixl-provided material families.
 
 `BlendMode`
-: Portable fixed-function render-pipeline composition. `.replace` preserves opaque replacement behavior; `.normal` performs straight-alpha source-over composition. Pixl's sprite renderer selects `.normal`; Metal and WebGPU only lower that shared intent to native state.
+: Portable fixed-function render-pipeline composition. A `Sprite.Material` selects blend intent, the sprite resolver selects the matching built-in pipeline variant, and Metal and WebGPU only lower that shared intent to native state. The fuller supported mode set remains part of the sprite-material design work rather than being fixed by the initial `.replace` and straight-alpha `.normal` implementation.
 
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.

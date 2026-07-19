@@ -17,13 +17,29 @@ let package = Package(
             targets: ["Pixl"]
         ),
         .library(
+            name: "PixlFoundation",
+            targets: ["PixlFoundation"]
+        ),
+        .library(
             name: "PixlText",
             targets: ["PixlText"]
         ),
         .library(
             name: "PixlUI",
             targets: ["PixlUI"]
-        )
+        ),
+        .library(
+            name: "Pixl2D",
+            targets: ["Pixl2D"]
+        ),
+        .library(
+            name: "Pixl3D",
+            targets: ["Pixl3D"]
+        ),
+        .library(
+            name: "PixlGraphics",
+            targets: ["PixlGraphics"]
+        ),
     ],
     dependencies: [
         .package(path: "../PixlPlatform"),
@@ -38,14 +54,33 @@ let package = Package(
             name: "Pixl",
             dependencies: [
                 "PixlMacros",
+                "PixlFoundation",
                 "PixlGraphics",
                 "Pixl2D",
-                "Pixl3D"
-                ,
+                "Pixl3D",
+                .product(
+                    name: "PixlPlatform",
+                    package: "PixlPlatform"
+                ),
+                .product(
+                    name: "PixlMetalPlatform",
+                    package: "PixlPlatform",
+                    condition: .when(platforms: [.macOS])
+                ),
                 .product(
                     name: "PixlWasmPlatform",
                     package: "PixlPlatform",
                     condition: .when(platforms: [.wasi])
+                )
+            ],
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
+        ),
+        .target(
+            name: "PixlFoundation",
+            dependencies: [
+                .product(
+                    name: "PixlPlatform",
+                    package: "PixlPlatform"
                 )
             ],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
@@ -61,19 +96,19 @@ let package = Package(
         ),
         .target(
             name: "Pixl2D",
-            dependencies: dependencies() + [
+            dependencies: [
+                "PixlGraphics",
                 .product(name: "PixlMath", package: "PixlMath")
             ],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "Pixl3D",
-            dependencies: dependencies(),
+            dependencies: ["PixlGraphics"],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
             name: "PixlGraphics",
-            dependencies: ["PixlPlatform"],
             swiftSettings: releaseCrossModuleOptimization()
                 + defaultNonisolated()
                 + [.enableExperimentalFeature("Lifetimes")]
@@ -90,6 +125,7 @@ let package = Package(
             name: "PixlTests",
             dependencies: [
                 "Pixl",
+                "Pixl2D",
                 .product(
                     name: "PixlMetalPlatform",
                     package: "PixlPlatform"
@@ -100,26 +136,6 @@ let package = Package(
     ],
     swiftLanguageModes: [.v6]
 )
-
-private func dependencies() -> [Target.Dependency] {
-    [
-        "PixlGraphics",
-        .product(
-            name: "PixlPlatform",
-            package: "PixlPlatform"
-        ),
-        .product(
-            name: "PixlMetalPlatform",
-            package: "PixlPlatform",
-            condition: .when(platforms: [.macOS])
-        ),
-        .product(
-            name: "PixlWasmPlatform",
-            package: "PixlPlatform",
-            condition: .when(platforms: [.wasi])
-        )
-    ]
-}
 
 private func defaultNonisolated() -> [SwiftSetting] {
     [.defaultIsolation(nil)]

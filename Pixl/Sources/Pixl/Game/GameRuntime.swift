@@ -1,4 +1,4 @@
-import Swift
+import PixlPlatform
 
 final class GameRuntime<G: Game>: PlatformGame {
     static var gameSettings: GameSettings {
