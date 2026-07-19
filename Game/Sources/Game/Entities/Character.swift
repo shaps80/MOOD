@@ -32,10 +32,7 @@ struct Character: Entity {
         )
 
         self.idle = .init(
-            frames: sheet[
-                row: 0,
-                columns: ...1
-            ],
+            frames: sheet[row: 0, columns: ...1],
             frameDuration: 0.3
         )
 
