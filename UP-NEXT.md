@@ -1,5 +1,17 @@
 # Up Next
 
+## Next Session
+
+Add instanced batching for compatible consecutive sprite submissions without changing Game's `submit` API.
+
+- Keep layer ordering authoritative; batching must never reorder submissions to gain compatibility.
+- Start with sprites sharing pipeline, texture, sampler, and blend mode.
+- Move per-sprite transform and texture coordinates into retained high-water instance storage.
+- Emit one instanced draw per compatible run; incompatible state flushes the run.
+- Keep platform work limited to portable instanced vertex layout/draw capability and small Metal/WebGPU lowering differences.
+- Verify no steady-state CPU allocation, then measure representative bullets/enemies and the separate 10,000-visible-sprite stress case.
+- Leave collision, entity storage, culling, atlases, and tile sets outside this workload.
+
 ## Shared Sprite Rendering
 
 Replace per-sprite GPU ownership and render-pass creation with one shared `SpriteRenderer`.
@@ -12,7 +24,7 @@ Replace per-sprite GPU ownership and render-pass creation with one shared `Sprit
 - [x] Composite sprite transparency through portable normal alpha blending on Metal and WebGPU.
 - [ ] Route future backgrounds, tiles, players, enemies, and UI through that same renderer.
 - [x] Preserve layer/submission order and use one draw per sprite for the first proof.
-- Follow with retained high-water instance submission storage and compatible consecutive batching.
+- [ ] Follow with retained high-water instance submission storage and compatible consecutive batching.
 - Build named texture atlases, then visual tile sets, on that batching boundary.
 
 Scalability goal: the first game may own 10,000 live entities. Entity storage, simulation, collision, and culling remain game concerns; the renderer consumes only visible sprite submissions. Its representative workload is hundreds of visible live bullets plus roughly 50 enemies, with a separate 10,000-visible-sprite stress case. Compatible sprites sharing atlas, layer, and blend state should collapse into a small number of instanced draws. Track live entities, visible/submitted sprites, batch count, draw count, ordering work, instance bytes, culling time, and collision time separately.

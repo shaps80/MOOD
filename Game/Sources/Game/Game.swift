@@ -89,7 +89,7 @@ struct Game: Pixl.Game {
         )
         character.submit(to: spriteRenderer, output: output)
 
-        let pass = frame.clear(target: output)
+        let pass = frame.clear(.white, target: output)
         spriteRenderer.render(on: pass)
 
         logMetrics(time)

@@ -20,7 +20,7 @@ struct Character: Entity {
 
         animation = .init(
             animation: .init(
-                frames: sheet[row: 2, columns: 0...2],
+                frames: sheet[row: 2],
                 frameDuration: 0.125
             )
         )
@@ -33,6 +33,13 @@ struct Character: Entity {
     }
 
     func submit(to renderer: SpriteRenderer, output: RenderTarget) {
-        renderer.submit(sprite, transform: camera.projection(for: output).translated(by: position))
+        renderer.submit(
+            sprite,
+            transform:
+                camera
+                .projection(for: output)
+                .translated(by: position)
+                .scaled(x: 1.75, y: 1.75)
+        )
     }
 }
