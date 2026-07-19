@@ -211,6 +211,8 @@ Pixl may add public convenience initializers or methods to domain types it impor
 `Sprite`
 : Pixl2D's obvious construction and discovery point for sprite rendering. It is an ordinary game-owned Swift value containing its region, nested `Sprite.Material`, layer, and presentation state. Games mutate those properties directly during update and explicitly submit the latest value during rendering. They do not register ordinary sprites, receive internal material keys, or return mutated values through `GameContext`.
 
+Pixl's asset-loading convenience constructs a sprite with its default layer; game code changes `sprite.layer` as ordinary state rather than passing ordering policy into `Sprite(named:context:)`. Whether Pixl2D's lower-level region initializer should also accept a layer remains an explicit part of the upcoming sprite material and blend-mode API discussion.
+
 `Sprite.Material`
 : Pixl2D's value-semantic description of Pixl-provided sprite shading and composition intent. Its first implementation covers texture, filtering, addressing, and `BlendMode`, with useful defaults preserving the ordinary pixel-art path. Independently constructed equivalent descriptions are value-equivalent. Future material families may expose their own typed descriptions rather than widening one universal public material bag.
 

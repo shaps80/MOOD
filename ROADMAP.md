@@ -18,7 +18,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - Pixl owns the game lifecycle, fixed and variable updates, pause/time scaling, CPU frame metrics, PNG/WAV loading, stable texture and sound assets, and event-driven same-size hot reload on macOS. Browser assets remain packaged and static.
 - Raw keyboard and gamepad state is portable across macOS and browsers. Pixl adds game-defined semantic input profiles, remapping, generated bindings, and axis movement helpers.
 - Resident audio, reusable playback controllers, flat buses, rate/pan/volume/loop controls, and game-owned mixing work through AVFAudio and Web Audio. Streaming and compressed formats are not yet supported.
-- The working 2D proof includes transforms, an orthographic camera, texture regions, regular sprite sheets, animation timelines, render layers, and a provisional retained `SpriteRenderer`. It currently records one draw per sprite; its ownership and API are not architectural constraints.
+- Pixl2D owns the working value-semantic sprite authoring model: `Sprite`, `TextureRegion`, regular `SpriteSheet`, `SpriteAnimation.Timeline`, and `RenderLayer`, alongside transforms and its orthographic camera. Pixl retains only the asset-loading convenience and provisional `SpriteRenderer`, which currently records one draw per sprite and is not an architectural constraint.
 - Pixl2D is independent of PixlPlatform and PixlFoundation. Its `Triangle` and `Quad` are plain geometry values, and its orthographic camera projects from viewport size or aspect ratio. Pixl bridges platform render targets to that pure API.
 - `PixlFoundation` is an explicitly importable target beneath Pixl for lower-level engine infrastructure. Pixl depends on it directly; the horizontal graphics, 2D, and 3D domain targets do not.
 - Pixl deliberately re-exports PixlGraphics as stable common graphics vocabulary. It does not re-export PixlPlatform, PixlFoundation, Pixl2D, or Pixl3D; required PixlPlatform identities remain selectively exposed through zero-cost type aliases, while direct lower-level or dimensional use requires explicit module imports.
@@ -43,12 +43,10 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 
 ### Stage 2 — Pixl2D Sprite Authoring Model
 
-- [ ] Move `TextureRegion`, `SpriteSheet`, `SpriteAnimation` and its timeline, `RenderLayer`, `Sprite`, and sprite-specific supporting values into Pixl2D.
-- [ ] Give `Sprite` a lightweight nested value-semantic `Sprite.Material` covering texture, filtering, addressing, and `BlendMode` with useful defaults; agree the exact initial blend cases before expanding the proof enum.
+- [ ] Give `Sprite` a lightweight nested value-semantic `Sprite.Material` covering texture, filtering, addressing, and `BlendMode` with useful defaults; agree the exact initial blend cases and the role of layer in Sprite construction before changing this public shape.
 - [ ] Keep `Sprite` the obvious entry point; construction and mutation remain ordinary Swift value APIs with no registration, native resource, cache, or execution concepts.
 - [ ] Add only the Pixl-owned convenience extensions needed to bridge context/Foundation-backed operations into domain values through package-scoped initializers; do not create dependency cycles or expose package-only Foundation types publicly.
 - [ ] Update Pixl type aliases only where one PixlPlatform identity is required by its common API; preserve PixlGraphics as the sole re-export and do not re-export Pixl2D, Pixl3D, PixlFoundation, or PixlPlatform.
-- [ ] Keep the Game building with the Pixl product and explicit source imports, and test Pixl2D without PixlPlatform or PixlFoundation.
 
 ### Stage 3 — Immediate Submission and Lowering Seam
 

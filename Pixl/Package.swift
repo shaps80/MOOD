@@ -130,6 +130,14 @@ let package = Package(
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(
+            name: "Pixl2DTests",
+            dependencies: [
+                "Pixl2D",
+                "PixlGraphics"
+            ],
+            swiftSettings: defaultNonisolated()
+        ),
+        .testTarget(
             name: "PixlTests",
             dependencies: [
                 "Pixl",

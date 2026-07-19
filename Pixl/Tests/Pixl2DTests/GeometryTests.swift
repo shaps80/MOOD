@@ -1,8 +1,8 @@
+import Pixl2D
 import Testing
-@testable import Pixl2D
 
-@Suite("Pixl2D")
-struct Pixl2DTests {
+@Suite("Pixl2D geometry")
+struct GeometryTests {
     @Test
     func primitivesArePlainGeometryValues() {
         let triangle = Triangle()

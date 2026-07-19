@@ -1,4 +1,5 @@
 import Foundation
+import Pixl2D
 import PixlPlatform
 import Testing
 @testable import Pixl

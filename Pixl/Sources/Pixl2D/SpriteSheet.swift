@@ -1,4 +1,4 @@
-import Pixl2D
+import PixlGraphics
 import Swift
 
 /// A regular row-major grid of equally sized texture regions.

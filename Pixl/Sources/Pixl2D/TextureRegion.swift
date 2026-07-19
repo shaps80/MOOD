@@ -1,4 +1,4 @@
-import Pixl2D
+import PixlGraphics
 import Swift
 
 /// A rectangular pixel region within one texture asset.
@@ -44,7 +44,7 @@ public struct TextureRegion {
     }
 }
 
-extension TextureRegion {
+package extension TextureRegion {
     var textureCoordinates: TextureCoordinates {
         let textureSize = asset.size
         return TextureCoordinates(

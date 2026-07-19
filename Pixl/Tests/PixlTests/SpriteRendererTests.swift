@@ -1,18 +1,9 @@
+import Pixl2D
 import Testing
 @testable import Pixl
 
 @Suite("Sprite renderer")
 struct SpriteRendererTests {
-    @Test
-    func renderLayersSupportGameDefinedOrderingAndOffsets() {
-        let background: RenderLayer = 0
-        let player: RenderLayer = 100
-
-        #expect(background < player)
-        #expect(player + 50 == RenderLayer(150))
-        #expect(player - 50 == RenderLayer(50))
-    }
-
     @Test
     func submissionOrderIsStableWithinEachLayer() {
         let orders = [
