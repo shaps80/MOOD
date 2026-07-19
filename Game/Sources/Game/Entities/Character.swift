@@ -39,7 +39,7 @@ struct Character: Entity {
                 camera
                 .projection(for: output)
                 .translated(by: position)
-                .scaled(x: 1.75, y: 1.75)
+                .scaled(x: 1.5, y: 1.5)
         )
     }
 }
