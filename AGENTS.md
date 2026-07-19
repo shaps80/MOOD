@@ -7,6 +7,7 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - Discuss design first unless the user explicitly asks to implement or change code.
 - Keep architectural discussion short and focused on one decision at a time.
 - Prefer explaining the smallest useful implementation shape; the user wants to write most implementation code personally.
+- Organize production declarations into clear domain folders and prefer one primary type per file; avoid aggregate or placeholder files that make small changes harder to review.
 
 ## Architecture
 

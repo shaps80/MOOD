@@ -116,6 +116,15 @@ public final class Frame {
         passes[Int(passIndex)] = .render(pass)
     }
 
+    package func colorFormat(forRenderPassAt passIndex: UInt32) -> PixelFormat {
+        precondition(passIndex < passCount, "Render pass does not belong to this frame")
+
+        guard case .render(let pass) = passes[Int(passIndex)] else {
+            preconditionFailure("Expected a render pass")
+        }
+        return pass.descriptor.colorAttachment.target.texture.descriptor.format
+    }
+
     package func appendVertexBytes(
         _ source: UnsafeRawBufferPointer,
         index: UInt32,

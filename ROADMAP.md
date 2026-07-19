@@ -14,7 +14,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 - Pixl is a cross-platform Swift game engine with one game-facing source path running on macOS through Metal and in browsers through WebGPU.
 - `PixlPlatform` provides low-level portable GPU, runtime, raw-input, audio, and asset-source contracts. Concrete adapters own native framework code and backend-specific lowering.
-- The GPU path supports fixed-capacity frame recording, render passes, buffers, textures, samplers, pipelines, vertex bytes, indexed and non-indexed draws, alpha blending, and explicit pooled-resource destruction on Metal and WebGPU.
+- The GPU path supports fixed-capacity frame recording, render passes with read-only colour-format metadata, buffers, textures, samplers, pipelines, vertex bytes, indexed and non-indexed draws, alpha blending, and explicit pooled-resource destruction on Metal and WebGPU.
 - Pixl owns the game lifecycle, fixed and variable updates, pause/time scaling, CPU frame metrics, PNG/WAV loading, stable texture and sound assets, and event-driven same-size hot reload on macOS. Browser assets remain packaged and static.
 - Raw keyboard and gamepad state is portable across macOS and browsers. Pixl adds game-defined semantic input profiles, remapping, generated bindings, and axis movement helpers.
 - Resident audio, reusable playback controllers, flat buses, rate/pan/volume/loop controls, and game-owned mixing work through AVFAudio and Web Audio. Streaming and compressed formats are not yet supported.
@@ -25,6 +25,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - Pixl deliberately depends on PixlGraphics, Pixl2D, and Pixl3D as their orchestrator, so Game needs only the Pixl product while source explicitly imports the domain modules it uses. Horizontal domain targets do not acquire Foundation or Platform dependencies.
 - PixlGraphics owns an independent `SIMD4<Float>` colour alias and named palette; PixlPlatform owns its own identical primitive alias. Pixl bridges graphics colour into platform frame recording without coupling PixlGraphics to PixlPlatform.
 - PixlGraphics owns the value-semantic, platform-independent `TextureAsset` returned by Pixl's asset loader. PixlFoundation owns the logical-identity-to-platform-resource mapping and lifetime; the provisional context-owned renderer resolves through that store. Existing Game rendering and same-size texture hot reload have been verified after this separation.
+- PixlFoundation has backend-free fixed-capacity sprite submission storage. Pixl lowers each Sprite and transform into an independent primitive CPU snapshot containing order, transformed geometry state, texture identity and coordinates, and complete material sampling/composition intent. Consumption sorts by `(layer, ordinal)`, resets without releasing storage, and has tested overflow and allocation reuse.
 - The working sprite renderer temporarily retains an internal Pixl GPU `Quad`; it preserves existing output while its buffers, packed parameters, layout, and draw recording await deliberate replacement by Foundation-level execution machinery.
 - The Game proof exercises character movement, keyboard/gamepad bindings, layered animated sprites, pause/time scaling, music, asset loading, and frame metrics without backend-specific game code.
 - `PixlConcurrency` is an optional standalone package with persistent lane groups, static and dynamic partitioning, reusable barriers, native worker threads, and a single-lane WASI path. Pixl does not depend on or re-export it.
@@ -43,10 +44,8 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 
 ### Stage 3 — Immediate Submission and Lowering Seam
 
-- [ ] Before implementing the public surface, agree the exact name, owner, lifetime, and render-pass relationship of the explicit submission entry point; do not preserve `SpriteRenderer` merely for compatibility.
+- [ ] Before implementing public `RenderQueue.encode(on:)`, agree whether shared Foundation render resources initialize lazily and whether cold resource creation makes encoding throwing; every other public ownership, capacity, lifetime, and pass-compatibility decision is settled.
 - [ ] Replace or delete the provisional `SpriteRenderer` responsibilities so Pixl receives Pixl2D values while PixlFoundation owns retained execution storage, ordering data, compact records, and resolved resources.
-- [ ] Snapshot every relevant sprite and transform value at submission time; later mutation must not alter prior submissions, and ordinary sprites must not require registration or retained engine identity.
-- [ ] Lower domain values into primitive Foundation records without Foundation storing semantic `Sprite`, `Triangle`, or `Quad` values.
 - [ ] Preserve authoritative layer/submission order and the current one-draw-per-sprite output before adding instancing or batch formation.
 - [ ] Test submit/mutate/submit behavior, frame reset, capacity failure, layer stability, and absence of steady-state allocation.
 

@@ -24,6 +24,11 @@ public struct RenderPassEncoder {
     private let frame: Frame
     private let passIndex: UInt32
 
+    /// Pixel format required by pipelines encoded into this render pass.
+    public var colorFormat: PixelFormat {
+        frame.colorFormat(forRenderPassAt: passIndex)
+    }
+
     package init(frame: Frame, passIndex: UInt32) {
         self.frame = frame
         self.passIndex = passIndex

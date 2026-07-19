@@ -39,10 +39,12 @@ struct FrameRecordingTests {
             RenderPassDescriptor(
                 ColorAttachment(
                     target: RenderTarget(texture: texture),
-                    loadAction: .clear(.black)
+                    loadAction: .clear(Color(0, 0, 0, 1))
                 )
             )
         )
+
+        #expect(pass.colorFormat == PixelFormat.bgra8Unorm)
 
         pass.setRenderPipeline(pipeline)
         pass.setVertexBuffer(buffer, offset: 32, index: 0)
@@ -154,7 +156,7 @@ struct FrameRecordingTests {
             RenderPassDescriptor(
                 ColorAttachment(
                     target: RenderTarget(texture: texture),
-                    loadAction: .clear(.black)
+                    loadAction: .clear(Color(0, 0, 0, 1))
                 )
             )
         )

@@ -183,6 +183,9 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `RenderTarget`
 : Texture view shape selecting a texture, mip level, and array layer.
 
+`RenderPassEncoder.colorFormat`
+: Constant-time read-only metadata derived from the pass's recorded colour attachment. Higher engine layers use the actual pass format for pipeline compatibility rather than duplicating target state in queue construction or encode arguments.
+
 ## Logical Assets and Loading
 
 `PixlGraphics.TextureAsset`
@@ -220,13 +223,20 @@ Pixl's asset-loading convenience constructs a sprite with its default state; gam
 
 The intended material capability direction includes tint/modulation, opacity, normal maps and strength, emission maps, colour, and strength, mask textures, roughness, alpha cutoff, and other shader-specific parameters justified by Pixl-provided material families. This records the intended feature horizon, not final property placement. Before implementing that fuller material phase, stop for a dedicated design session covering which values belong to `Sprite`, `Sprite.Material`, per-instance records, shared material records, or texture maps; how lit/unlit behavior is selected; how mask channels are defined; and how sharing and mutation behave. Do not infer those decisions during implementation.
 
-The current `SpriteRenderer`, its sampler ownership, its blend-mode API, and its internal GPU `Quad` are temporary proof code, not compatibility constraints or the intended final abstraction. Replace or delete them where required. The durable public goal is an obvious, explicit, immediate submission call; its exact name and owner must be agreed before that public surface is implemented. Games continue to own render-pass boundaries and may use direct lower-level APIs for custom rendering.
+The current `SpriteRenderer`, its sampler ownership, its blend-mode API, and its internal GPU `Quad` are temporary proof code, not compatibility constraints or the intended final abstraction. Replace or delete them where required. Games continue to own render-pass boundaries and may use direct lower-level APIs for custom rendering.
 
 ## Submission, Resolution, and Batching
 
 Sprite submission snapshots every relevant current value immediately. Later mutation cannot alter an earlier submission from the same frame: submitting a normal-blended sprite, changing it to additive, then submitting again produces two submissions with their respective states. No retained sprite identity or engine-owned scene object is required for the ordinary path.
 
+`RenderQueue`
+: Pixl's public game-owned, long-lived two-dimensional submission domain. A game normally creates each queue once from its `GameContext`, selecting a fixed positive capacity. Submission never grows that storage; Foundation reports overflow and the public API treats exceeding configured capacity as a programmer error. Entities submit values but do not encode them. The render-pass owner calls `encode(on:)` after all intended submissions; encoding derives pipeline compatibility from the pass itself, consumes pending records, and retains the allocation for reuse. Multiple encode calls create deliberate ordering boundaries, and independent queues can serve destinations such as a pixel-art world and native-resolution UI. The unqualified name is intentional while Pixl has no 3D submission API; naming can be reconsidered when one exists.
+
+RenderQueue is broader than a physical sprite batch. It initially accepts only sprites, but may later coordinate triangles, shapes, or other 2D families in one authoritative order. Each family retains its own compatible GPU batching and upload path; Foundation may share storage, cache, and lifetime infrastructure without forcing different vertex layouts or shaders into one draw.
+
 Pixl lowers Pixl2D values into primitive SIMD/matrix records, logical resource identities, compact keys, ranges, and byte storage appropriate to PixlFoundation. PixlFoundation does not store semantic `Triangle`, `Quad`, or `Sprite` values merely because those were the game-facing source. PixlPlatform receives only resolved low-level resources and explicit commands.
+
+The Stage 3 sprite snapshot is one fixed-stride interleaved Foundation record containing scaled transform columns, normalized texture-coordinate origin and scale, logical texture identity, complete sampler description, blend mode, layer, and submission ordinal. It is retained CPU execution data, not the GPU upload layout. Stage 4 replaces repeated sampler and blend descriptions with compact resolved material keys.
 
 Material and draw compatibility resolution is value-keyed. A material-property change derives the key for the new value and selects an existing cached state when one exists; only a genuinely unseen complete description takes the cold creation path. Closed built-in fields may use packed keys or direct indexing rather than general-purpose `Hasher` in the hot path. Animation within the same sheet normally changes instance texture coordinates; blend changes pipeline compatibility; texture changes resource compatibility.
 
