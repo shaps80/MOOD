@@ -1,8 +1,10 @@
 # PixlPlatform Vocabulary
 
-PixlPlatform is the lowest platform-agnostic GPU layer in Pixl. Its public interface follows Metal's direct encoder/resource-slot model, with modern DirectX used as a second alignment reference. WebGPU and Vulkan must implement the same capabilities, but their bind groups, descriptor sets, layout declarations, and pipeline variants are adapter machinery unless a future cross-platform requirement proves otherwise.
+PixlPlatform is Pixl's lowest platform-agnostic API boundary. It defines the minimum portable building blocks for graphics, input, audio, assets, and runtime integration, with concrete platform targets providing their native implementations. Higher-level conveniences and game-facing abstractions belong above it so every platform benefits from the same shared functionality.
 
-This is not a legacy OpenGL/WebGL state-machine abstraction. It is dimension-agnostic; 2D and 3D meaning belongs in higher layers.
+Its GPU interface follows Metal's direct encoder/resource-slot model, with modern DirectX used as a second alignment reference. WebGPU and Vulkan must implement the same capabilities, but their bind groups, descriptor sets, layout declarations, and pipeline variants are adapter machinery unless a future cross-platform requirement proves otherwise.
+
+This is not a legacy OpenGL/WebGL state-machine abstraction. The platform boundary is dimension-agnostic and camera-agnostic; 2D, 3D, and camera meaning belongs in higher layers.
 
 ## Platform Mapping
 
