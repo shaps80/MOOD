@@ -11,11 +11,11 @@ public struct SpriteSheet {
     public init(asset: TextureAsset, columns: Int, rows: Int) {
         precondition(columns > 0 && rows > 0, "Sprite sheet grid must be nonempty")
         precondition(
-            asset.size.width.isMultiple(of: columns),
+            asset.size.x.isMultiple(of: columns),
             "Sprite sheet width must divide evenly into columns"
         )
         precondition(
-            asset.size.height.isMultiple(of: rows),
+            asset.size.y.isMultiple(of: rows),
             "Sprite sheet height must divide evenly into rows"
         )
 
@@ -23,8 +23,8 @@ public struct SpriteSheet {
         self.columns = columns
         self.rows = rows
 
-        let frameWidth = asset.size.width / columns
-        let frameHeight = asset.size.height / rows
+        let frameWidth = asset.size.x / columns
+        let frameHeight = asset.size.y / rows
         var regions: [TextureRegion] = []
         regions.reserveCapacity(columns * rows)
 

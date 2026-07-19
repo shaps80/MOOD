@@ -373,7 +373,8 @@ struct AssetTests {
         )
         _ = try SpriteRenderer(
             device: device,
-            colorFormat: .bgra8Unorm
+            colorFormat: .bgra8Unorm,
+            textureForAsset: { _ in nil }
         )
     }
 
@@ -448,21 +449,22 @@ struct AssetTests {
 
         let first = try assets.load(texture: path.value)
         let cached = try assets.load(texture: path.value)
-        let initialTexture = first.texture
+        let initialTexture = try #require(assets.texture(for: first))
 
-        #expect(first === cached)
+        #expect(first == cached)
+        #expect(first.size == SIMD2(1, 1))
 
         source.change(path, bytes: [2])
         try await waitForWrite(from: writer)
 
         #expect(await writer.writeCount == 1)
-        #expect(first.texture == initialTexture)
+        #expect(assets.texture(for: first) == initialTexture)
 
         source.change(path, bytes: [0])
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(await writer.writeCount == 1)
-        #expect(first.texture == initialTexture)
+        #expect(assets.texture(for: first) == initialTexture)
     }
 
     @Test
@@ -485,13 +487,13 @@ struct AssetTests {
             textureWriter: { _ in writer }
         )
         let asset = try assets.load(texture: path.value)
-        let texture = asset.texture
+        let texture = try #require(assets.texture(for: asset))
 
         source.change(path, bytes: [2])
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(await writer.writeCount == 0)
-        #expect(asset.texture == texture)
+        #expect(assets.texture(for: asset) == texture)
     }
 }
 

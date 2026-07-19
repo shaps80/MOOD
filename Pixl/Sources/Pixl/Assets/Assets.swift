@@ -1,3 +1,5 @@
+import PixlFoundation
+import PixlGraphics
 import PixlPlatform
 import Swift
 
@@ -9,6 +11,7 @@ public final class Assets {
     private let decodeSound: SoundDecode
     private let textureWriter: (Texture) -> (any TextureWriter)?
     private let soundWriter: (Sound) -> (any SoundWriter)?
+    private let textureResources: TextureResources?
     private var textures: [AssetPath: TextureAsset] = [:]
     private var sounds: [AssetPath: SoundAsset] = [:]
     private var reloadContinuation: AsyncStream<ReloadEvent>.Continuation?
@@ -29,6 +32,7 @@ public final class Assets {
         self.source = source
         self.decode = decode
         self.decodeSound = decodeSound
+        textureResources = device.map(TextureResources.init(device:))
         self.textureWriter = textureWriter ?? { texture in
             device?.textureWriter(for: texture)
         }
@@ -60,11 +64,6 @@ public final class Assets {
         changeTask?.cancel()
         reloadContinuation?.finish()
         monitorTask?.cancel()
-        if let device {
-            for asset in textures.values {
-                device.destroy(asset.texture)
-            }
-        }
         if let audioDevice {
             for asset in sounds.values {
                 audioDevice.destroy(asset.sound)
@@ -92,7 +91,7 @@ public final class Assets {
             return texture
         }
 
-        guard let device, let source else {
+        guard let device, let source, let textureResources else {
             throw .unavailable
         }
 
@@ -105,7 +104,11 @@ public final class Assets {
 
         let decoded = try decode(bytes, path)
         let texture = try makeTexture(decoded, on: device)
-        let asset = TextureAsset(path: path, texture: texture)
+        let resource = textureResources.insert(texture)
+        let asset = TextureAsset(
+            identity: resource.rawValue,
+            size: SIMD2(decoded.width, decoded.height)
+        )
         textures[path] = asset
         if let writer = textureWriter(texture) {
             reloadContinuation?.yield(
@@ -117,6 +120,12 @@ public final class Assets {
             )
         }
         return asset
+    }
+
+    func texture(for asset: TextureAsset) -> Texture? {
+        textureResources?.texture(
+            for: TextureResourceID(rawValue: asset.identity)
+        )
     }
 
     private func loadSound(

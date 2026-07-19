@@ -45,6 +45,10 @@ let package = Package(
         .package(path: "../PixlPlatform"),
         .package(path: "../PixlMath"),
         .package(
+            url: "https://github.com/apple/swift-atomics.git",
+            from: "1.3.0"
+        ),
+        .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
             exact: "603.0.2"
         )
@@ -78,6 +82,10 @@ let package = Package(
         .target(
             name: "PixlFoundation",
             dependencies: [
+                .product(
+                    name: "Atomics",
+                    package: "swift-atomics"
+                ),
                 .product(
                     name: "PixlPlatform",
                     package: "PixlPlatform"
@@ -126,6 +134,8 @@ let package = Package(
             dependencies: [
                 "Pixl",
                 "Pixl2D",
+                "PixlFoundation",
+                "PixlGraphics",
                 .product(
                     name: "PixlMetalPlatform",
                     package: "PixlPlatform"

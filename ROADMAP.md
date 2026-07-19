@@ -18,19 +18,20 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - Pixl owns the game lifecycle, fixed and variable updates, pause/time scaling, CPU frame metrics, PNG/WAV loading, stable texture and sound assets, and event-driven same-size hot reload on macOS. Browser assets remain packaged and static.
 - Raw keyboard and gamepad state is portable across macOS and browsers. Pixl adds game-defined semantic input profiles, remapping, generated bindings, and axis movement helpers.
 - Resident audio, reusable playback controllers, flat buses, rate/pan/volume/loop controls, and game-owned mixing work through AVFAudio and Web Audio. Streaming and compressed formats are not yet supported.
-- The 2D stack includes transforms, an orthographic camera, texture regions, regular sprite sheets, animation timelines, render layers, and a shared retained `SpriteRenderer`. It currently records one draw per sprite.
+- The working 2D proof includes transforms, an orthographic camera, texture regions, regular sprite sheets, animation timelines, render layers, and a provisional retained `SpriteRenderer`. It currently records one draw per sprite; its ownership and API are not architectural constraints.
 - Pixl2D is independent of PixlPlatform and PixlFoundation. Its `Triangle` and `Quad` are plain geometry values, and its orthographic camera projects from viewport size or aspect ratio. Pixl bridges platform render targets to that pure API.
 - `PixlFoundation` is an explicitly importable target beneath Pixl for lower-level engine infrastructure. Pixl depends on it directly; the horizontal graphics, 2D, and 3D domain targets do not.
-- Pixl no longer broadly re-exports PixlPlatform or PixlGraphics. Its common API selectively exposes required shared identities through zero-cost type aliases, while direct lower-level use requires explicit module imports.
+- Pixl deliberately re-exports PixlGraphics as stable common graphics vocabulary. It does not re-export PixlPlatform, PixlFoundation, Pixl2D, or Pixl3D; required PixlPlatform identities remain selectively exposed through zero-cost type aliases, while direct lower-level or dimensional use requires explicit module imports.
 - Pixl deliberately depends on PixlGraphics, Pixl2D, and Pixl3D as their orchestrator, so Game needs only the Pixl product while source explicitly imports the domain modules it uses. Horizontal domain targets do not acquire Foundation or Platform dependencies.
 - PixlGraphics owns an independent `SIMD4<Float>` colour alias and named palette; PixlPlatform owns its own identical primitive alias. Pixl bridges graphics colour into platform frame recording without coupling PixlGraphics to PixlPlatform.
+- PixlGraphics owns the value-semantic, platform-independent `TextureAsset` returned by Pixl's asset loader. PixlFoundation owns the logical-identity-to-platform-resource mapping and lifetime; the provisional context-owned renderer resolves through that store. Existing Game rendering and same-size texture hot reload have been verified after this separation.
 - The working sprite renderer temporarily retains an internal Pixl GPU `Quad`; it preserves existing output while its buffers, packed parameters, layout, and draw recording await deliberate replacement by Foundation-level execution machinery.
 - The Game proof exercises character movement, keyboard/gamepad bindings, layered animated sprites, pause/time scaling, music, asset loading, and frame metrics without backend-specific game code.
 - `PixlConcurrency` is an optional standalone package with persistent lane groups, static and dynamic partitioning, reusable barriers, native worker threads, and a single-lane WASI path. Pixl does not depend on or re-export it.
 
-## Next Priority — Resolved Sprite Materials and Instanced Batching
+## Next Priority — 2D Domain Ownership Through Instanced Batching
 
-Implement the agreed design in review-sized stages. Each stage must leave its abstraction tested and coherent; it need not manufacture a new Game feature merely to qualify as a vertical slice. Preserve the agreed explicit sprite-submission model, but treat the brand-new `SpriteRenderer`, sampler ownership, blend modes, and their exact APIs as provisional code that should change wherever the architecture requires it.
+Implement the agreed design in review-sized stages, fixing ownership before enriching the provisional renderer. Each stage must leave its abstraction tested and coherent; it need not manufacture a new Game feature merely to qualify as a vertical slice. Existing texture assets, `SpriteRenderer`, sampler ownership, blend modes, and GPU quad code may be replaced or deleted wherever the architecture requires it.
 
 ### Stage Continuity
 
@@ -40,52 +41,61 @@ Implement the agreed design in review-sized stages. Each stage must leave its ab
 - Do not silently broaden a later stage to absorb an unresolved earlier decision. Record the gate explicitly and resolve it before dependent work proceeds.
 - If implementation requires a direction change or any API, ownership, performance, data-layout, or backend decision not explicitly settled in `CONTEXT.md`, stop before implementing it, cite the concrete reason, and ask for direction through discussion.
 
-### Stage 1 — Sprite Material Intent
+### Stage 2 — Pixl2D Sprite Authoring Model
 
-- [ ] Evolve `Sprite` to include a lightweight, value-semantic nested `Sprite.Material` description covering filtering, addressing, and the supported `BlendMode` set.
-- [ ] Keep `Sprite` as the obvious entry point with useful defaults; do not introduce a parallel factory or competing top-level material type.
-- [ ] Keep sprite construction and mutation ordinary Swift value APIs; material keys and resource ownership remain internal.
-- [ ] Resolve material changes on the next submission without changing transform, flip, tint, region, or layer mutation semantics.
-- [ ] Test defaults, value equivalence, key differences, and mutation independently of native resource creation; keep steady-state key derivation bounded and allocation-free.
+- [ ] Move `TextureRegion`, `SpriteSheet`, `SpriteAnimation` and its timeline, `RenderLayer`, `Sprite`, and sprite-specific supporting values into Pixl2D.
+- [ ] Give `Sprite` a lightweight nested value-semantic `Sprite.Material` covering texture, filtering, addressing, and `BlendMode` with useful defaults; agree the exact initial blend cases before expanding the proof enum.
+- [ ] Keep `Sprite` the obvious entry point; construction and mutation remain ordinary Swift value APIs with no registration, native resource, cache, or execution concepts.
+- [ ] Add only the Pixl-owned convenience extensions needed to bridge context/Foundation-backed operations into domain values through package-scoped initializers; do not create dependency cycles or expose package-only Foundation types publicly.
+- [ ] Update Pixl type aliases only where one PixlPlatform identity is required by its common API; preserve PixlGraphics as the sole re-export and do not re-export Pixl2D, Pixl3D, PixlFoundation, or PixlPlatform.
+- [ ] Keep the Game building with the Pixl product and explicit source imports, and test Pixl2D without PixlPlatform or PixlFoundation.
 
-### Stage 2 — Shared Resource Resolution
+### Stage 3 — Immediate Submission and Lowering Seam
 
-- [ ] Add engine-owned descriptor-to-resource resolution for samplers and built-in sprite pipeline variants, shared at the device/runtime level rather than owned by individual sprite renderers.
-- [ ] Reuse one native resource for equivalent complete descriptors; distinct descriptor properties resolve independently.
-- [ ] Define cached-resource ownership and destruction so one renderer cannot invalidate resources used by another while direct `Device.make*` resources retain explicit caller ownership.
-- [ ] Keep `RenderSettings` capacities as limits on simultaneously live unique native resources and test capacity accounting after deduplication.
-- [ ] Exercise material and cache resolution through the current one-draw-per-sprite renderer before adding instanced recording.
+- [ ] Before implementing the public surface, agree the exact name, owner, lifetime, and render-pass relationship of the explicit submission entry point; do not preserve `SpriteRenderer` merely for compatibility.
+- [ ] Replace or delete the provisional `SpriteRenderer` responsibilities so Pixl receives Pixl2D values while PixlFoundation owns retained execution storage, ordering data, compact records, and resolved resources.
+- [ ] Snapshot every relevant sprite and transform value at submission time; later mutation must not alter prior submissions, and ordinary sprites must not require registration or retained engine identity.
+- [ ] Lower domain values into primitive Foundation records without Foundation storing semantic `Sprite`, `Triangle`, or `Quad` values.
+- [ ] Preserve authoritative layer/submission order and the current one-draw-per-sprite output before adding instancing or batch formation.
+- [ ] Test submit/mutate/submit behavior, frame reset, capacity failure, layer stability, and absence of steady-state allocation.
 
-### Stage 3 — Portable Instanced Drawing
+### Stage 4 — Material Keys and Shared Resource Resolution
+
+- [ ] Resolve built-in sprite intent into bounded compact material/draw keys; use packed fields or direct indexing where appropriate rather than assuming general-purpose hot-path hashing.
+- [ ] Resolve a public material change on its next submission without changing transform, flip, region, animation, or layer mutation semantics.
+- [ ] Add PixlFoundation descriptor-to-resource caches for samplers and built-in pipeline variants, shared at the device/runtime level rather than owned by one submission domain.
+- [ ] Reuse one native resource for each equivalent complete descriptor; distinct descriptor properties resolve independently and only unseen descriptions take a cold creation path.
+- [ ] Define cached-resource ownership and destruction so one consumer cannot invalidate shared resources while direct `Device.make*` resources retain explicit caller ownership.
+- [ ] Treat configured capacities as limits on simultaneously live unique native resources and test accounting after deduplication.
+
+### Stage 5 — Portable Instanced Drawing
 
 - [ ] Add the smallest portable vertex-step/instance-layout and instance-count API required by sprite rendering.
 - [ ] Lower the capability through Metal and WebGPU without exposing backend binding models.
 - [ ] Verify instance indexing, vertex layout, draw recording, capacity failure, and backend lowering independently of sprite batching.
 
-### Stage 4 — Retained Instance Data
+### Stage 6 — Retained Instance Data and Consecutive Batches
 
 - [ ] Define the explicit fixed-stride instance record required by the built-in sprite shader, keeping public, CPU-retained, and GPU-upload representations separate.
 - [ ] Move per-sprite transform, texture coordinates, tint, and flip results into retained high-water interleaved instance storage.
 - [ ] Verify Swift/shader ABI size, stride, alignment, and padding on Metal and WebGPU.
-- [ ] Add frame-safe upload lifetime without steady-state allocation; introduce frame or material records and dirty tracking only when concrete shader data requires them.
+- [ ] Add frame-safe upload lifetime without steady-state allocation; introduce frame or material records only when concrete shader data requires them.
 - [ ] First prove the instanced path with one instance per draw so data-layout failures remain separate from batch-formation failures.
-
-### Stage 5 — Consecutive Batch Formation
-
 - [ ] Batch consecutive compatible sprite submissions across pipeline variant, texture, sampler, blend state, target state, and required material bindings.
 - [ ] Preserve authoritative layer and submission order; never reorder sprites to create larger batches.
 - [ ] Flush on compatibility changes and emit one instanced draw per compatible run.
 - [ ] Test ordered and unordered layers, equal-layer stability, alternating materials, material mutation, capacity boundaries, and multiple render calls.
+- [ ] Add dirty tracking only if concrete persistent mutable GPU records are introduced; ordinary immediate snapshots do not require it.
 
-### Stage 6 — Game and Performance Verification
+### Stage 7 — Game and Performance Verification
 
 - [ ] Exercise mixed nearest/linear filtering and multiple blend modes through the Game without backend-specific game code.
-- [ ] Exercise independent offscreen-world and native-resolution UI sprite-renderer destinations if their target formats expose distinct pipeline variants.
+- [ ] Exercise independent offscreen-world and native-resolution UI submission destinations if their target formats expose distinct pipeline variants.
 - [ ] Verify no steady-state CPU allocation.
 - [ ] Profile material-key derivation, resolved-resource lookup, ordering, and instance writes separately so avoidable submission cost remains visible.
 - [ ] Measure the representative bullets/enemies workload and a separate 10,000-visible-sprite stress case on native and browser, then record only accepted baselines in `PERF.md`.
 
-Keep entity storage, scene ownership, simulation, collision, culling, atlases, tile sets, and automatic rendering outside this work.
+Keep entity storage, scene ownership, simulation, collision, culling, tile sets, and automatic rendering outside this work. Texture-region and regular-sheet ownership moves now; irregular named atlases remain later work.
 
 Before implementing the fuller material capability phase—tint/modulation placement, opacity, normal/emission/mask textures, lighting parameters, alpha cutoff, and sharing/mutation semantics—stop for the dedicated planning session required by `CONTEXT.md`.
 
@@ -95,7 +105,7 @@ Before relocating existing cross-boundary audio/runtime types, perform a dedicat
 
 ### First Game and 2D Rendering
 
-- [ ] Route future backgrounds, tiles, players, enemies, and UI through the shared renderer as the Game needs them.
+- [ ] Route future backgrounds, tiles, players, enemies, and UI through the agreed immediate submission path as the Game needs them.
 - [ ] Add named irregular `TextureAtlas` regions when the Game needs them.
 - [ ] Add a visual `TileSet` mapping from game-owned tile identifiers to atlas regions without introducing engine-owned world or tilemap storage.
 

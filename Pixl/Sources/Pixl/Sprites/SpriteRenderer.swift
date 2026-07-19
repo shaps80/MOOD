@@ -6,6 +6,7 @@ public final class SpriteRenderer {
     private let pipeline: RenderPipeline
     private let quad: Quad
     private let sampler: Sampler
+    private let textureForAsset: (TextureAsset) -> Texture?
     private var submissions: ContiguousArray<SpriteSubmission> = []
     private var layersAreOrdered = true
     private var lastLayer: RenderLayer?
@@ -14,17 +15,20 @@ public final class SpriteRenderer {
         context: GameContext,
         minimumCapacity: Int = 1_024
     ) throws {
+        let assets = context.assets
         try self.init(
             device: context.platform.device,
             colorFormat: context.drawableFormat,
-            minimumCapacity: minimumCapacity
+            minimumCapacity: minimumCapacity,
+            textureForAsset: { assets.texture(for: $0) }
         )
     }
 
-    public init(
+    init(
         device: any Device,
         colorFormat: PixelFormat,
-        minimumCapacity: Int = 1_024
+        minimumCapacity: Int = 1_024,
+        textureForAsset: @escaping (TextureAsset) -> Texture?
     ) throws {
         precondition(
             minimumCapacity >= 0,
@@ -41,6 +45,7 @@ public final class SpriteRenderer {
         )
         quad = try .init(device: device, color: .white)
         sampler = try device.makeSampler(.init())
+        self.textureForAsset = textureForAsset
         submissions.reserveCapacity(minimumCapacity)
     }
 
@@ -94,8 +99,13 @@ public final class SpriteRenderer {
         }
 
         for submission in submissions {
+            guard let texture = textureForAsset(submission.asset) else {
+                preconditionFailure(
+                    "Sprite texture does not belong to this game context"
+                )
+            }
             pass.setRenderPipeline(pipeline)
-            pass.setFragmentTexture(submission.asset, index: 0)
+            pass.setFragmentTexture(texture, index: 0)
             pass.setFragmentSampler(sampler, index: 0)
             quad.draw(
                 on: pass,
