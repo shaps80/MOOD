@@ -3,11 +3,13 @@ import Pixl2D
 
 @main
 struct Game: Pixl.Game {
+    private let camera: OrthographicCamera = .init(halfHeight: 200)
     private let spriteRenderer: SpriteRenderer
     private let music: Playback
     private let mixer: Mixer
     private var fade: Timer = .init(duration: 1)
     private var player: Player
+    private var character: Character
     private var phase: GamePhase = .active
     private var isPaused = false
     private var wasEffectivelyPaused = false
@@ -26,7 +28,8 @@ struct Game: Pixl.Game {
         music.loop = true
         music.bus = mixer.music
 
-        player = try .init(context: context)
+        player = try .init(camera: camera, context: context)
+        character = try .init(camera: camera, context: context)
 
         bindings.bind(to: context.inputs)
     }
@@ -44,10 +47,12 @@ struct Game: Pixl.Game {
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
         player.fixedUpdate(time, context: context)
+        character.fixedUpdate(time, context: context)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
+        character.update(time, context: context)
 
         if bindings.menu.is(.down) {
             isPaused.toggle()
@@ -78,12 +83,14 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-        let pass = frame.clear(target: output)
-        player.draw(
-            on: pass,
-            using: spriteRenderer,
+        player.submit(
+            to: spriteRenderer,
             output: output
         )
+        character.submit(to: spriteRenderer, output: output)
+
+        let pass = frame.clear(target: output)
+        spriteRenderer.render(on: pass)
 
         logMetrics(time)
     }
@@ -91,7 +98,7 @@ struct Game: Pixl.Game {
     private func logMetrics(_ time: RenderTime) {
         let interval = UInt64(Self.gameSettings.preferredFps * 5)
         guard time.frameIndex > 0,
-              time.frameIndex.isMultiple(of: interval)
+            time.frameIndex.isMultiple(of: interval)
         else {
             return
         }

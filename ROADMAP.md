@@ -118,6 +118,8 @@ Camera constraint:
 - [x] Add Pixl-owned texture regions and prove first-frame selection from a four-frame sprite sheet through existing vertex bytes.
 - [x] Add regular sprite sheets and game-owned sprite-animation timelines; prove the four-frame player animation without platform changes.
 - [x] Make `Sprite` lightweight render data and add one shared `SpriteRenderer` owning the quad, sampler, and pipeline.
+- [x] Add game-defined `RenderLayer` and retained sprite submissions with a monotonic-order fast path plus stable `(layer, ordinal)` fallback ordering.
+- [x] Add packed horizontal/vertical sprite-sheet animation strips and portable normal alpha blending for sprites.
 - [ ] Record background, tile, player, and enemy sprites into one ordered render pass through the shared renderer; keep one draw per sprite initially.
 - [ ] Add retained high-water sprite submission storage and instanced batching for compatible consecutive sprites, including atlas regions sharing one texture.
 - [ ] Validate the first-game scalability goal of 10,000 live game-owned entities: measure the representative hundreds-of-bullets plus roughly 50 visible enemies workload, and require the separate 10,000-visible-sprite renderer stress case to remain comfortably below frame budget without steady-state allocation; measure CPU preparation, upload/recording, GPU work, culling, and collision independently.

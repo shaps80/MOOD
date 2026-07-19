@@ -183,6 +183,12 @@ final class WasmDevice: Device {
         vertexStage["buffers"] = .object(buffersArray.jsObject); native["vertex"] = .object(vertexStage)
         let fragmentStage = object(); fragmentStage["module"] = .object(shaderModule); fragmentStage["entryPoint"] = .string(descriptor.fragment.name)
         let target = object(); target["format"] = .string(descriptor.colorFormat.webGPUName)
+        if descriptor.blendMode == .normal {
+            let color = object(); color["operation"] = .string("add"); color["srcFactor"] = .string("src-alpha"); color["dstFactor"] = .string("one-minus-src-alpha")
+            let alpha = object(); alpha["operation"] = .string("add"); alpha["srcFactor"] = .string("one"); alpha["dstFactor"] = .string("one-minus-src-alpha")
+            let blend = object(); blend["color"] = .object(color); blend["alpha"] = .object(alpha)
+            target["blend"] = .object(blend)
+        }
         let targets = array(); _ = targets.jsObject.push!(target); fragmentStage["targets"] = .object(targets.jsObject); native["fragment"] = .object(fragmentStage)
         guard let id = pipelines.insert(
             WasmRenderPipeline(device: webGPUDevice, descriptor: native)

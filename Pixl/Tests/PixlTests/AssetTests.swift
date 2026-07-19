@@ -189,6 +189,20 @@ struct AssetTests {
         #expect(sheet.region(column: 2, row: 0).source.origin.x == 2)
         #expect(sheet.region(column: 2, row: 0).source.size.y == 2)
 
+        let packedSheet = SpriteSheet(asset: asset, columns: 2, rows: 2)
+        let horizontal = packedSheet[row: 1, columns: 0...1]
+        #expect(horizontal.map(\.source.origin.x) == [0, 2])
+        #expect(horizontal.map(\.source.origin.y) == [1, 1])
+        #expect(packedSheet[row: 1, columns: 1...].count == 1)
+        #expect(packedSheet[row: 1, columns: ...0].count == 1)
+        #expect(packedSheet[row: 1].count == 2)
+        let vertical = packedSheet[column: 1, rows: 0...1]
+        #expect(vertical.map(\.source.origin.x) == [2, 2])
+        #expect(vertical.map(\.source.origin.y) == [0, 1])
+        #expect(packedSheet[column: 1, rows: 1...].count == 1)
+        #expect(packedSheet[column: 1, rows: ...0].count == 1)
+        #expect(packedSheet[column: 1].count == 2)
+
         var looping = SpriteAnimation.Timeline(
             animation: SpriteAnimation(
                 frames: sheet.regions,

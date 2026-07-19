@@ -140,13 +140,19 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 : Pixl-owned rectangular pixel selection within a stable `TextureAsset`. Its top-left image-space source rectangle lowers to per-draw normalized texture-coordinate offset and scale through existing vertex bytes. Sprite sheets, atlases, animations, tiles, and future glyph atlases can share this primitive without adding region vocabulary to `PixlPlatform`.
 
 `SpriteSheet`
-: Pixl-owned regular row-major grid that derives equally sized `TextureRegion` values from one texture. Irregular named atlas metadata remains a later layer over the same region primitive.
+: Pixl-owned regular row-major grid that derives equally sized `TextureRegion` values from one texture. Horizontal and vertical `RangeExpression` subscripts select only the occupied cells of packed animation strips; row-only and column-only subscripts select a complete strip. Irregular named atlas metadata remains a later layer over the same region primitive.
 
 `SpriteAnimation` / `SpriteAnimation.Timeline`
 : Immutable uniformly timed region sequence and its mutable playback position. Games own timelines and animation switching; sprites remain render state rather than update-owning objects. The generic `Timer` remains a clamped one-shot progress value rather than gaining animation looping or frame-selection semantics.
 
+`RenderLayer`
+: Integer-backed game-defined sprite ordering. Pixl defines no named layers. Lower values render first; equal values retain submission order. Layers are CPU draw-order semantics, not GPU depth.
+
 `SpriteRenderer`
-: Pixl-owned shared sprite recording state. One renderer owns the built-in pipeline, quad geometry, and sampler, while lightweight `Sprite` values contain region and presentation state. Games own render-pass boundaries and submit ordered sprites through the same renderer. Future batch compatibility may split draws internally but does not require renderers per texture, layer, or game category.
+: Pixl-owned shared sprite recording state. One renderer owns the built-in pipeline, quad geometry, sampler, and retained high-water contiguous submission storage, while lightweight `Sprite` values contain region, game-defined `RenderLayer`, and presentation state. Submission resolves compact render data immediately. Already monotonic layers take the linear fast path; otherwise ordering uses `(layer, submission ordinal)`, so lower layers render first and equal layers retain insertion order. Games own render-pass boundaries. Future batch compatibility may split draws internally but does not require renderers per texture, layer, or game category.
+
+`BlendMode`
+: Portable fixed-function render-pipeline composition. `.replace` preserves opaque replacement behavior; `.normal` performs straight-alpha source-over composition. Pixl's sprite renderer selects `.normal`; Metal and WebGPU only lower that shared intent to native state.
 
 `AssetSource`
 : Rooted platform capability that reads bytes for a validated logical `AssetPath`. Its optional `AsyncStream<AssetChange>` reports file-level source changes without imposing asset formats or reload policy on the platform layer.
@@ -229,4 +235,4 @@ Dynamic CPU-to-GPU transfer storage, upload rings, WebGPU bind groups, Vulkan de
 
 Compute is required and must use the same encoder-command direction: compute pipeline state, buffer/texture resource slots, access modes, and dispatch commands. Compute output must feed later render passes in the same frame.
 
-Other explicit gates include WebGPU texture/sampler lowering, multiple color attachments, depth/stencil, blending, multisampling, richer texture dimensions/mips, copy commands, dynamic bytes, readback, and profiling counters. Add each through playable Game needs without widening existing modules into shallow configuration bags.
+Other explicit gates include WebGPU texture/sampler lowering, multiple color attachments, depth/stencil, richer blend modes, multisampling, richer texture dimensions/mips, copy commands, dynamic bytes, readback, and profiling counters. Add each through playable Game needs without widening existing modules into shallow configuration bags.

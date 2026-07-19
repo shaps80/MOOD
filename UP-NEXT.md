@@ -7,8 +7,11 @@ Replace per-sprite GPU ownership and render-pass creation with one shared `Sprit
 - [x] Keep `Sprite` as lightweight render data: texture region and flip state.
 - [x] Make one renderer own the shared quad, sampler, and pipeline.
 - [x] Let Game own the render pass and submit its sprite through the renderer.
+- [x] Add game-defined render layers, retained high-water submissions, an ordered fast path, and stable fallback ordering.
+- [x] Select packed horizontal or vertical animation strips with bounded, partial, or complete sheet ranges.
+- [x] Composite sprite transparency through portable normal alpha blending on Metal and WebGPU.
 - [ ] Route future backgrounds, tiles, players, enemies, and UI through that same renderer.
-- Preserve submission order and use one draw per sprite for the first proof.
+- [x] Preserve layer/submission order and use one draw per sprite for the first proof.
 - Follow with retained high-water instance submission storage and compatible consecutive batching.
 - Build named texture atlases, then visual tile sets, on that batching boundary.
 

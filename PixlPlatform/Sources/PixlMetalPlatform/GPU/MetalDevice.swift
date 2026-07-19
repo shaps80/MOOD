@@ -186,7 +186,20 @@ final class MetalDevice: Device {
         let metalDescriptor = MTLRenderPipelineDescriptor()
         metalDescriptor.vertexFunction = vertexFunction
         metalDescriptor.fragmentFunction = fragmentFunction
-        metalDescriptor.colorAttachments[0].pixelFormat = descriptor.colorFormat.metalPixelFormat
+        let colorAttachment = metalDescriptor.colorAttachments[0]
+        colorAttachment?.pixelFormat = descriptor.colorFormat.metalPixelFormat
+        switch descriptor.blendMode {
+        case .replace:
+            colorAttachment?.isBlendingEnabled = false
+        case .normal:
+            colorAttachment?.isBlendingEnabled = true
+            colorAttachment?.rgbBlendOperation = .add
+            colorAttachment?.sourceRGBBlendFactor = .sourceAlpha
+            colorAttachment?.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            colorAttachment?.alphaBlendOperation = .add
+            colorAttachment?.sourceAlphaBlendFactor = .one
+            colorAttachment?.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        }
 
         let vertexDescriptor = MTLVertexDescriptor()
         var bufferIndex: UInt32 = 0

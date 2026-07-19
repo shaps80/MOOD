@@ -4,7 +4,7 @@ import Pixl2D
 struct Player: Entity {
     private var sprite: Sprite
     private var animation: SpriteAnimation.Timeline
-    private let camera: OrthographicCamera = .init(halfHeight: 200)
+    private let camera: OrthographicCamera
 
     private var position: Vec2 = .zero
     private var velocity: Vec2 = .zero
@@ -16,7 +16,9 @@ struct Player: Entity {
         deceleration: 1000
     )
 
-    init(context: GameContext) throws {
+    init(camera: OrthographicCamera, context: GameContext) throws {
+        self.camera = camera
+
         sprite = try .init(
             named: "player.png",
             context: context
@@ -33,6 +35,7 @@ struct Player: Entity {
             )
         )
         sprite.region = animation.region
+        sprite.layer = .player
 
         bindings.bind(to: context.inputs)
     }
@@ -57,14 +60,12 @@ struct Player: Entity {
         }
     }
 
-    func draw(
-        on pass: RenderPassEncoder,
-        using renderer: SpriteRenderer,
+    func submit(
+        to renderer: SpriteRenderer,
         output: RenderTarget,
     ) {
-        renderer.draw(
+        renderer.submit(
             sprite,
-            on: pass,
             transform:
                 camera
                 .projection(for: output)
