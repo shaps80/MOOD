@@ -87,7 +87,10 @@ struct Game: Pixl.Game {
             to: spriteRenderer,
             output: output
         )
-        character.submit(to: spriteRenderer, output: output)
+        character.submit(
+            to: spriteRenderer,
+            output: output
+        )
 
         let pass = frame.clear(.white, target: output)
         spriteRenderer.render(on: pass)

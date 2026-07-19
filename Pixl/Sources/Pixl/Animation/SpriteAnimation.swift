@@ -43,7 +43,7 @@ public struct SpriteAnimation {
 public extension SpriteAnimation {
     /// Mutable playback position for one animation.
     struct Timeline {
-        public let animation: SpriteAnimation
+        public var animation: SpriteAnimation
         public private(set) var elapsed: Double
         public var speed: Double {
             didSet {

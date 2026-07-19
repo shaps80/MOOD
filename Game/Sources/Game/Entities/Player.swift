@@ -5,16 +5,7 @@ struct Player: Entity {
     private var sprite: Sprite
     private var animation: SpriteAnimation.Timeline
     private let camera: OrthographicCamera
-
-    private var position: Vec2 = .zero
-    private var velocity: Vec2 = .zero
-
-    private let bindings: PlayerBindings = .init()
-    private let controller: AxisController = .init(
-        maxSpeed: 300,
-        acceleration: 1000,
-        deceleration: 1000
-    )
+    private var position: Vec2 = .init(96, 0)
 
     init(camera: OrthographicCamera, context: GameContext) throws {
         self.camera = camera
@@ -31,33 +22,18 @@ struct Player: Entity {
         animation = SpriteAnimation.Timeline(
             animation: SpriteAnimation(
                 frames: sheet.regions,
-                frameDuration: 0.125
+                frameDuration: 0.3
             )
         )
-        sprite.region = animation.region
-        sprite.layer = .player
 
-        bindings.bind(to: context.inputs)
+        sprite.region = animation.region
+        sprite.layer = .character
+        sprite.isFlipped = true
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         animation.advance(by: time.delta)
         sprite.region = animation.region
-        let target = bindings.velocity
-
-        velocity = controller.velocity(
-            source: velocity,
-            target: target,
-            delta: time.delta
-        )
-
-        position += velocity * time.delta
-
-        if velocity.x > 0 {
-            sprite.isFlipped = false
-        } else if velocity.x < 0 {
-            sprite.isFlipped = true
-        }
     }
 
     func submit(
