@@ -8,15 +8,15 @@ public final class Assets {
     private let device: (any Device)?
     private let audioDevice: (any AudioDevice)?
     private let source: (any AssetSource)?
-    private let decode: TextureDecode
+    private let prepareTexture: TexturePreparation
     private let decodeSound: SoundDecode
     private let textureWriter: (Texture) -> (any TextureWriter)?
     private let soundWriter: (Sound) -> (any SoundWriter)?
     private let textureResources: TextureResources?
     private var textures: [TextureCacheKey: TextureAsset] = [:]
     private var sounds: [AssetPath: SoundAsset] = [:]
-    private var reloadContinuation: AsyncStream<ReloadEvent>.Continuation?
-    private var changeTask: Task<Void, Never>?
+    private var reloadContinuation: AsyncStream<AssetReloadEvent>.Continuation?
+    private var reloadTask: Task<Void, Never>?
     private var monitorTask: Task<Void, Never>?
 
     init(
@@ -31,7 +31,8 @@ public final class Assets {
         self.device = device
         self.audioDevice = audioDevice
         self.source = source
-        self.decode = decode
+        let prepareTexture = TexturePreparation(decode: decode)
+        self.prepareTexture = prepareTexture
         self.decodeSound = decodeSound
         textureResources = device.map(TextureResources.init(device:))
         self.textureWriter = textureWriter ?? { texture in
@@ -42,29 +43,29 @@ public final class Assets {
         }
 
         guard let source, let changes = source.changes else { return }
-        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
+        let (events, continuation) = AsyncStream<AssetReloadEvent>.makeStream()
         reloadContinuation = continuation
 
-        let monitor = ReloadMonitor(
+        let reloader = AssetReloader(
             source: source,
-            decodeTexture: decode,
+            prepareTexture: prepareTexture,
             decodeSound: decodeSound
         )
-        monitorTask = Task.detached(priority: .utility) {
-            await monitor.run(events)
+        reloadTask = Task.detached(priority: .utility) {
+            await reloader.run(events)
         }
-        changeTask = Task.detached(priority: .utility) {
-            for await change in changes {
-                guard !Task.isCancelled else { return }
+        let monitor = ReloadMonitor()
+        monitorTask = Task.detached(priority: .utility) {
+            await monitor.run(changes) { change in
                 continuation.yield(.change(change))
             }
         }
     }
 
     deinit {
-        changeTask?.cancel()
-        reloadContinuation?.finish()
         monitorTask?.cancel()
+        reloadContinuation?.finish()
+        reloadTask?.cancel()
         if let audioDevice {
             for asset in sounds.values {
                 audioDevice.destroy(asset.sound)
@@ -119,7 +120,11 @@ public final class Assets {
             throw assetError(error)
         }
 
-        let decoded = try decode(bytes, path).processing(alpha: alpha)
+        let decoded = try prepareTexture.prepare(
+            bytes,
+            path: path,
+            alpha: alpha
+        )
         let texture = try makeTexture(decoded, on: device)
         let resource = textureResources.insert(texture)
         let asset = TextureAsset(

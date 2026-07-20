@@ -229,13 +229,13 @@ struct AssetTests {
         let path = try AssetPath("player.png")
         let source = TestAssetSource(path: path, bytes: [1])
         let writer = TestTextureWriter()
-        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
-        let monitor = ReloadMonitor(
+        let (events, continuation) = AsyncStream<AssetReloadEvent>.makeStream()
+        let reloader = AssetReloader(
             source: source,
-            decodeTexture: decodeAlphaTestTexture,
+            prepareTexture: TexturePreparation(decode: decodeAlphaTestTexture),
             decodeSound: decodeTestSound
         )
-        let task = Task { await monitor.run(events) }
+        let task = Task { await reloader.run(events) }
         defer {
             continuation.finish()
             task.cancel()
@@ -363,14 +363,14 @@ struct AssetTests {
         let path = try AssetPath("jump.wav")
         let source = TestAssetSource(path: path, bytes: [1])
         let writer = TestSoundWriter()
-        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
-        let monitor = ReloadMonitor(
+        let (events, continuation) = AsyncStream<AssetReloadEvent>.makeStream()
+        let reloader = AssetReloader(
             source: source,
-            decodeTexture: decodeTestTexture,
+            prepareTexture: TexturePreparation(decode: decodeTestTexture),
             decodeSound: decodeTestSound
         )
         let task = Task {
-            await monitor.run(events)
+            await reloader.run(events)
         }
         defer {
             continuation.finish()
@@ -398,14 +398,14 @@ struct AssetTests {
         let path = try AssetPath("jump.wav")
         let source = TestAssetSource(path: path, bytes: [1])
         let writer = TestSoundWriter()
-        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
-        let monitor = ReloadMonitor(
+        let (events, continuation) = AsyncStream<AssetReloadEvent>.makeStream()
+        let reloader = AssetReloader(
             source: source,
-            decodeTexture: decodeTestTexture,
+            prepareTexture: TexturePreparation(decode: decodeTestTexture),
             decodeSound: decodeTestSound
         )
         let task = Task {
-            await monitor.run(events)
+            await reloader.run(events)
         }
         defer {
             continuation.finish()
@@ -427,26 +427,32 @@ struct AssetTests {
         let path = try AssetPath("jump.wav")
         let source = TestAssetSource(path: path, bytes: [1])
         let writer = TestSoundWriter()
-        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
-        let monitor = ReloadMonitor(
+        let (events, continuation) = AsyncStream<AssetReloadEvent>.makeStream()
+        let reloader = AssetReloader(
             source: source,
-            decodeTexture: decodeTestTexture,
+            prepareTexture: TexturePreparation(decode: decodeTestTexture),
             decodeSound: decodeTestSound
         )
-        let task = Task {
-            await monitor.run(events)
+        let reloadTask = Task {
+            await reloader.run(events)
+        }
+        let changes = try #require(source.changes)
+        let monitor = ReloadMonitor()
+        let monitorTask = Task {
+            await monitor.run(changes) { change in
+                continuation.yield(.change(change))
+            }
         }
         defer {
             continuation.finish()
-            task.cancel()
+            reloadTask.cancel()
+            monitorTask.cancel()
         }
 
         continuation.yield(.registerSound(path: path, writer: writer))
         source.change(path, bytes: [2])
         for _ in 0..<3 {
-            continuation.yield(
-                .change(AssetChange(path: path, kind: .modified))
-            )
+            source.change(path, bytes: [2])
         }
         try await Task.sleep(for: .milliseconds(350))
 

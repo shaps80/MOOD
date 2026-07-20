@@ -302,6 +302,8 @@ PNG structure parsing and pixel decoding are shared Swift code in `PixlGraphics`
 
 Pixl's high-level texture loader treats decoded PNGs as colour textures. It premultiplies RGB by alpha once on the cold load and on every hot reload by default, before GPU upload; `.passthrough` retains decoded channels for deliberate straight-alpha use. Cache identity includes path and alpha processing because the two modes produce distinct GPU resources. `PixlPlatform` remains raw: texture bytes supplied directly through its device API retain caller-defined representation.
 
+Initial creation and hot reload share one texture-preparation path for decoding and alpha processing. `ReloadMonitor` is format- and resource-agnostic: it only coalesces noisy `AssetChange` values per path. Pixl's asset reloader owns registered texture and sound destinations, source reads, same-size texture policy, writes, sound invalidation, and reload reporting.
+
 ## Portable Audio
 
 `AudioSettings`
