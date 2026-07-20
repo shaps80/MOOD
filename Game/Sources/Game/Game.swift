@@ -5,15 +5,14 @@ import Pixl2D
 struct Game: Pixl.Game {
     private var entities: [Entity]
     private let camera: OrthographicCamera = .init(halfHeight: 200)
-    private var isPaused = false
     private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
         self.gameState = try .init(context: context)
-
-        let player = try Player(context: context)
-        let character = try Character(context: context)
-        self.entities = [player, character]
+        self.entities = try [
+            Player(context: context),
+            Character(context: context)
+        ]
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
