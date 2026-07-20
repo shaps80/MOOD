@@ -506,7 +506,8 @@ public final class RenderQueue {
     }
 
     private func resolveLayer(_ layer: UInt32) -> UInt32 {
-        var index = Int(Self.mix(UInt64(layer))) & (registryCapacity - 1)
+        var index = Int(truncatingIfNeeded: Self.mix(UInt64(layer)))
+            & (registryCapacity - 1)
         while layerRegistry[index].occupied {
             if layerRegistry[index].value == UInt64(layer) { return layerRegistry[index].slot }
             index = (index + 1) & (registryCapacity - 1)
@@ -525,7 +526,7 @@ public final class RenderQueue {
 
     private func resolveMaterial(_ material: Material) -> UInt32 {
         let hash = Self.materialHash(material)
-        var index = Int(hash) & (registryCapacity - 1)
+        var index = Int(truncatingIfNeeded: hash) & (registryCapacity - 1)
         while materialRegistry[index].occupied {
             let slot = materialRegistry[index].slot
             if materials[Int(slot)] == material { return slot }

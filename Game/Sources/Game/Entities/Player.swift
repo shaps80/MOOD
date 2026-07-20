@@ -11,6 +11,7 @@ struct Player: Entity {
             named: "player.png",
             context: context
         )
+
         let sheet = SpriteSheet(
             asset: sprite.asset,
             columns: 4,
@@ -24,7 +25,7 @@ struct Player: Entity {
         )
 
         sprite.region = animation.region
-        sprite.layer = .character
+        sprite.layer = .player
         sprite.isFlipped = true
     }
 

@@ -20,8 +20,10 @@ struct Character: Entity {
     )
 
     init(context: GameContext) throws {
-        sprite = try .init(named: "character.png", context: context)
-        sprite.layer = .player
+        sprite = try .init(
+            named: "character.png",
+            context: context
+        )
 
         sheet = SpriteSheet(
             asset: sprite.asset,
@@ -29,18 +31,19 @@ struct Character: Entity {
             rows: 4
         )
 
-        self.idle = .init(
+        idle = .init(
             frames: sheet[row: 0, columns: ...1],
             frameDuration: 0.3
         )
 
-        self.walk = .init(
+        walk = .init(
             frames: sheet[row: 2],
             frameDuration: 0.2
         )
 
         timeline = .init(animation: idle)
         sprite.region = timeline.region
+        sprite.layer = .player
 
         bindings.bind(to: context.inputs)
     }
