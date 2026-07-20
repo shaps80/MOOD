@@ -47,6 +47,11 @@ public struct EdgeInsets: Equatable, Sendable {
     /// ```swift
     /// let insets = EdgeInsets(top: 4, left: 8, bottom: 12, right: 16)
     /// ```
+    /// - Parameters:
+    ///   - top: Top-edge inset.
+    ///   - left: Left-edge inset.
+    ///   - bottom: Bottom-edge inset.
+    ///   - right: Right-edge inset.
     public init(top: Double, left: Double, bottom: Double, right: Double) {
         self.top = top
         self.left = left
@@ -59,6 +64,9 @@ public struct EdgeInsets: Equatable, Sendable {
     /// ```swift
     /// let insets = EdgeInsets(horizontal: 16, vertical: 8)
     /// ```
+    /// - Parameters:
+    ///   - horizontal: Value assigned to left and right edges.
+    ///   - vertical: Value assigned to top and bottom edges.
     public init(horizontal: Double, vertical: Double) {
         self.init(
             top: vertical,
@@ -73,6 +81,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// ```swift
     /// let insets = EdgeInsets(all: 10)
     /// ```
+    /// - Parameter amount: Value assigned to every edge.
     public init(all amount: Double) {
         self.init(
             top: amount,

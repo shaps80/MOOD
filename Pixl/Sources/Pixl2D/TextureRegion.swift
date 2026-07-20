@@ -6,10 +6,13 @@ import Swift
 /// Source coordinates use a top-left origin, matching image files and sprite
 /// sheet authoring tools.
 public struct TextureRegion {
+    /// Texture asset containing the region.
     public let asset: TextureAsset
+    /// Pixel rectangle within `asset`, measured from its top-left corner.
     public let source: Rect
 
     /// Creates a region covering the entire texture asset.
+    /// - Parameter asset: Texture asset covered by the region.
     public init(asset: TextureAsset) {
         self.asset = asset
         source = Rect(
@@ -21,6 +24,9 @@ public struct TextureRegion {
     }
 
     /// Creates a region from a pixel rectangle within the texture asset.
+    /// - Parameters:
+    ///   - asset: Texture asset containing the region.
+    ///   - source: Positive pixel rectangle fully contained within `asset`.
     public init(asset: TextureAsset, source: Rect) {
         precondition(
             source.minX >= 0 && source.minY >= 0,

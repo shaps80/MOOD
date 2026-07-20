@@ -7,11 +7,17 @@ import Swift
 /// of its closure. Direct Foundation users reset explicitly; Pixl's
 /// `GameContext` convenience resets its default queue automatically.
 public final class RenderQueue {
+    /// Fixed capacities allocated by a render queue.
     public struct Settings: Hashable, Sendable {
+        /// Maximum number of submissions retained between resets.
         public var capacity: Int
-        /// Generally max-number-of-players. Defaults to `1`
+        /// Maximum number of views processed by one execution. Defaults to `1`.
         public var viewCapacity: Int
 
+        /// Creates fixed queue capacities.
+        /// - Parameters:
+        ///   - capacity: Positive maximum submission count.
+        ///   - viewCapacity: Maximum simultaneous views in `1...64`.
         public init(capacity: Int = 10_000, viewCapacity: Int = 1) {
             precondition(capacity > 0)
             precondition(UInt64(capacity) <= UInt64(UInt32.max))
@@ -22,24 +28,45 @@ public final class RenderQueue {
         }
     }
 
+    /// CPU duration of each stage in the latest queue execution.
     public struct Metrics: Hashable, Sendable {
+        /// Seconds spent lowering retained submissions into execution streams.
         public var loweringSeconds = 0.0
+        /// Seconds spent testing submission bounds against views.
         public var cullingSeconds = 0.0
+        /// Seconds spent compressing visible render layers.
         public var layerBinningSeconds = 0.0
+        /// Seconds spent ordering visible submissions.
         public var orderingSeconds = 0.0
+        /// Seconds spent forming consecutive compatible batches.
         public var batchingSeconds = 0.0
+        /// Seconds spent preparing view-local instance data.
         public var instancesSeconds = 0.0
 
+        /// Creates zeroed execution metrics.
         public init() {}
     }
 
+    /// Projection and world-space visibility bounds for one render view.
     public struct View: Sendable {
+        /// First column of the world-to-clip affine transform.
         public let projectionX: SIMD3<Float>
+        /// Second column of the world-to-clip affine transform.
         public let projectionY: SIMD3<Float>
+        /// Translation column of the world-to-clip affine transform.
         public let projectionTranslation: SIMD3<Float>
+        /// Inclusive world-space minimum used for visibility tests.
         public let boundsMinimum: SIMD2<Float>
+        /// Inclusive world-space maximum used for visibility tests.
         public let boundsMaximum: SIMD2<Float>
 
+        /// Creates one execution view.
+        /// - Parameters:
+        ///   - projectionX: First world-to-clip transform column.
+        ///   - projectionY: Second world-to-clip transform column.
+        ///   - projectionTranslation: World-to-clip translation column.
+        ///   - boundsMinimum: World-space visibility minimum.
+        ///   - boundsMaximum: World-space visibility maximum.
         public init(
             projectionX: SIMD3<Float>,
             projectionY: SIMD3<Float>,
@@ -55,38 +82,63 @@ public final class RenderQueue {
         }
     }
 
+    /// Compact 48-byte GPU-facing sprite instance produced during lowering.
     public struct Instance: BitwiseCopyable, Sendable {
+        /// First scaled model-transform column.
         public let transformX: SIMD2<Float>
+        /// Second scaled model-transform column.
         public let transformY: SIMD2<Float>
+        /// Model-transform translation.
         public let translation: SIMD2<Float>
+        /// Normalized texture-coordinate origin.
         public let textureOrigin: SIMD2<Float>
+        /// Normalized texture-coordinate scale.
         public let textureScale: SIMD2<Float>
+        /// Packed eight-bit RGBA tint.
         public let tintRGBA8: UInt32
     }
 
+    /// Resolved sprite draw compatibility shared by consecutive instances.
     public struct Material: Hashable, Sendable {
+        /// Logical texture identity.
         public let texture: TextureResourceID
+        /// Complete sampling state.
         public let sampler: SamplerDescriptor
+        /// Fixed-function colour composition.
         public let blendMode: BlendMode
     }
 
+    /// One consecutive range sharing a material slot.
     public struct Batch: BitwiseCopyable, Sendable {
+        /// Index into ``Execution/materials``.
         public let material: UInt32
+        /// Exclusive end offset in the view's ordinal stream.
         public let end: UInt32
     }
 
+    /// Ordered visible submissions and batches for one view.
     public struct ViewOutput {
+        /// First world-to-clip transform column.
         public let projectionX: SIMD3<Float>
+        /// Second world-to-clip transform column.
         public let projectionY: SIMD3<Float>
+        /// World-to-clip translation column.
         public let projectionTranslation: SIMD3<Float>
+        /// Ordered indices into ``Execution/instances``.
         public let ordinals: UnsafeBufferPointer<UInt32>
+        /// Consecutive compatible ranges over ``ordinals``.
         public let batches: UnsafeBufferPointer<Batch>
     }
 
+    /// Transient read-only execution streams lent to an execution closure.
     public struct Execution {
+        /// Ordinal-aligned lowered instance records.
         public let instances: UnsafeBufferPointer<Instance>
+        /// Unique materials referenced by view batches.
         public let materials: UnsafeBufferPointer<Material>
+        /// Outputs corresponding positionally to the supplied views.
         public let views: UnsafeBufferPointer<ViewOutput>
+        /// CPU stage durations for this execution.
         public let metrics: Metrics
     }
 
@@ -126,8 +178,11 @@ public final class RenderQueue {
         var state: BatchState
     }
 
+    /// Capacities allocated by this queue.
     public let settings: Settings
+    /// Number of submissions currently retained.
     public private(set) var count = 0
+    /// CPU stage durations from the most recent execution.
     public private(set) var latestMetrics = Metrics()
 
     private let submissions: UnsafeMutablePointer<SpriteSubmission>
@@ -154,6 +209,8 @@ public final class RenderQueue {
     private var materialCount = 0
     private var layerGeneration = UInt32(0)
 
+    /// Allocates all retained submission and execution storage.
+    /// - Parameter settings: Fixed submission and view capacities.
     public init(settings: Settings = .init()) {
         self.settings = settings
         let capacity = settings.capacity
@@ -242,11 +299,14 @@ public final class RenderQueue {
         viewOutputs.deallocate()
     }
 
+    /// Removes every retained submission while preserving allocated storage and caches.
     public func reset() {
         submissions.deinitialize(count: count)
         count = 0
     }
 
+    /// Appends one sprite submission and assigns its global submission ordinal.
+    /// - Parameter submission: Camera-independent sprite snapshot to retain until reset.
     public func submit(_ submission: SpriteSubmission) {
         precondition(count < settings.capacity, "Render queue capacity exceeded")
         submissions.advanced(by: count).initialize(to: submission)
@@ -257,6 +317,16 @@ public final class RenderQueue {
         latestMetrics.instancesSeconds += seconds
     }
 
+    /// Culls, orders, and batches retained submissions for one or more views.
+    ///
+    /// Pointers in `Execution` are valid only during `body`. Execution does not
+    /// reset the queue; direct Foundation callers control that lifecycle.
+    ///
+    /// - Parameters:
+    ///   - views: Nonempty view buffer no larger than ``Settings/viewCapacity``.
+    ///   - body: Closure consuming transient ordered execution streams.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error thrown by `body`.
     public func execute<Result>(
         views: UnsafeBufferPointer<View>,
         _ body: (Execution) throws -> Result

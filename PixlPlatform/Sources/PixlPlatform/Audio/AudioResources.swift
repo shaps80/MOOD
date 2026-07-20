@@ -1,5 +1,8 @@
 import Swift
 
+/// An opaque handle to resident audio sample data.
+///
+/// Sounds are created and explicitly destroyed by their ``AudioDevice``.
 public struct Sound: Hashable, Sendable {
     package let id: ResourceID
 
@@ -19,6 +22,10 @@ package protocol AudioController: AnyObject {
     func setVolume(_ volume: Float, for bus: Bus)
 }
 
+/// Reusable controls and settings for playing one sound on one bus.
+///
+/// Calling ``play()`` resumes a paused voice or starts a new voice after a stop
+/// or natural completion. Releasing the playback stops its active voice.
 public final class Playback: Hashable {
     package let controller: any AudioController
     package let sound: Sound
@@ -48,18 +55,23 @@ public final class Playback: Hashable {
         controller.stop(self)
     }
 
+    /// Starts or resumes playback with the current settings.
+    /// - Throws: ``AudioError`` when the sound or bus is unavailable, or a voice cannot be created.
     public func play() throws(AudioError) {
         try controller.play(self)
     }
 
+    /// Pauses the active voice while preserving its playback position.
     public func pause() {
         controller.pause(self)
     }
 
+    /// Stops and releases the active voice.
     public func stop() {
         controller.stop(self)
     }
 
+    /// Nonnegative linear gain applied to this playback.
     public var volume: Float {
         get { storedVolume }
         set {
@@ -69,6 +81,7 @@ public final class Playback: Hashable {
         }
     }
 
+    /// Stereo position from `-1` (left) through `0` (centre) to `1` (right).
     public var pan: Float {
         get { storedPan }
         set {
@@ -78,6 +91,7 @@ public final class Playback: Hashable {
         }
     }
 
+    /// Nonnegative playback-rate multiplier. `0` holds the current position.
     public var rate: Float {
         get { storedRate }
         set {
@@ -87,6 +101,7 @@ public final class Playback: Hashable {
         }
     }
 
+    /// Mixing bus receiving this playback.
     public var bus: Bus {
         get { storedBus }
         set {
@@ -99,8 +114,14 @@ public final class Playback: Hashable {
         }
     }
 
+    /// Whether a newly started voice repeats after reaching the sound's end.
     public var loop = false
 
+    /// Compares playback object identity.
+    /// - Parameters:
+    ///   - lhs: First playback.
+    ///   - rhs: Second playback.
+    /// - Returns: `true` only when both references identify the same object.
     public static func == (
         lhs: Playback,
         rhs: Playback
@@ -108,11 +129,14 @@ public final class Playback: Hashable {
         lhs === rhs
     }
 
+    /// Hashes playback object identity.
+    /// - Parameter hasher: Hasher receiving this playback's identity.
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
 }
 
+/// A flat audio mixing destination with independent volume.
 public final class Bus: Hashable {
     package let controller: any AudioController
     package let id: ResourceID?
@@ -125,6 +149,7 @@ public final class Bus: Hashable {
         self.id = id
     }
 
+    /// Nonnegative linear gain applied to all playbacks routed through this bus.
     public var volume: Float {
         get {
             controller.volume(for: self)
@@ -135,6 +160,11 @@ public final class Bus: Hashable {
         }
     }
 
+    /// Compares device and bus identity.
+    /// - Parameters:
+    ///   - lhs: First bus.
+    ///   - rhs: Second bus.
+    /// - Returns: `true` when both values represent the same bus on the same device.
     public static func == (
         lhs: Bus,
         rhs: Bus
@@ -144,6 +174,8 @@ public final class Bus: Hashable {
             && lhs.id == rhs.id
     }
 
+    /// Hashes device and bus identity.
+    /// - Parameter hasher: Hasher receiving this bus's identity.
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(controller))
         hasher.combine(id)

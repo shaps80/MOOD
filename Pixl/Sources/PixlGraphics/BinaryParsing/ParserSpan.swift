@@ -25,6 +25,7 @@ public struct ParserSpan: ~Escapable, ~Copyable {
     ///
     /// The resulting `ParserSpan` has a lifetime copied from the raw span
     /// passed as `bytes`.
+    /// - Parameter bytes: Raw memory covered by the new span.
     @inlinable
     @_lifetime(copy bytes)
     public init(_ bytes: RawSpan) {
@@ -41,6 +42,8 @@ public struct ParserSpan: ~Escapable, ~Copyable {
         self._upperBound = other._upperBound
     }
     
+    /// Unsafely creates a parser span borrowing an unsafe raw buffer.
+    /// - Parameter buffer: Buffer whose storage must remain valid for the span's lifetime.
     @unsafe
     @inlinable
     @_lifetime(borrow buffer)
@@ -140,8 +143,13 @@ extension ParserSpan {
 }
 
 extension ParserSpan {
+    /// Temporarily exposes the span's remaining bytes as an unsafe raw buffer.
+    /// - Parameter body: Non-escaping closure borrowing the raw buffer.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error thrown by `body`.
     @_alwaysEmitIntoClient
-    @inlinable
+    /// Perform the given operation on a copy of this span, applying the
+    /// mutations only upon success.
     @unsafe
     public func withUnsafeBytes<T, E>(
         _ body: (UnsafeRawBufferPointer) throws(E) -> T
@@ -212,6 +220,10 @@ extension ParserSpan {
     /// Use this method when parsing with multiple stages, where a failure in a
     /// later stage might render the entire parsing operation a failure. Using
     /// `atomically` guarantees that the input span isn't modified in that case.
+    ///
+    /// - Parameter body: Parsing operation performed on a temporary copy.
+    /// - Returns: The value returned by `body` after successful parsing.
+    /// - Throws: Any error thrown by `body`; this span remains unchanged.
     @inlinable
 #if compiler(<6.3)
     @_lifetime(&self)

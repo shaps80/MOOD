@@ -11,8 +11,10 @@ import Swift
 /// context.spawn(Bullet.self, at: Vec2(x: 120, y: 48), in: .world)
 /// ```
 public struct WorldCoordinateSpace: CoordinateSpaceProtocol, Equatable, Sendable {
+    /// Creates the typed world coordinate-space marker.
     public init() {}
 
+    /// The stored `.world` representation.
     public var coordinateSpace: CoordinateSpace {
         .world
     }

@@ -3,13 +3,21 @@ import PixlPlatform
 
 /// Stable runtime services and controls supplied throughout the game lifecycle.
 public final class GameContext {
+    /// Lowest-level platform services for deliberate direct use.
     public let platform: any Platform
+    /// Pixel format of platform presentation targets.
     public let drawableFormat: PixelFormat
+    /// Game-facing audio access.
     public let audio: Audio
+    /// Context-owned asset loader and cache.
     public let assets: Assets
+    /// Current physical keyboard state.
     public let keyboard: Keyboard
+    /// Currently connected game controllers.
     public let gamepads: Gamepads
+    /// Game-defined semantic input map.
     public let inputs: Input.Map
+    /// Default retained queue for render submissions.
     public let renderQueue: RenderQueue
     let spriteRenderResources: SpriteRenderResources
     private var renderMetrics = RenderQueue.Metrics()
@@ -49,6 +57,8 @@ public final class GameContext {
         )
     }
 
+    /// Pauses or resumes scaled simulation using ``timeScale``.
+    /// - Parameter paused: `true` sets time scale to `0`; `false` restores it to `1`.
     public func pause(_ paused: Bool) {
         timeScale = paused ? 0 : 1
     }

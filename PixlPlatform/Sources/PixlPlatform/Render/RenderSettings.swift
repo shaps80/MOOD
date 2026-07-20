@@ -1,16 +1,37 @@
 import Swift
 
+/// Drawable format and fixed capacities reserved by a platform renderer.
 public struct RenderSettings: Sendable, Hashable {
+    /// Pixel format of platform presentation textures.
     public let drawableFormat: PixelFormat
+    /// Maximum passes recorded per frame.
     public let framePassCapacity: UInt32
+    /// Maximum encoder commands recorded per frame.
     public let frameCommandCapacity: UInt32
+    /// Maximum frame-owned byte payload.
     public let frameByteCapacity: UInt32
+    /// Maximum simultaneously live buffers.
     public let bufferCapacity: UInt32
+    /// Maximum simultaneously live render pipelines.
     public let pipelineCapacity: UInt32
+    /// Maximum simultaneously live samplers.
     public let samplerCapacity: UInt32
+    /// Maximum simultaneously live textures.
     public let textureCapacity: UInt32
+    /// Maximum simultaneously acquired drawables.
     public let drawableCapacity: UInt32
 
+    /// Creates render-resource capacities and presentation format.
+    /// - Parameters:
+    ///   - drawableFormat: Pixel format of presentation textures.
+    ///   - framePassCapacity: Positive maximum passes per frame.
+    ///   - frameCommandCapacity: Positive maximum commands per frame.
+    ///   - frameByteCapacity: Positive maximum frame-owned byte payload.
+    ///   - bufferCapacity: Positive live-buffer capacity.
+    ///   - pipelineCapacity: Positive live-pipeline capacity.
+    ///   - samplerCapacity: Positive live-sampler capacity.
+    ///   - textureCapacity: Positive live-texture capacity.
+    ///   - drawableCapacity: Positive simultaneously acquired drawable capacity.
     public init(
         drawableFormat: PixelFormat = .bgra8Unorm,
         framePassCapacity: UInt32 = 64,
@@ -42,5 +63,6 @@ public struct RenderSettings: Sendable, Hashable {
         self.drawableCapacity = drawableCapacity
     }
 
+    /// Standard format and capacities suitable for an ordinary game.
     public static let `default`: Self = .init()
 }

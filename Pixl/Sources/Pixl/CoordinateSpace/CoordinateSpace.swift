@@ -23,6 +23,7 @@ public enum CoordinateSpace: Equatable, Sendable {
 }
 
 extension CoordinateSpace: CoordinateSpaceProtocol {
+    /// This stored coordinate-space value itself.
     public var coordinateSpace: CoordinateSpace {
         self
     }

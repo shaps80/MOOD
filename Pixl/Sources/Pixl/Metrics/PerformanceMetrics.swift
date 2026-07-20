@@ -5,6 +5,7 @@ import Swift
 /// Values are reported on the following frame through ``RenderTime/metrics``
 /// so collecting them never waits for the GPU.
 public struct PerformanceMetrics: Hashable, Sendable {
+    /// Metrics containing no elapsed work or reported hitches.
     public static let zero = PerformanceMetrics(
         frameIndex: 0,
         frameTimeSeconds: 0,
@@ -41,6 +42,7 @@ public struct PerformanceMetrics: Hashable, Sendable {
 
     /// Aggregate CPU-side measurements from a one-second reporting window.
     public struct Summary: Hashable, Sendable, CustomStringConvertible {
+        /// An empty reporting window.
         public static let zero = Summary(
             frameCount: 0,
             durationSeconds: 0,
@@ -59,22 +61,38 @@ public struct PerformanceMetrics: Hashable, Sendable {
             hitchThresholdSeconds: 0
         )
 
+        /// Presentation frames included in the window.
         public let frameCount: UInt64
+        /// Actual wall-clock duration covered by the window.
         public let durationSeconds: Double
+        /// Average presentation frequency during the window.
         public let framesPerSecond: Double
+        /// Average un-clamped presentation interval.
         public let averageFrameTimeSeconds: Double
+        /// Largest un-clamped presentation interval.
         public let maximumFrameTimeSeconds: Double
+        /// Average fixed-plus-variable game update CPU time.
         public let averageCPUTimeSeconds: Double
+        /// Average render-command recording CPU time.
         public let averageRenderTimeSeconds: Double
+        /// Average queue submission-lowering CPU time.
         public let averageRenderLoweringSeconds: Double
+        /// Average queue visibility-culling CPU time.
         public let averageRenderCullingSeconds: Double
+        /// Average queue layer-binning CPU time.
         public let averageRenderLayerBinningSeconds: Double
+        /// Average queue ordering CPU time.
         public let averageRenderOrderingSeconds: Double
+        /// Average queue batching CPU time.
         public let averageRenderBatchingSeconds: Double
+        /// Average queue instance-compaction CPU time.
         public let averageRenderInstancesSeconds: Double
+        /// Frames exceeding ``hitchThresholdSeconds`` in this window.
         public let hitchCount: UInt64
+        /// Frame-time threshold used to classify hitches.
         public let hitchThresholdSeconds: Double
 
+        /// Compact multi-line diagnostic summary suitable for periodic logging.
         public var description: String {
             "FPS: \(Self.column(framesPerSecond)) | "
             + "Frame avg: \(Self.column(averageFrameTimeSeconds * 1_000))ms | "

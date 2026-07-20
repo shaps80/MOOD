@@ -1,14 +1,25 @@
 import Swift
 
+/// RGBA colour with floating-point components conventionally in `0...1`.
 public typealias Color = SIMD4<Float>
 
+/// Game-facing construction and a discoverable colour palette.
 public extension Color {
+    /// Creates a colour from red, green, blue, and opacity components.
+    /// - Parameters:
+    ///   - red: Red component, conventionally in `0...1`.
+    ///   - green: Green component, conventionally in `0...1`.
+    ///   - blue: Blue component, conventionally in `0...1`.
+    ///   - opacity: Alpha component, conventionally in `0...1`.
     init(red: Float, green: Float, blue: Float, opacity: Float = 1) {
         self = [red, green, blue, opacity]
     }
 
+    /// Opaque white.
     static let white: Self = .init(red: 1, green: 1, blue: 1)
+    /// Opaque black.
     static let black: Self = .init(red: 0, green: 0, blue: 0)
+    /// Fully transparent white.
     static let clear: Self = .init(red: 1, green: 1, blue: 1, opacity: 0)
 
     // MARK: Accent colors

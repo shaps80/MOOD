@@ -61,6 +61,7 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     ///
     /// - Parameter radians: Rotation angle in radians. Use `.pi / 2` for a
     ///   quarter turn counter-clockwise.
+    /// - Returns: A copy with the rotation composed after this transform.
     public func rotated(by radians: Double) -> Self {
         let rotation = sinCos(radians)
         let cosine = Float(rotation.cosine)
@@ -79,6 +80,11 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     ///
     /// Negative values mirror geometry around its local origin. For example,
     /// `scaled(x: -1, y: 1)` flips a sprite horizontally.
+    ///
+    /// - Parameters:
+    ///   - x: Scale along the local x axis.
+    ///   - y: Scale along the local y axis.
+    /// - Returns: A copy with the scale composed after this transform.
     public func scaled(x: Double, y: Double) -> Self {
         .init(
             x: self.x * Float(x),
@@ -91,6 +97,7 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     ///
     /// - Parameter offset: World-space displacement applied after the current
     ///   linear transform.
+    /// - Returns: A copy translated by `offset` relative to this transform's axes.
     public func translated(by offset: Vec2) -> Self {
         let xOffset = Float(offset.x)
         let yOffset = Float(offset.y)
@@ -103,6 +110,8 @@ public struct Transform2D: BitwiseCopyable, Sendable {
 }
 
 extension SIMD2: @retroactive ExpressibleByFloatLiteral where Scalar == Double {
+    /// Creates a two-component vector by repeating a floating-point literal.
+    /// - Parameter value: Value assigned to both components.
     public init(floatLiteral value: Scalar) {
         self.init(repeating: value)
     }

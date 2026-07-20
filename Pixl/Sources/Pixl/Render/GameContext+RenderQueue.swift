@@ -4,6 +4,26 @@ import PixlGraphics
 import PixlPlatform
 
 extension GameContext {
+    /// Renders queued submissions through an orthographic camera after clearing the target.
+    ///
+    /// ```swift
+    /// context.renderQueue.submit(player, transform: .init(position))
+    /// try context.render(
+    ///     through: camera,
+    ///     to: output,
+    ///     frame: frame,
+    ///     clear: .cornflowerBlue
+    /// )
+    /// ```
+    ///
+    /// The queue resets after rendering finishes or throws.
+    ///
+    /// - Parameters:
+    ///   - camera: Camera defining projection and visible world-space bounds.
+    ///   - output: Render target receiving queued submissions.
+    ///   - frame: Frame into which a clearing pass and drawing commands are recorded.
+    ///   - color: Colour used to clear `output`. Defaults to opaque black.
+    /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
         through camera: OrthographicCamera,
         to output: RenderTarget,
@@ -14,6 +34,16 @@ extension GameContext {
         try render(through: camera, to: output, on: pass)
     }
 
+    /// Renders queued submissions through an orthographic camera into an existing pass.
+    ///
+    /// The pass's existing load action is preserved. The queue resets after rendering
+    /// finishes or throws.
+    ///
+    /// - Parameters:
+    ///   - camera: Camera defining projection and visible world-space bounds.
+    ///   - output: Render target whose dimensions determine the camera aspect ratio.
+    ///   - pass: Existing encoder that receives drawing commands.
+    /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
         through camera: OrthographicCamera,
         to output: RenderTarget,

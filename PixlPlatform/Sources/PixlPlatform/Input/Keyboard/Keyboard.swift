@@ -2,15 +2,23 @@ import Swift
 
 /// Current physical keyboard state and transitions published for this frame.
 public final class Keyboard {
+    /// Allocation-free random-access view of transitions published for this frame.
     public struct Events: RandomAccessCollection {
+        /// Transition element type.
         public typealias Element = Key.Event
+        /// Integer collection index.
         public typealias Index = Int
 
         fileprivate let storage: Storage
 
+        /// Index of the first transition.
         public var startIndex: Int { 0 }
+        /// Position one past the final transition.
         public var endIndex: Int { storage.events.count }
 
+        /// Returns the transition at a valid collection index.
+        /// - Parameter position: Index between ``startIndex`` and ``endIndex``.
+        /// - Returns: The transition at `position`.
         public subscript(position: Int) -> Key.Event {
             storage.events[position]
         }
@@ -38,28 +46,41 @@ public final class Keyboard {
     private let storage = Storage(capacity: eventCapacity)
     private var down: ContiguousArray<UInt64>
 
+    /// Whether the platform currently directs keyboard input to the game.
     public package(set) var isFocused = false
 
+    /// Creates empty, unfocused keyboard state with fixed event capacity.
     public init() {
         down = ContiguousArray(repeating: 0, count: Self.wordCount)
     }
 
+    /// Ordered, coalesced transitions published for the current presentation frame.
     public var events: Events {
         Events(storage: storage)
     }
 
     /// Returns whether the physical key is currently held down.
+    /// - Parameter key: Physical key to query.
+    /// - Returns: `true` while `key` is held.
     public func contains(_ key: Key) -> Bool {
         let index = Int(key.rawValue)
         return down[index >> 6] & (1 << UInt64(index & 63)) != 0
     }
 
     /// Returns whether this frame contains a matching key transition.
+    /// - Parameters:
+    ///   - key: Physical key to query.
+    ///   - phase: Transition direction to match.
+    /// - Returns: `true` when the current frame contains that transition.
     public func contains(_ key: Key, phase: Key.Phase) -> Bool {
         self.key(key, phase: phase) != nil
     }
 
     /// Returns this frame's matching transition, if one exists.
+    /// - Parameters:
+    ///   - key: Physical key to query.
+    ///   - phase: Transition direction to match.
+    /// - Returns: The coalesced event, or `nil` when no match occurred this frame.
     public func key(_ key: Key, phase: Key.Phase) -> Key.Event? {
         let index = storage.eventIndices[eventIndex(for: key, phase: phase)]
         guard index >= 0 else { return nil }

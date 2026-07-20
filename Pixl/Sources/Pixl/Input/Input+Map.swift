@@ -14,6 +14,7 @@ public extension Input {
         }
 
         /// Binds a profile to the keyboard and first connected gamepad.
+        /// - Parameter profile: Profile to update each presentation frame. Rebinding the same object has no effect.
         public func bind(_ profile: Profile) {
             guard !profiles.contains(where: { $0 === profile }) else { return }
             profiles.append(profile)

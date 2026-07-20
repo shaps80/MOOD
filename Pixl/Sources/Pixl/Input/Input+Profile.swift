@@ -30,9 +30,12 @@ public extension Input {
         private var buttonBindings: ContiguousArray<ButtonBinding> = []
         private var axisBindings: ContiguousArray<AxisBinding> = []
 
+        /// Creates an empty semantic input profile.
         public init() {}
 
         /// Creates a semantic input driven by the supplied physical bindings.
+        /// - Parameter bindings: Nonempty list of sources combined by their strongest value.
+        /// - Returns: A stable semantic input backed by this profile.
         public func input(bindings: [Binding]) -> Input {
             precondition(!bindings.isEmpty, "An input requires a binding")
             validate(bindings)
@@ -46,6 +49,9 @@ public extension Input {
 
         /// Replaces one semantic input's physical bindings.
         /// The rebuilt bindings take effect on the next presentation frame.
+        /// - Parameters:
+        ///   - bindings: Replacement physical sources. An empty list disables the input.
+        ///   - input: Semantic input previously created by this profile.
         public func setBindings(
             _ bindings: [Binding],
             for input: Input

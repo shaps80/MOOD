@@ -4,17 +4,25 @@ package enum RecordedPass {
     case render(RecordedRenderPass)
 }
 
+/// Reusable fixed-capacity storage for ordered render passes and commands.
+///
+/// A frame records portable commands without allocating after initialization.
+/// Call ``reset()`` only after its previous recording is no longer needed.
 public final class Frame {
     private let passes: UnsafeMutablePointer<RecordedPass>
     private let commands: UnsafeMutablePointer<RenderCommand>
     private let bytes: UnsafeMutableRawPointer
 
+    /// Maximum number of passes in one recording.
     public let passCapacity: UInt32
+    /// Maximum number of encoder commands in one recording.
     public let commandCapacity: UInt32
+    /// Maximum frame-owned byte payload across small constants and vertex data.
     public let byteCapacity: UInt32
     package private(set) var passCount: UInt32 = 0
     package private(set) var commandCount: UInt32 = 0
     package private(set) var byteCount: UInt32 = 0
+    /// Number of indexed and non-indexed draws currently recorded.
     public private(set) var drawCount: UInt32 = 0
 
     package subscript(index: UInt32) -> RecordedPass {
@@ -29,6 +37,11 @@ public final class Frame {
         commands[Int(index)]
     }
 
+    /// Allocates fixed recording storage.
+    /// - Parameters:
+    ///   - passCapacity: Positive maximum pass count.
+    ///   - commandCapacity: Positive maximum encoder-command count.
+    ///   - byteCapacity: Positive maximum frame-owned byte payload.
     public init(
         passCapacity: UInt32,
         commandCapacity: UInt32,
@@ -53,6 +66,7 @@ public final class Frame {
         bytes.deallocate()
     }
 
+    /// Discards every recorded pass, command, byte payload, and draw count.
     public func reset() {
         passes.deinitialize(count: Int(passCount))
         commands.deinitialize(count: Int(commandCount))
@@ -69,6 +83,9 @@ public final class Frame {
         passCount += 1
     }
 
+    /// Begins a render pass whose commands must be recorded contiguously.
+    /// - Parameter descriptor: Colour attachment and its load/store behaviour.
+    /// - Returns: A lightweight encoder that appends commands to this frame.
     public func beginRenderPass(
         _ descriptor: consuming RenderPassDescriptor
     ) -> RenderPassEncoder {

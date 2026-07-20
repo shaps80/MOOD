@@ -1,10 +1,19 @@
 import Swift
 
+/// Fixed audio-resource capacities reserved by a platform adapter.
 public struct AudioSettings: Hashable, Sendable {
+    /// Maximum number of resident sounds.
     public let maxSoundCount: UInt32
+    /// Maximum number of simultaneous playback voices.
     public let maxVoiceCount: UInt32
+    /// Maximum number of additional mixing buses.
     public let maxBusCount: UInt32
 
+    /// Creates positive fixed capacities for audio resources.
+    /// - Parameters:
+    ///   - maxSoundCount: Maximum number of resident sounds.
+    ///   - maxVoiceCount: Maximum number of simultaneous playback voices.
+    ///   - maxBusCount: Maximum number of additional mixing buses.
     public init(
         maxSoundCount: UInt32 = 128,
         maxVoiceCount: UInt32 = 64,
@@ -19,5 +28,6 @@ public struct AudioSettings: Hashable, Sendable {
         self.maxBusCount = maxBusCount
     }
 
+    /// Standard audio capacities suitable for an ordinary game.
     public static let `default`: Self = .init()
 }

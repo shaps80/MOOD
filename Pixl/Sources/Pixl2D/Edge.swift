@@ -58,6 +58,7 @@ public enum Edge: Sendable {
         /// ```swift
         /// let edges = Edge.Set(rawValue: 1 << 0)
         /// ```
+        /// - Parameter rawValue: Raw edge bitmask.
         public init(rawValue: UInt8) {
             self.rawValue = rawValue
         }

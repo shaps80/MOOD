@@ -31,6 +31,9 @@ public struct Rect: Equatable, Sendable {
     /// ```swift
     /// let rect = Rect(origin: Vec2.zero, size: Vec2(x: 320, y: 180))
     /// ```
+    /// - Parameters:
+    ///   - origin: Minimum x/y corner.
+    ///   - size: Width and height.
     public init(origin: Vec2, size: Vec2) {
         self.origin = origin
         self.size = size
@@ -41,6 +44,11 @@ public struct Rect: Equatable, Sendable {
     /// ```swift
     /// let rect = Rect(x: 0, y: 0, width: 320, height: 180)
     /// ```
+    /// - Parameters:
+    ///   - x: Minimum x coordinate.
+    ///   - y: Minimum y coordinate.
+    ///   - width: Rectangle width.
+    ///   - height: Rectangle height.
     public init(x: Double, y: Double, width: Double, height: Double) {
         self.init(
             origin: Vec2(x: x, y: y),
@@ -48,6 +56,11 @@ public struct Rect: Equatable, Sendable {
         )
     }
 
+    /// Creates a rectangle centred on a point.
+    ///
+    /// - Parameters:
+    ///   - center: Point placed at the rectangle's centre.
+    ///   - size: Rectangle width and height.
     public init(center: Vec2, size: Vec2) {
         self.init(
             origin: Vec2(
@@ -58,6 +71,8 @@ public struct Rect: Equatable, Sendable {
         )
     }
 
+    /// Creates a rectangle of the given size at the origin.
+    /// - Parameter size: Rectangle width and height.
     public init(size: Vec2) {
         self.init(origin: .zero, size: size)
     }
@@ -128,6 +143,8 @@ public extension Rect {
     /// let moved = Rect(x: 0, y: 0, width: 10, height: 10)
     ///     .translated(by: Vec2(x: 5, y: 2))
     /// ```
+    /// - Parameter offset: Component-wise displacement.
+    /// - Returns: A copy with `origin` displaced by `offset`.
     func translated(by offset: Vec2) -> Rect {
         Rect(
             origin: Vec2(
@@ -138,6 +155,9 @@ public extension Rect {
         )
     }
 
+    /// Returns a rectangle with its origin and size scaled component-wise.
+    /// - Parameter scale: Independent x and y scale factors.
+    /// - Returns: The scaled rectangle.
     func scaled(by scale: Vec2) -> Rect {
         Rect(
             origin: origin * scale,
@@ -150,6 +170,8 @@ public extension Rect {
     /// ```swift
     /// let inner = Rect(x: 0, y: 0, width: 100, height: 100).padding(8)
     /// ```
+    /// - Parameter amount: Distance to move each edge inward. Negative values expand the rectangle.
+    /// - Returns: The inset rectangle.
     func padding(_ amount: Double) -> Rect {
         padding(.all, amount)
     }
@@ -160,6 +182,10 @@ public extension Rect {
     /// let inner = Rect(x: 0, y: 0, width: 100, height: 100)
     ///     .padding(.horizontal, 12)
     /// ```
+    /// - Parameters:
+    ///   - edges: Edges to move inward.
+    ///   - amount: Distance to move each selected edge. Negative values expand the rectangle.
+    /// - Returns: The selectively inset rectangle.
     func padding(_ edges: Edge.Set = .all, _ amount: Double) -> Rect {
         var origin = origin
         var size = size
@@ -194,6 +220,8 @@ public extension Rect {
     /// let pickup = Rect(x: 8, y: 8, width: 8, height: 8)
     /// let overlaps = player.intersects(pickup)
     /// ```
+    /// - Parameter other: Rectangle to test against this rectangle.
+    /// - Returns: `true` when the rectangles overlap with positive area.
     func intersects(_ other: Rect) -> Bool {
         minX < other.maxX
             && maxX > other.minX
@@ -203,6 +231,7 @@ public extension Rect {
 }
 
 public extension Rect {
+    /// A copy whose edges are rounded to integral coordinates.
     var integral: Rect {
         let minX = origin.x.rounded()
         let minY = origin.y.rounded()
@@ -219,6 +248,9 @@ public extension Rect {
 }
 
 public extension Rect {
+    /// Returns the smallest axis-aligned rectangle containing both rectangles.
+    /// - Parameter other: Rectangle to include with this rectangle.
+    /// - Returns: The bounding union of both rectangles.
     func union(_ other: Rect) -> Rect {
         let minX = min(minX, other.minX)
         let minY = min(minY, other.minY)
@@ -233,4 +265,3 @@ public extension Rect {
         )
     }
 }
-

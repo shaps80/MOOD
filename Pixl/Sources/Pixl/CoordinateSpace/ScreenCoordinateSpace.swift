@@ -10,8 +10,10 @@ import Swift
 /// context.spawn(Bullet.self, at: Vec2(x: 80, y: 24), in: .screen)
 /// ```
 public struct ScreenCoordinateSpace: CoordinateSpaceProtocol, Equatable, Sendable {
+    /// Creates the typed screen coordinate-space marker.
     public init() {}
 
+    /// The stored `.screen` representation.
     public var coordinateSpace: CoordinateSpace {
         .screen
     }

@@ -80,12 +80,15 @@ public struct ParsingError: Error {
 
 #if !$Embedded
 extension ParsingError {
+    /// Wraps an error thrown by a user-supplied parsing closure.
+    /// - Parameter userError: Original error to preserve.
     public init(userError: any Error) {
         self = .init(status: .userError, userError: userError)
     }
 }
 
 extension ParsingError: CustomStringConvertible {
+    /// Human-readable status and optional byte position.
     public var description: String {
         if let location {
             "\(status) at position \(location)"
@@ -96,6 +99,7 @@ extension ParsingError: CustomStringConvertible {
 }
 
 extension ParsingError.Status: CustomStringConvertible {
+    /// Human-readable status name.
     public var description: String {
         switch self.rawValue {
         case .insufficientData:

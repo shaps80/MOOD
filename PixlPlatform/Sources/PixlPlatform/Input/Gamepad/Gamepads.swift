@@ -2,21 +2,32 @@ import Swift
 
 /// The currently connected game controllers, ordered by player index.
 public final class Gamepads: RandomAccessCollection {
+    /// Connected controller element type.
     public typealias Element = Gamepad
+    /// Integer collection index.
     public typealias Index = Int
 
     private var connected: ContiguousArray<Gamepad> = []
     private var slots: ContiguousArray<Gamepad?> = []
 
+    /// Creates an empty connected-controller collection.
     public init() {}
 
+    /// Index of the first connected controller.
     public var startIndex: Int { 0 }
+    /// Position one past the final connected controller.
     public var endIndex: Int { connected.count }
 
+    /// Returns the connected controller at a valid collection position.
+    /// - Parameter position: Index into the compact connected-controller list, not a player slot.
+    /// - Returns: The connected controller at `position`.
     public subscript(position: Int) -> Gamepad {
         connected[position]
     }
 
+    /// Returns a connected controller or a placeholder for an invalid position.
+    /// - Parameter position: Index into the compact connected-controller list.
+    /// - Returns: The connected controller, or a "No Gamepad" placeholder.
     public subscript(safe position: Int) -> Gamepad {
         guard indices.contains(position) else {
             return .init(index: -1, name: "No Gamepad")

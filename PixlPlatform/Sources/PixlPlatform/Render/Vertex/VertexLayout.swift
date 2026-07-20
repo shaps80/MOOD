@@ -9,9 +9,13 @@ public final class VertexLayout {
     private let buffers: UnsafeMutablePointer<VertexBufferLayout>
     private let attributes: UnsafeMutablePointer<VertexAttribute>
 
+    /// Maximum number of buffer layouts.
     public let bufferCapacity: UInt32
+    /// Maximum number of attributes.
     public let attributeCapacity: UInt32
+    /// Number of appended buffer layouts.
     public private(set) var bufferCount: UInt32 = 0
+    /// Number of appended attributes.
     public private(set) var attributeCount: UInt32 = 0
 
     package subscript(buffer index: UInt32) -> VertexBufferLayout {
@@ -22,6 +26,10 @@ public final class VertexLayout {
         attributes[Int(index)]
     }
 
+    /// Allocates fixed-capacity layout storage.
+    /// - Parameters:
+    ///   - bufferCapacity: Maximum number of buffer layouts.
+    ///   - attributeCapacity: Maximum number of attributes.
     public init(bufferCapacity: UInt32, attributeCapacity: UInt32) {
         self.bufferCapacity = bufferCapacity
         self.attributeCapacity = attributeCapacity
@@ -36,6 +44,8 @@ public final class VertexLayout {
         attributes.deallocate()
     }
 
+    /// Appends a layout for a previously undeclared buffer slot.
+    /// - Parameter layout: Buffer stride and stepping description to append.
     public func append(_ layout: consuming VertexBufferLayout) {
         precondition(bufferCount < bufferCapacity, "Vertex buffer layout capacity exceeded")
         precondition(
@@ -47,6 +57,8 @@ public final class VertexLayout {
         bufferCount += 1
     }
 
+    /// Appends an attribute referencing a declared buffer slot.
+    /// - Parameter attribute: Unique shader-location description to append.
     public func append(_ attribute: consuming VertexAttribute) {
         precondition(attributeCount < attributeCapacity, "Vertex attribute capacity exceeded")
         precondition(

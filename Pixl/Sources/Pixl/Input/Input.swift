@@ -2,8 +2,11 @@ import Swift
 
 /// A game-defined semantic input resolved from one or more physical bindings.
 public struct Input {
+    /// Direction of a semantic input transition.
     public enum Phase: Hashable, Sendable {
+        /// Combined input value changed from zero to active.
         case down
+        /// Combined input value changed from active to zero.
         case up
     }
 
@@ -35,6 +38,8 @@ public struct Input {
 
     /// Returns whether the combined semantic input changed to this phase
     /// during the current presentation frame.
+    /// - Parameter phase: Transition direction to query.
+    /// - Returns: `true` when the transition occurred this frame.
     public func `is`(_ phase: Phase) -> Bool {
         let state = storage.states[index]
         return switch phase {

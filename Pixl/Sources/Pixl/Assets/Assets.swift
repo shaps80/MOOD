@@ -3,6 +3,7 @@ import PixlGraphics
 import PixlPlatform
 import Swift
 
+/// Context-owned loader and cache for game texture and sound assets.
 public final class Assets {
     private let device: (any Device)?
     private let audioDevice: (any AudioDevice)?
@@ -71,12 +72,20 @@ public final class Assets {
         }
     }
 
+    /// Loads or returns the cached logical texture asset at a relative path.
+    /// - Parameter path: Source-relative image path.
+    /// - Returns: A stable logical texture asset shared by repeated loads.
+    /// - Throws: ``AssetError`` when assets are unavailable, bytes cannot be read or decoded, or GPU creation fails.
     public func load(
         texture path: String
     ) throws(AssetError) -> TextureAsset {
         try loadTexture(path)
     }
 
+    /// Loads or returns the cached resident sound asset at a relative path.
+    /// - Parameter path: Source-relative sound path.
+    /// - Returns: A shared resident sound asset.
+    /// - Throws: ``AssetError`` when assets are unavailable, bytes cannot be read or decoded, or audio creation fails.
     public func load(
         sound path: String
     ) throws(AssetError) -> SoundAsset {

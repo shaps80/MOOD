@@ -30,6 +30,9 @@ public struct OrthographicCamera: Sendable {
     }
 
     /// Returns the world-to-clip transform for a viewport size.
+    ///
+    /// - Parameter size: Positive finite viewport width and height.
+    /// - Returns: An aspect-correct transform mapping the camera's visible area to clip space.
     public func projection(in size: Vec2) -> Transform2D {
         precondition(
             size.x.isFinite && size.y.isFinite && size.x > 0 && size.y > 0,
@@ -39,6 +42,9 @@ public struct OrthographicCamera: Sendable {
     }
 
     /// Returns the world-to-clip transform for a viewport aspect ratio.
+    ///
+    /// - Parameter aspectRatio: Positive finite viewport width divided by height.
+    /// - Returns: A transform mapping the camera's visible area to clip space.
     public func projection(aspectRatio: Double) -> Transform2D {
         precondition(
             aspectRatio.isFinite && aspectRatio > 0,

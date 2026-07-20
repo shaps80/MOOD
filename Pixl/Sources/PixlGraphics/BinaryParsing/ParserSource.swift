@@ -30,10 +30,16 @@ public import Foundation
 ///     let imageData = try Data(contentsOfFile: ...)
 ///     let qoiImage = try QOI(parsing: imageData)
 public protocol ExpressibleByParsing {
+    /// Parses a value by consuming bytes from a span.
+    /// - Parameter input: Span advanced as bytes are consumed.
+    /// - Throws: ``ThrownParsingError`` when bytes cannot form a valid value.
     init(parsing input: inout ParserSpan) throws(ThrownParsingError)
 }
 
 extension ExpressibleByParsing {
+    /// Parses a value from a source capable of lending a parser span.
+    /// - Parameter data: Source whose complete span is parsed.
+    /// - Throws: ``ThrownParsingError`` when parsing fails.
     @_alwaysEmitIntoClient
     public init(
         parsing data: some ParserSpanProvider
@@ -41,6 +47,9 @@ extension ExpressibleByParsing {
         self = try data.withParserSpan(Self.init(parsing:))
     }
     
+    /// Parses a value from a contiguous random-access byte collection.
+    /// - Parameter data: Byte collection to parse.
+    /// - Throws: ``ThrownParsingError`` when storage is unavailable or parsing fails.
     @_alwaysEmitIntoClient
     @_disfavoredOverload
     public init(parsing data: some RandomAccessCollection<UInt8>)
@@ -61,6 +70,9 @@ extension ExpressibleByParsing {
 extension RandomAccessCollection<UInt8> {
     /// Executes the given closure with a `ParserSpan` over the contents of this
     /// collection, if such a span is available.
+    /// - Parameter body: Closure borrowing a mutable parser span.
+    /// - Returns: The closure result, or `nil` when contiguous storage is unavailable.
+    /// - Throws: ``ThrownParsingError`` propagated from `body`.
     @inlinable
     public func withParserSpanIfAvailable<T>(
         _ body: (inout ParserSpan) throws(ThrownParsingError) -> T
@@ -99,6 +111,9 @@ extension RandomAccessCollection<UInt8> {
 public protocol ParserSpanProvider {
     /// Executes the given closure with a `ParserSpan` over the contents of this
     /// type.
+    /// - Parameter body: Closure borrowing a mutable parser span.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error thrown by `body`.
     func withParserSpan<T, E>(
         _ body: (inout ParserSpan) throws(E) -> T
     ) throws(E) -> T
@@ -108,6 +123,11 @@ extension ParserSpanProvider {
 #if !$Embedded
     /// Executes the given closure with a `ParserSpan` over the contents of this
     /// type, consuming the given parser range instead of the full span.
+    /// - Parameters:
+    ///   - range: Source-relative range consumed and updated to the resulting subspan range.
+    ///   - body: Closure parsing within the selected range.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error from range validation or `body`.
     @_alwaysEmitIntoClient
     @inlinable
     public func withParserSpan<T>(
@@ -124,6 +144,11 @@ extension ParserSpanProvider {
     
     /// Executes the given closure with a `ParserSpan` over the contents of this
     /// type, consuming the given parser range instead of the full span.
+    /// - Parameters:
+    ///   - range: Source-relative range consumed and updated to the resulting subspan range.
+    ///   - body: Closure parsing within the selected range.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: ``ParsingError`` from range validation or `body`.
     @_alwaysEmitIntoClient
     @inlinable
     public func withParserSpan<T>(
@@ -140,6 +165,10 @@ extension ParserSpanProvider {
 
 #if !$Embedded && canImport(Foundation)
 extension Data: ParserSpanProvider {
+    /// Lends a parser span over this data's bytes for the closure's duration.
+    /// - Parameter body: Closure borrowing the span.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error thrown by `body`.
     @inlinable
     public func withParserSpan<T, E>(
         _ body: (inout ParserSpan) throws(E) -> T
@@ -157,6 +186,10 @@ extension Data: ParserSpanProvider {
 #endif
 
 extension [UInt8]: ParserSpanProvider {
+    /// Lends a parser span over this array's bytes for the closure's duration.
+    /// - Parameter body: Closure borrowing the span.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error thrown by `body`.
     public func withParserSpan<T, E>(
         _ body: (inout ParserSpan) throws(E) -> T
     ) throws(E) -> T {
@@ -172,6 +205,10 @@ extension [UInt8]: ParserSpanProvider {
 }
 
 extension ArraySlice<UInt8>: ParserSpanProvider {
+    /// Lends a parser span over this slice's bytes for the closure's duration.
+    /// - Parameter body: Closure borrowing the span.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: Any error thrown by `body`.
     public func withParserSpan<T, E>(
         _ body: (inout ParserSpan) throws(E) -> T
     ) throws(E) -> T {

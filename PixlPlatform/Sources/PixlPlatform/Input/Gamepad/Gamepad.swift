@@ -2,34 +2,54 @@ import Swift
 
 /// One connected game controller using physical control locations.
 public final class Gamepad {
+    /// Allocation-free random-access view of button transitions published for this frame.
     public struct Events: RandomAccessCollection {
+        /// Transition element type.
         public typealias Element = Button.Event
+        /// Integer collection index.
         public typealias Index = Int
 
         fileprivate let storage: Storage
 
+        /// Index of the first transition.
         public var startIndex: Int { 0 }
+        /// Position one past the final transition.
         public var endIndex: Int { storage.events.count }
 
+        /// Returns the transition at a valid collection index.
+        /// - Parameter position: Index between ``startIndex`` and ``endIndex``.
+        /// - Returns: The transition at `position`.
         public subscript(position: Int) -> Button.Event {
             storage.events[position]
         }
     }
 
+    /// Physical controller control locations, independent of vendor labels.
     public enum Button: UInt8, CaseIterable, Hashable, Sendable {
+        /// South, east, west, and north face buttons.
         case south, east, west, north
+        /// Left and right shoulder buttons.
         case leftShoulder, rightShoulder
+        /// Left and right triggers, exposing normalized analogue values.
         case leftTrigger, rightTrigger
+        /// Left and right stick-press buttons.
         case leftStick, rightStick
+        /// Directional-pad buttons.
         case up, down, left, right
+        /// Menu and options controls.
         case menu, options
     }
 
+    /// Stable player-slot index assigned by the platform.
     public let index: Int
+    /// Platform-reported controller name.
     public package(set) var name: String
+    /// Whether this controller is currently connected.
     public package(set) var isConnected: Bool
 
+    /// Current normalized left-stick displacement with positive y upward.
     public private(set) var leftStick = SIMD2<Double>.zero
+    /// Current normalized right-stick displacement with positive y upward.
     public private(set) var rightStick = SIMD2<Double>.zero
 
     private static let eventCapacity = Button.allCases.count * 2
@@ -67,23 +87,40 @@ public final class Gamepad {
         )
     }
 
+    /// Ordered, coalesced button transitions for the current presentation frame.
     public var events: Events {
         Events(storage: storage)
     }
 
+    /// Returns whether a button is currently pressed.
+    /// - Parameter button: Physical button to query.
+    /// - Returns: `true` while `button` is pressed.
     public func contains(_ button: Button) -> Bool {
         let index = Int(button.rawValue)
         return pressed[index >> 6] & (1 << UInt64(index & 63)) != 0
     }
 
+    /// Returns whether this frame contains a matching button transition.
+    /// - Parameters:
+    ///   - button: Physical button to query.
+    ///   - phase: Transition direction to match.
+    /// - Returns: `true` when the current frame contains that transition.
     public func contains(_ button: Button, phase: Button.Phase) -> Bool {
         self.button(button, phase: phase) != nil
     }
 
+    /// Returns a button's current normalized analogue value.
+    /// - Parameter button: Physical button to query.
+    /// - Returns: Value in `0...1`; digital buttons naturally report `0` or `1`.
     public func value(for button: Button) -> Double {
         values[Int(button.rawValue)]
     }
 
+    /// Returns this frame's matching button transition, if one exists.
+    /// - Parameters:
+    ///   - button: Physical button to query.
+    ///   - phase: Transition direction to match.
+    /// - Returns: The coalesced event, or `nil` when no match occurred this frame.
     public func button(_ button: Button, phase: Button.Phase) -> Button.Event? {
         let index = storage.eventIndices[eventIndex(for: button, phase: phase)]
         guard index >= 0 else { return nil }
@@ -164,11 +201,20 @@ public final class Gamepad {
 }
 
 public extension Gamepad.Button {
+    /// One button transition published for a presentation frame.
     struct Event: Hashable, Sendable {
+        /// Physical button that transitioned.
         public let button: Gamepad.Button
+        /// Whether the button moved down or up.
         public let phase: Phase
+        /// Normalized analogue value at the transition.
         public let value: Double
 
+        /// Creates a button transition.
+        /// - Parameters:
+        ///   - button: Physical button that transitioned.
+        ///   - phase: Whether the button moved down or up.
+        ///   - value: Normalized analogue value in `0...1`.
         public init(button: Gamepad.Button, phase: Phase, value: Double) {
             self.button = button
             self.phase = phase
@@ -176,8 +222,11 @@ public extension Gamepad.Button {
         }
     }
 
+    /// Direction of a physical button transition.
     enum Phase: Hashable, Sendable {
+        /// The button became pressed.
         case down
+        /// The button stopped being pressed.
         case up
     }
 }

@@ -1,5 +1,6 @@
 import Swift
 
+/// A two-dimensional double-precision vector.
 public typealias Vec2 = SIMD2<Double>
 
 /// A two-dimensional floating-point vector used for positions, sizes, and movement.
@@ -23,6 +24,12 @@ public extension Vec2 {
 }
 
 public extension Vec2 {
+    /// Creates a vector with independently random components.
+    ///
+    /// - Parameters:
+    ///   - x: Closed range used for the x component.
+    ///   - y: Closed range used for the y component.
+    /// - Returns: A vector whose components are sampled from their corresponding ranges.
     static func random(x: ClosedRange<Double>, y: ClosedRange<Double>) -> Self {
         .init(
             x: Double.random(in: x),
@@ -32,6 +39,12 @@ public extension Vec2 {
 }
 
 public extension Vec2 {
+    /// Moves toward a target without travelling past it.
+    ///
+    /// - Parameters:
+    ///   - target: Destination to approach.
+    ///   - distance: Maximum distance to travel. Nonpositive values leave the vector unchanged.
+    /// - Returns: The moved position, or `target` when it lies within `distance`.
     func moving(toward target: Self, by distance: Double) -> Self {
         guard distance > 0 else { return self }
 
@@ -79,6 +92,8 @@ public extension Vec2 {
     /// ```swift
     /// let facingAmount = facing.dot(direction)
     /// ```
+    /// - Parameter other: The vector to multiply component-wise before summing.
+    /// - Returns: The scalar dot product of this vector and `other`.
     func dot(_ other: Vec2) -> Double {
         (x * other.x) + (y * other.y)
     }

@@ -1,5 +1,6 @@
 import Swift
 
+/// An opaque handle to immutable render-pipeline state.
 public struct RenderPipeline: Hashable, Sendable {
     package let id: ResourceID
 
@@ -8,13 +9,26 @@ public struct RenderPipeline: Hashable, Sendable {
     }
 }
 
+/// Complete portable configuration used to create a render pipeline.
 public struct RenderPipelineDescriptor {
+    /// Vertex shader entry point.
     public let vertex: ShaderFunction
+    /// Fragment shader entry point.
     public let fragment: ShaderFunction
+    /// Vertex-buffer and attribute layout consumed by the vertex shader.
     public let vertexLayout: VertexLayout
+    /// Pixel format required by the render pass colour attachment.
     public let colorFormat: PixelFormat
+    /// Fixed-function colour composition.
     public let blendMode: BlendMode
 
+    /// Creates a render-pipeline description.
+    /// - Parameters:
+    ///   - vertex: Vertex shader entry point.
+    ///   - fragment: Fragment shader entry point.
+    ///   - vertexLayout: Vertex-buffer and attribute layout.
+    ///   - colorFormat: Required render-target colour format.
+    ///   - blendMode: Fixed-function colour composition.
     public init(
         vertex: ShaderFunction,
         fragment: ShaderFunction,
@@ -39,10 +53,16 @@ public enum BlendMode: Hashable, Sendable {
     case normal
 }
 
+/// How a draw groups consecutive vertices or indices into primitives.
 public enum PrimitiveTopology: Hashable, Sendable {
+    /// Each vertex forms one point.
     case point
+    /// Each pair of vertices forms one independent line.
     case line
+    /// Each vertex after the first extends a connected line strip.
     case lineStrip
+    /// Each group of three vertices forms one independent triangle.
     case triangle
+    /// Each vertex after the first two extends a connected triangle strip.
     case triangleStrip
 }

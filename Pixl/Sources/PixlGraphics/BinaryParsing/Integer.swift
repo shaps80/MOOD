@@ -10,6 +10,9 @@
 //===----------------------------------------------------------------------===//
 
 extension ParserSpan {
+    /// Validates that at least a minimum number of bytes remain.
+    /// - Parameter minimum: Nonnegative minimum remaining byte count.
+    /// - Throws: ``ParsingError`` when fewer than `minimum` bytes remain.
     @inlinable
     public func _checkCount(minimum: Int) throws(ParsingError) {
         let requiredUpper = _lowerBound &+ minimum
@@ -271,6 +274,10 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
 }
 
 extension MultiByteInteger {
+    /// Unsafely parses a full-width big-endian integer without checking remaining bytes.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span consumed by this integer's byte width.
     @unsafe
     @inlinable
     public init(_unchecked _: Void, parsingBigEndian input: inout ParserSpan) {
@@ -290,6 +297,10 @@ extension MultiByteInteger {
         try self.init(_parsingBigEndian: &input)
     }
     
+    /// Unsafely parses a full-width little-endian integer without checking remaining bytes.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span consumed by this integer's byte width.
     @unsafe
     @inlinable
     public init(_unchecked _: Void, parsingLittleEndian input: inout ParserSpan) {
@@ -310,6 +321,11 @@ extension MultiByteInteger {
         try self.init(_parsingLittleEndian: &input)
     }
     
+    /// Unsafely parses a full-width integer using explicit byte order without checking remaining bytes.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span consumed by this integer's byte width.
+    ///   - endianness: Byte order used to interpret the value.
     @unsafe
     @inlinable
     public init(
@@ -342,6 +358,10 @@ extension MultiByteInteger {
 }
 
 extension SingleByteInteger {
+    /// Unsafely consumes one byte without checking that the span is nonempty.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span from which one byte is consumed.
     @unsafe
     @inlinable
     public init(_unchecked _: Void, parsing input: inout ParserSpan) {
@@ -364,6 +384,9 @@ extension SingleByteInteger {
         unsafe self.init(_unchecked: (), parsing: &input)
     }
     
+    /// Parses one byte using the deprecated unchecked performance-testing path.
+    /// - Parameter input: Span from which one byte is consumed.
+    /// - Throws: Declared for source compatibility; callers must ensure a byte exists.
     @unsafe
     @available(
         *, deprecated,
@@ -376,6 +399,12 @@ extension SingleByteInteger {
 }
 
 extension FixedWidthInteger where Self: BitwiseCopyable {
+    /// Unsafely parses a variable-width big-endian integer after caller-side validation.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span to consume.
+    ///   - byteCount: Number of bytes representing the value.
+    /// - Throws: ``ParsingError`` when padding or conversion is invalid.
     @unsafe
     @inlinable
     public init(
@@ -407,6 +436,12 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
         try self.init(_parsing: &input, endianness: .big, byteCount: byteCount)
     }
     
+    /// Unsafely parses a variable-width little-endian integer after caller-side validation.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span to consume.
+    ///   - byteCount: Number of bytes representing the value.
+    /// - Throws: ``ParsingError`` when padding or conversion is invalid.
     @unsafe
     @inlinable
     public init(
@@ -440,6 +475,13 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
         try self.init(_parsing: &input, endianness: .little, byteCount: byteCount)
     }
     
+    /// Unsafely parses a variable-width integer with explicit byte order after caller-side validation.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span to consume.
+    ///   - endianness: Byte order used to interpret the value.
+    ///   - byteCount: Number of bytes representing the value.
+    /// - Throws: ``ParsingError`` when padding or conversion is invalid.
     @unsafe
     @inlinable
     public init(
@@ -476,6 +518,12 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
             _parsing: &input, endianness: endianness, byteCount: byteCount)
     }
     
+    /// Unsafely parses a big-endian storage integer before checked conversion.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span consumed by `storageType`.
+    ///   - storageType: Encoded integer type.
+    /// - Throws: ``ParsingError`` when conversion overflows.
     @unsafe
     @inlinable
     public init<T: MultiByteInteger>(
@@ -520,6 +568,12 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
         self = try Self(_throwing: result)
     }
     
+    /// Unsafely parses a little-endian storage integer before checked conversion.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span consumed by `storageType`.
+    ///   - storageType: Encoded integer type.
+    /// - Throws: ``ParsingError`` when conversion overflows.
     @unsafe
     @inlinable
     public init<T: MultiByteInteger>(
@@ -564,6 +618,13 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
         self = try Self(_throwing: result)
     }
     
+    /// Unsafely parses an explicitly ordered storage integer before checked conversion.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span consumed by `storageType`.
+    ///   - storageType: Encoded integer type.
+    ///   - endianness: Byte order used to interpret the encoded value.
+    /// - Throws: ``ParsingError`` when conversion overflows.
     @unsafe
     @inlinable
     public init<T: MultiByteInteger>(
@@ -617,6 +678,12 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
         self = try Self(_throwing: result)
     }
     
+    /// Unsafely parses a single-byte storage integer before checked conversion.
+    /// - Parameters:
+    ///   - _: Marker requiring explicit unsafe use.
+    ///   - input: Span from which one byte is consumed.
+    ///   - storageType: Signed or unsigned encoded byte type.
+    /// - Throws: ``ParsingError`` when conversion overflows.
     @unsafe
     @inlinable
     public init<T: SingleByteInteger>(
@@ -746,17 +813,28 @@ extension FixedWidthInteger where Self: BitwiseCopyable {
 }
 
 extension RawRepresentable where RawValue: MultiByteInteger {
+    /// Parses a big-endian raw value and validates that it represents a case.
+    /// - Parameter input: Span consumed by the raw value's byte width.
+    /// - Throws: ``ParsingError`` for insufficient data or an unknown raw value.
     @inlinable
     public init(parsingBigEndian input: inout ParserSpan) throws(ParsingError) {
         self = try Self(_rawValueThrowing: .init(parsingBigEndian: &input))
     }
     
+    /// Parses a little-endian raw value and validates that it represents a case.
+    /// - Parameter input: Span consumed by the raw value's byte width.
+    /// - Throws: ``ParsingError`` for insufficient data or an unknown raw value.
     @inlinable
     public init(parsingLittleEndian input: inout ParserSpan) throws(ParsingError)
     {
         self = try Self(_rawValueThrowing: .init(parsingLittleEndian: &input))
     }
     
+    /// Parses an explicitly ordered raw value and validates that it represents a case.
+    /// - Parameters:
+    ///   - input: Span consumed by the raw value's byte width.
+    ///   - endianness: Byte order used to interpret the raw value.
+    /// - Throws: ``ParsingError`` for insufficient data or an unknown raw value.
     @inlinable
     public init(parsing input: inout ParserSpan, endianness: Endianness)
     throws(ParsingError)
@@ -768,6 +846,9 @@ extension RawRepresentable where RawValue: MultiByteInteger {
 }
 
 extension RawRepresentable where RawValue: SingleByteInteger {
+    /// Parses one raw-value byte and validates that it represents a case.
+    /// - Parameter input: Span from which one byte is consumed.
+    /// - Throws: ``ParsingError`` for insufficient data or an unknown raw value.
     @inlinable
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         guard let value = try Self(rawValue: .init(_parsingBigEndian: &input))
@@ -781,6 +862,9 @@ extension RawRepresentable where RawValue: SingleByteInteger {
 }
 
 extension RawRepresentable where RawValue: FixedWidthInteger & BitwiseCopyable {
+    /// Validates and creates a value from an already parsed raw integer.
+    /// - Parameter rawValue: Candidate raw value.
+    /// - Throws: ``ParsingError`` when `rawValue` does not represent a value.
     @inlinable
     public init(_rawValueThrowing rawValue: RawValue) throws(ParsingError) {
         guard let value = Self(rawValue: rawValue) else {
@@ -791,6 +875,11 @@ extension RawRepresentable where RawValue: FixedWidthInteger & BitwiseCopyable {
         self = value
     }
     
+    /// Parses a big-endian storage integer and converts it to this type's raw value.
+    /// - Parameters:
+    ///   - input: Span to consume.
+    ///   - storageType: Encoded integer type.
+    /// - Throws: ``ParsingError`` for insufficient data, overflow, or an unknown raw value.
     @inlinable
     public init<T: MultiByteInteger>(
         parsing input: inout ParserSpan,
@@ -801,6 +890,11 @@ extension RawRepresentable where RawValue: FixedWidthInteger & BitwiseCopyable {
                     .init(parsing: &input, storedAsBigEndian: T.self))
     }
     
+    /// Parses a little-endian storage integer and converts it to this type's raw value.
+    /// - Parameters:
+    ///   - input: Span to consume.
+    ///   - storageType: Encoded integer type.
+    /// - Throws: ``ParsingError`` for insufficient data, overflow, or an unknown raw value.
     @inlinable
     public init<T: MultiByteInteger>(
         parsing input: inout ParserSpan,
@@ -811,6 +905,12 @@ extension RawRepresentable where RawValue: FixedWidthInteger & BitwiseCopyable {
                     .init(parsing: &input, storedAsLittleEndian: T.self))
     }
     
+    /// Parses an explicitly ordered storage integer and converts it to this type's raw value.
+    /// - Parameters:
+    ///   - input: Span to consume.
+    ///   - storageType: Encoded integer type.
+    ///   - endianness: Byte order used to interpret it.
+    /// - Throws: ``ParsingError`` for insufficient data, overflow, or an unknown raw value.
     @inlinable
     public init<T: MultiByteInteger>(
         parsing input: inout ParserSpan,
@@ -822,6 +922,11 @@ extension RawRepresentable where RawValue: FixedWidthInteger & BitwiseCopyable {
                     .init(parsing: &input, storedAs: T.self, endianness: endianness))
     }
     
+    /// Parses a single-byte storage integer and converts it to this type's raw value.
+    /// - Parameters:
+    ///   - input: Span from which one byte is consumed.
+    ///   - storageType: Signed or unsigned encoded byte type.
+    /// - Throws: ``ParsingError`` for insufficient data, overflow, or an unknown raw value.
     @inlinable
     public init<T: SingleByteInteger>(
         parsing input: inout ParserSpan,

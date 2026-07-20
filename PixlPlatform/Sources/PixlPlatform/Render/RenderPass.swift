@@ -1,8 +1,12 @@
 import Swift
 
+/// Attachments and load/store behaviour for one render pass.
 public struct RenderPassDescriptor: Sendable {
+    /// Colour attachment written by the pass.
     public var colorAttachment: ColorAttachment
 
+    /// Creates a render-pass description with one colour attachment.
+    /// - Parameter colorAttachment: Colour target and its load/store behaviour.
     public init(_ colorAttachment: ColorAttachment) {
         self.colorAttachment = colorAttachment
     }
@@ -34,10 +38,17 @@ public struct RenderPassEncoder {
         self.passIndex = passIndex
     }
 
+    /// Selects pipeline state for subsequent draws.
+    /// - Parameter pipeline: Live pipeline compatible with ``colorFormat``.
     public func setRenderPipeline(_ pipeline: RenderPipeline) {
         frame.append(.setRenderPipeline(pipeline.id), toRenderPassAt: passIndex)
     }
 
+    /// Binds a persistent GPU buffer to a vertex resource slot.
+    /// - Parameters:
+    ///   - buffer: Live buffer with vertex-compatible usage.
+    ///   - offset: Byte offset at which shader reads begin.
+    ///   - index: Vertex resource-slot index.
     public func setVertexBuffer(
         _ buffer: Buffer,
         offset: UInt64 = 0,
@@ -50,6 +61,10 @@ public struct RenderPassEncoder {
         )
     }
 
+    /// Copies a small raw value into frame-owned storage and binds it to a vertex slot.
+    /// - Parameters:
+    ///   - bytes: Nonempty payload no larger than 4 KiB.
+    ///   - index: Vertex resource-slot index.
     public func setVertexBytes(
         _ bytes: UnsafeRawBufferPointer,
         index: UInt32
@@ -57,6 +72,10 @@ public struct RenderPassEncoder {
         frame.appendVertexBytes(bytes, index: index, toRenderPassAt: passIndex)
     }
 
+    /// Copies one bitwise-copyable value into frame-owned storage and binds it to a vertex slot.
+    /// - Parameters:
+    ///   - value: Value copied into the frame.
+    ///   - index: Vertex resource-slot index.
     public func setVertexBytes<Value: BitwiseCopyable>(
         of value: Value,
         index: UInt32
@@ -69,6 +88,9 @@ public struct RenderPassEncoder {
 
     /// Copies arbitrary per-vertex or per-instance bytes into frame-owned
     /// upload storage and binds that range as a vertex buffer.
+    /// - Parameters:
+    ///   - bytes: Nonempty vertex or instance payload copied into the frame.
+    ///   - index: Vertex buffer-slot index.
     public func setVertexData(
         _ bytes: UnsafeRawBufferPointer,
         index: UInt32
@@ -76,6 +98,10 @@ public struct RenderPassEncoder {
         frame.appendVertexData(bytes, index: index, toRenderPassAt: passIndex)
     }
 
+    /// Binds a sampled texture to a fragment resource slot.
+    /// - Parameters:
+    ///   - texture: Live texture created with ``TextureUsage/sampled``.
+    ///   - index: Fragment texture-slot index.
     public func setFragmentTexture(
         _ texture: Texture,
         index: UInt32
@@ -90,6 +116,10 @@ public struct RenderPassEncoder {
         )
     }
 
+    /// Binds sampling state to a fragment resource slot.
+    /// - Parameters:
+    ///   - sampler: Live immutable sampler.
+    ///   - index: Fragment sampler-slot index.
     public func setFragmentSampler(
         _ sampler: Sampler,
         index: UInt32
@@ -100,6 +130,13 @@ public struct RenderPassEncoder {
         )
     }
 
+    /// Records a non-indexed primitive draw.
+    /// - Parameters:
+    ///   - topology: Primitive interpretation for consecutive vertices.
+    ///   - vertexStart: First vertex identifier.
+    ///   - vertexCount: Positive number of vertices per instance.
+    ///   - instanceCount: Positive number of instances.
+    ///   - baseInstance: First instance identifier.
     public func drawPrimitives(
         _ topology: PrimitiveTopology,
         vertexStart: UInt32 = 0,

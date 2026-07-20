@@ -1,9 +1,13 @@
 import Swift
 
+/// Supported interleaved sound channel arrangements.
 public enum ChannelLayout: Hashable, Sendable {
+    /// One channel per frame.
     case mono
+    /// Left and right channels per frame.
     case stereo
 
+    /// Number of samples stored in each frame.
     public var channelCount: UInt32 {
         switch self {
         case .mono: 1
@@ -12,11 +16,20 @@ public enum ChannelLayout: Hashable, Sendable {
     }
 }
 
+/// Format and length of interleaved floating-point sound samples.
 public struct SoundDescriptor: Hashable, Sendable {
+    /// Frames played per second.
     public let sampleRate: UInt32
+    /// Number and meaning of channels in each frame.
     public let channelLayout: ChannelLayout
+    /// Number of sample frames.
     public let frameCount: UInt32
 
+    /// Creates a sound description.
+    /// - Parameters:
+    ///   - sampleRate: Positive frame rate in hertz.
+    ///   - channelLayout: Channel arrangement of each frame.
+    ///   - frameCount: Positive number of frames.
     public init(
         sampleRate: UInt32,
         channelLayout: ChannelLayout,
@@ -30,6 +43,7 @@ public struct SoundDescriptor: Hashable, Sendable {
         self.frameCount = frameCount
     }
 
+    /// Playback duration in seconds at the original rate.
     public var duration: Double {
         Double(frameCount) / Double(sampleRate)
     }
