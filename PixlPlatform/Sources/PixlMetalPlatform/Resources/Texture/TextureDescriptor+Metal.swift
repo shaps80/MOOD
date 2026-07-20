@@ -11,6 +11,7 @@ extension TextureDescriptor {
         metalDescriptor.pixelFormat = format.metalPixelFormat
         metalDescriptor.usage = usage.metalUsage
         metalDescriptor.sampleCount = sampleCount
+        metalDescriptor.storageMode = .private
         return metalDescriptor
     }
 }

@@ -171,6 +171,8 @@ Release `PixlPlatform` builds use `-enable-cmo-everything`, allowing concrete pa
 `TextureDescriptor`
 : Describes an entire texture allocation. Dimension/type, mip, cube, and richer array semantics remain an explicit future design gate.
 
+PixlPlatform textures are currently GPU-owned resources with no direct CPU mapping API. Metal therefore allocates them with private storage; uploads, hot reload, and future readback use backend-owned staging transfers rather than shared final textures. Do not expose backend memory-placement vocabulary unless a portable CPU-access operation requires it.
+
 `Device.makeTexture(copying:descriptor:bytesPerRow:)`
 : Creates a texture with initial owned pixel bytes. Metal stages rows into an aligned transfer buffer and blits into private texture storage before publishing the handle.
 
