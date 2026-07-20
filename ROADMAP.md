@@ -13,11 +13,11 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts.
 - Pixl2D provides value-semantic sprites, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
 - Fixed-capacity immediate submission performs culling, ordering, batching, instance compaction, and indexed instanced drawing without steady-state growth by design.
+- Context-owned render textures support independent offscreen queues, render-then-sample composition, target-format pipeline variants, preserve/clear initial state, and per-sprite filtering on Metal and WebGPU.
 - The Game verifies movement, input, layered animation, filtering, blend modes, pause/time scaling, music, assets, metrics, visuals, and hot reload.
 
 ## Next — Game and Performance Verification
 
-- [ ] Exercise independent offscreen-world and native-resolution UI submission destinations if their target formats expose distinct pipeline variants.
 - [ ] Verify no steady-state CPU allocation.
 - [ ] Profile material-key derivation, resolved-resource lookup, ordering, and instance writes separately so avoidable submission cost remains visible.
 - [ ] Measure the representative bullets/enemies workload and a separate 10,000-visible-sprite stress case on native and browser, then record only accepted baselines in `PERF.md`.
