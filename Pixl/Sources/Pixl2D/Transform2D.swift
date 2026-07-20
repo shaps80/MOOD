@@ -109,10 +109,10 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     }
 }
 
-extension SIMD2: @retroactive ExpressibleByFloatLiteral where Scalar == Double {
-    /// Creates a two-component vector by repeating a floating-point literal.
-    /// - Parameter value: Value assigned to both components.
-    public init(floatLiteral value: Scalar) {
-        self.init(repeating: value)
-    }
+extension Transform2D {
+    public static let identity: Self = .init(
+        .zero,
+        rotation: .zero,
+        scale: .one
+    )
 }

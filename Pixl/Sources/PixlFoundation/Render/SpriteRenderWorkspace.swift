@@ -13,6 +13,11 @@ private struct WorkspaceMaterial {
 }
 
 /// Fixed-capacity sprite encoding storage paired with one render queue.
+///
+/// A workspace retains its queue and shared rendering resources. It does not
+/// reset the queue after encoding. Logical textures cached by an encoded
+/// material slot must remain live; backend-managed in-place texture writes do
+/// not invalidate the slot.
 public final class SpriteRenderWorkspace {
     /// CPU duration produced while encoding one execution view.
     public struct Metrics: Hashable, Sendable {
@@ -62,11 +67,19 @@ public final class SpriteRenderWorkspace {
         upload.deallocate()
     }
 
-    /// Encodes one execution view using shared device resources.
+    /// Encodes one execution view using shared sprite rendering resources.
     ///
     /// The execution must come from the queue passed to
     /// ``SpriteRenderResources/makeWorkspace(for:)``. The workspace retains
     /// fixed-capacity material-slot and upload storage between calls.
+    ///
+    /// - Parameters:
+    ///   - execution: Transient execution produced by the paired queue.
+    ///   - viewIndex: Valid zero-based view to encode from `execution`.
+    ///   - pass: Render-pass encoder receiving sprite commands. Its colour
+    ///     format selects the compatible pipeline variant.
+    /// - Returns: CPU timing for work performed by this encoding step.
+    /// - Throws: A device-resource creation or command-recording error.
     public func encode(
         _ execution: RenderQueue.Execution,
         viewIndex: Int,

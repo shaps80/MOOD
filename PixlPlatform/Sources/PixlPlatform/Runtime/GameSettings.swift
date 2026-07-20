@@ -1,27 +1,5 @@
 import Swift
 
-/// Initial drawable resolution in platform pixels.
-public struct Resolution: Sendable, Hashable {
-    /// Initial drawable width in pixels.
-    public let width: Int
-
-    /// Initial drawable height in pixels.
-    public let height: Int
-
-    /// Creates an initial drawable resolution.
-    ///
-    /// - Parameters:
-    ///   - width: Initial drawable width in platform pixels.
-    ///   - height: Initial drawable height in platform pixels.
-    public init(width: Int, height: Int) {
-        precondition(width > 0, "Resolution width must be greater than zero")
-        precondition(height > 0, "Resolution height must be greater than zero")
-
-        self.width = width
-        self.height = height
-    }
-}
-
 /// Startup window and presentation preferences supplied by a game.
 public struct GameSettings: Sendable, Hashable {
     /// Initial window title.
@@ -35,7 +13,7 @@ public struct GameSettings: Sendable, Hashable {
     public let preferredFps: Int
 
     /// Initial drawable resolution.
-    public let resolution: Resolution
+    public let resolution: SIMD2<Int>
 
     /// Whether the platform window may be resized.
     public let isResizable: Bool
@@ -51,10 +29,12 @@ public struct GameSettings: Sendable, Hashable {
     public init(
         title: String,
         preferredFps: Int = 60,
-        resolution: Resolution,
+        resolution: SIMD2<Int>,
         isResizable: Bool = true
     ) {
         precondition(preferredFps > 0, "Preferred FPS must be greater than zero")
+        precondition(resolution.x > 0, "Resolution width must be greater than zero")
+        precondition(resolution.y > 0, "Resolution height must be greater than zero")
 
         self.title = title
         self.resolution = resolution

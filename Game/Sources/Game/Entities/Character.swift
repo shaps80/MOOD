@@ -78,7 +78,7 @@ struct Character: Entity {
             sprite,
             transform: Transform2D(
                 position,
-                scale: 1.5
+                scale: .init(repeating: 2)
             )
         )
     }

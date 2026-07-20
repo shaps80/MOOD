@@ -21,6 +21,7 @@ public final class GameContext {
     public let renderQueue: RenderQueue
     let spriteRenderResources: SpriteRenderResources
     let spriteRenderWorkspace: SpriteRenderWorkspace
+    private var spriteRenderWorkspaces: [ObjectIdentifier: SpriteRenderWorkspace] = [:]
     private var renderMetrics = RenderQueue.Metrics()
 
     /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
@@ -77,5 +78,16 @@ public final class GameContext {
     func consumeRenderMetrics() -> RenderQueue.Metrics {
         defer { renderMetrics = .init() }
         return renderMetrics
+    }
+
+    func workspace(for queue: RenderQueue) -> SpriteRenderWorkspace {
+        if queue === renderQueue { return spriteRenderWorkspace }
+        let identity = ObjectIdentifier(queue)
+        if let workspace = spriteRenderWorkspaces[identity] {
+            return workspace
+        }
+        let workspace = spriteRenderResources.makeWorkspace(for: queue)
+        spriteRenderWorkspaces[identity] = workspace
+        return workspace
     }
 }

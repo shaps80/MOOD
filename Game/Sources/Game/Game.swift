@@ -15,6 +15,27 @@ struct Game: Pixl.Game {
         ]
     }
 
+    func render(
+        on platform: any Platform,
+        output: RenderTarget,
+        frame: borrowing Frame,
+        time: RenderTime,
+        context: GameContext
+    ) throws {
+        entities.indices.forEach {
+            entities[$0].submit(to: context.renderQueue)
+        }
+
+        try context.render(
+            through: camera,
+            to: output,
+            frame: frame,
+            clear: .white
+        )
+
+        logMetrics(time)
+    }
+
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
         gameState.didEnter(phase, context: context)
     }
@@ -33,27 +54,6 @@ struct Game: Pixl.Game {
         gameState.update(time, context: context)
     }
 
-    func render(
-        on platform: any Platform,
-        output: RenderTarget,
-        frame: borrowing Frame,
-        time: RenderTime,
-        context: GameContext
-    ) throws {
-        entities.indices.forEach {
-            entities[$0].submit(to: context.renderQueue)
-        }
-        
-        try context.render(
-            through: camera,
-            to: output,
-            frame: frame,
-            clear: .white
-        )
-
-        logMetrics(time)
-    }
-
     private func logMetrics(_ time: RenderTime) {
         let interval = UInt64(Self.gameSettings.preferredFps * 5)
         guard time.frameIndex > 0,
@@ -69,7 +69,7 @@ extension Game {
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
-            resolution: .init(width: 800, height: 400),
+            resolution: .init(x: 800, y: 400),
         )
     }
 

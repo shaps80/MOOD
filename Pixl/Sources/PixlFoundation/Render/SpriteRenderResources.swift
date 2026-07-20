@@ -15,9 +15,12 @@ private struct SpritePipelineKey: Hashable {
     let blendMode: BlendMode
 }
 
-/// Device-wide sprite GPU resources shared by render-queue workspaces.
+/// Device-wide sprite rendering resources shared by render-queue workspaces.
 ///
-/// Encoding through workspaces sharing this owner must be serialized.
+/// This owner retains the logical texture store and lazily owns the geometry,
+/// samplers, and render pipelines required by its workspaces. Encoding through
+/// workspaces sharing one owner must be serialized. Destroy the owner only
+/// after previously recorded GPU work has completed.
 public final class SpriteRenderResources {
     private let device: any Device
     private let textures: TextureResources
@@ -26,7 +29,7 @@ public final class SpriteRenderResources {
     private var vertexBuffer: Buffer?
     private var indexBuffer: Buffer?
 
-    /// Creates shared sprite resources for one device and logical texture store.
+    /// Creates shared sprite rendering resources.
     /// - Parameters:
     ///   - device: Device used to create and destroy sprite GPU resources.
     ///   - textures: Store resolving logical sprite texture identities. Its
@@ -46,7 +49,7 @@ public final class SpriteRenderResources {
         for pipeline in pipelines.values { device.destroy(pipeline) }
     }
 
-    /// Creates fixed-capacity hot storage permanently paired with one render queue.
+    /// Creates fixed-capacity encoding storage permanently paired with one render queue.
     /// - Parameter queue: Queue whose capacity and material slots define the workspace.
     /// - Returns: A workspace retaining this shared resource owner and `queue`.
     public func makeWorkspace(for queue: RenderQueue) -> SpriteRenderWorkspace {
