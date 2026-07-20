@@ -67,18 +67,19 @@ extension GameContext {
                 Float(camera.center.y + camera.halfHeight)
             )
         )
-        try withUnsafePointer(to: &view) { pointer in
+        let encodingMetrics = try withUnsafePointer(to: &view) { pointer in
             try renderQueue.execute(
                 views: UnsafeBufferPointer(start: pointer, count: 1)
             ) { execution in
-                try spriteRenderResources.encode(
+                try spriteRenderWorkspace.encode(
                     execution,
                     viewIndex: 0,
-                    queue: renderQueue,
                     on: pass
                 )
             }
         }
-        record(renderQueue.latestMetrics)
+        var metrics = renderQueue.latestMetrics
+        metrics.instancesSeconds += encodingMetrics.instancesSeconds
+        record(metrics)
     }
 }

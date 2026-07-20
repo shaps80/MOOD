@@ -12,7 +12,7 @@ public final class Assets {
     private let decodeSound: SoundDecode
     private let textureWriter: (Texture) -> (any TextureWriter)?
     private let soundWriter: (Sound) -> (any SoundWriter)?
-    private let textureResources: TextureResources?
+    let textureResources: TextureResources?
     private var textures: [TextureCacheKey: TextureAsset] = [:]
     private var sounds: [AssetPath: SoundAsset] = [:]
     private var reloadContinuation: AsyncStream<AssetReloadEvent>.Continuation?

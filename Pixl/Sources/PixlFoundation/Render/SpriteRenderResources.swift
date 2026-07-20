@@ -5,17 +5,9 @@ private struct SpriteVertex: BitwiseCopyable {
     let textureCoordinate: SIMD2<Float>
 }
 
-private struct SpriteViewParameters: BitwiseCopyable {
-    let x: SIMD3<Float>
-    let y: SIMD3<Float>
-    let translation: SIMD3<Float>
-}
-
-private struct ResolvedSpriteMaterial {
+package struct ResolvedSpriteMaterial {
     let texture: Texture
     let sampler: Sampler
-    var pipelineFormat: PixelFormat?
-    var pipeline: RenderPipeline?
 }
 
 private struct SpritePipelineKey: Hashable {
@@ -23,129 +15,50 @@ private struct SpritePipelineKey: Hashable {
     let blendMode: BlendMode
 }
 
-package final class SpriteRenderResources {
+/// Device-wide sprite GPU resources shared by render-queue workspaces.
+///
+/// Encoding through workspaces sharing this owner must be serialized.
+public final class SpriteRenderResources {
     private let device: any Device
-    private let textureForID: (TextureResourceID) -> Texture?
-    private let capacity: Int
-    private let resolved: UnsafeMutablePointer<ResolvedSpriteMaterial?>
-    private let upload: UnsafeMutablePointer<RenderQueue.Instance>
+    private let textures: TextureResources
     private var samplers: [SamplerDescriptor: Sampler] = [:]
     private var pipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var vertexBuffer: Buffer?
     private var indexBuffer: Buffer?
 
-    package init(
+    /// Creates shared sprite resources for one device and logical texture store.
+    /// - Parameters:
+    ///   - device: Device used to create and destroy sprite GPU resources.
+    ///   - textures: Store resolving logical sprite texture identities. Its
+    ///     textures must belong to `device`.
+    public init(
         device: any Device,
-        capacity: Int,
-        textureForID: @escaping (TextureResourceID) -> Texture?
+        textures: TextureResources
     ) {
         self.device = device
-        self.capacity = capacity
-        self.textureForID = textureForID
-        resolved = .allocate(capacity: capacity)
-        resolved.initialize(repeating: nil, count: capacity)
-        upload = .allocate(capacity: capacity)
-        upload.initialize(
-            repeating: RenderQueue.Instance(
-                transformX: .zero,
-                transformY: .zero,
-                translation: .zero,
-                textureOrigin: .zero,
-                textureScale: .zero,
-                tintRGBA8: 0
-            ),
-            count: capacity
-        )
-        precondition(
-            MemoryLayout<RenderQueue.Instance>.stride == 48,
-            "Sprite instance ABI must remain 48 bytes"
-        )
+        self.textures = textures
     }
 
     deinit {
-        resolved.deinitialize(count: capacity)
-        resolved.deallocate()
-        upload.deinitialize(count: capacity)
-        upload.deallocate()
         if let vertexBuffer { device.destroy(vertexBuffer) }
         if let indexBuffer { device.destroy(indexBuffer) }
         for sampler in samplers.values { device.destroy(sampler) }
         for pipeline in pipelines.values { device.destroy(pipeline) }
     }
 
-    package func encode(
-        _ execution: RenderQueue.Execution,
-        viewIndex: Int,
-        queue: RenderQueue,
-        on pass: RenderPassEncoder
-    ) throws {
-        let view = execution.views[viewIndex]
-        guard !view.ordinals.isEmpty else { return }
-        try ensureGeometry()
-
-        let instanceStart = ContinuousClock.now
-        for index in view.ordinals.indices {
-            upload[index] = execution.instances[Int(view.ordinals[index])]
-        }
-        pass.setVertexBuffer(vertexBuffer!, index: 0)
-        pass.setVertexBytes(
-            of: SpriteViewParameters(
-                x: view.projectionX,
-                y: view.projectionY,
-                translation: view.projectionTranslation
-            ),
-            index: 2
-        )
-        pass.setVertexData(
-            UnsafeRawBufferPointer(
-                start: upload,
-                count: view.ordinals.count
-                    * MemoryLayout<RenderQueue.Instance>.stride
-            ),
-            index: 1
-        )
-        queue.addInstanceSeconds(
-            Self.seconds(since: instanceStart)
-        )
-
-        var start = UInt32(0)
-        for batch in view.batches {
-            let materialIndex = Int(batch.material)
-            var material = try resolve(
-                execution.materials[materialIndex],
-                at: materialIndex
-            )
-            if material.pipelineFormat != pass.colorFormat {
-                material.pipeline = try pipeline(
-                    format: pass.colorFormat,
-                    blendMode: execution.materials[materialIndex].blendMode
-                )
-                material.pipelineFormat = pass.colorFormat
-                resolved[materialIndex] = material
-            }
-            pass.setRenderPipeline(material.pipeline!)
-            pass.setFragmentTexture(material.texture, index: 0)
-            pass.setFragmentSampler(material.sampler, index: 0)
-            pass.drawIndexedPrimitives(
-                .triangle,
-                indexCount: 6,
-                indexType: .uint16,
-                indexBuffer: indexBuffer!,
-                instanceCount: batch.end - start,
-                baseInstance: start
-            )
-            start = batch.end
-        }
+    /// Creates fixed-capacity hot storage permanently paired with one render queue.
+    /// - Parameter queue: Queue whose capacity and material slots define the workspace.
+    /// - Returns: A workspace retaining this shared resource owner and `queue`.
+    public func makeWorkspace(for queue: RenderQueue) -> SpriteRenderWorkspace {
+        SpriteRenderWorkspace(resources: self, queue: queue)
     }
 
-    private func resolve(
-        _ source: RenderQueue.Material,
-        at index: Int
+    package func resolve(
+        _ source: RenderQueue.Material
     ) throws -> ResolvedSpriteMaterial {
-        if let value = resolved[index] { return value }
-        guard let texture = textureForID(source.texture) else {
+        guard let texture = textures.texture(for: source.texture) else {
             preconditionFailure(
-                "Sprite texture does not belong to this game context"
+                "Sprite texture does not belong to these render resources"
             )
         }
         let sampler: Sampler
@@ -157,15 +70,12 @@ package final class SpriteRenderResources {
         }
         let value = ResolvedSpriteMaterial(
             texture: texture,
-            sampler: sampler,
-            pipelineFormat: nil,
-            pipeline: nil
+            sampler: sampler
         )
-        resolved[index] = value
         return value
     }
 
-    private func pipeline(
+    package func pipeline(
         format: PixelFormat,
         blendMode: BlendMode
     ) throws -> RenderPipeline {
@@ -187,8 +97,10 @@ package final class SpriteRenderResources {
         return pipeline
     }
 
-    private func ensureGeometry() throws {
-        guard vertexBuffer == nil else { return }
+    package func geometry() throws -> (vertex: Buffer, index: Buffer) {
+        if let vertexBuffer, let indexBuffer {
+            return (vertexBuffer, indexBuffer)
+        }
         var vertices = (
             SpriteVertex(
                 position: .init(-0.5, 0.5),
@@ -230,6 +142,7 @@ package final class SpriteRenderResources {
             device.destroy(vertexBuffer)
             throw error
         }
+        return (vertexBuffer, indexBuffer!)
     }
 
     private static var vertexLayout: VertexLayout {
@@ -287,10 +200,4 @@ package final class SpriteRenderResources {
         return layout
     }
 
-    private static func seconds(
-        since start: ContinuousClock.Instant
-    ) -> Double {
-        let value = (ContinuousClock.now - start).components
-        return Double(value.seconds) + Double(value.attoseconds) * 1e-18
-    }
 }

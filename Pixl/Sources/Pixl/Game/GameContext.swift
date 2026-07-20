@@ -20,6 +20,7 @@ public final class GameContext {
     /// Default retained queue for render submissions.
     public let renderQueue: RenderQueue
     let spriteRenderResources: SpriteRenderResources
+    let spriteRenderWorkspace: SpriteRenderWorkspace
     private var renderMetrics = RenderQueue.Metrics()
 
     /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
@@ -50,11 +51,12 @@ public final class GameContext {
         )
         self.assets = assets
         renderQueue = RenderQueue(settings: renderQueueSettings)
-        spriteRenderResources = SpriteRenderResources(
+        let spriteRenderResources = SpriteRenderResources(
             device: platform.device,
-            capacity: renderQueueSettings.capacity,
-            textureForID: { assets.texture(for: $0) }
+            textures: assets.textureResources!
         )
+        self.spriteRenderResources = spriteRenderResources
+        spriteRenderWorkspace = spriteRenderResources.makeWorkspace(for: renderQueue)
     }
 
     /// Pauses or resumes scaled simulation using ``timeScale``.

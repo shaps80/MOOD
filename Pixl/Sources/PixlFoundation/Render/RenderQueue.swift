@@ -132,6 +132,7 @@ public final class RenderQueue {
 
     /// Transient read-only execution streams lent to an execution closure.
     public struct Execution {
+        package let queue: RenderQueue
         /// Ordinal-aligned lowered instance records.
         public let instances: UnsafeBufferPointer<Instance>
         /// Unique materials referenced by view batches.
@@ -313,10 +314,6 @@ public final class RenderQueue {
         count += 1
     }
 
-    package func addInstanceSeconds(_ seconds: Double) {
-        latestMetrics.instancesSeconds += seconds
-    }
-
     /// Culls, orders, and batches retained submissions for one or more views.
     ///
     /// Pointers in `Execution` are valid only during `body`. Execution does not
@@ -377,6 +374,7 @@ public final class RenderQueue {
         defer { viewOutputs.deinitialize(count: views.count) }
         return try body(
             Execution(
+                queue: self,
                 instances: UnsafeBufferPointer(start: instances, count: count),
                 materials: UnsafeBufferPointer(start: materials, count: materialCount),
                 views: UnsafeBufferPointer(start: viewOutputs, count: views.count),
