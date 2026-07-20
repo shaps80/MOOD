@@ -51,6 +51,11 @@ public enum BlendMode: Hashable, Sendable {
 
     /// Straight-alpha source-over composition.
     case normal
+
+    /// Premultiplied-alpha source-over composition.
+    ///
+    /// Fragment RGB must already be multiplied by fragment alpha.
+    case premultiplied
 }
 
 /// How a draw groups consecutive vertices or indices into primitives.

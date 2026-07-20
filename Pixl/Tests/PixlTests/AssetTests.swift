@@ -81,6 +81,17 @@ private func decodeSpriteSheetTestTexture(
     )
 }
 
+private func decodeAlphaTestTexture(
+    _ bytes: [UInt8],
+    path: AssetPath
+) throws(AssetError) -> DecodedTexture {
+    DecodedTexture(
+        width: 2,
+        height: 1,
+        bytes: [200, 100, 50, 128, 17, 23, 31, 0]
+    )
+}
+
 private func decodeTestSound(
     _ bytes: [UInt8],
     path: AssetPath
@@ -110,6 +121,10 @@ private actor TestTextureWriter: TextureWriter {
 
     var writeCount: Int {
         writes.count
+    }
+
+    var lastWrite: [UInt8]? {
+        writes.last
     }
 }
 
@@ -166,6 +181,82 @@ private func waitForInvalidation(
 
 @Suite("Assets")
 struct AssetTests {
+    @Test
+    func processesSpriteAlphaDuringColdLoading() throws {
+        let path = try AssetPath("alpha.png")
+        let decoded = try decodeAlphaTestTexture([], path: path)
+
+        #expect(decoded.processing(alpha: .passthrough).bytes == decoded.bytes)
+        #expect(
+            decoded.processing(alpha: .premultiplied).bytes
+                == [100, 50, 25, 128, 0, 0, 0, 0]
+        )
+    }
+
+    @Test
+    func cachesTextureAlphaVariantsIndependently() throws {
+        let path = try AssetPath("player.png")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let device = try #require(
+            MetalDevice(
+                bufferCapacity: 1,
+                pipelineCapacity: 1,
+                samplerCapacity: 1,
+                textureCapacity: 2
+            )
+        )
+        let assets = Assets(
+            device: device,
+            source: source,
+            decode: decodeTestTexture
+        )
+
+        let premultiplied = try assets.load(texture: path.value)
+        let cached = try assets.load(texture: path.value)
+        let passthrough = try assets.load(
+            texture: path.value,
+            alpha: .passthrough
+        )
+
+        #expect(premultiplied == cached)
+        #expect(premultiplied != passthrough)
+        #expect(premultiplied.alpha == .premultiplied)
+        #expect(passthrough.alpha == .passthrough)
+    }
+
+    @Test
+    func hotReloadReappliesRegisteredAlphaProcessing() async throws {
+        let path = try AssetPath("player.png")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let writer = TestTextureWriter()
+        let (events, continuation) = AsyncStream<ReloadEvent>.makeStream()
+        let monitor = ReloadMonitor(
+            source: source,
+            decodeTexture: decodeAlphaTestTexture,
+            decodeSound: decodeTestSound
+        )
+        let task = Task { await monitor.run(events) }
+        defer {
+            continuation.finish()
+            task.cancel()
+        }
+
+        continuation.yield(
+            .registerTexture(
+                path: path,
+                size: TextureSize(width: 2, height: 1),
+                alpha: .premultiplied,
+                writer: writer
+            )
+        )
+        continuation.yield(
+            .change(AssetChange(path: path, kind: .modified))
+        )
+        try await waitForWrite(from: writer)
+
+        #expect(await writer.lastWrite == [100, 50, 25, 128, 0, 0, 0, 0])
+    }
+
     @Test
     func createsSpriteSheetAndAdvancesAnimationTimeline() throws {
         let path = try AssetPath("player.png")

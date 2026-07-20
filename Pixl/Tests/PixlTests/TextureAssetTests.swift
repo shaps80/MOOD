@@ -13,6 +13,7 @@ struct TextureAssetTests {
 
         #expect(copy == asset)
         #expect(copy.size == SIMD2(64, 32))
+        #expect(copy.alpha == .premultiplied)
         #expect(Set([asset, copy]).count == 1)
     }
 

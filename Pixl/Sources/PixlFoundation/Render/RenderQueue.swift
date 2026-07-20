@@ -613,7 +613,14 @@ public final class RenderQueue {
     private static func materialHash(_ material: Material) -> UInt64 {
         var value = mix(material.texture.rawValue)
         value ^= mix(UInt64(samplerCode(material.sampler)) << 1)
-        value ^= material.blendMode == .normal ? 0x9e37_79b9_7f4a_7c15 : 0
+        switch material.blendMode {
+        case .replace:
+            break
+        case .normal:
+            value ^= 0x9e37_79b9_7f4a_7c15
+        case .premultiplied:
+            value ^= 0xc2b2_ae3d_27d4_eb4f
+        }
         return mix(value)
     }
 

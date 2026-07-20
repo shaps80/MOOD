@@ -38,6 +38,8 @@ fn pixlVertex(input: VertexInput) -> VertexOutput {
 
 @fragment
 fn pixlFragment(input: VertexOutput) -> @location(0) vec4f {
+    // Sampling preserves the texture's alpha representation. The selected
+    // pipeline blend mode must expect straight or premultiplied fragment RGB.
     return textureSample(texture, textureSampler, input.textureCoordinate)
         * input.color;
 }

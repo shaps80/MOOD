@@ -156,7 +156,10 @@ public extension Sprite.Material {
 
     /// Fixed-function composition applied when the sprite is rendered.
     enum BlendMode: Hashable, Sendable {
-        /// Straight-alpha source-over composition.
+        /// Source-over composition matching the texture asset's alpha processing.
+        ///
+        /// Premultiplied assets use premultiplied source-over; passthrough
+        /// assets use straight-alpha source-over.
         case normal
 
         /// Replaces the destination with the sprite output.

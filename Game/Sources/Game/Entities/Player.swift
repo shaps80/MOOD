@@ -25,8 +25,9 @@ struct Player: Entity {
         )
 
         sprite.region = animation.region
-        sprite.layer = .player
+        sprite.layer = .entity
         sprite.isFlipped = true
+        sprite.order = 1
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {

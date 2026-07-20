@@ -37,6 +37,8 @@ fragment float4 pixlFragment(
     texture2d<float> texture [[texture(0)]],
     sampler textureSampler [[sampler(0)]]
 ) {
+    // Sampling preserves the texture's alpha representation. The selected
+    // pipeline blend mode must expect straight or premultiplied fragment RGB.
     return texture.sample(textureSampler, input.textureCoordinate)
         * input.color;
 }

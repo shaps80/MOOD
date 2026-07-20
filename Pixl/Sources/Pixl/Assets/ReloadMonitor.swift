@@ -1,3 +1,4 @@
+import PixlGraphics
 import PixlPlatform
 import Swift
 
@@ -12,7 +13,7 @@ struct ReloadMonitor: Sendable {
     let decodeSound: SoundDecode
 
     func run(_ events: AsyncStream<ReloadEvent>) async {
-        var targets: [AssetPath: ReloadTarget] = [:]
+        var targets: [AssetPath: [ReloadTarget]] = [:]
         var pendingReloads: [AssetPath: Task<Void, Never>] = [:]
         defer {
             for task in pendingReloads.values {
@@ -24,20 +25,32 @@ struct ReloadMonitor: Sendable {
             guard !Task.isCancelled else { return }
 
             switch event {
-            case .registerTexture(let path, let size, let writer):
-                targets[path] = .texture(size: size, writer: writer)
+            case .registerTexture(let path, let size, let alpha, let writer):
+                targets[path, default: []].append(
+                    .texture(size: size, alpha: alpha, writer: writer)
+                )
 
             case .registerSound(let path, let writer):
-                targets[path] = .sound(writer: writer)
+                targets[path, default: []].append(.sound(writer: writer))
 
             case .change(let change):
-                guard let target = targets[change.path] else { continue }
+                guard let registered = targets[change.path] else { continue }
                 pendingReloads[change.path]?.cancel()
-                if case .sound(let writer) = target,
-                   change.kind == .removed {
-                    pendingReloads[change.path] = nil
-                    await invalidateSound(change.path, writer: writer)
-                    continue
+                var reloadTargets = registered
+                if change.kind == .removed {
+                    reloadTargets.removeAll()
+                    for target in registered {
+                        switch target {
+                        case .sound(let writer):
+                            await invalidateSound(change.path, writer: writer)
+                        case .texture:
+                            reloadTargets.append(target)
+                        }
+                    }
+                    if reloadTargets.isEmpty {
+                        pendingReloads[change.path] = nil
+                        continue
+                    }
                 }
                 pendingReloads[change.path] = Task {
                     do {
@@ -46,7 +59,7 @@ struct ReloadMonitor: Sendable {
                         return
                     }
                     guard !Task.isCancelled else { return }
-                    await reload(change.path, target: target)
+                    await reload(change.path, targets: reloadTargets)
                 }
             }
         }
@@ -54,7 +67,7 @@ struct ReloadMonitor: Sendable {
 
     private func reload(
         _ path: AssetPath,
-        target: ReloadTarget
+        targets: [ReloadTarget]
     ) async {
         guard !Task.isCancelled else { return }
 
@@ -62,26 +75,31 @@ struct ReloadMonitor: Sendable {
         do {
             bytes = try source.read(path)
         } catch {
-            if case .sound(let writer) = target,
-               case .notFound = error {
-                await invalidateSound(path, writer: writer)
-                return
+            if case .notFound = error {
+                for target in targets {
+                    if case .sound(let writer) = target {
+                        await invalidateSound(path, writer: writer)
+                    }
+                }
             }
             report(assetError(error), for: path)
             return
         }
 
-        switch target {
-        case .texture(let size, let writer):
-            await reloadTexture(
-                bytes,
-                path: path,
-                size: size,
-                writer: writer
-            )
+        for target in targets {
+            switch target {
+            case .texture(let size, let alpha, let writer):
+                await reloadTexture(
+                    bytes,
+                    path: path,
+                    size: size,
+                    alpha: alpha,
+                    writer: writer
+                )
 
-        case .sound(let writer):
-            await reloadSound(bytes, path: path, writer: writer)
+            case .sound(let writer):
+                await reloadSound(bytes, path: path, writer: writer)
+            }
         }
     }
 
@@ -89,11 +107,12 @@ struct ReloadMonitor: Sendable {
         _ bytes: [UInt8],
         path: AssetPath,
         size: TextureSize,
+        alpha: TextureAlpha,
         writer: any TextureWriter
     ) async {
         let decoded: DecodedTexture
         do {
-            decoded = try decodeTexture(bytes, path)
+            decoded = try decodeTexture(bytes, path).processing(alpha: alpha)
         } catch {
             report(error, kind: "texture", for: path)
             return
@@ -180,6 +199,7 @@ enum ReloadEvent: Sendable {
     case registerTexture(
         path: AssetPath,
         size: TextureSize,
+        alpha: TextureAlpha,
         writer: any TextureWriter
     )
     case registerSound(
@@ -192,6 +212,7 @@ enum ReloadEvent: Sendable {
 private enum ReloadTarget: Sendable {
     case texture(
         size: TextureSize,
+        alpha: TextureAlpha,
         writer: any TextureWriter
     )
     case sound(writer: any SoundWriter)

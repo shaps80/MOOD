@@ -29,9 +29,9 @@ public struct GameSettings: Sendable, Hashable {
 
     /// Requested presentation rate in frames per second.
     ///
-    /// This is a platform preference, not a guarantee. Actual presentation
-    /// callbacks—and therefore ``Game/update(_:lanes:)`` and rendering—may run
-    /// slower when constrained by display timing or system load.
+    /// This is a platform preference, not a guarantee. Presentation updates
+    /// and rendering may run slower when constrained by display timing or
+    /// system load.
     public let preferredFps: Int
 
     /// Initial drawable resolution.

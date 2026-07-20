@@ -195,10 +195,12 @@ final class MetalDevice: Device {
         switch descriptor.blendMode {
         case .replace:
             colorAttachment?.isBlendingEnabled = false
-        case .normal:
+        case .normal, .premultiplied:
             colorAttachment?.isBlendingEnabled = true
             colorAttachment?.rgbBlendOperation = .add
-            colorAttachment?.sourceRGBBlendFactor = .sourceAlpha
+            colorAttachment?.sourceRGBBlendFactor = descriptor.blendMode == .premultiplied
+                ? .one
+                : .sourceAlpha
             colorAttachment?.destinationRGBBlendFactor = .oneMinusSourceAlpha
             colorAttachment?.alphaBlendOperation = .add
             colorAttachment?.sourceAlphaBlendFactor = .one

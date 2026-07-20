@@ -13,7 +13,7 @@ public final class Assets {
     private let textureWriter: (Texture) -> (any TextureWriter)?
     private let soundWriter: (Sound) -> (any SoundWriter)?
     private let textureResources: TextureResources?
-    private var textures: [AssetPath: TextureAsset] = [:]
+    private var textures: [TextureCacheKey: TextureAsset] = [:]
     private var sounds: [AssetPath: SoundAsset] = [:]
     private var reloadContinuation: AsyncStream<ReloadEvent>.Continuation?
     private var changeTask: Task<Void, Never>?
@@ -73,13 +73,19 @@ public final class Assets {
     }
 
     /// Loads or returns the cached logical texture asset at a relative path.
-    /// - Parameter path: Source-relative image path.
+    /// Decoded PNG channels are premultiplied by default. Pass `.passthrough`
+    /// when the original RGBA channels must remain unchanged; sprite rendering
+    /// automatically selects composition compatible with the returned asset.
+    /// - Parameters:
+    ///   - path: Source-relative image path.
+    ///   - alpha: Processing applied to decoded RGB before GPU upload.
     /// - Returns: A stable logical texture asset shared by repeated loads.
     /// - Throws: ``AssetError`` when assets are unavailable, bytes cannot be read or decoded, or GPU creation fails.
     public func load(
-        texture path: String
+        texture path: String,
+        alpha: TextureAlpha = .premultiplied
     ) throws(AssetError) -> TextureAsset {
-        try loadTexture(path)
+        try loadTexture(path, alpha: alpha)
     }
 
     /// Loads or returns the cached resident sound asset at a relative path.
@@ -93,10 +99,12 @@ public final class Assets {
     }
 
     private func loadTexture(
-        _ value: String
+        _ value: String,
+        alpha: TextureAlpha
     ) throws(AssetError) -> TextureAsset {
         let path = try makePath(value)
-        if let texture = textures[path] {
+        let key = TextureCacheKey(path: path, alpha: alpha)
+        if let texture = textures[key] {
             return texture
         }
 
@@ -111,19 +119,21 @@ public final class Assets {
             throw assetError(error)
         }
 
-        let decoded = try decode(bytes, path)
+        let decoded = try decode(bytes, path).processing(alpha: alpha)
         let texture = try makeTexture(decoded, on: device)
         let resource = textureResources.insert(texture)
         let asset = TextureAsset(
             identity: resource.rawValue,
-            size: SIMD2(decoded.width, decoded.height)
+            size: SIMD2(decoded.width, decoded.height),
+            alpha: alpha
         )
-        textures[path] = asset
+        textures[key] = asset
         if let writer = textureWriter(texture) {
             reloadContinuation?.yield(
                 .registerTexture(
                     path: path,
                     size: texture.descriptor.size,
+                    alpha: alpha,
                     writer: writer
                 )
             )
@@ -214,4 +224,9 @@ public final class Assets {
             throw .textureCreation(error)
         }
     }
+}
+
+private struct TextureCacheKey: Hashable {
+    let path: AssetPath
+    let alpha: TextureAlpha
 }

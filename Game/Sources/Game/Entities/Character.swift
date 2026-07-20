@@ -43,7 +43,7 @@ struct Character: Entity {
 
         timeline = .init(animation: idle)
         sprite.region = timeline.region
-        sprite.layer = .player
+        sprite.layer = .entity
 
         bindings.bind(to: context.inputs)
     }

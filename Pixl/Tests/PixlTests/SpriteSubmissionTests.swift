@@ -80,6 +80,32 @@ struct SpriteSubmissionTests {
         #expect(second.blendMode == .replace)
     }
 
+    @Test
+    func normalCompositionMatchesTextureAlphaProcessing() {
+        let premultiplied = TextureAsset(
+            identity: 1,
+            size: SIMD2(1, 1),
+            alpha: .premultiplied
+        )
+        let passthrough = TextureAsset(
+            identity: 2,
+            size: SIMD2(1, 1),
+            alpha: .passthrough
+        )
+
+        let premultipliedSubmission = SpriteSubmission(
+            sprite: Sprite(region: TextureRegion(asset: premultiplied)),
+            transform: identity
+        )
+        let passthroughSubmission = SpriteSubmission(
+            sprite: Sprite(region: TextureRegion(asset: passthrough)),
+            transform: identity
+        )
+
+        #expect(premultipliedSubmission.blendMode == .premultiplied)
+        #expect(passthroughSubmission.blendMode == .normal)
+    }
+
     private var identity: Transform2D {
         Transform2D(
             x: SIMD3(1, 0, 0),

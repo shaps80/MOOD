@@ -2,9 +2,8 @@ import Swift
 
 /// Fixed-rate simulation policy.
 ///
-/// The runtime accumulates elapsed presentation time and invokes
-/// ``Game/fixedUpdate(_:lanes:)`` at this cadence. Rendering remains driven by
-/// presentation callbacks and can run at a different rate.
+/// Fixed updates run at this cadence. Rendering remains driven by presentation
+/// callbacks and can run at a different rate.
 public struct FixedStep: Hashable, Sendable {
     /// Number of fixed simulation ticks per second.
     public let updatesPerSecond: UInt32
@@ -37,9 +36,9 @@ public struct FixedStep: Hashable, Sendable {
 public struct LoopSettings: Hashable, Sendable {
     /// Largest variable-update delta accepted after a stalled presentation.
     ///
-    /// A longer real-world interval is clamped to this value before it reaches
-    /// ``Game/update(_:lanes:)``, preventing one stalled frame from producing
-    /// an unexpectedly large simulation jump.
+    /// A longer real-world interval is clamped to this value before the
+    /// presentation update, preventing one stalled frame from producing an
+    /// unexpectedly large simulation jump.
     public let maximumDeltaSeconds: Double
 
     /// Optional fixed-rate simulation policy.

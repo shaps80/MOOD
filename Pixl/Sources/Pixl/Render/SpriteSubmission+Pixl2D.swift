@@ -35,7 +35,9 @@ extension SpriteSubmission {
                 addressModeU: sprite.material.addressing.horizontal.platform,
                 addressModeV: sprite.material.addressing.vertical.platform
             ),
-            blendMode: sprite.material.blendMode.platform,
+            blendMode: sprite.material.blendMode.platform(
+                alpha: sprite.asset.alpha
+            ),
             layer: sprite.layer.rawValue,
             order: sprite.order
         )
@@ -62,9 +64,10 @@ private extension Sprite.Material.AddressMode {
 }
 
 private extension Sprite.Material.BlendMode {
-    var platform: BlendMode {
+    func platform(alpha: TextureAlpha) -> BlendMode {
         switch self {
-        case .normal: .normal
+        case .normal:
+            alpha == .premultiplied ? .premultiplied : .normal
         case .replace: .replace
         }
     }
