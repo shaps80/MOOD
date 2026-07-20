@@ -12,6 +12,35 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     /// Translation homogeneous matrix column.
     public let translation: SIMD3<Float>
 
+    /// Creates a transform from decomposed position, rotation, and scale.
+    ///
+    /// Omitting every argument creates the identity transform. Supplying only
+    /// the first argument creates a translation, such as `Transform2D(position)`.
+    ///
+    /// - Parameters:
+    ///   - translation: World-space position.
+    ///   - rotation: Counter-clockwise rotation in radians.
+    ///   - scale: Local-axis scale.
+    public init(
+        _ translation: Vec2 = .zero,
+        rotation: Double = 0,
+        scale: Vec2 = .one
+    ) {
+        let rotation = sinCos(rotation)
+        let cosine = Float(rotation.cosine)
+        let sine = Float(rotation.sine)
+        let scaleX = Float(scale.x)
+        let scaleY = Float(scale.y)
+
+        x = .init(cosine * scaleX, sine * scaleX, 0)
+        y = .init(-sine * scaleY, cosine * scaleY, 0)
+        self.translation = .init(
+            Float(translation.x),
+            Float(translation.y),
+            1
+        )
+    }
+
     /// Creates a column-major 2D affine transform.
     ///
     /// - Parameters:
@@ -70,5 +99,11 @@ public struct Transform2D: BitwiseCopyable, Sendable {
             y: y,
             translation: translation + (x * xOffset) + (y * yOffset)
         )
+    }
+}
+
+extension SIMD2: @retroactive ExpressibleByFloatLiteral where Scalar == Double {
+    public init(floatLiteral value: Scalar) {
+        self.init(repeating: value)
     }
 }

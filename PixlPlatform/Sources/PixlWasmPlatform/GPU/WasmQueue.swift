@@ -130,7 +130,7 @@ final class WasmQueue: Queue {
                 }
 
             case .setVertexBytes(let offset, let count, let index):
-                precondition(index == 1, "Current generated WGSL maps vertex bytes at index 1")
+                precondition(index == 1 || index == 2, "Current generated WGSL maps vertex uniforms at index 1 or 2")
                 immediateOffset = aligned(immediateOffset, to: immediateAlignment)
                 frame.withBytes(offset: offset, count: count) { bytes in
                     let source = JSUint8Array(buffer: bytes.bindMemory(to: UInt8.self))
@@ -141,6 +141,26 @@ final class WasmQueue: Queue {
                     )
                 }
                 currentImmediateOffset = immediateOffset
+                immediateOffset += count
+
+            case .setVertexData(let offset, let count, let index):
+                immediateOffset = aligned(immediateOffset, to: 4)
+                frame.withBytes(offset: offset, count: count) { bytes in
+                    let source = JSUint8Array(
+                        buffer: bytes.bindMemory(to: UInt8.self)
+                    )
+                    _ = device.queue.writeBuffer(
+                        immediateBuffer,
+                        Double(immediateOffset),
+                        source.jsObject
+                    )
+                }
+                _ = encoder.setVertexBuffer!(
+                    Double(index),
+                    immediateBuffer,
+                    Double(immediateOffset),
+                    Double(count)
+                )
                 immediateOffset += count
 
             case .setFragmentTexture(let texture, _):

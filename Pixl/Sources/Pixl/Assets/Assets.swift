@@ -128,6 +128,10 @@ public final class Assets {
         )
     }
 
+    func texture(for resource: TextureResourceID) -> Texture? {
+        textureResources?.texture(for: resource)
+    }
+
     private func loadSound(
         _ value: String
     ) throws(AssetError) -> SoundAsset {

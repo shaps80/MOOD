@@ -28,6 +28,7 @@ struct SpriteSubmissionTests {
                 blendMode: .replace
             ),
             layer: 7,
+            order: 9,
             isFlipped: true
         )
 
@@ -39,9 +40,11 @@ struct SpriteSubmissionTests {
         #expect(submission.texture.rawValue == 42)
         #expect(submission.textureCoordinateOrigin == SIMD2(0.25, 0.25))
         #expect(submission.textureCoordinateScale == SIMD2(0.5, 0.5))
-        #expect(submission.transformX == SIMD3(-4, 0, 0))
-        #expect(submission.transformY == SIMD3(0, 2, 0))
-        #expect(submission.transformTranslation == SIMD3(0, 0, 1))
+        #expect(submission.boundsMinimum == SIMD2(-2, -1))
+        #expect(submission.boundsMaximum == SIMD2(2, 1))
+        #expect(submission.transformX == SIMD2(-4, 0))
+        #expect(submission.transformY == SIMD2(0, 2))
+        #expect(submission.transformTranslation == SIMD2(0, 0))
         #expect(submission.sampler.minFilter == .linear)
         #expect(submission.sampler.magFilter == .nearest)
         #expect(submission.sampler.mipFilter == .nearest)
@@ -49,6 +52,8 @@ struct SpriteSubmissionTests {
         #expect(submission.sampler.addressModeV == .mirrorRepeat)
         #expect(submission.sampler.addressModeW == .clampToEdge)
         #expect(submission.blendMode == .replace)
+        #expect(submission.layer == 7)
+        #expect(submission.order == 9)
     }
 
     @Test
@@ -64,12 +69,12 @@ struct SpriteSubmissionTests {
         sprite.material.blendMode = .replace
         let second = SpriteSubmission(sprite: sprite, transform: identity)
 
-        #expect(first.transformX == SIMD3(2, 0, 0))
+        #expect(first.transformX == SIMD2(2, 0))
         #expect(first.sampler.minFilter == .nearest)
         #expect(first.sampler.addressModeU == .clampToEdge)
         #expect(first.blendMode == .normal)
 
-        #expect(second.transformX == SIMD3(-2, 0, 0))
+        #expect(second.transformX == SIMD2(-2, 0))
         #expect(second.sampler.minFilter == .linear)
         #expect(second.sampler.addressModeU == .repeat)
         #expect(second.blendMode == .replace)

@@ -1,4 +1,5 @@
 @_exported import PixlGraphics
+import PixlFoundation
 import PixlPlatform
 
 public typealias RenderTarget = PixlPlatform.RenderTarget
@@ -8,6 +9,7 @@ public typealias GamePhase = PixlPlatform.GamePhase
 public typealias Platform = PixlPlatform.Platform
 public typealias GameSettings = PixlPlatform.GameSettings
 public typealias Frame = PixlPlatform.Frame
+public typealias RenderQueue = PixlFoundation.RenderQueue
 
 #if canImport(PixlMetalPlatform)
 import PixlMetalPlatform
@@ -27,6 +29,10 @@ public extension Game {
 
     static var loopSettings: LoopSettings {
         .default
+    }
+
+    static var renderQueueSettings: RenderQueue.Settings {
+        .init()
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) { }

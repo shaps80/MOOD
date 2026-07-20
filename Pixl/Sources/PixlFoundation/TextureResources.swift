@@ -5,7 +5,7 @@ import Swift
 private let nextTextureResourceIdentity = ManagedAtomic<UInt64>(1)
 
 /// Opaque identity used to resolve one logical texture asset.
-package struct TextureResourceID: Hashable, Sendable {
+public struct TextureResourceID: Hashable, Sendable {
     package let rawValue: UInt64
 
     package init(rawValue: UInt64) {
@@ -15,11 +15,11 @@ package struct TextureResourceID: Hashable, Sendable {
 }
 
 /// Runtime-owned mapping from logical texture identities to platform resources.
-package final class TextureResources {
+public final class TextureResources {
     private let device: any Device
     private var textures: [TextureResourceID: Texture] = [:]
 
-    package init(device: any Device) {
+    public init(device: any Device) {
         self.device = device
     }
 
@@ -29,7 +29,7 @@ package final class TextureResources {
         }
     }
 
-    package func insert(_ texture: Texture) -> TextureResourceID {
+    public func insert(_ texture: Texture) -> TextureResourceID {
         let identity = nextTextureResourceIdentity
             .loadThenWrappingIncrement(ordering: .relaxed)
         precondition(
@@ -41,14 +41,14 @@ package final class TextureResources {
         return id
     }
 
-    package func texture(for id: TextureResourceID) -> Texture? {
+    public func texture(for id: TextureResourceID) -> Texture? {
         textures[id]
     }
 
     /// Replaces a resolved resource while preserving its logical identity.
     /// The store assumes ownership of `texture` only when the ID is valid.
     @discardableResult
-    package func replace(
+    public func replace(
         _ texture: Texture,
         for id: TextureResourceID
     ) -> Bool {
@@ -59,7 +59,7 @@ package final class TextureResources {
     }
 
     @discardableResult
-    package func remove(_ id: TextureResourceID) -> Bool {
+    public func remove(_ id: TextureResourceID) -> Bool {
         guard let texture = textures.removeValue(forKey: id) else {
             return false
         }

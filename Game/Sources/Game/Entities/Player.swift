@@ -4,12 +4,9 @@ import Pixl2D
 struct Player: Entity {
     private var sprite: Sprite
     private var animation: SpriteAnimation.Timeline
-    private let camera: OrthographicCamera
     private var position: Vec2 = .init(96, 0)
 
-    init(camera: OrthographicCamera, context: GameContext) throws {
-        self.camera = camera
-
+    init(context: GameContext) throws {
         sprite = try .init(
             named: "player.png",
             context: context
@@ -36,16 +33,10 @@ struct Player: Entity {
         sprite.region = animation.region
     }
 
-    func submit(
-        to renderer: SpriteRenderer,
-        output: RenderTarget,
-    ) {
-        renderer.submit(
+    func submit(to queue: RenderQueue) {
+        queue.submit(
             sprite,
-            transform:
-                camera
-                .projection(for: output)
-                .translated(by: position)
+            transform: .init(position)
         )
     }
 }

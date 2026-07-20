@@ -2,6 +2,15 @@ import Metal
 import QuartzCore
 import PixlPlatform
 
+private final class MetalUploadSlot: @unchecked Sendable {
+    let buffer: MTLBuffer
+    let available = DispatchSemaphore(value: 1)
+
+    init(buffer: MTLBuffer) {
+        self.buffer = buffer
+    }
+}
+
 final class MetalQueue: Queue {
     private let queue: MTLCommandQueue
     private let buffers: ResourcePool<MTLBuffer>
@@ -10,6 +19,8 @@ final class MetalQueue: Queue {
     private let textures: ResourcePool<MTLTexture>
     private let defaultTexture: MTLTexture
     private let defaultSampler: MTLSamplerState
+    private let uploadSlots: [MetalUploadSlot]
+    private var uploadIndex = 0
 
     init(
         queue: MTLCommandQueue,
@@ -18,7 +29,9 @@ final class MetalQueue: Queue {
         samplers: ResourcePool<MTLSamplerState>,
         textures: ResourcePool<MTLTexture>,
         defaultTexture: MTLTexture,
-        defaultSampler: MTLSamplerState
+        defaultSampler: MTLSamplerState,
+        device: MTLDevice,
+        frameUploadCapacity: UInt32
     ) {
         self.queue = queue
         self.buffers = buffers
@@ -27,6 +40,15 @@ final class MetalQueue: Queue {
         self.textures = textures
         self.defaultTexture = defaultTexture
         self.defaultSampler = defaultSampler
+        uploadSlots = (0..<3).map { _ in
+            guard let buffer = device.makeBuffer(
+                length: Int(frameUploadCapacity),
+                options: .storageModeShared
+            ) else {
+                fatalError("Metal frame upload buffer creation failed")
+            }
+            return MetalUploadSlot(buffer: buffer)
+        }
     }
 
     func submit(_ frame: borrowing Frame) throws(QueueError) {
@@ -41,6 +63,22 @@ final class MetalQueue: Queue {
             throw QueueError.commandBufferCreationFailed
         }
 
+        let upload = uploadSlots[uploadIndex]
+        uploadIndex = (uploadIndex + 1) % uploadSlots.count
+        upload.available.wait()
+        var submitted = false
+        defer {
+            if !submitted { upload.available.signal() }
+        }
+        if frame.byteCount > 0 {
+            frame.withBytes(offset: 0, count: frame.byteCount) { bytes in
+                upload.buffer.contents().copyMemory(
+                    from: bytes.baseAddress!,
+                    byteCount: bytes.count
+                )
+            }
+        }
+
         var index: UInt32 = 0
 
         while index < frame.passCount {
@@ -48,7 +86,12 @@ final class MetalQueue: Queue {
 
             switch pass {
             case .render(let renderPass):
-                try encode(renderPass, from: frame, into: commandBuffer)
+                try encode(
+                    renderPass,
+                    from: frame,
+                    upload: upload.buffer,
+                    into: commandBuffer
+                )
             }
 
             index += 1
@@ -58,12 +101,17 @@ final class MetalQueue: Queue {
             commandBuffer.present(drawable)
         }
 
+        commandBuffer.addCompletedHandler { _ in
+            upload.available.signal()
+        }
         commandBuffer.commit()
+        submitted = true
     }
 
     private func encode(
         _ pass: RecordedRenderPass,
         from frame: borrowing Frame,
+        upload: MTLBuffer,
         into commandBuffer: MTLCommandBuffer
     ) throws(QueueError) {
         let attachment = pass.descriptor.colorAttachment
@@ -126,6 +174,13 @@ final class MetalQueue: Queue {
                         index: Int(index)
                     )
                 }
+
+            case .setVertexData(let offset, _, let index):
+                encoder.setVertexBuffer(
+                    upload,
+                    offset: Int(offset),
+                    index: Int(index)
+                )
 
             case .setFragmentTexture(let texture, let index):
                 guard textures.withValue(for: texture, { texture in

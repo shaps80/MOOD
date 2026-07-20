@@ -12,13 +12,15 @@ final class MetalDevice: Device {
     private let defaultTexture: MTLTexture
     private let defaultSampler: MTLSamplerState
     private let shaderLibrary: any MTLLibrary
+    private let frameUploadCapacity: UInt32
 
     init(
         device: MTLDevice,
         bufferCapacity: UInt32,
         pipelineCapacity: UInt32,
         samplerCapacity: UInt32,
-        textureCapacity: UInt32
+        textureCapacity: UInt32,
+        frameUploadCapacity: UInt32 = 1024 * 1024
     ) {
         guard let commandQueue = device.makeCommandQueue() else {
             fatalError("Metal command queue creation failed")
@@ -59,6 +61,7 @@ final class MetalDevice: Device {
         self.defaultTexture = defaultTexture
         self.defaultSampler = defaultSampler
         self.shaderLibrary = shaderLibrary
+        self.frameUploadCapacity = frameUploadCapacity
         buffers = ResourcePool(capacity: bufferCapacity)
         pipelines = ResourcePool(capacity: pipelineCapacity)
         samplers = ResourcePool(capacity: samplerCapacity)
@@ -79,7 +82,8 @@ final class MetalDevice: Device {
             bufferCapacity: bufferCapacity,
             pipelineCapacity: pipelineCapacity,
             samplerCapacity: samplerCapacity,
-            textureCapacity: textureCapacity
+            textureCapacity: textureCapacity,
+            frameUploadCapacity: 1024 * 1024
         )
     }
 
@@ -398,7 +402,9 @@ final class MetalDevice: Device {
             samplers: samplers,
             textures: textures,
             defaultTexture: defaultTexture,
-            defaultSampler: defaultSampler
+            defaultSampler: defaultSampler,
+            device: metalDevice,
+            frameUploadCapacity: frameUploadCapacity
         )
     }
 

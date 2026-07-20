@@ -6,7 +6,25 @@ final class GameRuntime<G: Game>: PlatformGame {
     }
 
     static var renderSettings: RenderSettings {
-        G.renderSettings
+        let source = G.renderSettings
+        let queue = G.renderQueueSettings
+        let minimumBytes = UInt32(
+            min(UInt64(UInt32.max), UInt64(queue.capacity) * 48 + 4096)
+        )
+        let minimumCommands = UInt32(
+            min(UInt64(UInt32.max), UInt64(queue.capacity) * 4 + 4)
+        )
+        return RenderSettings(
+            drawableFormat: source.drawableFormat,
+            framePassCapacity: source.framePassCapacity,
+            frameCommandCapacity: max(source.frameCommandCapacity, minimumCommands),
+            frameByteCapacity: max(source.frameByteCapacity, minimumBytes),
+            bufferCapacity: source.bufferCapacity,
+            pipelineCapacity: source.pipelineCapacity,
+            samplerCapacity: source.samplerCapacity,
+            textureCapacity: source.textureCapacity,
+            drawableCapacity: source.drawableCapacity
+        )
     }
 
     static var audioSettings: AudioSettings {
@@ -31,7 +49,8 @@ final class GameRuntime<G: Game>: PlatformGame {
     init(platform: any Platform) throws {
         context = .init(
             platform: platform,
-            format: G.renderSettings.drawableFormat
+            format: G.renderSettings.drawableFormat,
+            renderQueueSettings: G.renderQueueSettings
         )
         game = try G(context: context)
         loop = Loop(settings: G.loopSettings)
@@ -73,7 +92,8 @@ final class GameRuntime<G: Game>: PlatformGame {
             frameTimeSeconds: schedule.frameTimeSeconds,
             cpuGameSeconds: Self.seconds(gameEnd - gameStart),
             cpuRenderSeconds: Self.seconds(renderEnd - gameEnd),
-            drawCount: frame.drawCount
+            drawCount: frame.drawCount,
+            renderQueue: context.consumeRenderMetrics()
         )
     }
 

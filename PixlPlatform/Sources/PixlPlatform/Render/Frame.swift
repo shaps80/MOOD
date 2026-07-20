@@ -96,6 +96,7 @@ public final class Frame {
             drawCount += 1
         case .setVertexBuffer,
              .setVertexBytes,
+             .setVertexData,
              .setFragmentTexture,
              .setFragmentSampler:
             break
@@ -144,6 +145,27 @@ public final class Frame {
         byteCount += count
         append(
             .setVertexBytes(offset: offset, count: count, index: index),
+            toRenderPassAt: passIndex
+        )
+    }
+
+    package func appendVertexData(
+        _ source: UnsafeRawBufferPointer,
+        index: UInt32,
+        toRenderPassAt passIndex: UInt32
+    ) {
+        precondition(!source.isEmpty, "Vertex data must not be empty")
+        let count = UInt32(source.count)
+        precondition(count <= byteCapacity - byteCount, "Frame byte capacity exceeded")
+
+        let offset = byteCount
+        bytes.advanced(by: Int(offset)).copyMemory(
+            from: source.baseAddress!,
+            byteCount: source.count
+        )
+        byteCount += count
+        append(
+            .setVertexData(offset: offset, count: count, index: index),
             toRenderPassAt: passIndex
         )
     }

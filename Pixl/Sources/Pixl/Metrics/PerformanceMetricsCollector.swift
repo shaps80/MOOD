@@ -1,4 +1,5 @@
 import Swift
+import PixlFoundation
 
 /// Fixed-window CPU metrics aggregation owned by the game runtime.
 struct PerformanceMetricsCollector {
@@ -9,6 +10,12 @@ struct PerformanceMetricsCollector {
     private var frameCount: UInt64 = 0
     private var gameSeconds = 0.0
     private var renderSeconds = 0.0
+    private var renderLoweringSeconds = 0.0
+    private var renderCullingSeconds = 0.0
+    private var renderLayerBinningSeconds = 0.0
+    private var renderOrderingSeconds = 0.0
+    private var renderBatchingSeconds = 0.0
+    private var renderInstancesSeconds = 0.0
     private var maximumFrameSeconds = 0.0
     private var hitchCount: UInt64 = 0
     private var totalHitchCount: UInt64 = 0
@@ -23,12 +30,19 @@ struct PerformanceMetricsCollector {
         frameTimeSeconds: Double,
         cpuGameSeconds: Double,
         cpuRenderSeconds: Double,
-        drawCount: UInt32 = 0
+        drawCount: UInt32 = 0,
+        renderQueue: RenderQueue.Metrics = .init()
     ) -> PerformanceMetrics {
         elapsedSeconds += frameTimeSeconds
         frameCount &+= 1
         gameSeconds += cpuGameSeconds
         renderSeconds += cpuRenderSeconds
+        renderLoweringSeconds += renderQueue.loweringSeconds
+        renderCullingSeconds += renderQueue.cullingSeconds
+        renderLayerBinningSeconds += renderQueue.layerBinningSeconds
+        renderOrderingSeconds += renderQueue.orderingSeconds
+        renderBatchingSeconds += renderQueue.batchingSeconds
+        renderInstancesSeconds += renderQueue.instancesSeconds
         maximumFrameSeconds = max(maximumFrameSeconds, frameTimeSeconds)
 
         if frameTimeSeconds > hitchThresholdSeconds {
@@ -45,6 +59,12 @@ struct PerformanceMetricsCollector {
                 maximumFrameTimeSeconds: maximumFrameSeconds,
                 averageCPUTimeSeconds: gameSeconds / Double(frameCount),
                 averageRenderTimeSeconds: renderSeconds / Double(frameCount),
+                averageRenderLoweringSeconds: renderLoweringSeconds / Double(frameCount),
+                averageRenderCullingSeconds: renderCullingSeconds / Double(frameCount),
+                averageRenderLayerBinningSeconds: renderLayerBinningSeconds / Double(frameCount),
+                averageRenderOrderingSeconds: renderOrderingSeconds / Double(frameCount),
+                averageRenderBatchingSeconds: renderBatchingSeconds / Double(frameCount),
+                averageRenderInstancesSeconds: renderInstancesSeconds / Double(frameCount),
                 hitchCount: hitchCount,
                 hitchThresholdSeconds: hitchThresholdSeconds
             )
@@ -67,6 +87,12 @@ struct PerformanceMetricsCollector {
         frameCount = 0
         gameSeconds = 0
         renderSeconds = 0
+        renderLoweringSeconds = 0
+        renderCullingSeconds = 0
+        renderLayerBinningSeconds = 0
+        renderOrderingSeconds = 0
+        renderBatchingSeconds = 0
+        renderInstancesSeconds = 0
         maximumFrameSeconds = 0
         hitchCount = 0
     }

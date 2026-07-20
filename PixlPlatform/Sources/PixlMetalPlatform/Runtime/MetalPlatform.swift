@@ -31,7 +31,8 @@ final class MetalPlatform: @MainActor Platform {
             bufferCapacity: renderSettings.bufferCapacity,
             pipelineCapacity: renderSettings.pipelineCapacity,
             samplerCapacity: renderSettings.samplerCapacity,
-            textureCapacity: renderSettings.textureCapacity
+            textureCapacity: renderSettings.textureCapacity,
+            frameUploadCapacity: renderSettings.frameByteCapacity
         )
         self.metalDevice = metalDevice
         guard let audioBackend = MetalAudioBackend() else {

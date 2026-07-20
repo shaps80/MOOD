@@ -28,7 +28,7 @@ final class WasmDevice: Device {
             + 4 * 1024
         let bufferDescriptor = object()
         bufferDescriptor["size"] = .number(Double(immediateCapacity))
-        bufferDescriptor["usage"] = .number(Double(0x40 | 0x08))
+        bufferDescriptor["usage"] = .number(Double(0x40 | 0x20 | 0x08))
         guard let immediateBuffer = device.createBuffer!(bufferDescriptor).object else {
             fatalError("WebGPU immediate buffer creation failed")
         }

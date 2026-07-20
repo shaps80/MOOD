@@ -1,4 +1,5 @@
 import PixlPlatform
+import PixlFoundation
 
 public protocol Game {
     static var gameSettings: GameSettings { get }
@@ -6,6 +7,7 @@ public protocol Game {
     static var audioSettings: AudioSettings { get }
     static var loopSettings: LoopSettings { get }
     static var assetSettings: AssetSettings { get }
+    static var renderQueueSettings: RenderQueue.Settings { get }
 
     init(context: GameContext) throws
 

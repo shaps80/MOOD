@@ -363,23 +363,6 @@ struct AssetTests {
     }
 
     @Test
-    func createsSharedSpriteRenderer() throws {
-        let device = try #require(
-            MetalDevice(
-                bufferCapacity: 2,
-                pipelineCapacity: 1,
-                samplerCapacity: 1,
-                textureCapacity: 1
-            )
-        )
-        _ = try SpriteRenderer(
-            device: device,
-            colorFormat: .bgra8Unorm,
-            textureForAsset: { _ in nil }
-        )
-    }
-
-    @Test
     func decodesPNG() throws {
         let bytes = try #require(
             Data(

@@ -67,6 +67,15 @@ public struct RenderPassEncoder {
         }
     }
 
+    /// Copies arbitrary per-vertex or per-instance bytes into frame-owned
+    /// upload storage and binds that range as a vertex buffer.
+    public func setVertexData(
+        _ bytes: UnsafeRawBufferPointer,
+        index: UInt32
+    ) {
+        frame.appendVertexData(bytes, index: index, toRenderPassAt: passIndex)
+    }
+
     public func setFragmentTexture(
         _ texture: Texture,
         index: UInt32

@@ -41,3 +41,28 @@ fn pixlFragment(input: VertexOutput) -> @location(0) vec4f {
     return textureSample(texture, textureSampler, input.textureCoordinate)
         * input.color;
 }
+
+struct SpriteVertexInput {
+    @location(0) position: vec2f,
+    @location(2) textureCoordinate: vec2f,
+    @location(3) transformX: vec2f,
+    @location(4) transformY: vec2f,
+    @location(5) translation: vec2f,
+    @location(6) textureOrigin: vec2f,
+    @location(7) textureScale: vec2f,
+    @location(8) tint: vec4f,
+}
+
+@vertex
+fn pixlSpriteVertex(input: SpriteVertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    let world = input.transformX * input.position.x
+        + input.transformY * input.position.y
+        + input.translation;
+    let projected = parameters.transform * vec3f(world, 1.0);
+    output.position = vec4f(projected.xy, 0.0, 1.0);
+    output.color = input.tint;
+    output.textureCoordinate = input.textureOrigin
+        + input.textureCoordinate * input.textureScale;
+    return output;
+}

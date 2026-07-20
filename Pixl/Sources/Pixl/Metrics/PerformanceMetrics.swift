@@ -49,6 +49,12 @@ public struct PerformanceMetrics: Hashable, Sendable {
             maximumFrameTimeSeconds: 0,
             averageCPUTimeSeconds: 0,
             averageRenderTimeSeconds: 0,
+            averageRenderLoweringSeconds: 0,
+            averageRenderCullingSeconds: 0,
+            averageRenderLayerBinningSeconds: 0,
+            averageRenderOrderingSeconds: 0,
+            averageRenderBatchingSeconds: 0,
+            averageRenderInstancesSeconds: 0,
             hitchCount: 0,
             hitchThresholdSeconds: 0
         )
@@ -60,6 +66,12 @@ public struct PerformanceMetrics: Hashable, Sendable {
         public let maximumFrameTimeSeconds: Double
         public let averageCPUTimeSeconds: Double
         public let averageRenderTimeSeconds: Double
+        public let averageRenderLoweringSeconds: Double
+        public let averageRenderCullingSeconds: Double
+        public let averageRenderLayerBinningSeconds: Double
+        public let averageRenderOrderingSeconds: Double
+        public let averageRenderBatchingSeconds: Double
+        public let averageRenderInstancesSeconds: Double
         public let hitchCount: UInt64
         public let hitchThresholdSeconds: Double
 
@@ -69,7 +81,14 @@ public struct PerformanceMetrics: Hashable, Sendable {
             + "Frame max: \(Self.column(maximumFrameTimeSeconds * 1_000))ms | "
             + "Game avg: \(Self.column(averageCPUTimeSeconds * 1_000))ms | "
             + "Render avg: \(Self.column(averageRenderTimeSeconds * 1_000))ms | "
-            + "Window hitches: \(hitchCount)"
+            + "Window hitches: \(hitchCount)\n"
+            + "Render queue | "
+            + "Lowering: \(Self.column(averageRenderLoweringSeconds * 1_000))ms | "
+            + "Culling: \(Self.column(averageRenderCullingSeconds * 1_000))ms | "
+            + "Layer binning: \(Self.column(averageRenderLayerBinningSeconds * 1_000))ms | "
+            + "Ordering: \(Self.column(averageRenderOrderingSeconds * 1_000))ms | "
+            + "Batching: \(Self.column(averageRenderBatchingSeconds * 1_000))ms | "
+            + "Instances: \(Self.column(averageRenderInstancesSeconds * 1_000))ms"
         }
 
         private static func column(_ value: Double) -> String {

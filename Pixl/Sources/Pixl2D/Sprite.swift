@@ -5,6 +5,7 @@ public struct Sprite {
     public var region: TextureRegion
     public var material: Material
     public var layer: RenderLayer
+    public var order: UInt32
     public var isFlipped: Bool
 
     public var asset: TextureAsset {
@@ -15,11 +16,13 @@ public struct Sprite {
         region: TextureRegion,
         material: Material = .init(),
         layer: RenderLayer = 0,
+        order: UInt32 = 0,
         isFlipped: Bool = false
     ) {
         self.region = region
         self.material = material
         self.layer = layer
+        self.order = order
         self.isFlipped = isFlipped
     }
 }

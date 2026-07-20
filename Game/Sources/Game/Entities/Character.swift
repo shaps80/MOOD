@@ -12,7 +12,6 @@ struct Character: Entity {
     private var position: Vec2 = .zero
     private var velocity: Vec2 = .zero
 
-    private var camera: OrthographicCamera
     private let bindings: PlayerBindings = .init()
     private let controller: AxisController = .init(
         maxSpeed: 300,
@@ -20,9 +19,7 @@ struct Character: Entity {
         deceleration: 1000
     )
 
-    init(camera: OrthographicCamera, context: GameContext) throws {
-        self.camera = camera
-
+    init(context: GameContext) throws {
         sprite = try .init(named: "character.png", context: context)
         sprite.layer = .player
 
@@ -73,14 +70,13 @@ struct Character: Entity {
         }
     }
 
-    func submit(to renderer: SpriteRenderer, output: RenderTarget) {
-        renderer.submit(
+    func submit(to queue: RenderQueue) {
+        queue.submit(
             sprite,
-            transform:
-                camera
-                .projection(for: output)
-                .translated(by: position)
-                .scaled(x: 1.5, y: 1.5)
+            transform: Transform2D(
+                position,
+                scale: 1.5
+            )
         )
     }
 }

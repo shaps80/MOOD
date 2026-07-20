@@ -8,17 +8,17 @@ public struct RenderLayer:
     Hashable,
     Sendable
 {
-    public var rawValue: Int
+    public var rawValue: UInt32
 
-    public init(_ rawValue: Int) {
+    public init(_ rawValue: UInt32) {
         self.rawValue = rawValue
     }
 
-    public init(rawValue: Int) {
+    public init(rawValue: UInt32) {
         self.rawValue = rawValue
     }
 
-    public init(integerLiteral value: Int) {
+    public init(integerLiteral value: UInt32) {
         rawValue = value
     }
 
@@ -28,11 +28,11 @@ public struct RenderLayer:
 }
 
 public extension RenderLayer {
-    static func + (lhs: Self, rhs: Int) -> Self {
+    static func + (lhs: Self, rhs: UInt32) -> Self {
         .init(lhs.rawValue + rhs)
     }
 
-    static func - (lhs: Self, rhs: Int) -> Self {
+    static func - (lhs: Self, rhs: UInt32) -> Self {
         .init(lhs.rawValue - rhs)
     }
 }

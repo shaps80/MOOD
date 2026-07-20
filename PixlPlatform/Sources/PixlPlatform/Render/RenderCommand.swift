@@ -14,6 +14,11 @@ package enum RenderCommand {
         count: UInt32,
         index: UInt32
     )
+    case setVertexData(
+        offset: UInt32,
+        count: UInt32,
+        index: UInt32
+    )
     case setFragmentTexture(
         ResourceID,
         index: UInt32

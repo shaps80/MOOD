@@ -14,20 +14,21 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 - Pixl is a cross-platform Swift game engine with one game-facing source path running on macOS through Metal and in browsers through WebGPU.
 - `PixlPlatform` provides low-level portable GPU, runtime, raw-input, audio, and asset-source contracts. Concrete adapters own native framework code and backend-specific lowering.
-- The GPU path supports fixed-capacity frame recording, render passes with read-only colour-format metadata, buffers, textures, samplers, pipelines, vertex bytes, indexed and non-indexed draws, alpha blending, and explicit pooled-resource destruction on Metal and WebGPU.
-- Pixl owns the game lifecycle, fixed and variable updates, pause/time scaling, CPU frame metrics, PNG/WAV loading, stable texture and sound assets, and event-driven same-size hot reload on macOS. Browser assets remain packaged and static.
+- The GPU path supports fixed-capacity frame recording, render passes with read-only colour-format metadata, buffers, textures, samplers, pipelines, small vertex uniforms, large frame-owned vertex/instance data, indexed and non-indexed instanced draws, alpha blending, and explicit pooled-resource destruction on Metal and WebGPU. Metal retains three in-flight upload slots; WebGPU lowers the same command through its immediate buffer.
+- Pixl owns the game lifecycle, fixed and variable updates, pause/time scaling, CPU frame metrics, PNG/WAV loading, stable texture and sound assets, and event-driven same-size hot reload on macOS. Its existing periodic summary now reports average queue lowering, culling, layer binning, ordering, batching, and instance-compaction CPU time separately from total render-command recording; no GPU workload is included. Browser assets remain packaged and static.
 - Raw keyboard and gamepad state is portable across macOS and browsers. Pixl adds game-defined semantic input profiles, remapping, generated bindings, and axis movement helpers.
 - Resident audio, reusable playback controllers, flat buses, rate/pan/volume/loop controls, and game-owned mixing work through AVFAudio and Web Audio. Streaming and compressed formats are not yet supported.
-- Pixl2D owns the working value-semantic sprite authoring model: `Sprite`, nested `Sprite.Material`, `TextureRegion`, regular `SpriteSheet`, `SpriteAnimation.Timeline`, and `RenderLayer`, alongside transforms and its orthographic camera. Sprite construction exposes every defaultable property while requiring only a region. Material sampling supports uniform presets and independent minification/magnification and horizontal/vertical addressing; initial composition intent is straight-alpha `.normal` or `.replace`. Pixl retains only the asset-loading convenience and provisional `SpriteRenderer`, which currently records one draw per sprite and is not an architectural constraint.
+- Pixl2D owns the working value-semantic sprite authoring model: `Sprite`, nested `Sprite.Material`, `TextureRegion`, regular `SpriteSheet`, `SpriteAnimation.Timeline`, unsigned `RenderLayer` and layer-local `order`, alongside transforms and its orthographic camera. Sprite construction exposes every defaultable property while requiring only a region. Material sampling supports uniform presets and independent minification/magnification and horizontal/vertical addressing; initial composition intent is straight-alpha `.normal` or `.replace`.
 - Pixl2D is independent of PixlPlatform and PixlFoundation. Its `Triangle` and `Quad` are plain geometry values, and its orthographic camera projects from viewport size or aspect ratio. Pixl bridges platform render targets to that pure API.
 - `PixlFoundation` is an explicitly importable target beneath Pixl for lower-level engine infrastructure. Pixl depends on it directly; the horizontal graphics, 2D, and 3D domain targets do not.
 - Pixl deliberately re-exports PixlGraphics as stable common graphics vocabulary. It does not re-export PixlPlatform, PixlFoundation, Pixl2D, or Pixl3D; required PixlPlatform identities remain selectively exposed through zero-cost type aliases, while direct lower-level or dimensional use requires explicit module imports.
 - Pixl deliberately depends on PixlGraphics, Pixl2D, and Pixl3D as their orchestrator, so Game needs only the Pixl product while source explicitly imports the domain modules it uses. Horizontal domain targets do not acquire Foundation or Platform dependencies.
 - PixlGraphics owns an independent `SIMD4<Float>` colour alias and named palette; PixlPlatform owns its own identical primitive alias. Pixl bridges graphics colour into platform frame recording without coupling PixlGraphics to PixlPlatform.
-- PixlGraphics owns the value-semantic, platform-independent `TextureAsset` returned by Pixl's asset loader. PixlFoundation owns the logical-identity-to-platform-resource mapping and lifetime; the provisional context-owned renderer resolves through that store. Existing Game rendering and same-size texture hot reload have been verified after this separation.
-- PixlFoundation has backend-free fixed-capacity sprite submission storage. Pixl lowers each Sprite and transform into an independent primitive CPU snapshot containing order, transformed geometry state, texture identity and coordinates, and complete material sampling/composition intent. Consumption sorts by `(layer, ordinal)`, resets without releasing storage, and has tested overflow and allocation reuse.
+- PixlGraphics owns the value-semantic, platform-independent `TextureAsset` returned by Pixl's asset loader. PixlFoundation owns the public logical-identity-to-platform-resource mapping and lifetime plus context-owned sampler and pipeline caches. Existing same-size texture hot reload writes the stable resolved resource in place.
+- `GameContext` owns the default fixed-capacity `RenderQueue`, configured by `Game.renderQueueSettings`. Pixl lowers each submitted Sprite and model-to-world transform into an immediate primitive snapshot, then automatically executes and resets the queue through `context.render(through:to:frame:clear:)` or its existing-pass overload.
+- PixlFoundation now contains the prototype-derived CPU execution path: 48-byte ordinal-aligned instances, scalar union culling, sparse generation-stamped layer bins, varying-byte per-layer radix ordering by `(order, ordinal)`, per-view ordinal streams, consecutive material batch spans, and view-local upload compaction. Execution storage is manually allocated once from queue settings; hot stages do not use `Array`, `Dictionary`, general-purpose `Hasher`, or capacity growth.
 - The retained `Pixl/Prototypes/RenderPipelinePrototype` reference has validated the intended single-threaded CPU execution design before Pixl integration: compact ordinal-aligned bounds, ordering, draw-key, and instance streams; contiguous multi-view scalar culling; compressed active-layer bins; per-layer packed-key radix ordering; per-view ordinal streams; and consecutive draw-key batch spans. Per-sprite spatial grids and cross-entity manual SIMD were rejected because they made this workload slower and more complex. `PERF.md` records its isolated prototype timings explicitly as directional evidence, not Pixl engine or GPU baselines.
-- The working sprite renderer temporarily retains an internal Pixl GPU `Quad`; it preserves existing output while its buffers, packed parameters, layout, and draw recording await deliberate replacement by Foundation-level execution machinery.
+- The provisional per-sprite `SpriteRenderer` and internal GPU `Quad` have been removed. The Game proof submits world transforms without camera/output coupling and records one indexed instanced draw per consecutive compatible batch. Native and WebAssembly builds pass; visual output and hot reload through this replacement await user verification.
 - The Game proof exercises character movement, keyboard/gamepad bindings, layered animated sprites, pause/time scaling, music, asset loading, and frame metrics without backend-specific game code.
 - `PixlConcurrency` is an optional standalone package with persistent lane groups, static and dynamic partitioning, reusable barriers, native worker threads, and a single-lane WASI path. Pixl does not depend on or re-export it.
 
@@ -53,43 +54,43 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 
 ### Stage 3 — Public Queue Lifecycle and Submission Seam
 
-- [ ] **3.1 — Name the execution API.** Agree the exact types, method names, and parameter labels for the settled single-view surface: Pixl's common convenience creates an ordinary pass from `Frame`, `RenderTarget`, and clear/load intent, while its advanced overload renders into a game-created `RenderPassEncoder`. Keep the existing `Game.render(on:output:frame:time:context:)` callback unchanged. This is the next slice and is discussion/documentation only.
-- [ ] **3.2 — Complete 2D ordering intent.** Add Pixl2D's unsigned sprite-local `order`, preserve minimum-plus-defaultable initialization, and lower `(layer, local order, submission ordinal)` without exposing internal keys or registration. Preserve immediate snapshot semantics so mutate-and-resubmit captures two independent values in one frame.
-- [ ] **3.3 — Establish the Foundation execution seam.** Introduce primitive projection, visible-bounds, and viewport/scissor view data plus explicit Foundation execution/reset lifecycle. Keep the storage backend-free and camera-type-free. Preserve a retained contiguous internal view buffer, initially exercised through one element, so later split screen does not redesign the seam.
-- [ ] **3.4 — Introduce the public submission queue.** Add Pixl's game-owned fixed-capacity `RenderQueue` and camera-independent sprite submission bridge. Entities submit model-to-world transforms without receiving camera, projection, output, or pass. Submission overflow remains a programmer error and steady-state submission does not grow storage.
-- [ ] **3.5 — Define Pixl consumption policy.** Wrap Foundation execution so Pixl automatically consumes and resets after both success and failure, while direct PixlFoundation users retain explicit lifecycle control. Keep unseen resource creation lazy on the throwing render path and reuse equivalent cached resources; defer prewarming.
-- [ ] **3.6 — Verify the seam before CPU execution work.** Review submit/mutate/submit behavior, world-transform submission without camera coupling, queue reuse, success/failure reset semantics, capacity failure, the one-view Foundation path, lazy-resource reuse, and steady-state allocation shape. Keep the provisional `SpriteRenderer` rendering the Game until Stages 4–7 provide its complete replacement; do not create a second temporary GPU path.
+- [x] **3.1 — Name the execution API.** Keep `Game.render(on:output:frame:time:context:)`; add common `context.render(through:to:frame:clear:)` and advanced `context.render(through:to:on:)` consumption.
+- [x] **3.2 — Complete 2D ordering intent.** Add unsigned sprite-local `order` and authoritative `(layer, local order, submission ordinal)` semantics.
+- [x] **3.3 — Establish the Foundation execution seam.** Add camera-free projection and visible-bounds view data, retained multi-view-capable storage, and explicit execute/reset lifecycle. Viewport/scissor stays with the later public multi-view feature because the initial view covers its complete target.
+- [x] **3.4 — Introduce the public submission queue.** Runtime-own the default fixed-capacity queue on `GameContext`; submit model-to-world values without camera, output, or pass.
+- [x] **3.5 — Define Pixl consumption policy.** Pixl resets after success or failure; direct Foundation use exposes explicit execute/reset; unseen resources remain lazy and cached.
+- [x] **3.6 — Verify the seam before CPU execution work.** The complete replacement now builds through the seam without a second GPU path.
 
 ### Stage 4 — Foundation CPU Execution Streams
 
-- [ ] **4.1 — Port lowering storage.** Replace wide-record execution with fixed-capacity ordinal-aligned bounds, ordering, draw-key, and 48-byte instance candidate streams; keep public snapshots, CPU execution records, and GPU ABI distinct. Use manually managed retained-capacity storage throughout.
-- [ ] **4.2 — Port union culling.** Traverse bounds contiguously once, build per-submission view masks, and emit the union-visible ordinal set without a per-sprite spatial index.
-- [ ] **4.3 — Port sparse layer compression.** Resolve arbitrary unsigned layers to dense internal slots, count with generation stamps, sort only active layer slots, calculate prefix offsets, and scatter packed ordering keys into contiguous per-layer ranges.
-- [ ] **4.4 — Port local ordering.** Radix-order each active layer by the varying bytes of `(local order, submission ordinal)` and preserve equal-order stability without whole-record comparison sorting.
-- [ ] **4.5 — Port view filtering and batching.** Traverse the ordered union once to emit per-view ordinal streams and consecutive draw-key batch spans; do not reorder for larger batches or copy full CPU instance records per view.
-- [ ] **4.6 — Review the complete CPU pipeline.** Compare the port structurally with the retained prototype for sparse/changing layers, local-order boundaries, equal-order stability, visibility overlap, alternating draw keys, batch spans, capacity limits, deterministic reuse, and absence of `Array`, `Dictionary`, general-purpose `Hasher`, or steady-state allocation in measured execution.
+- [x] **4.1 — Port lowering storage.** Fixed-capacity ordinal-aligned bounds, ordering, material-slot, and 48-byte instance streams.
+- [x] **4.2 — Port union culling.** One contiguous scalar bounds traversal with per-view masks and union-visible ordinals.
+- [x] **4.3 — Port sparse layer compression.** Persistent dense slots, generation stamps, active-slot sorting, prefix offsets, and contiguous scatter.
+- [x] **4.4 — Port local ordering.** Stable varying-byte radix ordering within each active layer.
+- [x] **4.5 — Port view filtering and batching.** One ordered-union traversal emits each view's ordinals and consecutive batch spans.
+- [x] **4.6 — Review the complete CPU pipeline.** Production hot stages retain the prototype's data layout and manually managed allocation shape.
 
 ### Stage 5 — Material Keys and Shared Resource Resolution
 
-- [ ] **5.1 — Pack built-in draw keys.** Resolve built-in sprite intent into bounded compact material/draw keys using packed fields or direct indexing rather than general-purpose hot-path hashing. A public material mutation must select its new key on the next submission without affecting other sprite state.
-- [ ] **5.2 — Add shared sampler resolution.** Add a device/runtime-level PixlFoundation descriptor cache that reuses one sampler for each equivalent complete descriptor and creates unseen descriptors only on the lazy cold path.
-- [ ] **5.3 — Add shared pipeline resolution.** Cache built-in pipeline variants by their complete compatibility description, including actual pass colour format and blend mode, without making a queue own the native pipeline lifetime.
-- [ ] **5.4 — Finalize shared-resource lifecycle.** Ensure one consumer cannot invalidate shared resources, preserve explicit caller ownership for direct `Device.make*` resources, and treat configured capacities as limits on simultaneously live unique resources after deduplication.
+- [x] **5.1 — Pack built-in draw keys.** Resolve complete sprite material intent through a fixed open-addressed registry and compact slots, with same-ordinal unchanged-value reuse.
+- [x] **5.2 — Add shared sampler resolution.** Foundation lazily creates and reuses equivalent complete sampler descriptors outside hot execution.
+- [x] **5.3 — Add shared pipeline resolution.** Foundation lazily caches variants by actual pass colour format and blend mode.
+- [x] **5.4 — Finalize shared-resource lifecycle.** Context-owned Foundation resources outlive queue execution and preserve direct Platform resource ownership semantics.
 
 ### Stage 6 — Portable Indexed Instanced Drawing
 
-- [ ] **6.1 — Add portable instanced recording.** Add the smallest PixlPlatform vertex-step/instance-layout and instance-count capability required by sprite rendering without exposing a backend binding model.
-- [ ] **6.2 — Lower instancing through Metal and WebGPU.** Implement both adapters and validate their compile-time/API correspondence before engine integration.
-- [ ] **6.3 — Decide GPU instance consumption.** Measure direct fetch from the ordinal-aligned instance stream through each view's ordinal index stream against compacting view-local upload records. Keep the result inside backend/execution machinery and out of public Sprite API.
-- [ ] **6.4 — Review the portable capability.** Check instance indexing, Swift/shader layout assumptions, draw recording, capacity failure, and backend lowering independently of sprite batching.
+- [x] **6.1 — Add portable instanced recording.** Frame-owned large vertex data complements the existing per-instance layout, instance count, and base instance commands.
+- [x] **6.2 — Lower instancing through Metal and WebGPU.** Metal binds retained in-flight upload buffers; WebGPU binds the corresponding immediate-buffer range.
+- [x] **6.3 — Decide GPU instance consumption.** Compact view-local upload records from the shared ordinal-aligned stream; keep this behind Foundation execution.
+- [x] **6.4 — Review the portable capability.** Enforce the 48-byte Swift/shader instance ABI and compile both adapters.
 
 ### Stage 7 — Integrated Batched Sprite Rendering
 
-- [ ] **7.1 — Add frame-safe upload records.** Verify Swift/shader size, stride, alignment, and padding on Metal and WebGPU, then add reusable in-flight upload lifetime without steady-state allocation. Introduce frame or material records only when concrete shader data requires them.
-- [ ] **7.2 — Encode consecutive batches.** Bind each batch's resolved pipeline, texture, and sampler once, then emit one instanced draw for its consecutive span while preserving authoritative ordering and the internal view model.
-- [ ] **7.3 — Integrate the high-level single-view path.** Implement the agreed Pixl conveniences for ordinary pass creation and rendering into an existing pass. Resolve the camera once at execution; automatically reset according to Pixl policy.
-- [ ] **7.4 — Migrate the Game.** Remove camera and output from Player/Character submission, submit only their model-to-world transforms, and render the queue once through the Game's camera. Preserve existing visuals and hot-reload behavior for user verification.
-- [ ] **7.5 — Remove proof rendering.** Delete the provisional per-sprite `SpriteRenderer` draw path and internal GPU `Quad` only after the replacement builds and the user confirms identical Game output.
+- [x] **7.1 — Add frame-safe upload records.** Add retained CPU compaction, frame-owned copied bytes, and three Metal in-flight upload slots; validate both backend builds.
+- [x] **7.2 — Encode consecutive batches.** Bind pipeline, texture, and sampler once per span and issue one indexed instanced draw.
+- [x] **7.3 — Integrate the high-level single-view path.** Resolve one camera at execution and reset automatically through both convenience overloads.
+- [ ] **7.4 — Migrate the Game.** Code migration is complete and builds; user verification of visuals and hot reload is pending.
+- [x] **7.5 — Remove proof rendering.** Delete the provisional per-sprite renderer, temporary GPU quad, and their obsolete tests.
 - [ ] **7.6 — Review integrated behavior.** Cover sparse layers, local order, equal-order stability, alternating materials, material mutation, capacity boundaries, one camera, and multiple render calls. Add dirty tracking only if a concrete persistent mutable GPU record was introduced. Expose and test split-screen only in its later dedicated feature slice.
 
 ### Stage 8 — Game and Performance Verification
@@ -116,7 +117,7 @@ Before relocating existing cross-boundary audio/runtime types, perform a dedicat
 
 ### GPU Foundations
 
-- [ ] Add reusable internal upload-ring and readback lifetimes before exposing stage-specific larger dynamic bytes, buffer writes, copy commands, or readback.
+- [ ] Generalize the current frame-safe vertex upload lifetime only when another stage needs buffer writes or copy commands; define a separate completion-safe readback lifetime before exposing readback.
 
 ### Audio
 
