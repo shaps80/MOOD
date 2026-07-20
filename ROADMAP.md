@@ -26,6 +26,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - PixlGraphics owns an independent `SIMD4<Float>` colour alias and named palette; PixlPlatform owns its own identical primitive alias. Pixl bridges graphics colour into platform frame recording without coupling PixlGraphics to PixlPlatform.
 - PixlGraphics owns the value-semantic, platform-independent `TextureAsset` returned by Pixl's asset loader. PixlFoundation owns the logical-identity-to-platform-resource mapping and lifetime; the provisional context-owned renderer resolves through that store. Existing Game rendering and same-size texture hot reload have been verified after this separation.
 - PixlFoundation has backend-free fixed-capacity sprite submission storage. Pixl lowers each Sprite and transform into an independent primitive CPU snapshot containing order, transformed geometry state, texture identity and coordinates, and complete material sampling/composition intent. Consumption sorts by `(layer, ordinal)`, resets without releasing storage, and has tested overflow and allocation reuse.
+- The retained `Pixl/Prototypes/RenderPipelinePrototype` reference has validated the intended single-threaded CPU execution design before Pixl integration: compact ordinal-aligned bounds, ordering, draw-key, and instance streams; contiguous multi-view scalar culling; compressed active-layer bins; per-layer packed-key radix ordering; per-view ordinal streams; and consecutive draw-key batch spans. Per-sprite spatial grids and cross-entity manual SIMD were rejected because they made this workload slower and more complex. `PERF.md` records its isolated prototype timings explicitly as directional evidence, not Pixl engine or GPU baselines.
 - The working sprite renderer temporarily retains an internal Pixl GPU `Quad`; it preserves existing output while its buffers, packed parameters, layout, and draw recording await deliberate replacement by Foundation-level execution machinery.
 - The Game proof exercises character movement, keyboard/gamepad bindings, layered animated sprites, pause/time scaling, music, asset loading, and frame metrics without backend-specific game code.
 - `PixlConcurrency` is an optional standalone package with persistent lane groups, static and dynamic partitioning, reusable barriers, native worker threads, and a single-lane WASI path. Pixl does not depend on or re-export it.
@@ -42,14 +43,26 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 - Do not silently broaden a later stage to absorb an unresolved earlier decision. Record the gate explicitly and resolve it before dependent work proceeds.
 - If implementation requires a direction change or any API, ownership, performance, data-layout, or backend decision not explicitly settled in `CONTEXT.md`, stop before implementing it, cite the concrete reason, and ask for direction through discussion.
 
-### Stage 3 — Immediate Submission and Lowering Seam
+### Stage 3 — Public Queue Lifecycle and Submission Seam
 
 - [ ] Before implementing public `RenderQueue.encode(on:)`, agree whether shared Foundation render resources initialize lazily and whether cold resource creation makes encoding throwing; every other public ownership, capacity, lifetime, and pass-compatibility decision is settled.
-- [ ] Replace or delete the provisional `SpriteRenderer` responsibilities so Pixl receives Pixl2D values while PixlFoundation owns retained execution storage, ordering data, compact records, and resolved resources.
-- [ ] Preserve authoritative layer/submission order and the current one-draw-per-sprite output before adding instancing or batch formation.
-- [ ] Test submit/mutate/submit behavior, frame reset, capacity failure, layer stability, and absence of steady-state allocation.
+- [ ] Agree and implement the smallest execution/reset API that lets one submitted queue execute for one or several camera views, including split screen, without attaching cameras to sprites or introducing automatic scene rendering.
+- [ ] Replace or delete provisional `SpriteRenderer` responsibilities so Pixl receives Pixl2D values while PixlFoundation owns fixed-capacity execution storage and PixlPlatform receives only explicit resolved commands.
+- [ ] Add Pixl2D's unsigned sprite-local `order`; preserve immediate snapshot semantics so mutate-and-resubmit captures two independent values in one frame.
+- [ ] Keep `Sprite` as the obvious authoring entry point with minimum-plus-defaultable initializers; do not expose internal keys, registration, resolution, or engine storage through the ordinary game API.
+- [ ] Test submit/mutate/submit behavior, queue reuse/reset, capacity failure, one view, overlapping split-screen views, and absence of steady-state allocation.
 
-### Stage 4 — Material Keys and Shared Resource Resolution
+### Stage 4 — Foundation CPU Execution Streams
+
+- [ ] Replace wide-record execution with fixed-capacity ordinal-aligned bounds, ordering, draw-key, and 48-byte instance candidate streams; keep public snapshots, CPU execution records, and GPU ABI distinct.
+- [ ] Traverse bounds contiguously once, build per-submission view masks, and emit the union-visible ordinal set without a per-sprite spatial index.
+- [ ] Resolve arbitrary unsigned layers to dense internal slots, count with generation stamps, sort only active layer slots, prefix offsets, and scatter packed ordering keys into contiguous per-layer ranges.
+- [ ] Radix-order each active layer by the varying bytes of `(local order, submission ordinal)` and preserve equal-order stability without whole-record comparison sorting.
+- [ ] Traverse the ordered union once to emit per-view ordinal streams and consecutive draw-key batch spans; do not reorder for larger batches or copy full CPU instance records per view.
+- [ ] Use manually managed retained-capacity storage throughout measured execution; no `Array`, `Dictionary`, hashing through general-purpose `Hasher`, or steady-state allocation in these paths.
+- [ ] Test sparse and changing layers, local-order boundaries, equal-order stability, visibility overlap, alternating draw keys, batch-span boundaries, capacity limits, and deterministic queue reuse.
+
+### Stage 5 — Material Keys and Shared Resource Resolution
 
 - [ ] Resolve built-in sprite intent into bounded compact material/draw keys; use packed fields or direct indexing where appropriate rather than assuming general-purpose hot-path hashing.
 - [ ] Resolve a public material change on its next submission without changing transform, flip, region, animation, or layer mutation semantics.
@@ -58,26 +71,24 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 - [ ] Define cached-resource ownership and destruction so one consumer cannot invalidate shared resources while direct `Device.make*` resources retain explicit caller ownership.
 - [ ] Treat configured capacities as limits on simultaneously live unique native resources and test accounting after deduplication.
 
-### Stage 5 — Portable Instanced Drawing
+### Stage 6 — Portable Indexed Instanced Drawing
 
 - [ ] Add the smallest portable vertex-step/instance-layout and instance-count API required by sprite rendering.
+- [ ] Decide the GPU consumption gate by measuring direct fetch from one ordinal-aligned instance stream through each view's ordinal index stream versus compacting view-local upload records; keep this backend/execution decision out of the public Sprite API.
 - [ ] Lower the capability through Metal and WebGPU without exposing backend binding models.
 - [ ] Verify instance indexing, vertex layout, draw recording, capacity failure, and backend lowering independently of sprite batching.
 
-### Stage 6 — Retained Instance Data and Consecutive Batches
+### Stage 7 — Integrated Batched Sprite Rendering
 
-- [ ] Define the explicit fixed-stride instance record required by the built-in sprite shader, keeping public, CPU-retained, and GPU-upload representations separate.
-- [ ] Move per-sprite transform, texture coordinates, tint, and flip results into retained high-water interleaved instance storage.
 - [ ] Verify Swift/shader ABI size, stride, alignment, and padding on Metal and WebGPU.
 - [ ] Add frame-safe upload lifetime without steady-state allocation; introduce frame or material records only when concrete shader data requires them.
-- [ ] First prove the instanced path with one instance per draw so data-layout failures remain separate from batch-formation failures.
-- [ ] Batch consecutive compatible sprite submissions across pipeline variant, texture, sampler, blend state, target state, and required material bindings.
-- [ ] Preserve authoritative layer and submission order; never reorder sprites to create larger batches.
-- [ ] Flush on compatibility changes and emit one instanced draw per compatible run.
-- [ ] Test ordered and unordered layers, equal-layer stability, alternating materials, material mutation, capacity boundaries, and multiple render calls.
+- [ ] Bind each batch's resolved pipeline, texture, and sampler once, then emit one instanced draw for its consecutive span.
+- [ ] Preserve authoritative ordering and per-view visibility while sharing union execution work across views.
+- [ ] Remove the provisional per-sprite draw and internal GPU `Quad` path once the replacement renders identical Game output.
+- [ ] Test sparse layers, local order, equal-order stability, alternating materials, material mutation, capacity boundaries, one camera, overlapping split-screen cameras, and multiple render calls.
 - [ ] Add dirty tracking only if concrete persistent mutable GPU records are introduced; ordinary immediate snapshots do not require it.
 
-### Stage 7 — Game and Performance Verification
+### Stage 8 — Game and Performance Verification
 
 - [ ] Exercise mixed nearest/linear filtering and multiple blend modes through the Game without backend-specific game code.
 - [ ] Exercise independent offscreen-world and native-resolution UI submission destinations if their target formats expose distinct pipeline variants.
@@ -85,7 +96,7 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 - [ ] Profile material-key derivation, resolved-resource lookup, ordering, and instance writes separately so avoidable submission cost remains visible.
 - [ ] Measure the representative bullets/enemies workload and a separate 10,000-visible-sprite stress case on native and browser, then record only accepted baselines in `PERF.md`.
 
-Keep entity storage, scene ownership, simulation, collision, culling, tile sets, and automatic rendering outside this work. Texture-region and regular-sheet ownership moves now; irregular named atlases remain later work.
+Keep entity storage, scene ownership, simulation, collision, per-sprite spatial acceleration, tile sets, and automatic rendering outside this work. Render-time scalar bounds culling over submitted values is part of Foundation execution; persistent world visibility and coarse tilemap/chunk acceleration are game or future domain-library concerns. Texture-region and regular-sheet ownership moves now; irregular named atlases remain later work.
 
 Before implementing the fuller material capability phase—tint/modulation placement, opacity, normal/emission/mask textures, lighting parameters, alpha cutoff, and sharing/mutation semantics—stop for the dedicated planning session required by `CONTEXT.md`.
 

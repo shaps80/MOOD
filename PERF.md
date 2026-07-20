@@ -6,6 +6,38 @@ These are reference measurements for detecting material performance regressions 
 
 This document contains separate profiling records for specific low-level components. It does not describe whole-backend, rendering, GPU, frame-time, or game performance.
 
+## Render pipeline prototype — arm64 macOS
+
+Recorded on 2026-07-20 from the isolated `Pixl/Prototypes/RenderPipelinePrototype` Xcode application after validating the intended single-threaded CPU data flow. This is a retained architecture prototype, not an implementation or performance baseline for Pixl, PixlFoundation, PixlPlatform, Metal rendering, WebGPU rendering, or a complete game frame. Keep it as a directional reference while porting the design into Pixl; establish new accepted Pixl baselines after the real implementation exists.
+
+### Prototype methodology
+
+- Xcode Release configuration on the arm64 macOS development machine; exact SoC was not recorded.
+- Deterministic fixed-seed input of 500,000 sprite submissions.
+- 300,029 submissions visible to the union of two overlapping camera views.
+- Eight sparse public layer values and four deterministic randomized material descriptions.
+- One-second running medians reported by the prototype.
+- Measured total contains only lowering, contiguous scalar multi-view culling, dense layer binning, per-layer radix ordering, consecutive batch formation, and logical instance finalization.
+- Entity generation, diagnostic construction, hover lookup, SwiftUI, Metal encoding/drawing, GPU execution, and presentation are excluded.
+- The instance stage is zero because lowering writes one ordinal-aligned instance record and views retain source-ordinal streams rather than copying another full CPU instance record.
+
+### Accepted prototype reference
+
+| Stage | 500,000 submissions |
+| --- | ---: |
+| Lowering | 1.259 ms |
+| Culling | 2.686 ms |
+| Layer binning | 0.502 ms |
+| Ordering | 0.323 ms |
+| Batching | 1.923 ms |
+| Instances | 0.000 ms |
+| Measured total | 6.693 ms |
+| Prototype throughput | 149.1 pipeline frames/s |
+
+The same final scalar design was also observed below 16 ms with 1,000,000 submissions and at approximately 0.1 ms with 10,000 submissions. Those were runtime observations rather than captured per-stage records, so treat them as scaling checks rather than precise baselines.
+
+Manual cross-entity SIMD, per-AABB `SIMD2` comparison, frame-rebuilt uniform spatial grids, and retained per-sprite uniform spatial grids were measured and rejected. They provided no useful improvement or were materially slower while increasing data-layout and lifecycle complexity. The accepted prototype therefore retains compact ordinal-aligned streams and a contiguous scalar bounds traversal. Persistent world visibility or coarse tilemap/chunk acceleration remains a separate higher-level concern.
+
 ## PixlConcurrency — arm64 macOS
 
 Recorded on 2026-07-12 after extracting `PixlConcurrency` into its own package, moving OS threading behind `PixlConcurrencyC`, correcting worker lifetime, separating work/completion signalling, isolating barrier atomics, tuning the spin threshold, and validating the final tiered-CMO configuration.
