@@ -43,50 +43,54 @@ Implement the agreed design in review-sized stages, fixing ownership before enri
 - Do not silently broaden a later stage to absorb an unresolved earlier decision. Record the gate explicitly and resolve it before dependent work proceeds.
 - If implementation requires a direction change or any API, ownership, performance, data-layout, or backend decision not explicitly settled in `CONTEXT.md`, stop before implementing it, cite the concrete reason, and ask for direction through discussion.
 
+### Implementation and Review Cadence
+
+- Treat each numbered checkbox below as the smallest independently understandable unit. Normally implement only the next incomplete unit, build it, report the changed files and relevant behavior, then stop for the user's review and runtime testing. Adjacent units that mechanically port already-accepted prototype code may be combined when they introduce no new decision and the resulting diff remains comfortably reviewable; announce the exact combined scope before editing. Never bundle across an API, ownership, backend, data-layout, or measurement gate. Do not begin the following review slice until the user confirms the current one.
+- For ordinary Pixl, PixlFoundation, PixlGraphics, Pixl2D, or Pixl3D work, validate compilation with the affected Xcode project or scheme only. Do not launch the Game or prototype, exercise hot reload, run interactive checks, or run automated tests unless the user explicitly requests them; the user owns testing during this workstream.
+- If a slice changes PixlPlatform's portable contract or a concrete platform adapter, also validate the WebAssembly path. Otherwise do not build or test WebAssembly.
+- Do not regenerate Xcode projects. Edit tracked project configuration directly only when the slice genuinely requires it and preserve user-owned build settings.
+- Do not record measurements in `PERF.md` until the user accepts the exact result and asks for it to be retained.
+
 ### Stage 3 — Public Queue Lifecycle and Submission Seam
 
-- [ ] Before implementing public `RenderQueue.encode(on:)`, agree whether shared Foundation render resources initialize lazily and whether cold resource creation makes encoding throwing; every other public ownership, capacity, lifetime, and pass-compatibility decision is settled.
-- [ ] Agree and implement the smallest execution/reset API that lets one submitted queue execute for one or several camera views, including split screen, without attaching cameras to sprites or introducing automatic scene rendering.
-- [ ] Replace or delete provisional `SpriteRenderer` responsibilities so Pixl receives Pixl2D values while PixlFoundation owns fixed-capacity execution storage and PixlPlatform receives only explicit resolved commands.
-- [ ] Add Pixl2D's unsigned sprite-local `order`; preserve immediate snapshot semantics so mutate-and-resubmit captures two independent values in one frame.
-- [ ] Keep `Sprite` as the obvious authoring entry point with minimum-plus-defaultable initializers; do not expose internal keys, registration, resolution, or engine storage through the ordinary game API.
-- [ ] Test submit/mutate/submit behavior, queue reuse/reset, capacity failure, one view, overlapping split-screen views, and absence of steady-state allocation.
+- [ ] **3.1 — Name the execution API.** Agree the exact types, method names, and parameter labels for the settled single-view surface: Pixl's common convenience creates an ordinary pass from `Frame`, `RenderTarget`, and clear/load intent, while its advanced overload renders into a game-created `RenderPassEncoder`. Keep the existing `Game.render(on:output:frame:time:context:)` callback unchanged. This is the next slice and is discussion/documentation only.
+- [ ] **3.2 — Complete 2D ordering intent.** Add Pixl2D's unsigned sprite-local `order`, preserve minimum-plus-defaultable initialization, and lower `(layer, local order, submission ordinal)` without exposing internal keys or registration. Preserve immediate snapshot semantics so mutate-and-resubmit captures two independent values in one frame.
+- [ ] **3.3 — Establish the Foundation execution seam.** Introduce primitive projection, visible-bounds, and viewport/scissor view data plus explicit Foundation execution/reset lifecycle. Keep the storage backend-free and camera-type-free. Preserve a retained contiguous internal view buffer, initially exercised through one element, so later split screen does not redesign the seam.
+- [ ] **3.4 — Introduce the public submission queue.** Add Pixl's game-owned fixed-capacity `RenderQueue` and camera-independent sprite submission bridge. Entities submit model-to-world transforms without receiving camera, projection, output, or pass. Submission overflow remains a programmer error and steady-state submission does not grow storage.
+- [ ] **3.5 — Define Pixl consumption policy.** Wrap Foundation execution so Pixl automatically consumes and resets after both success and failure, while direct PixlFoundation users retain explicit lifecycle control. Keep unseen resource creation lazy on the throwing render path and reuse equivalent cached resources; defer prewarming.
+- [ ] **3.6 — Verify the seam before CPU execution work.** Review submit/mutate/submit behavior, world-transform submission without camera coupling, queue reuse, success/failure reset semantics, capacity failure, the one-view Foundation path, lazy-resource reuse, and steady-state allocation shape. Keep the provisional `SpriteRenderer` rendering the Game until Stages 4–7 provide its complete replacement; do not create a second temporary GPU path.
 
 ### Stage 4 — Foundation CPU Execution Streams
 
-- [ ] Replace wide-record execution with fixed-capacity ordinal-aligned bounds, ordering, draw-key, and 48-byte instance candidate streams; keep public snapshots, CPU execution records, and GPU ABI distinct.
-- [ ] Traverse bounds contiguously once, build per-submission view masks, and emit the union-visible ordinal set without a per-sprite spatial index.
-- [ ] Resolve arbitrary unsigned layers to dense internal slots, count with generation stamps, sort only active layer slots, prefix offsets, and scatter packed ordering keys into contiguous per-layer ranges.
-- [ ] Radix-order each active layer by the varying bytes of `(local order, submission ordinal)` and preserve equal-order stability without whole-record comparison sorting.
-- [ ] Traverse the ordered union once to emit per-view ordinal streams and consecutive draw-key batch spans; do not reorder for larger batches or copy full CPU instance records per view.
-- [ ] Use manually managed retained-capacity storage throughout measured execution; no `Array`, `Dictionary`, hashing through general-purpose `Hasher`, or steady-state allocation in these paths.
-- [ ] Test sparse and changing layers, local-order boundaries, equal-order stability, visibility overlap, alternating draw keys, batch-span boundaries, capacity limits, and deterministic queue reuse.
+- [ ] **4.1 — Port lowering storage.** Replace wide-record execution with fixed-capacity ordinal-aligned bounds, ordering, draw-key, and 48-byte instance candidate streams; keep public snapshots, CPU execution records, and GPU ABI distinct. Use manually managed retained-capacity storage throughout.
+- [ ] **4.2 — Port union culling.** Traverse bounds contiguously once, build per-submission view masks, and emit the union-visible ordinal set without a per-sprite spatial index.
+- [ ] **4.3 — Port sparse layer compression.** Resolve arbitrary unsigned layers to dense internal slots, count with generation stamps, sort only active layer slots, calculate prefix offsets, and scatter packed ordering keys into contiguous per-layer ranges.
+- [ ] **4.4 — Port local ordering.** Radix-order each active layer by the varying bytes of `(local order, submission ordinal)` and preserve equal-order stability without whole-record comparison sorting.
+- [ ] **4.5 — Port view filtering and batching.** Traverse the ordered union once to emit per-view ordinal streams and consecutive draw-key batch spans; do not reorder for larger batches or copy full CPU instance records per view.
+- [ ] **4.6 — Review the complete CPU pipeline.** Compare the port structurally with the retained prototype for sparse/changing layers, local-order boundaries, equal-order stability, visibility overlap, alternating draw keys, batch spans, capacity limits, deterministic reuse, and absence of `Array`, `Dictionary`, general-purpose `Hasher`, or steady-state allocation in measured execution.
 
 ### Stage 5 — Material Keys and Shared Resource Resolution
 
-- [ ] Resolve built-in sprite intent into bounded compact material/draw keys; use packed fields or direct indexing where appropriate rather than assuming general-purpose hot-path hashing.
-- [ ] Resolve a public material change on its next submission without changing transform, flip, region, animation, or layer mutation semantics.
-- [ ] Add PixlFoundation descriptor-to-resource caches for samplers and built-in pipeline variants, shared at the device/runtime level rather than owned by one submission domain.
-- [ ] Reuse one native resource for each equivalent complete descriptor; distinct descriptor properties resolve independently and only unseen descriptions take a cold creation path.
-- [ ] Define cached-resource ownership and destruction so one consumer cannot invalidate shared resources while direct `Device.make*` resources retain explicit caller ownership.
-- [ ] Treat configured capacities as limits on simultaneously live unique native resources and test accounting after deduplication.
+- [ ] **5.1 — Pack built-in draw keys.** Resolve built-in sprite intent into bounded compact material/draw keys using packed fields or direct indexing rather than general-purpose hot-path hashing. A public material mutation must select its new key on the next submission without affecting other sprite state.
+- [ ] **5.2 — Add shared sampler resolution.** Add a device/runtime-level PixlFoundation descriptor cache that reuses one sampler for each equivalent complete descriptor and creates unseen descriptors only on the lazy cold path.
+- [ ] **5.3 — Add shared pipeline resolution.** Cache built-in pipeline variants by their complete compatibility description, including actual pass colour format and blend mode, without making a queue own the native pipeline lifetime.
+- [ ] **5.4 — Finalize shared-resource lifecycle.** Ensure one consumer cannot invalidate shared resources, preserve explicit caller ownership for direct `Device.make*` resources, and treat configured capacities as limits on simultaneously live unique resources after deduplication.
 
 ### Stage 6 — Portable Indexed Instanced Drawing
 
-- [ ] Add the smallest portable vertex-step/instance-layout and instance-count API required by sprite rendering.
-- [ ] Decide the GPU consumption gate by measuring direct fetch from one ordinal-aligned instance stream through each view's ordinal index stream versus compacting view-local upload records; keep this backend/execution decision out of the public Sprite API.
-- [ ] Lower the capability through Metal and WebGPU without exposing backend binding models.
-- [ ] Verify instance indexing, vertex layout, draw recording, capacity failure, and backend lowering independently of sprite batching.
+- [ ] **6.1 — Add portable instanced recording.** Add the smallest PixlPlatform vertex-step/instance-layout and instance-count capability required by sprite rendering without exposing a backend binding model.
+- [ ] **6.2 — Lower instancing through Metal and WebGPU.** Implement both adapters and validate their compile-time/API correspondence before engine integration.
+- [ ] **6.3 — Decide GPU instance consumption.** Measure direct fetch from the ordinal-aligned instance stream through each view's ordinal index stream against compacting view-local upload records. Keep the result inside backend/execution machinery and out of public Sprite API.
+- [ ] **6.4 — Review the portable capability.** Check instance indexing, Swift/shader layout assumptions, draw recording, capacity failure, and backend lowering independently of sprite batching.
 
 ### Stage 7 — Integrated Batched Sprite Rendering
 
-- [ ] Verify Swift/shader ABI size, stride, alignment, and padding on Metal and WebGPU.
-- [ ] Add frame-safe upload lifetime without steady-state allocation; introduce frame or material records only when concrete shader data requires them.
-- [ ] Bind each batch's resolved pipeline, texture, and sampler once, then emit one instanced draw for its consecutive span.
-- [ ] Preserve authoritative ordering and per-view visibility while sharing union execution work across views.
-- [ ] Remove the provisional per-sprite draw and internal GPU `Quad` path once the replacement renders identical Game output.
-- [ ] Test sparse layers, local order, equal-order stability, alternating materials, material mutation, capacity boundaries, one camera, overlapping split-screen cameras, and multiple render calls.
-- [ ] Add dirty tracking only if concrete persistent mutable GPU records are introduced; ordinary immediate snapshots do not require it.
+- [ ] **7.1 — Add frame-safe upload records.** Verify Swift/shader size, stride, alignment, and padding on Metal and WebGPU, then add reusable in-flight upload lifetime without steady-state allocation. Introduce frame or material records only when concrete shader data requires them.
+- [ ] **7.2 — Encode consecutive batches.** Bind each batch's resolved pipeline, texture, and sampler once, then emit one instanced draw for its consecutive span while preserving authoritative ordering and the internal view model.
+- [ ] **7.3 — Integrate the high-level single-view path.** Implement the agreed Pixl conveniences for ordinary pass creation and rendering into an existing pass. Resolve the camera once at execution; automatically reset according to Pixl policy.
+- [ ] **7.4 — Migrate the Game.** Remove camera and output from Player/Character submission, submit only their model-to-world transforms, and render the queue once through the Game's camera. Preserve existing visuals and hot-reload behavior for user verification.
+- [ ] **7.5 — Remove proof rendering.** Delete the provisional per-sprite `SpriteRenderer` draw path and internal GPU `Quad` only after the replacement builds and the user confirms identical Game output.
+- [ ] **7.6 — Review integrated behavior.** Cover sparse layers, local order, equal-order stability, alternating materials, material mutation, capacity boundaries, one camera, and multiple render calls. Add dirty tracking only if a concrete persistent mutable GPU record was introduced. Expose and test split-screen only in its later dedicated feature slice.
 
 ### Stage 8 — Game and Performance Verification
 
