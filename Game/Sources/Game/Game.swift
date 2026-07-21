@@ -3,18 +3,21 @@ import Pixl2D
 
 @main
 struct Game: Pixl.Game {
-    private var entities: [Entity]
-    private let camera: OrthographicCamera = .init()
-    private var shapeCatalogue: ShapeCatalogue
-    private var gameState: GameStateHandler
+    private var players: [Player]
+    private let camera: OrthographicCamera = .init(halfHeight: 200)
+//    private var shapeCatalogue: ShapeCatalogue
+//    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-        self.gameState = try .init(context: context)
-        self.entities = try [
-            Player(context: context),
-            Character(context: context)
-        ]
-        self.shapeCatalogue = .init(context: context)
+//        self.gameState = try .init(context: context)
+        players = try (0..<1_000).map { _ in
+            try Player(position: .init(
+                Double.random(in: -376...376),
+                Double.random(in: -176...176)
+            ), context: context)
+        }
+
+//        self.shapeCatalogue = .init(context: context)
     }
 
     func render(
@@ -24,7 +27,11 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-        shapeCatalogue.submit(to: context.renderQueue)
+//        shapeCatalogue.submit(to: context.renderQueue)
+
+        players.forEach {
+            $0.submit(to: context.renderQueue)
+        }
 
         try context.render(
             through: camera,
@@ -37,22 +44,22 @@ struct Game: Pixl.Game {
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
-        gameState.didEnter(phase, context: context)
+//        gameState.didEnter(phase, context: context)
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        entities.indices.forEach {
-            entities[$0].fixedUpdate(time, context: context)
+        players.indices.forEach {
+            players[$0].fixedUpdate(time, context: context)
         }
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
-        entities.indices.forEach {
-            entities[$0].update(time, context: context)
+        players.indices.forEach {
+            players[$0].update(time, context: context)
         }
 
-        gameState.update(time, context: context)
-        shapeCatalogue.update(time, context: context)
+//        gameState.update(time, context: context)
+//        shapeCatalogue.update(time, context: context)
     }
 
     private func logMetrics(_ time: RenderTime) {
@@ -66,11 +73,12 @@ struct Game: Pixl.Game {
     }
 }
 
+import PixlPlatform
 extension Game {
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
-            resolution: .init(x: 320, y: 180),
+            resolution: .init(x: 1200, y: 600),
         )
     }
 

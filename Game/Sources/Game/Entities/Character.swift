@@ -74,12 +74,12 @@ struct Character: Entity {
     }
 
     func submit(to queue: RenderQueue) {
-//        queue.submit(
-//            sprite,
-//            transform: Transform2D(
-//                position,
-//                scale: .init(repeating: 2)
-//            )
-//        )
+        queue.submit(
+            sprite,
+            transform: Transform2D(
+                position,
+                scale: .init(repeating: 2)
+            )
+        )
     }
 }
