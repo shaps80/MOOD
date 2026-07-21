@@ -11,8 +11,8 @@ public struct Input {
     }
 
     struct State {
-        var value = 0.0
-        var previousValue = 0.0
+        var value: Float = 0
+        var previousValue: Float = 0
     }
 
     final class Storage {
@@ -32,7 +32,7 @@ public struct Input {
     }
 
     /// The strongest currently active binding, normalized to `0...1`.
-    public var value: Double {
+    public var value: Float {
         storage.states[index].value
     }
 

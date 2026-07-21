@@ -1,8 +1,16 @@
 import Pixl2D
+import PixlGraphics
 import Testing
 
 @Suite("Pixl2D geometry")
 struct GeometryTests {
+    @Test
+    func spatialValuesUseCompactFloatStorage() {
+        #expect(MemoryLayout<Vec2>.stride == 8)
+        #expect(MemoryLayout<Rect>.stride == 16)
+        #expect(MemoryLayout<Angle>.stride == 4)
+    }
+
     @Test
     func primitivesArePlainGeometryValues() {
         let triangle = Triangle()

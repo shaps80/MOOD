@@ -1,7 +1,7 @@
 import Swift
 
-/// A two-dimensional double-precision vector.
-public typealias Vec2 = SIMD2<Double>
+/// A compact two-dimensional single-precision vector.
+public typealias Vec2 = SIMD2<Float>
 
 /// A two-dimensional floating-point vector used for positions, sizes, and movement.
 ///
@@ -30,10 +30,10 @@ public extension Vec2 {
     ///   - x: Closed range used for the x component.
     ///   - y: Closed range used for the y component.
     /// - Returns: A vector whose components are sampled from their corresponding ranges.
-    static func random(x: ClosedRange<Double>, y: ClosedRange<Double>) -> Self {
+    static func random(x: ClosedRange<Float>, y: ClosedRange<Float>) -> Self {
         .init(
-            x: Double.random(in: x),
-            y: Double.random(in: y)
+            x: Float.random(in: x),
+            y: Float.random(in: y)
         )
     }
 }
@@ -45,7 +45,7 @@ public extension Vec2 {
     ///   - target: Destination to approach.
     ///   - distance: Maximum distance to travel. Nonpositive values leave the vector unchanged.
     /// - Returns: The moved position, or `target` when it lies within `distance`.
-    func moving(toward target: Self, by distance: Double) -> Self {
+    func moving(toward target: Self, by distance: Float) -> Self {
         guard distance > 0 else { return self }
 
         let delta = Vec2(
@@ -70,7 +70,7 @@ public extension Vec2 {
     /// ```swift
     /// let speed = velocity.length
     /// ```
-    var length: Double {
+    var length: Float {
         (x * x + y * y).squareRoot()
     }
 
@@ -94,7 +94,7 @@ public extension Vec2 {
     /// ```
     /// - Parameter other: The vector to multiply component-wise before summing.
     /// - Returns: The scalar dot product of this vector and `other`.
-    func dot(_ other: Vec2) -> Double {
+    func dot(_ other: Vec2) -> Float {
         (x * other.x) + (y * other.y)
     }
 }

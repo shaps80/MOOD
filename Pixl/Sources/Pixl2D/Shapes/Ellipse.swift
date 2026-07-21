@@ -8,7 +8,7 @@ public struct Ellipse: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive width.
     ///   - height: Positive height.
-    public init(width: Double, height: Double) {
+    public init(width: Float, height: Float) {
         precondition(width.isFinite && width > 0 && height.isFinite && height > 0)
         size = .init(width, height)
     }
@@ -18,5 +18,5 @@ public struct Ellipse: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive width in local units.
     ///   - height: Positive height in local units.
-    public static func ellipse(width: Double, height: Double) -> Self { .init(width: width, height: height) }
+    public static func ellipse(width: Float, height: Float) -> Self { .init(width: width, height: height) }
 }

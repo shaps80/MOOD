@@ -60,7 +60,7 @@ struct Character: Entity {
             delta: time.delta
         )
 
-        position += velocity * time.delta
+        position += velocity * Float(time.delta)
 
         if velocity.x > 0 {
             sprite.isFlipped = false

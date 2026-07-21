@@ -10,7 +10,7 @@ public struct GradientFill: Hashable, Sendable {
         /// Projects colour stops along a directed line.
         case linear(from: Vec2, to: Vec2)
         /// Projects colour stops outwards from a centre point.
-        case radial(center: Vec2, radius: Double)
+        case radial(center: Vec2, radius: Float)
         /// Projects colour stops around a centre point.
         case angular(center: Vec2, angle: Angle)
     }
@@ -47,7 +47,7 @@ public struct GradientFill: Hashable, Sendable {
     ///   - gradient: Retained colour ramp.
     ///   - center: Finite local point receiving location `0`.
     ///   - radius: Positive local radius receiving location `1`.
-    public init(_ gradient: Gradient, center: Vec2 = .zero, radius: Double) {
+    public init(_ gradient: Gradient, center: Vec2 = .zero, radius: Float) {
         precondition([center.x, center.y, radius].allSatisfy(\.isFinite))
         precondition(radius > 0)
         self.gradient = gradient
@@ -80,7 +80,7 @@ public struct GradientFill: Hashable, Sendable {
     private static func rasterize(_ gradient: Gradient) -> [UInt8] {
         var bytes = [UInt8](repeating: 0, count: 256 * 4)
         for index in 0..<256 {
-            let location = Double(index) / 255
+            let location = Float(index) / 255
             let color = sample(gradient, at: location)
             let alpha = min(max(color.w, 0), 1)
             bytes[index * 4] = byte(min(max(color.x, 0), 1) * alpha)
@@ -91,7 +91,7 @@ public struct GradientFill: Hashable, Sendable {
         return bytes
     }
 
-    private static func sample(_ gradient: Gradient, at location: Double) -> Color {
+    private static func sample(_ gradient: Gradient, at location: Float) -> Color {
         guard gradient.stops.count > 1 else { return gradient.stops[0].color }
         if location <= gradient.stops[0].location { return gradient.stops[0].color }
         for index in 1..<gradient.stops.count {

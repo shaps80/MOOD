@@ -18,8 +18,8 @@ public extension Input {
         private struct AxisBinding {
             let inputIndex: Int
             let axisIndex: Int
-            let scale: Double
-            let deadZone: Double
+            let scale: Float
+            let deadZone: Float
         }
 
         private let storage = Storage()
@@ -158,7 +158,7 @@ public extension Input {
         }
 
         private func resolveAxes(gamepad: Gamepad) {
-            let axes = SIMD4<Double>(
+            let axes = SIMD4<Float>(
                 gamepad.leftStick.x,
                 gamepad.leftStick.y,
                 gamepad.rightStick.x,
@@ -183,7 +183,7 @@ public extension Input {
             }
         }
 
-        private func combine(_ value: Double, into inputIndex: Int) {
+        private func combine(_ value: Float, into inputIndex: Int) {
             storage.states[inputIndex].value = max(
                 storage.states[inputIndex].value,
                 value

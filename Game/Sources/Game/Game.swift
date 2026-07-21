@@ -3,7 +3,7 @@ import Pixl2D
 
 /*
 
- 100K instances - 180MB - 9%
+ 100K instances - 180MB - 9% - Double
 
  FPS: 59.950383563803 | Frame avg: 16.68046041666667ms | Frame max: 17.658875000000002ms
  Game avg: 0.0022257500000000003ms | Render avg: 0.2719860166666667ms
@@ -12,7 +12,7 @@ import Pixl2D
  Batching: 0.0030325666666666676ms | Instances: 0.006139633333333337ms
  Spatial grid: 0.136375ms | Submitted: 1340
 
- 1M instances - 240MB - 24%
+ 1M instances - 240MB - 24% - Double
 
  FPS: 60.00055816256943 | Frame avg: 16.666511622950818ms | Frame max: 17.744167ms
  Game avg: 0.0024439508196721317ms | Render avg: 1.6633606065573774ms
@@ -20,6 +20,15 @@ import Pixl2D
  Layer binning: 0.032339426229508215ms | Ordering: 0.0004637704918032788ms
  Batching: 0.02064752459016394ms | Instances: 0.04470016393442625ms
  Spatial grid: 0.531792ms | Submitted: 13766
+
+ 1M instances - 225MB - 22% - Float
+
+ FPS: 59.955348254387545 | Frame avg: 16.679079166666668ms | Frame max: 17.603ms
+ Game avg: 0.0013374833333333331ms | Render avg: 2.6518784666666653ms
+ Render queue | Lowering: 1.2951263499999999ms | Culling: 0.08978676666666668ms
+ Layer binning: 0.05150004999999999ms | Ordering: 0.00042158333333333327ms
+ Batching: 0.029483266666666674ms | Instances: 0.048979083333333354ms
+ Spatial grid: 0.651791ms | Submitted: 14025
 
  */
 
@@ -83,7 +92,7 @@ struct Game: Pixl.Game {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
-        camera.center += cameraBindings.direction * (600 * time.delta)
+        camera.center += cameraBindings.direction * (600 * Float(time.delta))
 
 //        gameState.update(time, context: context)
 //        shapeCatalogue.update(time, context: context)
@@ -119,6 +128,7 @@ extension Game {
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
+            preferredFps: 120,
             resolution: .init(x: 1200, y: 600),
         )
     }

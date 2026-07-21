@@ -1,7 +1,7 @@
 /// Hyperbola clipped to a finite local rendering window.
 public struct Hyperbola: Hashable, Sendable {
     /// Positive hyperbola scale.
-    public let scale: Double
+    public let scale: Float
     /// Finite local rendering-window size.
     public let size: Vec2
     /// Creates a canonical hyperbola in a unit window.
@@ -10,7 +10,7 @@ public struct Hyperbola: Hashable, Sendable {
     /// - Parameters:
     ///   - scale: Positive hyperbola scale.
     ///   - size: Positive finite rendering-window size.
-    public init(scale: Double, size: Vec2) {
+    public init(scale: Float, size: Vec2) {
         precondition(scale.isFinite && scale > 0)
         precondition(size.x.isFinite && size.x > 0 && size.y.isFinite && size.y > 0)
         self.scale = scale; self.size = size
@@ -21,5 +21,5 @@ public struct Hyperbola: Hashable, Sendable {
     /// - Parameters:
     ///   - scale: Positive hyperbola scale.
     ///   - size: Positive finite rendering-window size.
-    public static func hyperbola(scale: Double, size: Vec2 = .one) -> Self { .init(scale: scale, size: size) }
+    public static func hyperbola(scale: Float, size: Vec2 = .one) -> Self { .init(scale: scale, size: size) }
 }

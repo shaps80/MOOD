@@ -7,13 +7,13 @@ public struct Gradient: Hashable, Sendable {
         /// Colour at ``location``.
         public var color: Color
         /// Normalized location in `0...1`.
-        public var location: Double
+        public var location: Float
 
         /// Creates a colour stop.
         /// - Parameters:
         ///   - color: Colour at the stop.
         ///   - location: Finite normalized location in `0...1`.
-        public init(color: Color, location: Double) {
+        public init(color: Color, location: Float) {
             precondition(location.isFinite && (0...1).contains(location))
             self.color = color
             self.location = location
@@ -30,9 +30,9 @@ public struct Gradient: Hashable, Sendable {
         if colors.count == 1 {
             stops = [.init(color: colors[0], location: 0)]
         } else {
-            let denominator = Double(colors.count - 1)
+            let denominator = Float(colors.count - 1)
             stops = colors.enumerated().map {
-                .init(color: $0.element, location: Double($0.offset) / denominator)
+                .init(color: $0.element, location: Float($0.offset) / denominator)
             }
         }
     }

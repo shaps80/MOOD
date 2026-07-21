@@ -1,16 +1,16 @@
 /// Egg geometry with independently controlled lower and upper radii.
 public struct Egg: Hashable, Sendable {
     /// Lower lobe radius.
-    public let lowerRadius: Double
+    public let lowerRadius: Float
     /// Upper lobe radius.
-    public let upperRadius: Double
+    public let upperRadius: Float
     /// Creates a canonical unit egg.
     public init() { self.init(lowerRadius: 0.5, upperRadius: 0.3) }
     /// Creates an egg.
     /// - Parameters:
     ///   - lowerRadius: Positive lower radius.
     ///   - upperRadius: Positive upper radius no greater than `lowerRadius`.
-    public init(lowerRadius: Double, upperRadius: Double) {
+    public init(lowerRadius: Float, upperRadius: Float) {
         precondition(lowerRadius.isFinite && lowerRadius > 0)
         precondition(upperRadius.isFinite && upperRadius > 0 && upperRadius <= lowerRadius)
         self.lowerRadius = lowerRadius; self.upperRadius = upperRadius
@@ -21,7 +21,7 @@ public struct Egg: Hashable, Sendable {
     /// - Parameters:
     ///   - lowerRadius: Positive lower radius.
     ///   - upperRadius: Positive upper radius.
-    public static func egg(lowerRadius: Double, upperRadius: Double) -> Self {
+    public static func egg(lowerRadius: Float, upperRadius: Float) -> Self {
         .init(lowerRadius: lowerRadius, upperRadius: upperRadius)
     }
 }

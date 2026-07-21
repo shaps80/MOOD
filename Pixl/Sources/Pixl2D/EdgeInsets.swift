@@ -16,7 +16,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(all: 8)
     /// let top = insets.top
     /// ```
-    public var top: Double
+    public var top: Float
 
     /// The left inset.
     ///
@@ -24,7 +24,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(all: 8)
     /// let left = insets.left
     /// ```
-    public var left: Double
+    public var left: Float
 
     /// The bottom inset.
     ///
@@ -32,7 +32,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(all: 8)
     /// let bottom = insets.bottom
     /// ```
-    public var bottom: Double
+    public var bottom: Float
 
     /// The right inset.
     ///
@@ -40,7 +40,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(all: 8)
     /// let right = insets.right
     /// ```
-    public var right: Double
+    public var right: Float
 
     /// Creates insets with explicit edge values.
     ///
@@ -52,7 +52,7 @@ public struct EdgeInsets: Equatable, Sendable {
     ///   - left: Left-edge inset.
     ///   - bottom: Bottom-edge inset.
     ///   - right: Right-edge inset.
-    public init(top: Double, left: Double, bottom: Double, right: Double) {
+    public init(top: Float, left: Float, bottom: Float, right: Float) {
         self.top = top
         self.left = left
         self.bottom = bottom
@@ -67,7 +67,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// - Parameters:
     ///   - horizontal: Value assigned to left and right edges.
     ///   - vertical: Value assigned to top and bottom edges.
-    public init(horizontal: Double, vertical: Double) {
+    public init(horizontal: Float, vertical: Float) {
         self.init(
             top: vertical,
             left: horizontal,
@@ -82,7 +82,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(all: 10)
     /// ```
     /// - Parameter amount: Value assigned to every edge.
-    public init(all amount: Double) {
+    public init(all amount: Float) {
         self.init(
             top: amount,
             left: amount,
@@ -104,7 +104,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(horizontal: 16, vertical: 8)
     /// let widthReduction = insets.horizontal
     /// ```
-    public var horizontal: Double {
+    public var horizontal: Float {
         left + right
     }
 
@@ -114,7 +114,7 @@ public struct EdgeInsets: Equatable, Sendable {
     /// let insets = EdgeInsets(horizontal: 16, vertical: 8)
     /// let heightReduction = insets.vertical
     /// ```
-    public var vertical: Double {
+    public var vertical: Float {
         top + bottom
     }
 }

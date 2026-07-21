@@ -11,6 +11,6 @@ import Swift
 ///   - minValue: Lower bound returned when `value` is smaller.
 ///   - maxValue: Upper bound returned when `value` is larger.
 /// - Returns: `value` constrained to the inclusive bounds.
-public func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
+public func clamp(_ value: Float, min minValue: Float, max maxValue: Float) -> Float {
     min(max(value, minValue), maxValue)
 }

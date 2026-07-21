@@ -29,6 +29,8 @@ Portable Pixl targets must not import or rely on APIs carrying operating-system 
 
 They define convenient, efficient domain values and algorithms without depending on engine execution infrastructure. `Pixl` is the orchestrator and bridge: it consumes domain values, lowers them into optimized `PixlFoundation` representations and lifetimes, then `PixlFoundation` resolves those through `PixlPlatform`. Domain targets do not depend on `PixlFoundation`; package access does not bypass target dependencies.
 
+Spatial, graphical, and normalized input values use single-precision `Float` storage throughout the portable layers. This keeps public values aligned with GPU representation, reduces retained world storage and improves cache density without conversion at render submission. Time, accumulated durations, performance measurements, and other long-running temporal calculations remain `Double`. Very large worlds preserve precision through chunk-local coordinates or origin rebasing rather than carrying double-precision positions into a single-precision GPU pipeline.
+
 Pixl deliberately depends on PixlGraphics, Pixl2D, and Pixl3D even before every bridge exists. These are orchestration edges: Pixl is where domain values meet Foundation execution mechanisms. PixlGraphics is also deliberately re-exported as Pixl's common, dimension-independent graphics vocabulary. Pixl2D and Pixl3D are not re-exported; the Game needs only the Pixl product while explicitly importing whichever dimensional domain modules its source uses.
 
 ```text

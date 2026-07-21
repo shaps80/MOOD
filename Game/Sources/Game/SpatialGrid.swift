@@ -2,13 +2,13 @@ import Pixl2D
 
 /// Dense, immutable spatial index for the stress-test sprites.
 final class SpatialGrid {
-    private let origin: Double
-    private let cellSize: Double
+    private let origin: Float
+    private let cellSize: Float
     private let width: Int
     private let offsets: [Int]
     private let positions: [Vec2]
 
-    init(count: Int, worldSize: Double, cellSize: Double) {
+    init(count: Int, worldSize: Float, cellSize: Float) {
         precondition(count > 0 && worldSize > 0 && cellSize > 0)
         origin = -worldSize / 2
         self.cellSize = cellSize
@@ -23,8 +23,8 @@ final class SpatialGrid {
 
         for _ in 0..<count {
             let position = Vec2(
-                Double.random(in: origin...(-origin)),
-                Double.random(in: origin...(-origin))
+                Float.random(in: origin...(-origin)),
+                Float.random(in: origin...(-origin))
             )
             let index = Self.cellIndex(
                 for: position,
@@ -82,14 +82,14 @@ final class SpatialGrid {
         return count
     }
 
-    private func cellCoordinate(_ value: Double) -> Int {
+    private func cellCoordinate(_ value: Float) -> Int {
         Int(((value - origin) / cellSize).rounded(.down))
     }
 
     private static func cellIndex(
         for position: Vec2,
-        origin: Double,
-        cellSize: Double,
+        origin: Float,
+        cellSize: Float,
         width: Int
     ) -> Int {
         let x = min(width - 1, Int(((position.x - origin) / cellSize).rounded(.down)))

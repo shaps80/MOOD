@@ -23,7 +23,7 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     ///   - scale: Local-axis scale.
     public init(
         _ translation: Vec2 = .zero,
-        rotation: Double = 0,
+        rotation: Float = 0,
         scale: Vec2 = .one
     ) {
         let rotation = sinCos(rotation)
@@ -62,7 +62,7 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     /// - Parameter radians: Rotation angle in radians. Use `.pi / 2` for a
     ///   quarter turn counter-clockwise.
     /// - Returns: A copy with the rotation composed after this transform.
-    public func rotated(by radians: Double) -> Self {
+    public func rotated(by radians: Float) -> Self {
         let rotation = sinCos(radians)
         let cosine = Float(rotation.cosine)
         let sine = Float(rotation.sine)
@@ -85,7 +85,7 @@ public struct Transform2D: BitwiseCopyable, Sendable {
     ///   - x: Scale along the local x axis.
     ///   - y: Scale along the local y axis.
     /// - Returns: A copy with the scale composed after this transform.
-    public func scaled(x: Double, y: Double) -> Self {
+    public func scaled(x: Float, y: Float) -> Self {
         .init(
             x: self.x * Float(x),
             y: self.y * Float(y),
@@ -108,7 +108,7 @@ public struct Transform2D: BitwiseCopyable, Sendable {
         )
     }
 
-    public func translated(x: Double, y: Double) -> Self {
+    public func translated(x: Float, y: Float) -> Self {
         translated(by: .init(x, y))
     }
 }

@@ -1,7 +1,7 @@
 import Swift
 
-/// A three-dimensional double-precision vector.
-public typealias Vec3 = SIMD3<Double>
+/// A compact three-dimensional single-precision vector.
+public typealias Vec3 = SIMD3<Float>
 
 /// Convenience values for three-dimensional vectors.
 ///
@@ -32,11 +32,11 @@ public extension Vec3 {
     ///   - y: Closed range used for the y component.
     ///   - z: Closed range used for the z component.
     /// - Returns: A vector whose components are sampled from their corresponding ranges.
-    static func random(x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>) -> Self {
+    static func random(x: ClosedRange<Float>, y: ClosedRange<Float>, z: ClosedRange<Float>) -> Self {
         .init(
-            x: Double.random(in: x),
-            y: Double.random(in: y),
-            z: Double.random(in: z)
+            x: Float.random(in: x),
+            y: Float.random(in: y),
+            z: Float.random(in: z)
         )
     }
 }
@@ -47,7 +47,7 @@ public extension Vec3 {
     /// ```swift
     /// let speed = velocity.length
     /// ```
-    var length: Double {
+    var length: Float {
         (x * x + y * y + z * z).squareRoot()
     }
 
@@ -71,7 +71,7 @@ public extension Vec3 {
     /// ```
     /// - Parameter other: The vector to multiply component-wise before summing.
     /// - Returns: The scalar dot product of this vector and `other`.
-    func dot(_ other: Self) -> Double {
+    func dot(_ other: Self) -> Float {
         (x * other.x) + (y * other.y) + (z * other.z)
     }
 }

@@ -1,11 +1,11 @@
 /// Centred isosceles trapezoid geometry.
 public struct Trapezoid: Hashable, Sendable {
     /// Bottom width in local units.
-    public let bottomWidth: Double
+    public let bottomWidth: Float
     /// Top width in local units.
-    public let topWidth: Double
+    public let topWidth: Float
     /// Height in local units.
-    public let height: Double
+    public let height: Float
 
     /// Creates a canonical unit trapezoid.
     public init() { self.init(bottomWidth: 1, topWidth: 0.5, height: 1) }
@@ -14,7 +14,7 @@ public struct Trapezoid: Hashable, Sendable {
     ///   - bottomWidth: Positive bottom width.
     ///   - topWidth: Positive top width.
     ///   - height: Positive height.
-    public init(bottomWidth: Double, topWidth: Double, height: Double) {
+    public init(bottomWidth: Float, topWidth: Float, height: Float) {
         precondition(bottomWidth.isFinite && bottomWidth > 0)
         precondition(topWidth.isFinite && topWidth > 0)
         precondition(height.isFinite && height > 0)
@@ -27,7 +27,7 @@ public struct Trapezoid: Hashable, Sendable {
     ///   - bottomWidth: Positive bottom width.
     ///   - topWidth: Positive top width.
     ///   - height: Positive height.
-    public static func trapezoid(bottomWidth: Double, topWidth: Double, height: Double) -> Self {
+    public static func trapezoid(bottomWidth: Float, topWidth: Float, height: Float) -> Self {
         .init(bottomWidth: bottomWidth, topWidth: topWidth, height: height)
     }
 }

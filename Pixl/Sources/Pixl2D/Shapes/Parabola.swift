@@ -1,7 +1,7 @@
 /// Parabola clipped to a finite local rendering window.
 public struct Parabola: Hashable, Sendable {
     /// Coefficient in `y = curvature × x²`.
-    public let curvature: Double
+    public let curvature: Float
     /// Finite local rendering-window size.
     public let size: Vec2
     /// Creates a canonical parabola in a unit window.
@@ -10,7 +10,7 @@ public struct Parabola: Hashable, Sendable {
     /// - Parameters:
     ///   - curvature: Nonzero finite coefficient in `y = curvature × x²`.
     ///   - size: Positive finite rendering-window size.
-    public init(curvature: Double, size: Vec2) {
+    public init(curvature: Float, size: Vec2) {
         precondition(curvature.isFinite && curvature != 0)
         precondition(size.x.isFinite && size.x > 0 && size.y.isFinite && size.y > 0)
         self.curvature = curvature; self.size = size
@@ -21,5 +21,5 @@ public struct Parabola: Hashable, Sendable {
     /// - Parameters:
     ///   - curvature: Nonzero finite parabola coefficient.
     ///   - size: Positive finite rendering-window size.
-    public static func parabola(curvature: Double, size: Vec2 = .one) -> Self { .init(curvature: curvature, size: size) }
+    public static func parabola(curvature: Float, size: Vec2 = .one) -> Self { .init(curvature: curvature, size: size) }
 }

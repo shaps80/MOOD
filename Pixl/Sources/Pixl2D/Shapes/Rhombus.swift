@@ -8,7 +8,7 @@ public struct Rhombus: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive horizontal tip-to-tip size.
     ///   - height: Positive vertical tip-to-tip size.
-    public init(width: Double, height: Double) {
+    public init(width: Float, height: Float) {
         precondition(width.isFinite && width > 0 && height.isFinite && height > 0)
         size = .init(width, height)
     }
@@ -18,5 +18,5 @@ public struct Rhombus: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive horizontal tip-to-tip size.
     ///   - height: Positive vertical tip-to-tip size.
-    public static func rhombus(width: Double, height: Double) -> Self { .init(width: width, height: height) }
+    public static func rhombus(width: Float, height: Float) -> Self { .init(width: width, height: height) }
 }

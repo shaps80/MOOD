@@ -18,8 +18,8 @@ public struct TextureRegion {
         source = Rect(
             x: 0,
             y: 0,
-            width: Double(asset.size.x),
-            height: Double(asset.size.y)
+            width: Float(asset.size.x),
+            height: Float(asset.size.y)
         )
     }
 
@@ -37,11 +37,11 @@ public struct TextureRegion {
             "Texture region size must be greater than zero"
         )
         precondition(
-            source.maxX <= Double(asset.size.x),
+            source.maxX <= Float(asset.size.x),
             "Texture region exceeds texture width"
         )
         precondition(
-            source.maxY <= Double(asset.size.y),
+            source.maxY <= Float(asset.size.y),
             "Texture region exceeds texture height"
         )
 
@@ -55,12 +55,12 @@ package extension TextureRegion {
         let textureSize = asset.size
         return TextureCoordinates(
             origin: SIMD2(
-                Float(source.minX / Double(textureSize.x)),
-                Float(source.minY / Double(textureSize.y))
+                Float(source.minX / Float(textureSize.x)),
+                Float(source.minY / Float(textureSize.y))
             ),
             scale: SIMD2(
-                Float(source.size.x / Double(textureSize.x)),
-                Float(source.size.y / Double(textureSize.y))
+                Float(source.size.x / Float(textureSize.x)),
+                Float(source.size.y / Float(textureSize.y))
             )
         )
     }

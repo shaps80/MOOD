@@ -9,7 +9,7 @@ public extension Input {
         /// A gamepad button or trigger.
         case button(Gamepad.Button)
         /// One directional half of a gamepad stick axis.
-        case axis(Axis, direction: Direction, deadZone: Double = 0.12)
+        case axis(Axis, direction: Direction, deadZone: Float = 0.12)
     }
 
     /// A physical gamepad stick component.

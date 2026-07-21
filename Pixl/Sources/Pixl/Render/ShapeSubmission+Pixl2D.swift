@@ -74,7 +74,7 @@ extension ShapeSubmission {
                 max(maximum.x - minimum.x, 0.0001),
                 max(maximum.y - minimum.y, 0.0001)
             )
-            localOffset = .init(Double((minimum.x + maximum.x) * 0.5), Double((minimum.y + maximum.y) * 0.5))
+            localOffset = (minimum + maximum) * 0.5
             parameters = .init(
                 Float(value.a.x - localOffset.x), Float(value.a.y - localOffset.y),
                 Float(value.b.x - localOffset.x), Float(value.b.y - localOffset.y)
@@ -164,7 +164,7 @@ extension ShapeSubmission {
                 max(maximum.x - minimum.x, 0.0001),
                 max(maximum.y - minimum.y, 0.0001)
             )
-            localOffset = .init(Double((minimum.x + maximum.x) * 0.5), Double((minimum.y + maximum.y) * 0.5))
+            localOffset = (minimum + maximum) * 0.5
             parameters = .init(
                 Float(value.start.x - localOffset.x), Float(value.start.y - localOffset.y),
                 Float(value.control.x - localOffset.x), Float(value.control.y - localOffset.y)
@@ -178,7 +178,7 @@ extension ShapeSubmission {
         case .tunnel(let value):
             size = .init(Float(value.width), Float(value.height + value.width * 0.5)); parameters = .init(size.x * 0.5, Float(value.height), 0, 0); kind = .tunnel
         case .stairs(let value):
-            size = .init(Float(value.stepSize.x * Double(value.count)), Float(value.stepSize.y * Double(value.count)))
+            size = value.stepSize * Float(value.count)
             parameters = .init(Float(value.stepSize.x), Float(value.stepSize.y), Float(value.count), 0); kind = .stairs
         case .quadraticCircle(let value):
             size = .init(repeating: Float(value.size)); parameters = .init(Float(value.size), 0, 0, 0); kind = .quadraticCircle
@@ -210,12 +210,15 @@ extension ShapeSubmission {
         let rounding = Float(shape.rounding)
         let quadSize = size + SIMD2(repeating: (outwardStroke + rounding) * 2)
         let transform = sourceTransform.translated(by: localOffset).scaled(
-            x: Double(quadSize.x) * (shape.isFlipped ? -1 : 1),
-            y: Double(quadSize.y)
+            x: quadSize.x * (shape.isFlipped ? -1 : 1),
+            y: quadSize.y
         )
         let transformX = SIMD2(transform.x.x, transform.x.y)
         let transformY = SIMD2(transform.y.x, transform.y.y)
-        let translation = SIMD2(transform.translation.x, transform.translation.y)
+        let translation = SIMD2<Float>(
+            transform.translation.x,
+            transform.translation.y
+        )
         let extent = SIMD2<Float>(
             abs(transformX.x) + abs(transformY.x),
             abs(transformX.y) + abs(transformY.y)

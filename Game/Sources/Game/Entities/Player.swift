@@ -6,7 +6,7 @@ struct Player {
     private var animation: SpriteAnimation.Timeline
     private let positions: SpatialGrid
 
-    init(count: Int, worldSize: Double, context: GameContext) throws {
+    init(count: Int, worldSize: Float, context: GameContext) throws {
         positions = SpatialGrid(
             count: count,
             worldSize: worldSize,

@@ -49,10 +49,10 @@ public struct SpriteSheet {
                     TextureRegion(
                         asset: asset,
                         source: Rect(
-                            x: Double(column * frameWidth),
-                            y: Double(row * frameHeight),
-                            width: Double(frameWidth),
-                            height: Double(frameHeight)
+                            x: Float(column * frameWidth),
+                            y: Float(row * frameHeight),
+                            width: Float(frameWidth),
+                            height: Float(frameHeight)
                         )
                     )
                 )

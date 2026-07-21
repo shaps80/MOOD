@@ -48,9 +48,9 @@ public final class Gamepad {
     public package(set) var isConnected: Bool
 
     /// Current normalized left-stick displacement with positive y upward.
-    public private(set) var leftStick = SIMD2<Double>.zero
+    public private(set) var leftStick = SIMD2<Float>.zero
     /// Current normalized right-stick displacement with positive y upward.
-    public private(set) var rightStick = SIMD2<Double>.zero
+    public private(set) var rightStick = SIMD2<Float>.zero
 
     private static let eventCapacity = Button.allCases.count * 2
     private static let buttonWordCount = (Button.allCases.count + 63) / 64
@@ -71,7 +71,7 @@ public final class Gamepad {
 
     private let storage = Storage(capacity: eventCapacity)
     private var pressed: ContiguousArray<UInt64>
-    private var values: ContiguousArray<Double>
+    private var values: ContiguousArray<Float>
 
     package init(index: Int, name: String) {
         self.index = index
@@ -112,7 +112,7 @@ public final class Gamepad {
     /// Returns a button's current normalized analogue value.
     /// - Parameter button: Physical button to query.
     /// - Returns: Value in `0...1`; digital buttons naturally report `0` or `1`.
-    public func value(for button: Button) -> Double {
+    public func value(for button: Button) -> Float {
         values[Int(button.rawValue)]
     }
 
@@ -129,7 +129,7 @@ public final class Gamepad {
 
     package func update(
         _ button: Button,
-        value: Double,
+        value: Float,
         pressed isPressed: Bool
     ) {
         let normalizedValue = min(max(value, 0), 1)
@@ -153,8 +153,8 @@ public final class Gamepad {
     }
 
     package func updateSticks(
-        left: SIMD2<Double>,
-        right: SIMD2<Double>
+        left: SIMD2<Float>,
+        right: SIMD2<Float>
     ) {
         leftStick = left
         rightStick = right
@@ -208,14 +208,14 @@ public extension Gamepad.Button {
         /// Whether the button moved down or up.
         public let phase: Phase
         /// Normalized analogue value at the transition.
-        public let value: Double
+        public let value: Float
 
         /// Creates a button transition.
         /// - Parameters:
         ///   - button: Physical button that transitioned.
         ///   - phase: Whether the button moved down or up.
         ///   - value: Normalized analogue value in `0...1`.
-        public init(button: Gamepad.Button, phase: Phase, value: Double) {
+        public init(button: Gamepad.Button, phase: Phase, value: Float) {
             self.button = button
             self.phase = phase
             self.value = value

@@ -4,16 +4,16 @@ import Pixl2D
 /// One-dimensional acceleration and deceleration for axis-based movement.
 public struct AxisController: Equatable, Sendable {
     /// Maximum speed reached when input is `-1` or `1`.
-    public var maxSpeed: Double
+    public var maxSpeed: Float
 
     /// Units per second used while accelerating toward input.
-    public var acceleration: Double
+    public var acceleration: Float
 
     /// Units per second used while returning to rest.
-    public var deceleration: Double
+    public var deceleration: Float
 
     /// Units per second used while changing direction.
-    public var reverseDeceleration: Double
+    public var reverseDeceleration: Float
 
     /// Creates an axis movement controller.
     /// - Parameters:
@@ -22,10 +22,10 @@ public struct AxisController: Equatable, Sendable {
     ///   - deceleration: Units per second removed while returning to rest.
     ///   - reverseDeceleration: Units per second removed before changing direction; defaults to `deceleration`.
     public init(
-        maxSpeed: Double,
-        acceleration: Double,
-        deceleration: Double,
-        reverseDeceleration: Double? = nil
+        maxSpeed: Float,
+        acceleration: Float,
+        deceleration: Float,
+        reverseDeceleration: Float? = nil
     ) {
         self.maxSpeed = maxSpeed
         self.acceleration = acceleration
@@ -55,7 +55,8 @@ public struct AxisController: Equatable, Sendable {
     ///   - target: Normalized directional input.
     ///   - delta: Elapsed time in seconds.
     /// - Returns: Velocity after applying acceleration or deceleration for `delta`.
-    public func velocity(source: Double, target: Double, delta: Double) -> Double {
+    public func velocity(source: Float, target: Float, delta: Double) -> Float {
+        let delta = Float(delta)
         guard target != 0 else {
             return move(source, toward: 0, by: deceleration * delta)
         }
@@ -68,7 +69,7 @@ public struct AxisController: Equatable, Sendable {
         return move(source, toward: target, by: acceleration * delta)
     }
 
-    private func move(_ current: Double, toward target: Double, by step: Double) -> Double {
+    private func move(_ current: Float, toward target: Float, by step: Float) -> Float {
         guard step > 0 else {
             return current
         }
@@ -80,7 +81,7 @@ public struct AxisController: Equatable, Sendable {
         return max(current - step, target)
     }
 
-    private func isReversing(current: Double, target: Double) -> Bool {
+    private func isReversing(current: Float, target: Float) -> Bool {
         (current < 0 && target > 0) || (current > 0 && target < 0)
     }
 }

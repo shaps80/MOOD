@@ -8,7 +8,7 @@ public struct Cross: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive arm reach.
     ///   - height: Positive arm half-thickness no greater than `width`.
-    public init(width: Double, height: Double) {
+    public init(width: Float, height: Float) {
         precondition(width.isFinite && width > 0 && height.isFinite && height > 0 && height <= width)
         size = .init(width, height)
     }
@@ -18,5 +18,5 @@ public struct Cross: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive arm reach.
     ///   - height: Positive arm half-thickness.
-    public static func cross(width: Double, height: Double) -> Self { .init(width: width, height: height) }
+    public static func cross(width: Float, height: Float) -> Self { .init(width: width, height: height) }
 }

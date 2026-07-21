@@ -10,7 +10,7 @@ public struct Rectangle: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive width in local units.
     ///   - height: Positive height in local units.
-    public init(width: Double, height: Double) {
+    public init(width: Float, height: Float) {
         precondition(width.isFinite && width > 0)
         precondition(height.isFinite && height > 0)
         size = .init(width, height)
@@ -23,7 +23,7 @@ public struct Rectangle: Hashable, Sendable {
     /// - Parameters:
     ///   - width: Positive width in local units.
     ///   - height: Positive height in local units.
-    public static func rect(width: Double, height: Double) -> Self {
+    public static func rect(width: Float, height: Float) -> Self {
         .init(width: width, height: height)
     }
 }

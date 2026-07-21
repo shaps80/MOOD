@@ -171,7 +171,7 @@ extension GameContext {
         defer { queue.reset() }
         let workspace = workspace(for: queue)
         let size = output.texture.descriptor.size
-        let aspect = Double(size.width) / Double(size.height)
+        let aspect = Float(size.width) / Float(size.height)
         let halfWidth = camera.halfHeight * aspect
         let projection = camera.projection(aspectRatio: aspect)
         var view = RenderQueue.View(

@@ -49,7 +49,7 @@ public struct Rect: Equatable, Sendable {
     ///   - y: Minimum y coordinate.
     ///   - width: Rectangle width.
     ///   - height: Rectangle height.
-    public init(x: Double, y: Double, width: Double, height: Double) {
+    public init(x: Float, y: Float, width: Float, height: Float) {
         self.init(
             origin: Vec2(x: x, y: y),
             size: Vec2(x: width, y: height)
@@ -94,7 +94,7 @@ public extension Rect {
     /// ```swift
     /// let left = Rect(x: 10, y: 20, width: 30, height: 40).minX
     /// ```
-    var minX: Double {
+    var minX: Float {
         origin.x
     }
 
@@ -103,7 +103,7 @@ public extension Rect {
     /// ```swift
     /// let right = Rect(x: 10, y: 20, width: 30, height: 40).maxX
     /// ```
-    var maxX: Double {
+    var maxX: Float {
         origin.x + size.x
     }
 
@@ -112,7 +112,7 @@ public extension Rect {
     /// ```swift
     /// let top = Rect(x: 10, y: 20, width: 30, height: 40).minY
     /// ```
-    var minY: Double {
+    var minY: Float {
         origin.y
     }
 
@@ -121,7 +121,7 @@ public extension Rect {
     /// ```swift
     /// let bottom = Rect(x: 10, y: 20, width: 30, height: 40).maxY
     /// ```
-    var maxY: Double {
+    var maxY: Float {
         origin.y + size.y
     }
 
@@ -172,7 +172,7 @@ public extension Rect {
     /// ```
     /// - Parameter amount: Distance to move each edge inward. Negative values expand the rectangle.
     /// - Returns: The inset rectangle.
-    func padding(_ amount: Double) -> Rect {
+    func padding(_ amount: Float) -> Rect {
         padding(.all, amount)
     }
 
@@ -186,7 +186,7 @@ public extension Rect {
     ///   - edges: Edges to move inward.
     ///   - amount: Distance to move each selected edge. Negative values expand the rectangle.
     /// - Returns: The selectively inset rectangle.
-    func padding(_ edges: Edge.Set = .all, _ amount: Double) -> Rect {
+    func padding(_ edges: Edge.Set = .all, _ amount: Float) -> Rect {
         var origin = origin
         var size = size
 

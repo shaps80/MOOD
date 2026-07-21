@@ -119,13 +119,13 @@ public struct Shape: Hashable, Sendable {
     /// Optional stroke colour.
     public var strokeColor: Color?
     /// Stroke width in local units.
-    public var strokeWidth: Double
+    public var strokeWidth: Float
     /// Stroke placement relative to the boundary.
     public var strokeAlignment: StrokeAlignment
     /// Edge coverage mode.
     public var antialiasing: Antialiasing
     /// Outward rounding applied to the analytic boundary, in local units.
-    public var rounding: Double
+    public var rounding: Float
     /// Fixed-function composition over the destination.
     public var blendMode: Sprite.Material.BlendMode
     /// Coarse render layer. Lower layers render first.
@@ -157,7 +157,7 @@ public struct Shape: Hashable, Sendable {
     /// - Parameters:
     ///   - geometry: Unit or explicitly sized rectangle geometry.
     ///   - rounding: Nonnegative local-space corner radius.
-    public init(_ geometry: Rectangle, rounding: Double = 0) {
+    public init(_ geometry: Rectangle, rounding: Float = 0) {
         precondition(rounding.isFinite && rounding >= 0)
         self.init(geometry: .rectangle(geometry))
         self.rounding = rounding
@@ -323,7 +323,7 @@ public struct Shape: Hashable, Sendable {
     public func fill(
         _ gradient: Gradient,
         center: Vec2 = .zero,
-        radius: Double
+        radius: Float
     ) -> Self {
         fill(.gradient(.init(gradient, center: center, radius: radius)))
     }
@@ -348,7 +348,7 @@ public struct Shape: Hashable, Sendable {
     ///   - alignment: Placement relative to the analytic boundary.
     public func stroke(
         _ color: Color,
-        width: Double,
+        width: Float,
         alignment: StrokeAlignment = .center
     ) -> Self {
         precondition(width.isFinite && width > 0)
@@ -374,7 +374,7 @@ public struct Shape: Hashable, Sendable {
     /// ```
     ///
     /// - Parameter radius: Nonnegative rounding radius in local units.
-    public func rounding(_ radius: Double) -> Self {
+    public func rounding(_ radius: Float) -> Self {
         precondition(radius.isFinite && radius >= 0)
         var copy = self
         copy.rounding = radius

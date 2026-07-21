@@ -9,8 +9,8 @@ public extension OrthographicCamera {
         let size = output.texture.descriptor.size
         return projection(
             in: .init(
-                Double(size.width),
-                Double(size.height)
+                Float(size.width),
+                Float(size.height)
             )
         )
     }
@@ -21,8 +21,8 @@ public extension OrthographicCamera {
         let size = output.texture.descriptor.size
         return visibleBounds(
             in: .init(
-                Double(size.width),
-                Double(size.height)
+                Float(size.width),
+                Float(size.height)
             )
         )
     }

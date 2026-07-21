@@ -119,13 +119,13 @@ final class WasmGamepads {
         }
         gamepad.update(
             button,
-            value: native.value.number ?? 0,
+            value: Float(native.value.number ?? 0),
             pressed: native.pressed.boolean == true
         )
     }
 
-    private func axis(_ index: Int, _ axes: JSArray) -> Double {
+    private func axis(_ index: Int, _ axes: JSArray) -> Float {
         guard axes.indices.contains(index) else { return 0 }
-        return axes[index].number ?? 0
+        return Float(axes[index].number ?? 0)
     }
 }

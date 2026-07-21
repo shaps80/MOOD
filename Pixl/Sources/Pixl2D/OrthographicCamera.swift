@@ -13,7 +13,7 @@ public struct OrthographicCamera: Sendable {
     ///
     /// A value of `1` shows y coordinates from `-1` to `1`. Larger values zoom
     /// out; smaller positive values zoom in.
-    public var halfHeight: Double
+    public var halfHeight: Float
 
     /// Creates an aspect-correct y-up orthographic camera.
     ///
@@ -23,7 +23,7 @@ public struct OrthographicCamera: Sendable {
     ///   - halfHeight: Half the visible vertical world span. For example, `1`
     ///     shows y coordinates from `-1` to `1`; `5` shows y coordinates from
     ///     `-5` to `5`.
-    public init(center: Vec2 = .zero, halfHeight: Double = 1) {
+    public init(center: Vec2 = .zero, halfHeight: Float = 1) {
         precondition(halfHeight > 0)
         self.center = center
         self.halfHeight = halfHeight
@@ -53,7 +53,7 @@ public struct OrthographicCamera: Sendable {
 
     /// Returns the visible world-space rectangle for a viewport aspect ratio.
     /// - Parameter aspectRatio: Positive finite viewport width divided by height.
-    public func visibleBounds(aspectRatio: Double) -> Rect {
+    public func visibleBounds(aspectRatio: Float) -> Rect {
         precondition(
             aspectRatio.isFinite && aspectRatio > 0,
             "Aspect ratio must be finite and greater than zero"
@@ -69,7 +69,7 @@ public struct OrthographicCamera: Sendable {
     ///
     /// - Parameter aspectRatio: Positive finite viewport width divided by height.
     /// - Returns: A transform mapping the camera's visible area to clip space.
-    public func projection(aspectRatio: Double) -> Transform2D {
+    public func projection(aspectRatio: Float) -> Transform2D {
         precondition(
             aspectRatio.isFinite && aspectRatio > 0,
             "Aspect ratio must be finite and greater than zero"

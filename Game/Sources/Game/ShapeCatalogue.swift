@@ -4,17 +4,17 @@ import Pixl2D
 /// Temporary visual diagnostic for the fixed-parameter IQ shape catalogue.
 struct ShapeCatalogue {
     private static let columns = 5
-    private static let halfWidth = 16.0 / 9.0
-    private static let halfHeight = 1.0
+    private static let halfWidth: Float = 16.0 / 9.0
+    private static let halfHeight: Float = 1.0
     private static let rows = 8
     // Leaves room for the tallest canonical geometry, outward rounding, and a
     // fully outside stroke so the grid reveals shape clipping rather than
     // introducing viewport or neighbouring-cell clipping of its own.
-    private static let shapeScale = 0.1
+    private static let shapeScale: Float = 0.1
 
     private let bindings: ShapeBindings = .init()
     private var alignment: Shape.StrokeAlignment = .outside
-    private var rounding: Double = 0
+    private var rounding: Float = 0
 
     init(context: GameContext) {
         bindings.bind(to: context.inputs)
@@ -87,11 +87,11 @@ struct ShapeCatalogue {
 
     private let grid: [Shape] = {
         var lines: [Shape] = []
-        let cellWidth = halfWidth * 2 / Double(columns)
-        let cellHeight = halfHeight * 2 / Double(rows)
+        let cellWidth = halfWidth * 2 / Float(columns)
+        let cellHeight = halfHeight * 2 / Float(rows)
 
         for column in 0...columns {
-            let x = -halfWidth + Double(column) * cellWidth
+            let x = -halfWidth + Float(column) * cellWidth
             var line = Shape(.segment(
                 from: .init(x, -halfHeight),
                 to: .init(x, halfHeight)
@@ -101,7 +101,7 @@ struct ShapeCatalogue {
         }
 
         for row in 0...rows {
-            let y = halfHeight - Double(row) * cellHeight
+            let y = halfHeight - Float(row) * cellHeight
             var line = Shape(.segment(
                 from: .init(-halfWidth, y),
                 to: .init(halfWidth, y)
@@ -137,15 +137,15 @@ struct ShapeCatalogue {
     }
 
     func submit(to queue: RenderQueue) {
-        let cellWidth = Self.halfWidth * 2 / Double(Self.columns)
-        let cellHeight = Self.halfHeight * 2 / Double(Self.rows)
+        let cellWidth = Self.halfWidth * 2 / Float(Self.columns)
+        let cellHeight = Self.halfHeight * 2 / Float(Self.rows)
 
         for (index, shape) in shapes.enumerated() {
             let column = index % Self.columns
             let row = index / Self.columns
             let position = Vec2(
-                -Self.halfWidth + (Double(column) + 0.5) * cellWidth,
-                Self.halfHeight - (Double(row) + 0.5) * cellHeight
+                -Self.halfWidth + (Float(column) + 0.5) * cellWidth,
+                Self.halfHeight - (Float(row) + 0.5) * cellHeight
             )
 
             queue.submit(

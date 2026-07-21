@@ -16,7 +16,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// let angle = Angle.radians(.pi)
     /// let radians = angle.radians
     /// ```
-    public var radians: Double
+    public var radians: Float
 
     /// The angle value in degrees.
     ///
@@ -25,7 +25,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// angle.degrees += 45
     /// ```
     @inline(__always)
-    public var degrees: Double {
+    public var degrees: Float {
         get {
             radians * (180.0 / .pi)
         }
@@ -51,7 +51,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```
     /// - Parameter radians: Angle value in radians.
     @inline(__always)
-    public init(radians: Double) {
+    public init(radians: Float) {
         self.radians = radians
     }
 
@@ -62,7 +62,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// ```
     /// - Parameter degrees: Angle value in degrees.
     @inline(__always)
-    public init(degrees: Double) {
+    public init(degrees: Float) {
         self.init(radians: degrees * (.pi / 180.0))
     }
 
@@ -74,7 +74,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// - Parameter radians: Angle value in radians.
     /// - Returns: An angle storing `radians`.
     @inline(__always)
-    public static func radians(_ radians: Double) -> Angle {
+    public static func radians(_ radians: Float) -> Angle {
         Angle(radians: radians)
     }
 
@@ -86,7 +86,7 @@ public struct Angle: Hashable, Comparable, Codable, Sendable {
     /// - Parameter degrees: Angle value in degrees.
     /// - Returns: An angle converted from `degrees`.
     @inline(__always)
-    public static func degrees(_ degrees: Double) -> Angle {
+    public static func degrees(_ degrees: Float) -> Angle {
         Angle(degrees: degrees)
     }
 
@@ -192,7 +192,7 @@ public extension Angle {
     ///   - rhs: Scalar multiplier.
     /// - Returns: The scaled angle.
     @inline(__always)
-    static func * (lhs: Angle, rhs: Double) -> Angle {
+    static func * (lhs: Angle, rhs: Float) -> Angle {
         Angle(radians: lhs.radians * rhs)
     }
 
@@ -206,7 +206,7 @@ public extension Angle {
     ///   - rhs: Angle to scale.
     /// - Returns: The scaled angle.
     @inline(__always)
-    static func * (lhs: Double, rhs: Angle) -> Angle {
+    static func * (lhs: Float, rhs: Angle) -> Angle {
         rhs * lhs
     }
 
@@ -220,7 +220,7 @@ public extension Angle {
     ///   - lhs: Angle updated in place.
     ///   - rhs: Scalar multiplier.
     @inline(__always)
-    static func *= (lhs: inout Angle, rhs: Double) {
+    static func *= (lhs: inout Angle, rhs: Float) {
         lhs = lhs * rhs
     }
 
@@ -234,7 +234,7 @@ public extension Angle {
     ///   - rhs: Scalar divisor.
     /// - Returns: The divided angle.
     @inline(__always)
-    static func / (lhs: Angle, rhs: Double) -> Angle {
+    static func / (lhs: Angle, rhs: Float) -> Angle {
         Angle(radians: lhs.radians / rhs)
     }
 
@@ -248,7 +248,7 @@ public extension Angle {
     ///   - lhs: Angle updated in place.
     ///   - rhs: Scalar divisor.
     @inline(__always)
-    static func /= (lhs: inout Angle, rhs: Double) {
+    static func /= (lhs: inout Angle, rhs: Float) {
         lhs = lhs / rhs
     }
 }
