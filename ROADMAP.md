@@ -26,7 +26,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 ### SDF Shapes
 
-- [ ] Add the full agreed analytic 2D SDF shape set with unit or explicit sizing, fill, stroke, rounding, smooth/hard antialiasing, and orthographic or screen-space submission; boolean composition remains out of scope.
+- [ ] Add the agreed fixed-parameter analytic 2D SDF shapes with unit or explicit sizing, fill, stroke, rounding, smooth/hard antialiasing, and sprite-like world submission; polygon, UI layout, and boolean composition remain later work.
 - [ ] Catalogue the SDF primitives into explicit parameter-compatible shape families, then share ordering, culling, and batching while keeping sprite GPU records unchanged and using aligned family storage with a small set of uber-style shaders.
 
 ### GPU Foundations
