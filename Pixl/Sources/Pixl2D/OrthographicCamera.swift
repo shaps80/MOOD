@@ -41,6 +41,30 @@ public struct OrthographicCamera: Sendable {
         return projection(aspectRatio: size.x / size.y)
     }
 
+    /// Returns the visible world-space rectangle for a viewport size.
+    /// - Parameter size: Positive finite viewport width and height.
+    public func visibleBounds(in size: Vec2) -> Rect {
+        precondition(
+            size.x.isFinite && size.y.isFinite && size.x > 0 && size.y > 0,
+            "Viewport size must be finite and greater than zero"
+        )
+        return visibleBounds(aspectRatio: size.x / size.y)
+    }
+
+    /// Returns the visible world-space rectangle for a viewport aspect ratio.
+    /// - Parameter aspectRatio: Positive finite viewport width divided by height.
+    public func visibleBounds(aspectRatio: Double) -> Rect {
+        precondition(
+            aspectRatio.isFinite && aspectRatio > 0,
+            "Aspect ratio must be finite and greater than zero"
+        )
+        let halfWidth = halfHeight * aspectRatio
+        return .init(
+            center: center,
+            size: .init(halfWidth * 2, halfHeight * 2)
+        )
+    }
+
     /// Returns the world-to-clip transform for a viewport aspect ratio.
     ///
     /// - Parameter aspectRatio: Positive finite viewport width divided by height.

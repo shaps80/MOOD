@@ -77,7 +77,10 @@ public final class Frame {
     }
 
     private func append(_ pass: consuming RecordedPass) {
-        precondition(passCount < passCapacity, "Frame pass capacity exceeded")
+        precondition(
+            passCount < passCapacity,
+            "Frame pass capacity exceeded: capacity \(passCapacity), attempted count \(UInt64(passCount) + 1)"
+        )
 
         passes.advanced(by: Int(passCount)).initialize(to: pass)
         passCount += 1
@@ -96,7 +99,10 @@ public final class Frame {
 
     package func append(_ command: consuming RenderCommand, toRenderPassAt passIndex: UInt32) {
         precondition(passIndex < passCount, "Render pass does not belong to this frame")
-        precondition(commandCount < commandCapacity, "Frame command capacity exceeded")
+        precondition(
+            commandCount < commandCapacity,
+            "Frame command capacity exceeded: capacity \(commandCapacity), attempted count \(UInt64(commandCount) + 1)"
+        )
 
         guard case .render(var pass) = passes[Int(passIndex)] else {
             preconditionFailure("Draw commands can only be appended to render passes")
@@ -152,7 +158,10 @@ public final class Frame {
         precondition(source.count <= 4 * 1024, "Vertex bytes must not exceed 4 KiB")
 
         let count = UInt32(source.count)
-        precondition(count <= byteCapacity - byteCount, "Frame byte capacity exceeded")
+        precondition(
+            count <= byteCapacity - byteCount,
+            "Frame byte capacity exceeded: capacity \(byteCapacity) bytes, attempted total \(UInt64(byteCount) + UInt64(count)) bytes"
+        )
 
         let offset = byteCount
         bytes.advanced(by: Int(offset)).copyMemory(
@@ -173,7 +182,10 @@ public final class Frame {
     ) {
         precondition(!source.isEmpty, "Vertex data must not be empty")
         let count = UInt32(source.count)
-        precondition(count <= byteCapacity - byteCount, "Frame byte capacity exceeded")
+        precondition(
+            count <= byteCapacity - byteCount,
+            "Frame byte capacity exceeded: capacity \(byteCapacity) bytes, attempted total \(UInt64(byteCount) + UInt64(count)) bytes"
+        )
 
         let offset = byteCount
         bytes.advanced(by: Int(offset)).copyMemory(

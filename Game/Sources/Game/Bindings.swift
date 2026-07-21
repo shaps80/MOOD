@@ -42,6 +42,23 @@ extension PlayerBindings {
 }
 
 @InputProfile
+struct CameraBindings {
+    @Binding(.key(.arrowLeft)) var left
+    @Binding(.key(.arrowRight)) var right
+    @Binding(.key(.arrowUp)) var up
+    @Binding(.key(.arrowDown)) var down
+}
+
+extension CameraBindings {
+    var direction: Vec2 {
+        .init(
+            x: right.value - left.value,
+            y: up.value - down.value
+        )
+    }
+}
+
+@InputProfile
 struct GameBindings {
     @Binding(
         .key(.escape),

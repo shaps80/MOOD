@@ -14,4 +14,16 @@ public extension OrthographicCamera {
             )
         )
     }
+
+    /// Returns the visible world-space rectangle for a render target.
+    /// - Parameter output: Render target supplying width and height.
+    func visibleBounds(for output: RenderTarget) -> Rect {
+        let size = output.texture.descriptor.size
+        return visibleBounds(
+            in: .init(
+                Double(size.width),
+                Double(size.height)
+            )
+        )
+    }
 }

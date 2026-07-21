@@ -6,34 +6,7 @@ final class GameRuntime<G: Game>: PlatformGame {
     }
 
     static var renderSettings: RenderSettings {
-        let source = G.renderSettings
-        let queue = G.renderQueueSettings
-        let minimumBytes = UInt32(
-            min(
-                UInt64(UInt32.max),
-                UInt64(queue.capacity)
-                    * UInt64(
-                        MemoryLayout<RenderQueue.Instance>.stride
-                            + MemoryLayout<RenderQueue.ShapeInstance>.stride
-                            + MemoryLayout<RenderQueue.ExtendedShapeInstance>.stride
-                    )
-                    + 4096
-            )
-        )
-        let minimumCommands = UInt32(
-            min(UInt64(UInt32.max), UInt64(queue.capacity) * 4 + 4)
-        )
-        return RenderSettings(
-            drawableFormat: source.drawableFormat,
-            framePassCapacity: source.framePassCapacity,
-            frameCommandCapacity: max(source.frameCommandCapacity, minimumCommands),
-            frameByteCapacity: max(source.frameByteCapacity, minimumBytes),
-            bufferCapacity: source.bufferCapacity,
-            pipelineCapacity: source.pipelineCapacity,
-            samplerCapacity: source.samplerCapacity,
-            textureCapacity: source.textureCapacity,
-            drawableCapacity: source.drawableCapacity
-        )
+        G.renderSettings
     }
 
     static var audioSettings: AudioSettings {

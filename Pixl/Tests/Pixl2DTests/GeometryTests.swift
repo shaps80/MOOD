@@ -27,4 +27,18 @@ struct GeometryTests {
         #expect(fromSize.y == fromAspectRatio.y)
         #expect(fromSize.translation == fromAspectRatio.translation)
     }
+
+    @Test
+    func cameraReportsVisibleWorldBounds() {
+        let camera = OrthographicCamera(center: .init(2, -1), halfHeight: 2)
+
+        #expect(
+            camera.visibleBounds(aspectRatio: 2)
+                == Rect(x: -2, y: -3, width: 8, height: 4)
+        )
+        #expect(
+            camera.visibleBounds(in: .init(800, 400))
+                == camera.visibleBounds(aspectRatio: 2)
+        )
+    }
 }

@@ -43,7 +43,7 @@ A type belongs in `PixlFoundation` only when it is engine-specific rather than p
 : Dimension-independent graphics vocabulary and algorithms shared by 2D and 3D, such as `Color`, `Angle`, image representations, decoding, and logical texture assets. It is a domain library, not engine execution infrastructure. `PixlGraphics.Color` and `PixlPlatform.Color` are independent aliases of `SIMD4<Float>`: they have identical Swift type identity and require no conversion, while each module can present vocabulary appropriate to its boundary. Code importing both modules qualifies or constructs primitive SIMD values where duplicate extension member names would be ambiguous.
 
 `Pixl2D`
-: Complete game-facing two-dimensional domain values and operations, including sprite descriptions, sprite materials, regions, sheets, animation, layers, geometry, transforms, and cameras. These remain ordinary efficient values rather than execution objects. `Triangle` and `Quad` contain points and per-vertex colours; they do not create buffers, retain devices, throw during construction, or record draws. `OrthographicCamera` computes projection transforms from a `Vec2` viewport size or a positive aspect ratio and has no render-target knowledge. Pixl owns the convenience bridge that extracts a `RenderTarget` size and calls the pure camera API. Pixl2D depends on PixlGraphics and PixlMath, not PixlPlatform or PixlFoundation.
+: Complete game-facing two-dimensional domain values and operations, including sprite descriptions, sprite materials, regions, sheets, animation, layers, geometry, transforms, and cameras. These remain ordinary efficient values rather than execution objects. `Triangle` and `Quad` contain points and per-vertex colours; they do not create buffers, retain devices, throw during construction, or record draws. `OrthographicCamera` computes projection transforms and visible world bounds from a `Vec2` viewport size or a positive aspect ratio and has no render-target knowledge. Pixl owns the convenience bridge that extracts a `RenderTarget` size and calls the pure camera API. Pixl2D depends on PixlGraphics and PixlMath, not PixlPlatform or PixlFoundation.
 
 PixlPlatform convenience may normalize awkward native APIs into coherent Swift values such as `GamePhase`, `Keyboard`, or direct encoder commands. The abstraction must remain at the platform capability level and must not add engine policy. Portable normalization must introduce the minimum measurable overhead required by the boundary; ergonomics never justify avoidable hot-path allocation, copying, synchronization, dynamic dispatch, hashing, or state translation.
 
@@ -386,7 +386,7 @@ Concrete adapters own their built-in shader sources. SwiftPM compiles `PixlMetal
 `IndexType`
 : Portable index element width: `uint16` or `uint32`. `drawIndexedPrimitives` takes the index buffer directly, matching Metal. WebGPU, Vulkan, and DirectX adapters bind/cache that buffer privately before their indexed draw command.
 
-Commands for a pass must be recorded contiguously. `Frame` preallocates command storage from startup-only `RenderSettings.frameCommandCapacity`; recording performs no allocation or dynamic dispatch.
+Commands for a pass must be recorded contiguously. `Frame` preallocates command storage from startup-only `RenderSettings.frameCommandCapacity`; recording performs no allocation or dynamic dispatch. Game-provided render and queue settings are authoritative: the internal runtime forwards them unchanged rather than silently widening capacities.
 
 ## Dynamic Data and Resource Slots
 

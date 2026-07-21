@@ -426,7 +426,10 @@ public final class RenderQueue {
     /// Appends one sprite submission and assigns its global submission ordinal.
     /// - Parameter submission: Camera-independent sprite snapshot to retain until reset.
     public func submit(_ submission: SpriteSubmission) {
-        precondition(count < settings.capacity, "Render queue capacity exceeded")
+        precondition(
+            count < settings.capacity,
+            "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + 1)"
+        )
         submissions.advanced(by: count).initialize(to: .sprite(submission))
         count += 1
     }
@@ -434,7 +437,10 @@ public final class RenderQueue {
     /// Appends one analytic-shape submission and assigns its global submission ordinal.
     /// - Parameter submission: Camera-independent shape snapshot retained until reset.
     public func submit(_ submission: ShapeSubmission) {
-        precondition(count < settings.capacity, "Render queue capacity exceeded")
+        precondition(
+            count < settings.capacity,
+            "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + 1)"
+        )
         submissions.advanced(by: count).initialize(to: .shape(submission))
         count += 1
     }
@@ -458,7 +464,10 @@ public final class RenderQueue {
             }
             if matches { return UInt32(slot) }
         }
-        precondition(gradientCount < settings.gradientCapacity, "Render queue gradient capacity exceeded")
+        precondition(
+            gradientCount < settings.gradientCapacity,
+            "Render queue gradient capacity exceeded: capacity \(settings.gradientCapacity), attempted count \(gradientCount + 1)"
+        )
         let slot = gradientCount
         gradientFingerprints[slot] = fingerprint
         let offset = slot * 256 * 4
@@ -487,7 +496,11 @@ public final class RenderQueue {
         views: UnsafeBufferPointer<View>,
         _ body: (Execution) throws -> Result
     ) rethrows -> Result {
-        precondition(!views.isEmpty && views.count <= settings.viewCapacity)
+        precondition(!views.isEmpty, "Render queue execution requires at least one view")
+        precondition(
+            views.count <= settings.viewCapacity,
+            "Render queue view capacity exceeded: capacity \(settings.viewCapacity), attempted count \(views.count)"
+        )
         var metrics = Metrics()
         let start = ContinuousClock.now
         lower()
@@ -818,7 +831,10 @@ public final class RenderQueue {
             if layerRegistry[index].value == UInt64(layer) { return layerRegistry[index].slot }
             index = (index + 1) & (registryCapacity - 1)
         }
-        precondition(layerCount < settings.capacity)
+        precondition(
+            layerCount < settings.capacity,
+            "Render queue layer capacity exceeded: capacity \(settings.capacity), attempted count \(layerCount + 1)"
+        )
         let slot = UInt32(layerCount)
         layerBins.advanced(by: layerCount).initialize(
             to: LayerBin(
@@ -838,7 +854,10 @@ public final class RenderQueue {
             if materials[Int(slot)] == material { return slot }
             index = (index + 1) & (registryCapacity - 1)
         }
-        precondition(materialCount < settings.capacity)
+        precondition(
+            materialCount < settings.capacity,
+            "Render queue material capacity exceeded: capacity \(settings.capacity), attempted count \(materialCount + 1)"
+        )
         let slot = UInt32(materialCount)
         materials.advanced(by: materialCount).initialize(to: material)
         materialCount += 1
@@ -850,7 +869,10 @@ public final class RenderQueue {
         for index in 0..<shapeMaterialCount where shapeMaterials[index] == material {
             return UInt32(index)
         }
-        precondition(shapeMaterialCount < settings.capacity)
+        precondition(
+            shapeMaterialCount < settings.capacity,
+            "Render queue shape-material capacity exceeded: capacity \(settings.capacity), attempted count \(shapeMaterialCount + 1)"
+        )
         let slot = UInt32(shapeMaterialCount)
         shapeMaterials.advanced(by: shapeMaterialCount).initialize(to: material)
         shapeMaterialCount += 1

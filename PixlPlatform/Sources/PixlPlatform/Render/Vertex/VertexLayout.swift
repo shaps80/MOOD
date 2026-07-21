@@ -47,7 +47,10 @@ public final class VertexLayout {
     /// Appends a layout for a previously undeclared buffer slot.
     /// - Parameter layout: Buffer stride and stepping description to append.
     public func append(_ layout: consuming VertexBufferLayout) {
-        precondition(bufferCount < bufferCapacity, "Vertex buffer layout capacity exceeded")
+        precondition(
+            bufferCount < bufferCapacity,
+            "Vertex buffer layout capacity exceeded: capacity \(bufferCapacity), attempted count \(UInt64(bufferCount) + 1)"
+        )
         precondition(
             !containsBuffer(at: layout.bufferIndex),
             "Vertex buffer layout already exists for this buffer index"
@@ -60,7 +63,10 @@ public final class VertexLayout {
     /// Appends an attribute referencing a declared buffer slot.
     /// - Parameter attribute: Unique shader-location description to append.
     public func append(_ attribute: consuming VertexAttribute) {
-        precondition(attributeCount < attributeCapacity, "Vertex attribute capacity exceeded")
+        precondition(
+            attributeCount < attributeCapacity,
+            "Vertex attribute capacity exceeded: capacity \(attributeCapacity), attempted count \(UInt64(attributeCount) + 1)"
+        )
         precondition(
             containsBuffer(at: attribute.bufferIndex),
             "Vertex attribute references an undeclared buffer index"

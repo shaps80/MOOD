@@ -1,13 +1,17 @@
 import Pixl
 import Pixl2D
 
-struct Player: Entity {
+struct Player {
     private var sprite: Sprite
     private var animation: SpriteAnimation.Timeline
-    private var position: Vec2
+    private let positions: SpatialGrid
 
-    init(position: Vec2 = .init(96, 0), context: GameContext) throws {
-        self.position = position
+    init(count: Int, worldSize: Double, context: GameContext) throws {
+        positions = SpatialGrid(
+            count: count,
+            worldSize: worldSize,
+            cellSize: 200
+        )
 
         sprite = try .init(
             named: "player.png",
@@ -37,10 +41,11 @@ struct Player: Entity {
         sprite.region = animation.region
     }
 
-    func submit(to queue: RenderQueue) {
-        queue.submit(
-            sprite,
-            transform: .init(position)
-        )
+    mutating func fixedUpdate(_ time: FixedTime, context: GameContext) { }
+
+    func submit(visibleBounds: Rect, to queue: RenderQueue) -> Int {
+        positions.forEachPosition(in: visibleBounds, cellPadding: 1) {
+            queue.submit(sprite, transform: .init($0))
+        }
     }
 }
