@@ -7,24 +7,48 @@ import Swift
 /// of its closure. Direct Foundation users reset explicitly; Pixl's
 /// `GameContext` convenience resets its default queue automatically.
 public final class RenderQueue {
+    private enum Submission {
+        case sprite(SpriteSubmission)
+        case shape(ShapeSubmission)
+    }
+
+    /// GPU renderer family for one consecutive batch.
+    public enum Family: UInt32, BitwiseCopyable, Sendable {
+        /// Texture-sampled sprite instances.
+        case sprite
+        /// Analytic signed-distance shape instances.
+        case shape
+        /// Point-defined analytic signed-distance shape instances.
+        case extendedShape
+    }
     /// Fixed capacities allocated by a render queue.
     public struct Settings: Hashable, Sendable {
         /// Maximum number of submissions retained between resets.
         public var capacity: Int
         /// Maximum number of views processed by one execution. Defaults to `1`.
         public var viewCapacity: Int
+        /// Maximum distinct retained gradient ramps. Defaults to `256`.
+        public var gradientCapacity: Int
 
         /// Creates fixed queue capacities.
         /// - Parameters:
         ///   - capacity: Positive maximum submission count.
         ///   - viewCapacity: Maximum simultaneous views in `1...64`.
-        public init(capacity: Int = 10_000, viewCapacity: Int = 1) {
+        ///   - gradientCapacity: Maximum distinct retained gradient ramps in `1...256`.
+        public init(
+            capacity: Int = 10_000,
+            viewCapacity: Int = 1,
+            gradientCapacity: Int = 256
+        ) {
             precondition(capacity > 0)
             precondition(UInt64(capacity) <= UInt64(UInt32.max))
             precondition(capacity <= Int.max / 2)
+            precondition(UInt64(capacity) < UInt64(1) << 30)
             precondition((1...64).contains(viewCapacity))
+            precondition((1...256).contains(gradientCapacity))
             self.capacity = capacity
             self.viewCapacity = viewCapacity
+            self.gradientCapacity = gradientCapacity
         }
     }
 
@@ -98,6 +122,56 @@ public final class RenderQueue {
         public let tintRGBA8: UInt32
     }
 
+    /// Compact GPU-facing analytic-shape instance produced during lowering.
+    public struct ShapeInstance: BitwiseCopyable, Sendable {
+        /// First scaled model-transform column.
+        public let transformX: SIMD2<Float>
+        /// Second scaled model-transform column.
+        public let transformY: SIMD2<Float>
+        /// Model-transform translation.
+        public let translation: SIMD2<Float>
+        /// Local quad half extent, including outward stroke.
+        public let quadHalfExtent: SIMD2<Float>
+        /// Formula-specific local parameters.
+        public let parameters: SIMD4<Float>
+        /// Premultiplied interior colour.
+        public let fillColor: SIMD4<Float>
+        /// Premultiplied stroke colour.
+        public let strokeColor: SIMD4<Float>
+        /// Packed formula, stroke, alignment/antialiasing, and rounding values.
+        public let style: SIMD4<Float>
+    }
+
+    /// GPU-facing point-defined analytic-shape instance produced during lowering.
+    public struct ExtendedShapeInstance: BitwiseCopyable, Sendable {
+        /// First scaled model-transform column.
+        public let transformX: SIMD2<Float>
+        /// Second scaled model-transform column.
+        public let transformY: SIMD2<Float>
+        /// Model-transform translation.
+        public let translation: SIMD2<Float>
+        /// Local quad half extent, including outward stroke.
+        public let quadHalfExtent: SIMD2<Float>
+        /// First formula-specific parameter block.
+        public let parameters: SIMD4<Float>
+        /// Second formula-specific parameter block.
+        public let extendedParameters: SIMD4<Float>
+        /// Premultiplied interior colour.
+        public let fillColor: SIMD4<Float>
+        /// Premultiplied stroke colour.
+        public let strokeColor: SIMD4<Float>
+        /// Packed formula, stroke, alignment/antialiasing, and rounding values.
+        public let style: SIMD4<Float>
+    }
+
+    /// Shape draw compatibility shared by consecutive instances.
+    public struct ShapeMaterial: Hashable, Sendable {
+        /// Fixed-function colour composition.
+        public let blendMode: BlendMode
+        /// Whether the fragment stage samples the shared gradient atlas.
+        public let usesGradient: Bool
+    }
+
     /// Resolved sprite draw compatibility shared by consecutive instances.
     public struct Material: Hashable, Sendable {
         /// Logical texture identity.
@@ -110,6 +184,8 @@ public final class RenderQueue {
 
     /// One consecutive range sharing a material slot.
     public struct Batch: BitwiseCopyable, Sendable {
+        /// Renderer family consuming this batch.
+        public let family: Family
         /// Index into ``Execution/materials``.
         public let material: UInt32
         /// Exclusive end offset in the view's ordinal stream.
@@ -135,8 +211,20 @@ public final class RenderQueue {
         package let queue: RenderQueue
         /// Ordinal-aligned lowered instance records.
         public let instances: UnsafeBufferPointer<Instance>
+        /// Ordinal-aligned analytic-shape instance records.
+        public let shapeInstances: UnsafeBufferPointer<ShapeInstance>
+        /// Ordinal-aligned point-defined shape instance records.
+        public let extendedShapeInstances: UnsafeBufferPointer<ExtendedShapeInstance>
+        /// Premultiplied RGBA8 rows for registered gradients.
+        public let gradientAtlas: UnsafeBufferPointer<UInt8>
+        /// Number of valid 256-pixel rows in ``gradientAtlas``.
+        public let gradientCount: Int
+        /// Monotonic atlas-content generation.
+        public let gradientGeneration: UInt64
         /// Unique materials referenced by view batches.
         public let materials: UnsafeBufferPointer<Material>
+        /// Unique shape materials referenced by view batches.
+        public let shapeMaterials: UnsafeBufferPointer<ShapeMaterial>
         /// Outputs corresponding positionally to the supplied views.
         public let views: UnsafeBufferPointer<ViewOutput>
         /// CPU stage durations for this execution.
@@ -186,12 +274,15 @@ public final class RenderQueue {
     /// CPU stage durations from the most recent execution.
     public private(set) var latestMetrics = Metrics()
 
-    private let submissions: UnsafeMutablePointer<SpriteSubmission>
+    private let submissions: UnsafeMutablePointer<Submission>
     private let boundsMinimum: UnsafeMutablePointer<SIMD2<Float>>
     private let boundsMaximum: UnsafeMutablePointer<SIMD2<Float>>
     private let orderingRecords: UnsafeMutablePointer<OrderingRecord>
     private let materialSlots: UnsafeMutablePointer<UInt32>
     private let instances: UnsafeMutablePointer<Instance>
+    private let shapeInstances: UnsafeMutablePointer<ShapeInstance>
+    private let extendedShapeInstances: UnsafeMutablePointer<ExtendedShapeInstance>
+    private let families: UnsafeMutablePointer<Family>
     private let visibilityMasks: UnsafeMutablePointer<UInt64>
     private let visibleUnion: UnsafeMutablePointer<UInt32>
     private let orderedKeys: UnsafeMutablePointer<UInt64>
@@ -201,14 +292,20 @@ public final class RenderQueue {
     private let layerRegistry: UnsafeMutablePointer<RegistryEntry>
     private let materialRegistry: UnsafeMutablePointer<RegistryEntry>
     private let materials: UnsafeMutablePointer<Material>
+    private let shapeMaterials: UnsafeMutablePointer<ShapeMaterial>
     private let radixCounts: UnsafeMutablePointer<Int>
     private let viewContexts: UnsafeMutablePointer<ViewContext>
     private let viewOutputs: UnsafeMutablePointer<ViewOutput>
+    private let gradientFingerprints: UnsafeMutablePointer<UInt64>
+    private let gradientBytes: UnsafeMutablePointer<UInt8>
     private let registryCapacity: Int
     private var initializedExecutionCount = 0
     private var layerCount = 0
     private var materialCount = 0
+    private var shapeMaterialCount = 0
     private var layerGeneration = UInt32(0)
+    private var gradientCount = 0
+    private var gradientGeneration = UInt64(0)
 
     /// Allocates all retained submission and execution storage.
     /// - Parameter settings: Fixed submission and view capacities.
@@ -222,6 +319,9 @@ public final class RenderQueue {
         orderingRecords = .allocate(capacity: capacity)
         materialSlots = .allocate(capacity: capacity)
         instances = .allocate(capacity: capacity)
+        shapeInstances = .allocate(capacity: capacity)
+        extendedShapeInstances = .allocate(capacity: capacity)
+        families = .allocate(capacity: capacity)
         visibilityMasks = .allocate(capacity: capacity)
         visibleUnion = .allocate(capacity: capacity)
         orderedKeys = .allocate(capacity: capacity)
@@ -231,9 +331,14 @@ public final class RenderQueue {
         layerRegistry = .allocate(capacity: registryCapacity)
         materialRegistry = .allocate(capacity: registryCapacity)
         materials = .allocate(capacity: capacity)
+        shapeMaterials = .allocate(capacity: capacity)
         radixCounts = .allocate(capacity: 256)
         viewContexts = .allocate(capacity: settings.viewCapacity)
         viewOutputs = .allocate(capacity: settings.viewCapacity)
+        gradientFingerprints = .allocate(capacity: settings.gradientCapacity)
+        gradientBytes = .allocate(capacity: settings.gradientCapacity * 256 * 4)
+        gradientFingerprints.initialize(repeating: 0, count: settings.gradientCapacity)
+        gradientBytes.initialize(repeating: 0, count: settings.gradientCapacity * 256 * 4)
 
         visibilityMasks.initialize(repeating: 0, count: capacity)
         visibleUnion.initialize(repeating: 0, count: capacity)
@@ -248,7 +353,7 @@ public final class RenderQueue {
             let ordinals = UnsafeMutablePointer<UInt32>.allocate(capacity: capacity)
             let batches = UnsafeMutablePointer<Batch>.allocate(capacity: capacity)
             ordinals.initialize(repeating: 0, count: capacity)
-            batches.initialize(repeating: Batch(material: 0, end: 0), count: capacity)
+            batches.initialize(repeating: Batch(family: .sprite, material: 0, end: 0), count: capacity)
             viewContexts.advanced(by: index).initialize(
                 to: ViewContext(ordinals: ordinals, batches: batches, state: .init())
             )
@@ -268,6 +373,12 @@ public final class RenderQueue {
         materialSlots.deallocate()
         instances.deinitialize(count: initializedExecutionCount)
         instances.deallocate()
+        shapeInstances.deinitialize(count: initializedExecutionCount)
+        shapeInstances.deallocate()
+        extendedShapeInstances.deinitialize(count: initializedExecutionCount)
+        extendedShapeInstances.deallocate()
+        families.deinitialize(count: initializedExecutionCount)
+        families.deallocate()
         visibilityMasks.deinitialize(count: settings.capacity)
         visibilityMasks.deallocate()
         visibleUnion.deinitialize(count: settings.capacity)
@@ -286,6 +397,8 @@ public final class RenderQueue {
         materialRegistry.deallocate()
         materials.deinitialize(count: materialCount)
         materials.deallocate()
+        shapeMaterials.deinitialize(count: shapeMaterialCount)
+        shapeMaterials.deallocate()
         radixCounts.deinitialize(count: 256)
         radixCounts.deallocate()
         for index in 0..<settings.viewCapacity {
@@ -298,6 +411,10 @@ public final class RenderQueue {
         }
         viewContexts.deallocate()
         viewOutputs.deallocate()
+        gradientFingerprints.deinitialize(count: settings.gradientCapacity)
+        gradientFingerprints.deallocate()
+        gradientBytes.deinitialize(count: settings.gradientCapacity * 256 * 4)
+        gradientBytes.deallocate()
     }
 
     /// Removes every retained submission while preserving allocated storage and caches.
@@ -310,8 +427,50 @@ public final class RenderQueue {
     /// - Parameter submission: Camera-independent sprite snapshot to retain until reset.
     public func submit(_ submission: SpriteSubmission) {
         precondition(count < settings.capacity, "Render queue capacity exceeded")
-        submissions.advanced(by: count).initialize(to: submission)
+        submissions.advanced(by: count).initialize(to: .sprite(submission))
         count += 1
+    }
+
+    /// Appends one analytic-shape submission and assigns its global submission ordinal.
+    /// - Parameter submission: Camera-independent shape snapshot retained until reset.
+    public func submit(_ submission: ShapeSubmission) {
+        precondition(count < settings.capacity, "Render queue capacity exceeded")
+        submissions.advanced(by: count).initialize(to: .shape(submission))
+        count += 1
+    }
+
+    /// Registers one premultiplied 256-pixel RGBA8 gradient row.
+    /// - Parameters:
+    ///   - fingerprint: Stable content fingerprint used for cold-path lookup.
+    ///   - rgba8: Exactly 1,024 premultiplied RGBA8 bytes.
+    /// - Returns: Stable atlas row retained for this queue's lifetime.
+    public func registerGradient(
+        fingerprint: UInt64,
+        rgba8: [UInt8]
+    ) -> UInt32 {
+        precondition(rgba8.count == 256 * 4)
+        for slot in 0..<gradientCount where gradientFingerprints[slot] == fingerprint {
+            var matches = true
+            let offset = slot * 256 * 4
+            for index in rgba8.indices where gradientBytes[offset + index] != rgba8[index] {
+                matches = false
+                break
+            }
+            if matches { return UInt32(slot) }
+        }
+        precondition(gradientCount < settings.gradientCapacity, "Render queue gradient capacity exceeded")
+        let slot = gradientCount
+        gradientFingerprints[slot] = fingerprint
+        let offset = slot * 256 * 4
+        rgba8.withUnsafeBytes { source in
+            gradientBytes.advanced(by: offset).update(
+                from: source.bindMemory(to: UInt8.self).baseAddress!,
+                count: rgba8.count
+            )
+        }
+        gradientCount += 1
+        gradientGeneration &+= 1
+        return UInt32(slot)
     }
 
     /// Culls, orders, and batches retained submissions for one or more views.
@@ -376,7 +535,16 @@ public final class RenderQueue {
             Execution(
                 queue: self,
                 instances: UnsafeBufferPointer(start: instances, count: count),
+                shapeInstances: UnsafeBufferPointer(start: shapeInstances, count: count),
+                extendedShapeInstances: UnsafeBufferPointer(start: extendedShapeInstances, count: count),
+                gradientAtlas: UnsafeBufferPointer(
+                    start: gradientBytes,
+                    count: gradientCount * 256 * 4
+                ),
+                gradientCount: gradientCount,
+                gradientGeneration: gradientGeneration,
                 materials: UnsafeBufferPointer(start: materials, count: materialCount),
+                shapeMaterials: UnsafeBufferPointer(start: shapeMaterials, count: shapeMaterialCount),
                 views: UnsafeBufferPointer(start: viewOutputs, count: views.count),
                 metrics: metrics
             )
@@ -386,49 +554,115 @@ public final class RenderQueue {
     private func lower() {
         for index in 0..<count {
             let source = submissions[index]
-            let material = Material(
-                texture: source.texture,
-                sampler: source.sampler,
-                blendMode: source.blendMode
-            )
-            let layerSlot: UInt32
+            let sourceLayer: UInt32
+            let sourceOrder: UInt32
+            let sourceBoundsMinimum: SIMD2<Float>
+            let sourceBoundsMaximum: SIMD2<Float>
+            let family: Family
             let materialSlot: UInt32
+            let spriteInstance: Instance
+            let shapeInstance: ShapeInstance
+            let extendedShapeInstance: ExtendedShapeInstance
+            switch source {
+            case .sprite(let source):
+                let material = Material(
+                    texture: source.texture,
+                    sampler: source.sampler,
+                    blendMode: source.blendMode
+                )
+                materialSlot = resolveMaterial(material)
+                family = .sprite
+                sourceLayer = source.layer
+                sourceOrder = source.order
+                sourceBoundsMinimum = source.boundsMinimum
+                sourceBoundsMaximum = source.boundsMaximum
+                spriteInstance = Instance(
+                    transformX: source.transformX,
+                    transformY: source.transformY,
+                    translation: source.transformTranslation,
+                    textureOrigin: source.textureCoordinateOrigin,
+                    textureScale: source.textureCoordinateScale,
+                    tintRGBA8: source.tintRGBA8
+                )
+                shapeInstance = Self.emptyShapeInstance
+                extendedShapeInstance = Self.emptyExtendedShapeInstance
+            case .shape(let source):
+                let isExtended = source.kind == .triangle || source.kind == .quadraticBezier
+                materialSlot = resolveShapeMaterial(.init(
+                    blendMode: source.blendMode,
+                    usesGradient: source.gradientSlot != .max
+                ))
+                    | (isExtended ? 0xc000_0000 : 0x8000_0000)
+                family = isExtended ? .extendedShape : .shape
+                sourceLayer = source.layer
+                sourceOrder = source.order
+                sourceBoundsMinimum = source.boundsMinimum
+                sourceBoundsMaximum = source.boundsMaximum
+                spriteInstance = Self.emptySpriteInstance
+                shapeInstance = ShapeInstance(
+                    transformX: source.transformX,
+                    transformY: source.transformY,
+                    translation: source.transformTranslation,
+                    quadHalfExtent: source.quadHalfExtent,
+                    parameters: source.parameters,
+                    fillColor: source.gradientSlot == .max ? source.fillColor : source.gradientLine,
+                    strokeColor: source.strokeColor,
+                    style: .init(
+                        Float(source.kind.rawValue)
+                            + (source.gradientSlot == .max ? 0 : Float(source.gradientSlot + 1) * 64)
+                            + Float(source.gradientPlacement) * 16_384,
+                        source.strokeWidth,
+                        source.strokeAlignment + source.smoothAntialiasing * 4,
+                        source.rounding
+                    )
+                )
+                extendedShapeInstance = ExtendedShapeInstance(
+                    transformX: source.transformX,
+                    transformY: source.transformY,
+                    translation: source.transformTranslation,
+                    quadHalfExtent: source.quadHalfExtent,
+                    parameters: source.parameters,
+                    extendedParameters: source.extendedParameters,
+                    fillColor: source.gradientSlot == .max ? source.fillColor : source.gradientLine,
+                    strokeColor: source.strokeColor,
+                    style: .init(
+                        Float(source.kind.rawValue)
+                            + (source.gradientSlot == .max ? 0 : Float(source.gradientSlot + 1) * 64)
+                            + Float(source.gradientPlacement) * 16_384,
+                        source.strokeWidth,
+                        source.strokeAlignment + source.smoothAntialiasing * 4,
+                        source.rounding
+                    )
+                )
+            }
+            let layerSlot: UInt32
             if index < initializedExecutionCount,
-                orderingRecords[index].layer == source.layer
+                orderingRecords[index].layer == sourceLayer
             {
                 layerSlot = orderingRecords[index].layerSlot
             } else {
-                layerSlot = resolveLayer(source.layer)
-            }
-            if index < initializedExecutionCount,
-                materials[Int(materialSlots[index])] == material
-            {
-                materialSlot = materialSlots[index]
-            } else {
-                materialSlot = resolveMaterial(material)
+                layerSlot = resolveLayer(sourceLayer)
             }
             let ordering = OrderingRecord(
-                layer: source.layer, order: source.order, layerSlot: layerSlot)
-            let instance = Instance(
-                transformX: source.transformX,
-                transformY: source.transformY,
-                translation: source.transformTranslation,
-                textureOrigin: source.textureCoordinateOrigin,
-                textureScale: source.textureCoordinateScale,
-                tintRGBA8: source.tintRGBA8
-            )
+                layer: sourceLayer, order: sourceOrder, layerSlot: layerSlot)
             if index < initializedExecutionCount {
-                boundsMinimum[index] = source.boundsMinimum
-                boundsMaximum[index] = source.boundsMaximum
+                boundsMinimum[index] = sourceBoundsMinimum
+                boundsMaximum[index] = sourceBoundsMaximum
                 orderingRecords[index] = ordering
                 materialSlots[index] = materialSlot
-                instances[index] = instance
+                instances[index] = spriteInstance
+                shapeInstances[index] = shapeInstance
+                extendedShapeInstances[index] = extendedShapeInstance
+                families[index] = family
             } else {
-                boundsMinimum.advanced(by: index).initialize(to: source.boundsMinimum)
-                boundsMaximum.advanced(by: index).initialize(to: source.boundsMaximum)
+                boundsMinimum.advanced(by: index).initialize(to: sourceBoundsMinimum)
+                boundsMaximum.advanced(by: index).initialize(to: sourceBoundsMaximum)
                 orderingRecords.advanced(by: index).initialize(to: ordering)
                 materialSlots.advanced(by: index).initialize(to: materialSlot)
-                instances.advanced(by: index).initialize(to: instance)
+                instances.advanced(by: index).initialize(to: spriteInstance)
+                shapeInstances.advanced(by: index).initialize(to: shapeInstance)
+                extendedShapeInstances.advanced(by: index).initialize(to: extendedShapeInstance)
+                families.advanced(by: index).initialize(to: family)
             }
         }
         initializedExecutionCount = max(initializedExecutionCount, count)
@@ -549,7 +783,9 @@ public final class RenderQueue {
             var state = context.pointee.state
             if state.hasPrevious {
                 context.pointee.batches[Int(state.batchCount)] = Batch(
-                    material: state.previousMaterial, end: state.visibleCount)
+                    family: Self.family(for: state.previousMaterial),
+                    material: state.previousMaterial & 0x3fff_ffff,
+                    end: state.visibleCount)
                 state.batchCount += 1
                 context.pointee.state = state
             }
@@ -563,7 +799,9 @@ public final class RenderQueue {
         var state = context.pointee.state
         if state.hasPrevious && material != state.previousMaterial {
             context.pointee.batches[Int(state.batchCount)] = Batch(
-                material: state.previousMaterial, end: state.visibleCount)
+                family: Self.family(for: state.previousMaterial),
+                material: state.previousMaterial & 0x3fff_ffff,
+                end: state.visibleCount)
             state.batchCount += 1
         }
         context.pointee.ordinals[Int(state.visibleCount)] = ordinal
@@ -606,6 +844,57 @@ public final class RenderQueue {
         materialCount += 1
         materialRegistry[index] = RegistryEntry(value: hash, slot: slot, occupied: true)
         return slot
+    }
+
+    private func resolveShapeMaterial(_ material: ShapeMaterial) -> UInt32 {
+        for index in 0..<shapeMaterialCount where shapeMaterials[index] == material {
+            return UInt32(index)
+        }
+        precondition(shapeMaterialCount < settings.capacity)
+        let slot = UInt32(shapeMaterialCount)
+        shapeMaterials.advanced(by: shapeMaterialCount).initialize(to: material)
+        shapeMaterialCount += 1
+        return slot
+    }
+
+    private static let emptySpriteInstance = Instance(
+        transformX: .zero,
+        transformY: .zero,
+        translation: .zero,
+        textureOrigin: .zero,
+        textureScale: .zero,
+        tintRGBA8: 0
+    )
+
+    private static let emptyShapeInstance = ShapeInstance(
+        transformX: .zero,
+        transformY: .zero,
+        translation: .zero,
+        quadHalfExtent: .zero,
+        parameters: .zero,
+        fillColor: .zero,
+        strokeColor: .zero,
+        style: .zero
+    )
+
+    private static let emptyExtendedShapeInstance = ExtendedShapeInstance(
+        transformX: .zero,
+        transformY: .zero,
+        translation: .zero,
+        quadHalfExtent: .zero,
+        parameters: .zero,
+        extendedParameters: .zero,
+        fillColor: .zero,
+        strokeColor: .zero,
+        style: .zero
+    )
+
+    private static func family(for encodedMaterial: UInt32) -> Family {
+        switch encodedMaterial >> 30 {
+        case 0: .sprite
+        case 2: .shape
+        default: .extendedShape
+        }
     }
 
     private static func materialHash(_ material: Material) -> UInt64 {

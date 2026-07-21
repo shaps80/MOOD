@@ -12,7 +12,7 @@ private struct WorkspaceMaterial {
     var pipeline: RenderPipeline?
 }
 
-/// Fixed-capacity sprite encoding storage paired with one render queue.
+/// Fixed-capacity sprite and analytic-shape encoding storage paired with one render queue.
 ///
 /// A workspace retains its queue and shared rendering resources. It does not
 /// reset the queue after encoding. Logical textures cached by an encoded
@@ -34,6 +34,8 @@ public final class SpriteRenderWorkspace {
     private let capacity: Int
     private let resolved: UnsafeMutablePointer<WorkspaceMaterial?>
     private let upload: UnsafeMutablePointer<RenderQueue.Instance>
+    private let shapeUpload: UnsafeMutablePointer<RenderQueue.ShapeInstance>
+    private let extendedShapeUpload: UnsafeMutablePointer<RenderQueue.ExtendedShapeInstance>
 
     package init(resources: SpriteRenderResources, queue: RenderQueue) {
         self.resources = resources
@@ -54,6 +56,19 @@ public final class SpriteRenderWorkspace {
             ),
             count: capacity
         )
+        shapeUpload = .allocate(capacity: capacity)
+        shapeUpload.initialize(repeating: .init(
+            transformX: .zero, transformY: .zero, translation: .zero,
+            quadHalfExtent: .zero,
+            parameters: .zero, fillColor: .zero, strokeColor: .zero, style: .zero
+        ), count: capacity)
+        extendedShapeUpload = .allocate(capacity: capacity)
+        extendedShapeUpload.initialize(repeating: .init(
+            transformX: .zero, transformY: .zero, translation: .zero,
+            quadHalfExtent: .zero,
+            parameters: .zero, extendedParameters: .zero,
+            fillColor: .zero, strokeColor: .zero, style: .zero
+        ), count: capacity)
         precondition(
             MemoryLayout<RenderQueue.Instance>.stride == 48,
             "Sprite instance ABI must remain 48 bytes"
@@ -65,6 +80,10 @@ public final class SpriteRenderWorkspace {
         resolved.deallocate()
         upload.deinitialize(count: capacity)
         upload.deallocate()
+        shapeUpload.deinitialize(count: capacity)
+        shapeUpload.deallocate()
+        extendedShapeUpload.deinitialize(count: capacity)
+        extendedShapeUpload.deallocate()
     }
 
     /// Encodes one execution view using shared sprite rendering resources.
@@ -95,10 +114,31 @@ public final class SpriteRenderWorkspace {
         let view = execution.views[viewIndex]
         guard !view.ordinals.isEmpty else { return Metrics() }
         let geometry = try resources.geometry()
+        var hasSprites = false
+        var hasShapes = false
+        var hasExtendedShapes = false
+        var hasGradients = false
+        for batch in view.batches {
+            switch batch.family {
+            case .sprite: hasSprites = true
+            case .shape: hasShapes = true
+            case .extendedShape: hasExtendedShapes = true
+            }
+            if batch.family != .sprite,
+                execution.shapeMaterials[Int(batch.material)].usesGradient
+            {
+                hasGradients = true
+            }
+        }
 
         let instanceStart = ContinuousClock.now
         for index in view.ordinals.indices {
-            upload[index] = execution.instances[Int(view.ordinals[index])]
+            let ordinal = Int(view.ordinals[index])
+            if hasSprites { upload[index] = execution.instances[ordinal] }
+            if hasShapes { shapeUpload[index] = execution.shapeInstances[ordinal] }
+            if hasExtendedShapes {
+                extendedShapeUpload[index] = execution.extendedShapeInstances[ordinal]
+            }
         }
         pass.setVertexBuffer(geometry.vertex, index: 0)
         pass.setVertexBytes(
@@ -109,34 +149,81 @@ public final class SpriteRenderWorkspace {
             ),
             index: 2
         )
-        pass.setVertexData(
-            UnsafeRawBufferPointer(
-                start: upload,
-                count: view.ordinals.count
-                    * MemoryLayout<RenderQueue.Instance>.stride
-            ),
-            index: 1
-        )
+        if hasSprites {
+            pass.setVertexData(
+                UnsafeRawBufferPointer(
+                    start: upload,
+                    count: view.ordinals.count
+                        * MemoryLayout<RenderQueue.Instance>.stride
+                ),
+                index: 1
+            )
+        }
+        if hasShapes {
+            pass.setVertexData(
+                UnsafeRawBufferPointer(
+                    start: shapeUpload,
+                    count: view.ordinals.count
+                        * MemoryLayout<RenderQueue.ShapeInstance>.stride
+                ),
+                index: 3
+            )
+        }
+        if hasExtendedShapes {
+            pass.setVertexData(
+                UnsafeRawBufferPointer(
+                    start: extendedShapeUpload,
+                    count: view.ordinals.count
+                        * MemoryLayout<RenderQueue.ExtendedShapeInstance>.stride
+                ),
+                index: 4
+            )
+        }
         let metrics = Metrics(instancesSeconds: Self.seconds(since: instanceStart))
+        let gradients = try hasGradients ? resources.gradientResources(for: execution) : nil
 
         var start = UInt32(0)
         for batch in view.batches {
-            let materialIndex = Int(batch.material)
-            var material = try resolve(
-                execution.materials[materialIndex],
-                at: materialIndex
-            )
-            if material.pipelineFormat != pass.colorFormat {
-                material.pipeline = try resources.pipeline(
-                    format: pass.colorFormat,
-                    blendMode: execution.materials[materialIndex].blendMode
+            switch batch.family {
+            case .sprite:
+                let materialIndex = Int(batch.material)
+                var material = try resolve(
+                    execution.materials[materialIndex], at: materialIndex
                 )
-                material.pipelineFormat = pass.colorFormat
-                resolved[materialIndex] = material
+                if material.pipelineFormat != pass.colorFormat {
+                    material.pipeline = try resources.pipeline(
+                        format: pass.colorFormat,
+                        blendMode: execution.materials[materialIndex].blendMode
+                    )
+                    material.pipelineFormat = pass.colorFormat
+                    resolved[materialIndex] = material
+                }
+                pass.setRenderPipeline(material.pipeline!)
+                pass.setFragmentTexture(material.resolved.texture, index: 0)
+                pass.setFragmentSampler(material.resolved.sampler, index: 0)
+            case .shape:
+                let material = execution.shapeMaterials[Int(batch.material)]
+                pass.setRenderPipeline(try resources.shapePipeline(
+                    format: pass.colorFormat,
+                    blendMode: material.blendMode,
+                    usesGradient: material.usesGradient
+                ))
+                if material.usesGradient {
+                    pass.setFragmentTexture(gradients!.texture, index: 1)
+                    pass.setFragmentSampler(gradients!.sampler, index: 1)
+                }
+            case .extendedShape:
+                let material = execution.shapeMaterials[Int(batch.material)]
+                pass.setRenderPipeline(try resources.extendedShapePipeline(
+                    format: pass.colorFormat,
+                    blendMode: material.blendMode,
+                    usesGradient: material.usesGradient
+                ))
+                if material.usesGradient {
+                    pass.setFragmentTexture(gradients!.texture, index: 1)
+                    pass.setFragmentSampler(gradients!.sampler, index: 1)
+                }
             }
-            pass.setRenderPipeline(material.pipeline!)
-            pass.setFragmentTexture(material.resolved.texture, index: 0)
-            pass.setFragmentSampler(material.resolved.sampler, index: 0)
             pass.drawIndexedPrimitives(
                 .triangle,
                 indexCount: 6,

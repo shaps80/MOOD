@@ -19,14 +19,14 @@ struct PlayerBindings {
 
     @Binding(
         .key(.w),
-        .key(.arrowUp),
+//        .key(.arrowUp),
         .button(.up),
         .axis(.leftStickY, direction: .positive, deadZone: 0.12)
     ) var up
 
     @Binding(
         .key(.s),
-        .key(.arrowDown),
+//        .key(.arrowDown),
         .button(.down),
         .axis(.leftStickY, direction: .negative, deadZone: 0.12)
     ) var down
@@ -47,4 +47,27 @@ struct GameBindings {
         .key(.escape),
         .button(.menu)
     ) var menu
+}
+
+@InputProfile
+struct ShapeBindings {
+    @Binding(
+        .key(.arrowUp)
+    ) var up
+
+    @Binding(
+        .key(.arrowDown)
+    ) var down
+
+    @Binding(
+        .key(.one)
+    ) var inside
+
+    @Binding(
+        .key(.two)
+    ) var center
+
+    @Binding(
+        .key(.three)
+    ) var outside
 }

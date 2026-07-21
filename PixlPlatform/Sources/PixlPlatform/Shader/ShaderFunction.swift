@@ -20,4 +20,16 @@ public extension ShaderFunction {
     static let fragment = Self(name: "pixlFragment")
     /// Built-in instanced-sprite vertex entry point.
     static let spriteVertex = Self(name: "pixlSpriteVertex")
+    /// Built-in instanced analytic-shape vertex entry point.
+    static let shapeVertex = Self(name: "pixlShapeVertex")
+    /// Built-in analytic signed-distance shape fragment entry point.
+    static let shapeFragment = Self(name: "pixlShapeFragment")
+    /// Built-in gradient analytic-shape fragment entry point.
+    static let gradientShapeFragment = Self(name: "pixlGradientShapeFragment")
+    /// Built-in point-defined analytic-shape vertex entry point.
+    static let extendedShapeVertex = Self(name: "pixlExtendedShapeVertex")
+    /// Built-in point-defined signed-distance shape fragment entry point.
+    static let extendedShapeFragment = Self(name: "pixlExtendedShapeFragment")
+    /// Built-in point-defined gradient shape fragment entry point.
+    static let gradientExtendedShapeFragment = Self(name: "pixlGradientExtendedShapeFragment")
 }

@@ -4,7 +4,8 @@ import Pixl2D
 @main
 struct Game: Pixl.Game {
     private var entities: [Entity]
-    private let camera: OrthographicCamera = .init(halfHeight: 200)
+    private let camera: OrthographicCamera = .init()
+    private var shapeCatalogue: ShapeCatalogue
     private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
@@ -13,6 +14,7 @@ struct Game: Pixl.Game {
             Player(context: context),
             Character(context: context)
         ]
+        self.shapeCatalogue = .init(context: context)
     }
 
     func render(
@@ -22,15 +24,13 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-        entities.indices.forEach {
-            entities[$0].submit(to: context.renderQueue)
-        }
+        shapeCatalogue.submit(to: context.renderQueue)
 
         try context.render(
             through: camera,
             to: output,
             frame: frame,
-            clear: .white
+            clear: .black
         )
 
         logMetrics(time)
@@ -52,6 +52,7 @@ struct Game: Pixl.Game {
         }
 
         gameState.update(time, context: context)
+        shapeCatalogue.update(time, context: context)
     }
 
     private func logMetrics(_ time: RenderTime) {
@@ -69,7 +70,7 @@ extension Game {
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
-            resolution: .init(x: 800, y: 400),
+            resolution: .init(x: 320, y: 180),
         )
     }
 

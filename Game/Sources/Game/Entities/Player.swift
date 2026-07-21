@@ -6,6 +6,8 @@ struct Player: Entity {
     private var animation: SpriteAnimation.Timeline
     private var position: Vec2 = .init(96, 0)
 
+    private var shape: Shape
+
     init(context: GameContext) throws {
         sprite = try .init(
             named: "player.png",
@@ -28,6 +30,21 @@ struct Player: Entity {
         sprite.layer = .entity
         sprite.isFlipped = true
         sprite.order = 1
+
+        /**
+         blobbyCross
+         cross
+         equilateralTriangle
+
+         inside shows fill bleed
+         outside has a "gap" 0.5px maybe
+         */
+
+        shape = Shape(.ring)
+            .fill(.red)
+//            .stroke(.green, width: 0.05, alignment: .inside)
+
+        shape.layer = .shape
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
@@ -37,8 +54,13 @@ struct Player: Entity {
 
     func submit(to queue: RenderQueue) {
         queue.submit(
-            sprite,
-            transform: .init(position)
+            shape,
+            transform: .identity
         )
+
+//        queue.submit(
+//            sprite,
+//            transform: .init(position)
+//        )
     }
 }

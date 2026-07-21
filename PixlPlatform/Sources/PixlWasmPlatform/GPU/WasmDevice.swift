@@ -164,9 +164,32 @@ final class WasmDevice: Device {
         let native = object(); native["layout"] = .object(pipelineLayout)
         let vertexStage = object(); vertexStage["module"] = .object(shaderModule); vertexStage["entryPoint"] = .string(descriptor.vertex.name)
         let buffersArray = array()
-        var bufferIndex: UInt32 = 0
-        while bufferIndex < descriptor.vertexLayout.bufferCount {
-            let layout = descriptor.vertexLayout[buffer: bufferIndex]
+        var maximumBufferSlot: UInt32 = 0
+        var layoutIndex: UInt32 = 0
+        while layoutIndex < descriptor.vertexLayout.bufferCount {
+            maximumBufferSlot = max(
+                maximumBufferSlot,
+                descriptor.vertexLayout[buffer: layoutIndex].bufferIndex
+            )
+            layoutIndex += 1
+        }
+        var bufferSlot: UInt32 = 0
+        while bufferSlot <= maximumBufferSlot {
+            var matchingLayout: VertexBufferLayout?
+            layoutIndex = 0
+            while layoutIndex < descriptor.vertexLayout.bufferCount {
+                let candidate = descriptor.vertexLayout[buffer: layoutIndex]
+                if candidate.bufferIndex == bufferSlot {
+                    matchingLayout = candidate
+                    break
+                }
+                layoutIndex += 1
+            }
+            guard let layout = matchingLayout else {
+                _ = buffersArray.jsObject.push!(JSValue.null)
+                bufferSlot += 1
+                continue
+            }
             let buffer = object(); buffer["arrayStride"] = .number(Double(layout.stride)); buffer["stepMode"] = .string(layout.stepMode == .perVertex ? "vertex" : "instance")
             let attributes = array()
             var attributeIndex: UInt32 = 0
@@ -178,7 +201,7 @@ final class WasmDevice: Device {
                 }
                 attributeIndex += 1
             }
-            buffer["attributes"] = .object(attributes.jsObject); _ = buffersArray.jsObject.push!(buffer); bufferIndex += 1
+            buffer["attributes"] = .object(attributes.jsObject); _ = buffersArray.jsObject.push!(buffer); bufferSlot += 1
         }
         vertexStage["buffers"] = .object(buffersArray.jsObject); native["vertex"] = .object(vertexStage)
         let fragmentStage = object(); fragmentStage["module"] = .object(shaderModule); fragmentStage["entryPoint"] = .string(descriptor.fragment.name)

@@ -11,8 +11,8 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 - One game-facing Swift path runs on macOS/Metal and browsers/WebGPU.
 - Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts.
-- Pixl2D provides value-semantic sprites, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
-- Fixed-capacity immediate submission performs culling, ordering, batching, instance compaction, and indexed instanced drawing without steady-state growth by design.
+- Pixl2D provides value-semantic sprites, analytic SDF shapes, gradients, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
+- Fixed-capacity immediate submission performs shared culling, ordering, batching, instance compaction, and indexed instanced sprite/shape drawing without steady-state growth by design.
 - Context-owned render textures support independent offscreen queues, render-then-sample composition, target-format pipeline variants, preserve/clear initial state, and per-sprite filtering on Metal and WebGPU.
 - The Game verifies movement, input, layered animation, filtering, blend modes, pause/time scaling, music, assets, metrics, visuals, and hot reload.
 
@@ -23,11 +23,6 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - [ ] Route future backgrounds, tiles, players, enemies, and UI through the agreed immediate submission path as the Game needs them.
 - [ ] Add named irregular `TextureAtlas` regions when the Game needs them.
 - [ ] Add a visual `TileSet` mapping from game-owned tile identifiers to atlas regions without introducing engine-owned world or tilemap storage.
-
-### SDF Shapes
-
-- [ ] Add the agreed fixed-parameter analytic 2D SDF shapes with unit or explicit sizing, fill, stroke, rounding, smooth/hard antialiasing, and sprite-like world submission; polygon, UI layout, and boolean composition remain later work.
-- [ ] Catalogue the SDF primitives into explicit parameter-compatible shape families, then share ordering, culling, and batching while keeping sprite GPU records unchanged and using aligned family storage with a small set of uber-style shaders.
 
 ### GPU Foundations
 

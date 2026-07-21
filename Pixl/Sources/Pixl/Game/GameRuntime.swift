@@ -9,7 +9,16 @@ final class GameRuntime<G: Game>: PlatformGame {
         let source = G.renderSettings
         let queue = G.renderQueueSettings
         let minimumBytes = UInt32(
-            min(UInt64(UInt32.max), UInt64(queue.capacity) * 48 + 4096)
+            min(
+                UInt64(UInt32.max),
+                UInt64(queue.capacity)
+                    * UInt64(
+                        MemoryLayout<RenderQueue.Instance>.stride
+                            + MemoryLayout<RenderQueue.ShapeInstance>.stride
+                            + MemoryLayout<RenderQueue.ExtendedShapeInstance>.stride
+                    )
+                    + 4096
+            )
         )
         let minimumCommands = UInt32(
             min(UInt64(UInt32.max), UInt64(queue.capacity) * 4 + 4)

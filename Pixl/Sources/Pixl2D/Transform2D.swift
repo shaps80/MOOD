@@ -107,6 +107,10 @@ public struct Transform2D: BitwiseCopyable, Sendable {
             translation: translation + (x * xOffset) + (y * yOffset)
         )
     }
+
+    public func translated(x: Double, y: Double) -> Self {
+        translated(by: .init(x, y))
+    }
 }
 
 extension Transform2D {
