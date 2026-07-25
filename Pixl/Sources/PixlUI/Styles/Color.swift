@@ -4,7 +4,7 @@ import Swift
 extension Color: ShapeStyle, _TerminalShapeStyle {
     @usableFromInline func resolveStyle(
         in graph: _Graph,
-        environment: EnvironmentValues
+        environment: _ViewEnvironment
     ) -> ViewGraph.StyleID {
         graph.internStyle(.color(self))
     }
@@ -16,7 +16,7 @@ extension Color: View {
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
         let style = view.value.resolveStyle(
             in: inputs.graph,
-            environment: inputs.environment.values
+            environment: inputs.environment
         )
         let payload = Int32(inputs.graph.primitives.count)
         inputs.graph.primitives.append(.fill(style))

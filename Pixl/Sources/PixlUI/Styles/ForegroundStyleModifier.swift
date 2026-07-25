@@ -15,7 +15,7 @@ public struct _ForegroundStyleModifier<Style: ShapeStyle>: ViewModifier {
         inputs.environment.foregroundStyle = _resolveShapeStyle(
             modifier.value.style,
             in: inputs.graph,
-            environment: inputs.environment.values
+            environment: inputs.environment
         )
         return body(inputs.graph, inputs)
     }
@@ -29,7 +29,7 @@ public struct _ForegroundStyleModifier<Style: ShapeStyle>: ViewModifier {
         inputs.environment.foregroundStyle = _resolveShapeStyle(
             modifier.value.style,
             in: inputs.graph,
-            environment: inputs.environment.values
+            environment: inputs.environment
         )
         return body(inputs.graph, inputs)
     }
