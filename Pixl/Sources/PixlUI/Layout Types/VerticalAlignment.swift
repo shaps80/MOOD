@@ -171,6 +171,12 @@ import Swift
 }
 
 extension VerticalAlignment {
+    @usableFromInline func defaultValue(in dimensions: ViewDimensions) -> Float {
+        id.defaultValue(in: dimensions)
+    }
+}
+
+extension VerticalAlignment {
     /// A guide that marks the first baseline of the view.
     public static var firstBaseline: VerticalAlignment { .init(VFirstBaseline.self) }
 
@@ -188,25 +194,25 @@ extension VerticalAlignment {
 }
 
 private enum VFirstBaseline: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "first baseline" }
+    static func defaultValue(in context: ViewDimensions) -> Float { context.height }
 }
 
 private enum VLastBaseline: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "last baseline" }
+    static func defaultValue(in context: ViewDimensions) -> Float { context.height }
 }
 
 private enum VTop: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "start" }
+    static func defaultValue(in context: ViewDimensions) -> Float { 0 }
 }
 
 private enum VCenter: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "center" }
+    static func defaultValue(in context: ViewDimensions) -> Float { context.height / 2 }
 }
 
 private enum VBottom: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "end" }
+    static func defaultValue(in context: ViewDimensions) -> Float { context.height }
 }
 
 extension VerticalAlignment: CustomStringConvertible {
-    public var description: String { id.defaultValue(in: .init()) }
+    public var description: String { String(describing: id) }
 }

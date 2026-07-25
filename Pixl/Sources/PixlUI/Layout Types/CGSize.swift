@@ -1,12 +1,12 @@
 import Swift
 
 public struct CGPoint: Codable, Equatable, Sendable, CustomDebugStringConvertible {
-    public var x: Double = 0
-    public var y: Double = 0
+    public var x: Float = 0
+    public var y: Float = 0
 
     public init() { }
     
-    public init(x: Double, y: Double) {
+    public init(x: Float, y: Float) {
         self.x = x
         self.y = y
     }
@@ -24,12 +24,12 @@ public struct CGPoint: Codable, Equatable, Sendable, CustomDebugStringConvertibl
 }
 
 public struct CGSize: Codable, Equatable, Sendable, CustomDebugStringConvertible {
-    public var width: Double = 0
-    public var height: Double = 0
+    public var width: Float = 0
+    public var height: Float = 0
 
     public init() { }
     
-    public init(width: Double, height: Double) {
+    public init(width: Float, height: Float) {
         self.width = width
         self.height = height
     }
@@ -56,6 +56,17 @@ public struct CGRect: Codable, Equatable, Sendable, CustomDebugStringConvertible
         self.origin = origin
         self.size = size
     }
+
+    public init(x: Float, y: Float, width: Float, height: Float) {
+        self.init(origin: .init(x: x, y: y), size: .init(width: width, height: height))
+    }
+
+    public var minX: Float { origin.x }
+    public var midX: Float { origin.x + size.width / 2 }
+    public var maxX: Float { origin.x + size.width }
+    public var minY: Float { origin.y }
+    public var midY: Float { origin.y + size.height / 2 }
+    public var maxY: Float { origin.y + size.height }
 
     public static var zero: Self { .init() }
 

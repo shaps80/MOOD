@@ -173,6 +173,12 @@ import Swift
 }
 
 extension HorizontalAlignment {
+    @usableFromInline func defaultValue(in dimensions: ViewDimensions) -> Float {
+        id.defaultValue(in: dimensions)
+    }
+}
+
+extension HorizontalAlignment {
     /// A guide that marks the leading edge of the view.
     ///
     /// Use this guide to align the leading edges of views.
@@ -245,18 +251,18 @@ extension HorizontalAlignment {
 }
 
 private enum HLeading: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "start" }
+    static func defaultValue(in context: ViewDimensions) -> Float { 0 }
 
 }
 
 private enum HCenter: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "center" }
+    static func defaultValue(in context: ViewDimensions) -> Float { context.width / 2 }
 }
 
 private enum HTrailing: AlignmentID {
-    static func defaultValue(in context: ViewDimensions) -> String { "end" }
+    static func defaultValue(in context: ViewDimensions) -> Float { context.width }
 }
 
 extension HorizontalAlignment: CustomStringConvertible {
-    public var description: String { id.defaultValue(in: .init()) }
+    public var description: String { String(describing: id) }
 }

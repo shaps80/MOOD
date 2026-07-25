@@ -2,12 +2,12 @@ import Swift
 
 @frozen public struct VStack<Content: View>: View {
     public let alignment: HorizontalAlignment
-    public let spacing: Double?
+    public let spacing: Float?
     public let content: Content
 
     @inlinable public init(
         alignment: HorizontalAlignment = .center,
-        spacing: Double? = nil,
+        spacing: Float? = nil,
         @ContentBuilder content: () -> Content
     ) {
         self.alignment = alignment
@@ -18,30 +18,6 @@ import Swift
     public var body: Never { fatalError() }
 
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        let payload = Int32(inputs.graph.stacks.count)
-        inputs.graph.stacks.append(
-            .init(
-                axis: .vertical,
-                spacing: view.value.spacing,
-                horizontalAlignment: view.value.alignment,
-                verticalAlignment: nil,
-                alignment: nil
-            )
-        )
-        let node = inputs.graph.appendNode(
-            kind: .verticalStack,
-            payload: payload,
-            parent: inputs.parent
-        )
-        _ = Content._makeViewList(
-            view: .init(view.value.content, graph: view.graph),
-            inputs: .init(
-                graph: inputs.graph,
-                parent: node,
-                modifierBody: inputs.modifierBodyList,
-                modifierBodyView: inputs.modifierBody
-            )
-        )
-        return .init(node: node)
+        _LayoutView<VStackLayout, Content>._makeView(view: .init(.init(layout: .init(alignment: view.value.alignment, spacing: view.value.spacing), content: view.value.content), graph: view.graph), inputs: inputs)
     }
 }

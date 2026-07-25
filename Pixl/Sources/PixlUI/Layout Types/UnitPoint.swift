@@ -63,11 +63,11 @@ import Swift
 
     /// The normalized distance from the origin to the point in the horizontal
     /// direction.
-    public var x: Double
+    public var x: Float
 
     /// The normalized distance from the origin to the point in the vertical
     /// dimension.
-    public var y: Double
+    public var y: Float
 
     /// Creates a unit point at the origin.
     ///
@@ -89,7 +89,7 @@ import Swift
     ///     horizontal direction.
     ///   - y: The normalized distance from the origin to the point in the
     ///     vertical direction.
-    @inlinable public init(x: Double, y: Double) {
+    @inlinable public init(x: Float, y: Float) {
         self.x = x
         self.y = y
     }

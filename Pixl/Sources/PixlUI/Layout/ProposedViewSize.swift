@@ -29,13 +29,13 @@ import Swift
     ///
     /// A value of `nil` represents an unspecified width proposal, which a view
     /// interprets to mean that it should use its ideal width.
-    public var width: Double?
+    public var width: Float?
     
     /// The proposed vertical size measured in points.
     ///
     /// A value of `nil` represents an unspecified height proposal, which a view
     /// interprets to mean that it should use its ideal height.
-    public var height: Double?
+    public var height: Float?
     
     /// A size proposal that contains zero in both dimensions.
     ///
@@ -75,7 +75,7 @@ import Swift
     ///     that the width is unspecified for this proposal.
     ///   - height: A proposed height in points. Use a value of `nil` to
     ///     indicate that the height is unspecified for this proposal.
-    @inlinable public init(width: Double?, height: Double?) {
+    @inlinable public init(width: Float?, height: Float?) {
         self.width = width
         self.height = height
     }
@@ -101,6 +101,6 @@ import Swift
     ///
     /// - Returns: A new, fully specified size proposal.
     @inlinable public func replacingUnspecifiedDimensions(by size: CGSize = CGSize(width: 10, height: 10)) -> CGSize {
-        .init(width: size.width, height: size.height)
+        .init(width: width ?? size.width, height: height ?? size.height)
     }
 }

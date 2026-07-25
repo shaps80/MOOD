@@ -22,6 +22,11 @@ public struct ViewGraph {
             case depthStack
             case background
             case overlay
+            case layout
+            case spacer
+            case divider
+            case color
+            case frame
         }
 
         public let kind: Kind
@@ -44,7 +49,7 @@ public struct ViewGraph {
         }
 
         public let axis: Axis
-        public let spacing: Double?
+        public let spacing: Float?
         public let horizontalAlignment: HorizontalAlignment?
         public let verticalAlignment: VerticalAlignment?
         public let alignment: Alignment?
@@ -54,10 +59,24 @@ public struct ViewGraph {
         public let alignment: Alignment
     }
 
+    @usableFromInline struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
+    @usableFromInline struct FrameRecord: Sendable {
+        let minWidth: Float?, idealWidth: Float?, maxWidth: Float?
+        let minHeight: Float?, idealHeight: Float?, maxHeight: Float?
+        let alignment: Alignment
+        init(_ value: _FrameModifier) { minWidth = value.minWidth; idealWidth = value.idealWidth; maxWidth = value.maxWidth; minHeight = value.minHeight; idealHeight = value.idealHeight; maxHeight = value.maxHeight; alignment = value.alignment }
+    }
+
     public let nodes: ContiguousArray<Node>
     public let texts: ContiguousArray<TextRecord>
     public let stacks: ContiguousArray<StackRecord>
     public let layers: ContiguousArray<LayerRecord>
+    @usableFromInline let layouts: ContiguousArray<LayoutRecord>
+    @usableFromInline let frames: ContiguousArray<FrameRecord>
+    @usableFromInline let spacers: ContiguousArray<Float?>
+    @usableFromInline let colors: ContiguousArray<Color>
+    @usableFromInline let children: ContiguousArray<NodeID>
+    @usableFromInline let childRanges: ContiguousArray<Range<Int>>
 
     public static func build<Root: View>(
         @ContentBuilder content: () -> Root
@@ -79,6 +98,10 @@ public struct ViewGraphRoot<Root: View>: CustomStringConvertible {
     public let graph: ViewGraph
 
     public var description: String { graph.description }
+
+    public func layout(in size: CGSize, displayScale: Float = 1) -> ViewLayout {
+        graph.layout(in: size, displayScale: displayScale)
+    }
 }
 
 extension ViewGraph: CustomStringConvertible {
@@ -140,6 +163,16 @@ extension ViewGraph: CustomStringConvertible {
             return "EmptyView"
         case .group:
             return "TupleContent"
+        case .layout:
+            return layouts[Int(node.payload)].box.debugName
+        case .spacer:
+            return "Spacer"
+        case .divider:
+            return "Divider"
+        case .color:
+            return "Color"
+        case .frame:
+            return "Frame"
         }
     }
 }

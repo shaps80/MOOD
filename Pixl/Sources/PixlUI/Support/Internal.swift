@@ -18,6 +18,10 @@ public final class _Graph {
     @usableFromInline var texts: ContiguousArray<ViewGraph.TextRecord> = []
     @usableFromInline var stacks: ContiguousArray<ViewGraph.StackRecord> = []
     @usableFromInline var layers: ContiguousArray<ViewGraph.LayerRecord> = []
+    @usableFromInline var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
+    @usableFromInline var frames: ContiguousArray<ViewGraph.FrameRecord> = []
+    @usableFromInline var spacers: ContiguousArray<Float?> = []
+    @usableFromInline var colors: ContiguousArray<Color> = []
 
     @usableFromInline init() { }
 
@@ -43,7 +47,16 @@ public final class _Graph {
 
     @usableFromInline
     func snapshot() -> ViewGraph {
-        .init(nodes: nodes, texts: texts, stacks: stacks, layers: layers)
+        var children: ContiguousArray<ViewGraph.NodeID> = []
+        var ranges: ContiguousArray<Range<Int>> = []
+        ranges.reserveCapacity(nodes.count)
+        for node in nodes {
+            let start = children.count
+            var child = node.firstChild
+            while child.isValid { children.append(child); child = nodes[Int(child.rawValue)].nextSibling }
+            ranges.append(start..<children.count)
+        }
+        return .init(nodes: nodes, texts: texts, stacks: stacks, layers: layers, layouts: layouts, frames: frames, spacers: spacers, colors: colors, children: children, childRanges: ranges)
     }
 }
 

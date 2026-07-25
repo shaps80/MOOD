@@ -35,7 +35,12 @@ public struct Test: View {
 }
 
 let root = ViewGraph.build {
-    Test()
+    Text("Hello this is another longer text that will likely possibly wrap?")
 }
 
-print(root.graph)
+print(
+    root.layout(
+        in: .init(width: 800, height: 600),
+        displayScale: 1
+    )
+)

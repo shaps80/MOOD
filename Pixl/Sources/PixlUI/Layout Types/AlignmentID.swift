@@ -124,5 +124,5 @@ public protocol AlignmentID: SendableMetatype {
     ///
     /// - Returns: The offset of the guide from the origin in the
     ///   view's coordinate space.
-    static func defaultValue(in context: ViewDimensions) -> String
+    static func defaultValue(in context: ViewDimensions) -> Float
 }

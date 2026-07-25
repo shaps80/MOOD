@@ -20,7 +20,10 @@ import Swift
 /// * Create a spacing preferences instance for the container view by
 ///   implementing the ``Layout/spacing(subviews:cache:)-86z2e`` method.
 public struct ViewSpacing: Sendable {
-    var spacing: [Edge: Double] = [:]
+    @usableFromInline var leading: Float = 0
+    @usableFromInline var trailing: Float = 0
+    @usableFromInline var top: Float = 0
+    @usableFromInline var bottom: Float = 0
 
     /// A view spacing instance that contains zero on all edges.
     ///
@@ -56,20 +59,16 @@ public struct ViewSpacing: Sendable {
     ///     unchanged after the method completes.
     public mutating func formUnion(_ other: ViewSpacing, edges: Edge.Set = .all) {
         if edges.contains(.leading) {
-            let value = max(spacing[.leading] ?? 0, other.spacing[.leading] ?? 0)
-            spacing.updateValue(value, forKey: .leading)
+            leading = max(leading, other.leading)
         }
         if edges.contains(.trailing) { 
-            let value = max(spacing[.trailing] ?? 0, other.spacing[.trailing] ?? 0)
-            spacing.updateValue(value, forKey: .trailing)
+            trailing = max(trailing, other.trailing)
         }
         if edges.contains(.top) { 
-            let value = max(spacing[.top] ?? 0, other.spacing[.top] ?? 0)
-            spacing.updateValue(value, forKey: .top)
+            top = max(top, other.top)
         }
         if edges.contains(.bottom) { 
-            let value = max(spacing[.bottom] ?? 0, other.spacing[.bottom] ?? 0)
-            spacing.updateValue(value, forKey: .bottom)
+            bottom = max(bottom, other.bottom)
         }
     }
 
@@ -126,16 +125,12 @@ public struct ViewSpacing: Sendable {
     /// - Returns: A floating point value that represents the smallest distance
     ///   in points between two views that satisfies the spacing preferences
     ///   of both this view and the adjacent views on their shared edge.
-    public func distance(to next: ViewSpacing, along axis: Axis) -> Double {
+    public func distance(to next: ViewSpacing, along axis: Axis) -> Float {
         switch axis {
         case .horizontal:
-            let first = spacing[.trailing] ?? 0
-            let second = next.spacing[.leading] ?? 0
-            return max(first, second)
+            return max(trailing, next.leading)
         case .vertical:
-            let first = spacing[.bottom] ?? 0
-            let second = next.spacing[.top] ?? 0
-            return max(first, second)
+            return max(bottom, next.top)
         }
     }
 }

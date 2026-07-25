@@ -86,16 +86,16 @@ import Swift
 /// string appears horizontally offset to the left from the right side of the
 /// first string by about the width of one character.](ViewDimensions-2-iOS)
 public struct ViewDimensions {
+    @usableFromInline let size: CGSize
+
+    @usableFromInline init(size: CGSize) { self.size = size }
+    public init() { self.size = .zero }
 
     /// The view's width.
-    public var width: Double {
-        fatalError()
-    }
+    public var width: Float { size.width }
 
     /// The view's height.
-    public var height: Double {
-        fatalError()
-    }
+    public var height: Float { size.height }
 
     /// Gets the value of the given horizontal guide.
     ///
@@ -110,8 +110,8 @@ public struct ViewDimensions {
     /// elements of a collection, list, or, sequence, see
     /// [Subscripts](https://docs.swift.org/swift-book/LanguageGuide/Subscripts.html)
     /// in _The Swift Programming Language_.
-    public subscript(guide: HorizontalAlignment) -> Double {
-        fatalError()
+    public subscript(guide: HorizontalAlignment) -> Float {
+        guide.defaultValue(in: self)
     }
 
     /// Gets the value of the given vertical guide.
@@ -127,8 +127,8 @@ public struct ViewDimensions {
     /// elements of a collection, list, or, sequence, see
     /// [Subscripts](https://docs.swift.org/swift-book/LanguageGuide/Subscripts.html)
     /// in _The Swift Programming Language_.
-    public subscript(guide: VerticalAlignment) -> Double {
-        fatalError()
+    public subscript(guide: VerticalAlignment) -> Float {
+        guide.defaultValue(in: self)
     }
 
     /// Gets the explicit value of the given horizontal alignment guide.
@@ -146,8 +146,8 @@ public struct ViewDimensions {
     /// elements of a collection, list, or, sequence, see
     /// [Subscripts](https://docs.swift.org/swift-book/LanguageGuide/Subscripts.html)
     /// in _The Swift Programming Language_.
-    public subscript(explicit guide: HorizontalAlignment) -> Double? {
-        fatalError()
+    public subscript(explicit guide: HorizontalAlignment) -> Float? {
+        nil
     }
 
     /// Gets the explicit value of the given vertical alignment guide
@@ -165,7 +165,7 @@ public struct ViewDimensions {
     /// elements of a collection, list, or, sequence, see
     /// [Subscripts](https://docs.swift.org/swift-book/LanguageGuide/Subscripts.html)
     /// in _The Swift Programming Language_.
-    public subscript(explicit guide: VerticalAlignment) -> Double? {
-        fatalError()
+    public subscript(explicit guide: VerticalAlignment) -> Float? {
+        nil
     }
 }
