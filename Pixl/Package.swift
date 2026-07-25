@@ -5,10 +5,10 @@ import CompilerPluginSupport
 let package = Package(
     name: "Pixl",
     platforms: [
-        .macOS(.v13),
-        .watchOS(.v9),
-        .tvOS(.v16),
-        .iOS(.v16),
+        .macOS(.v14),
+        .watchOS(.v10),
+        .tvOS(.v17),
+        .iOS(.v17),
         .visionOS(.v1)
     ],
     products: [
@@ -62,6 +62,7 @@ let package = Package(
                 "PixlGraphics",
                 "Pixl2D",
                 "Pixl3D",
+                "PixlUI",
                 .product(
                     name: "PixlPlatform",
                     package: "PixlPlatform"

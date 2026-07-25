@@ -4,10 +4,10 @@ import PackageDescription
 let package = Package(
     name: "Game",
     platforms: [
-        .macOS(.v13),
-        .watchOS(.v9),
-        .tvOS(.v16),
-        .iOS(.v16),
+        .macOS(.v14),
+        .watchOS(.v10),
+        .tvOS(.v17),
+        .iOS(.v17),
         .visionOS(.v1)
     ],
     dependencies: [
