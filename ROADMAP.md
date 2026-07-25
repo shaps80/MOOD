@@ -12,7 +12,10 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - One game-facing Swift path runs on macOS/Metal and browsers/WebGPU.
 - Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts.
 - Pixl2D provides value-semantic sprites, analytic SDF shapes, gradients, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
+- Spatial, graphical, and normalized input values use compact `Float` storage throughout portable layers; time and accumulated durations remain `Double`.
 - Fixed-capacity immediate submission performs shared culling, ordering, batching, instance compaction, and indexed instanced sprite/shape drawing without steady-state growth by design.
+- Game-provided render and queue capacities are authoritative. The current Game sizes them from actual visible submission needs rather than total world population.
+- `OrthographicCamera` exposes visible world bounds. The Game validates game-owned coarse spatial selection with 100,000 animated world sprites while Pixl retains precise final culling.
 - Context-owned render textures support independent offscreen queues, render-then-sample composition, target-format pipeline variants, preserve/clear initial state, and per-sprite filtering on Metal and WebGPU.
 - The Game verifies movement, input, layered animation, filtering, blend modes, pause/time scaling, music, assets, metrics, visuals, and hot reload.
 
@@ -30,9 +33,23 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 ### Audio
 
-- [ ] Add an explicit streaming sound source; music should use streaming by default.
+- [ ] Add an explicit streaming audio source so music no longer requires fully decoded resident storage; music should stream by default.
 - [ ] Add compressed formats only when a playable Game need justifies decoder and packaging costs.
 - [ ] Move Web Audio graph control behind an AudioWorklet or worker boundary only if profiling shows current control-thread work affecting frames.
+
+### Collision
+
+- [ ] Design a separate collision target before implementation, keeping bodies, broadphase ownership, and simulation outside PixlPlatform and the engine foundation.
+- [ ] Define the smallest playable 2D collision vocabulary, beginning with AABBs and deterministic query/contact results.
+- [ ] Prototype a persistent spatial-grid broadphase and measure candidate generation before selecting more complex structures.
+- [ ] Evaluate bitsets for collision filtering, worker-local deterministic result collection, and fast set merging.
+- [ ] Introduce `PixlConcurrency` only after a representative collision workload proves useful parallel depth and defines deterministic merging.
+
+### Text
+
+- [ ] Add the smallest game-facing text path needed for playable UI and feedback.
+- [ ] Scope the initial implementation to bitmap-font atlas glyphs and reuse the immediate ordered batching path where compatible.
+- [ ] Keep vector font loading/rasterization, shaping, localization depth, and advanced layout behind later concrete Game needs.
 
 ### In-Game Editing
 

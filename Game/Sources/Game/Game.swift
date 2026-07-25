@@ -43,7 +43,7 @@ struct Game: Pixl.Game {
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
         player = try Player(
-            count: 1_000_000,
+            count: 100_000,
             worldSize: 10_000,
             context: context
         )
@@ -128,7 +128,7 @@ extension Game {
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",
-            preferredFps: 120,
+            preferredFps: 60,
             resolution: .init(x: 1200, y: 600),
         )
     }
@@ -139,7 +139,7 @@ extension Game {
         .init(
             framePassCapacity: 1,
             frameCommandCapacity: 16,
-            frameByteCapacity: 512 * 1024,
+            frameByteCapacity: 128 * 1024,
             bufferCapacity: 4,
             pipelineCapacity: 2,
             samplerCapacity: 2,
@@ -150,7 +150,7 @@ extension Game {
 
     static var renderQueueSettings: RenderQueue.Settings {
         .init(
-            capacity: 32_768,
+            capacity: 4_096,
             viewCapacity: 1,
             gradientCapacity: 1
         )
