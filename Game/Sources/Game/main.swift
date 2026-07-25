@@ -34,8 +34,10 @@ public struct Test: View {
     }
 }
 
+// origin: (350.0, 285.0), size: (100.0, 30.0)
 let root = ViewGraph.build {
-    Text("Hello this is another longer text that will likely possibly wrap?")
+    Text("Hello")
+        .padding(.all, 30)
 }
 
 print(

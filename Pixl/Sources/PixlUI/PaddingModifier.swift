@@ -23,7 +23,7 @@ extension View {
     }
 
     public func padding(_ edges: Edge.Set = .all, _ length: Float? = nil) -> some View {
-        let length = length ?? 8
+        let length = length ?? 10
         return padding(.init(
             top: edges.contains(.top) ? length : 0,
             leading: edges.contains(.leading) ? length : 0,
