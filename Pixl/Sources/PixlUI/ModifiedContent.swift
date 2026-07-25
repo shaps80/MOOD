@@ -14,6 +14,33 @@ extension ModifiedContent: View where Content: View, Modifier: ViewModifier {
     public typealias Body = Never
 
     public var body: Never { fatalError() }
+
+    public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
+        Modifier._makeView(
+            modifier: .init(view.value.modifier, graph: view.graph),
+            inputs: inputs
+        ) { graph, inputs in
+            Content._makeView(
+                view: .init(view.value.content, graph: graph),
+                inputs: inputs
+            )
+        }
+    }
+
+    public static func _makeViewList(
+        view: _GraphValue<Self>,
+        inputs: _ViewListInputs
+    ) -> _ViewListOutputs {
+        Modifier._makeViewList(
+            modifier: .init(view.value.modifier, graph: view.graph),
+            inputs: inputs
+        ) { graph, inputs in
+            Content._makeViewList(
+                view: .init(view.value.content, graph: graph),
+                inputs: inputs
+            )
+        }
+    }
 }
 
 extension View {

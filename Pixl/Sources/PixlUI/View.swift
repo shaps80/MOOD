@@ -14,21 +14,28 @@ public protocol View {
 
 extension View {
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        .init()
+        Body._makeView(
+            view: .init(view.value.body, graph: view.graph),
+            inputs: inputs
+        )
     }
 
     public static func _makeViewList(
         view: _GraphValue<Self>,
         inputs: _ViewListInputs
     ) -> _ViewListOutputs {
-        .init()
+        let output = _makeView(
+            view: view,
+            inputs: .init(graph: inputs.graph, parent: inputs.parent)
+        )
+        return .init(first: output.node, last: output.node, count: 1)
     }
 }
 
 extension Never: View {
     public var body: Never { fatalError() }
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        .init()
+        fatalError("Never cannot be built as a view")
     }
 }
 
@@ -37,6 +44,13 @@ public struct EmptyView: View {
 
     public var body: Never { fatalError() }
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
+        .init(node: inputs.graph.appendNode(kind: .empty, parent: inputs.parent))
+    }
+
+    public static func _makeViewList(
+        view: _GraphValue<Self>,
+        inputs: _ViewListInputs
+    ) -> _ViewListOutputs {
         .init()
     }
 }
