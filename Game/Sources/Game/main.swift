@@ -20,7 +20,6 @@ public struct Test: View {
 
             HStack(alignment: .firstBaseline) {
                 Text("Third")
-                    .foregroundStyle(.placeholder)
                 EmptyView()
             }
         }
