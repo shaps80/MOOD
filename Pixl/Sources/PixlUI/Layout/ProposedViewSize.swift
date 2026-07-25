@@ -83,7 +83,7 @@ import Swift
     /// Creates a new proposed size from a specified size.
     ///
     /// - Parameter size: A proposed size with dimensions measured in points.
-    @inlinable public init(_ size: CGSize) {
+    @inlinable public init(_ size: Size) {
         self.width = size.width
         self.height = size.height
     }
@@ -100,7 +100,7 @@ import Swift
     ///   for both dimensions.
     ///
     /// - Returns: A new, fully specified size proposal.
-    @inlinable public func replacingUnspecifiedDimensions(by size: CGSize = CGSize(width: 10, height: 10)) -> CGSize {
+    @inlinable public func replacingUnspecifiedDimensions(by size: Size = Size(width: 10, height: 10)) -> Size {
         .init(width: width ?? size.width, height: height ?? size.height)
     }
 }

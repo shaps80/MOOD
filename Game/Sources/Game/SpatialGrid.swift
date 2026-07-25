@@ -1,3 +1,4 @@
+import PixlGraphics
 import Pixl2D
 
 /// Dense, immutable spatial index for the stress-test sprites.

@@ -20,6 +20,7 @@ public final class _Graph {
     @usableFromInline var styles: ContiguousArray<ViewGraph.ResolvedStyle> = []
     @usableFromInline var styleIDs: [ViewGraph.ResolvedStyle: ViewGraph.StyleID] = [:]
     @usableFromInline var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
+    @usableFromInline var shapes: ContiguousArray<_ShapeRecord> = []
 
     @usableFromInline init() { }
 
@@ -63,7 +64,7 @@ public final class _Graph {
             while child.isValid { children.append(child); child = nodes[Int(child.rawValue)].nextSibling }
             ranges.append(start..<children.count)
         }
-        return .init(nodes: nodes, primitives: primitives, compositions: compositions, styles: styles, layouts: layouts, children: children, childRanges: ranges)
+        return .init(nodes: nodes, primitives: primitives, compositions: compositions, styles: styles, layouts: layouts, shapes: shapes, children: children, childRanges: ranges)
     }
 }
 

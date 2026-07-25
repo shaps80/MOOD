@@ -30,6 +30,7 @@ public struct ViewGraph {
             case layout
             case primitive
             case composition
+            case shape
         }
 
         public let kind: Kind
@@ -65,6 +66,7 @@ public struct ViewGraph {
     public let compositions: ContiguousArray<CompositionRecord>
     public let styles: ContiguousArray<ResolvedStyle>
     @usableFromInline let layouts: ContiguousArray<LayoutRecord>
+    @usableFromInline let shapes: ContiguousArray<_ShapeRecord>
     @usableFromInline let children: ContiguousArray<NodeID>
     @usableFromInline let childRanges: ContiguousArray<Range<Int>>
 
@@ -94,7 +96,7 @@ public struct ViewGraphRoot<Root: View>: CustomStringConvertible {
 
     public var description: String { graph.description }
 
-    public func layout(in size: CGSize, displayScale: Float = 1) -> ViewLayout {
+    public func layout(in size: Size, displayScale: Float = 1) -> ViewLayout {
         graph.layout(in: size, displayScale: displayScale)
     }
 }
@@ -160,6 +162,8 @@ extension ViewGraph: CustomStringConvertible {
             case .background: return "Background"
             case .overlay: return "Overlay"
             }
+        case .shape:
+            return shapes[Int(node.payload)].stroke == nil ? "Rectangle.fill" : "Rectangle.fill+stroke"
         }
     }
 }

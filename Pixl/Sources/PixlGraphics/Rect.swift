@@ -9,14 +9,14 @@ import Swift
 /// let bounds = Rect(x: 0, y: 0, width: 320, height: 180)
 /// let padded = bounds.padding(8)
 /// ```
-public struct Rect: Equatable, Sendable {
+public struct Rect: Equatable, Sendable, CustomDebugStringConvertible {
     /// The minimum x/y corner of the rectangle.
     ///
     /// ```swift
     /// let rect = Rect(x: 10, y: 20, width: 30, height: 40)
     /// let origin = rect.origin
     /// ```
-    public var origin: Vec2
+    public var origin: Point
 
     /// The width and height of the rectangle.
     ///
@@ -24,7 +24,7 @@ public struct Rect: Equatable, Sendable {
     /// let rect = Rect(x: 10, y: 20, width: 30, height: 40)
     /// let size = rect.size
     /// ```
-    public var size: Vec2
+    public var size: Size
 
     /// Creates a rectangle from origin and size vectors.
     ///
@@ -34,7 +34,7 @@ public struct Rect: Equatable, Sendable {
     /// - Parameters:
     ///   - origin: Minimum x/y corner.
     ///   - size: Width and height.
-    public init(origin: Vec2, size: Vec2) {
+    public init(origin: Point, size: Size) {
         self.origin = origin
         self.size = size
     }
@@ -51,8 +51,8 @@ public struct Rect: Equatable, Sendable {
     ///   - height: Rectangle height.
     public init(x: Float, y: Float, width: Float, height: Float) {
         self.init(
-            origin: Vec2(x: x, y: y),
-            size: Vec2(x: width, y: height)
+            origin: Point(x: x, y: y),
+            size: Size(x: width, y: height)
         )
     }
 
@@ -61,9 +61,9 @@ public struct Rect: Equatable, Sendable {
     /// - Parameters:
     ///   - center: Point placed at the rectangle's centre.
     ///   - size: Rectangle width and height.
-    public init(center: Vec2, size: Vec2) {
+    public init(center: Point, size: Size) {
         self.init(
-            origin: Vec2(
+            origin: Point(
                 x: center.x - (size.x / 2),
                 y: center.y - (size.y / 2)
             ),
@@ -73,7 +73,7 @@ public struct Rect: Equatable, Sendable {
 
     /// Creates a rectangle of the given size at the origin.
     /// - Parameter size: Rectangle width and height.
-    public init(size: Vec2) {
+    public init(size: Size) {
         self.init(origin: .zero, size: size)
     }
 
@@ -86,6 +86,10 @@ public struct Rect: Equatable, Sendable {
         origin: .zero,
         size: .zero
     )
+
+    public var debugDescription: String {
+        "origin: (\(origin.x), \(origin.y)), size: (\(size.width), \(size.height))"
+    }
 }
 
 public extension Rect {
@@ -107,6 +111,10 @@ public extension Rect {
         origin.x + size.x
     }
 
+    var midX: Float {
+        origin.x + (size.x / 2)
+    }
+
     /// The minimum y coordinate.
     ///
     /// ```swift
@@ -125,13 +133,17 @@ public extension Rect {
         origin.y + size.y
     }
 
+    var midY: Float {
+        origin.y + (size.y / 2)
+    }
+
     /// The center point of the rectangle.
     ///
     /// ```swift
     /// let center = Rect(x: 0, y: 0, width: 10, height: 20).center
     /// ```
-    var center: Vec2 {
-        Vec2(
+    var center: Point {
+        Point(
             x: origin.x + (size.x / 2),
             y: origin.y + (size.y / 2)
         )
@@ -145,9 +157,9 @@ public extension Rect {
     /// ```
     /// - Parameter offset: Component-wise displacement.
     /// - Returns: A copy with `origin` displaced by `offset`.
-    func translated(by offset: Vec2) -> Rect {
+    func translated(by offset: Point) -> Rect {
         Rect(
-            origin: Vec2(
+            origin: Point(
                 x: origin.x + offset.x,
                 y: origin.y + offset.y
             ),
@@ -158,7 +170,7 @@ public extension Rect {
     /// Returns a rectangle with its origin and size scaled component-wise.
     /// - Parameter scale: Independent x and y scale factors.
     /// - Returns: The scaled rectangle.
-    func scaled(by scale: Vec2) -> Rect {
+    func scaled(by scale: Size) -> Rect {
         Rect(
             origin: origin * scale,
             size: size * scale
@@ -173,42 +185,12 @@ public extension Rect {
     /// - Parameter amount: Distance to move each edge inward. Negative values expand the rectangle.
     /// - Returns: The inset rectangle.
     func padding(_ amount: Float) -> Rect {
-        padding(.all, amount)
-    }
-
-    /// Returns a rectangle inset on the selected edges.
-    ///
-    /// ```swift
-    /// let inner = Rect(x: 0, y: 0, width: 100, height: 100)
-    ///     .padding(.horizontal, 12)
-    /// ```
-    /// - Parameters:
-    ///   - edges: Edges to move inward.
-    ///   - amount: Distance to move each selected edge. Negative values expand the rectangle.
-    /// - Returns: The selectively inset rectangle.
-    func padding(_ edges: Edge.Set = .all, _ amount: Float) -> Rect {
-        var origin = origin
-        var size = size
-
-        if edges.contains(.left) {
-            origin = Vec2(x: origin.x + amount, y: origin.y)
-            size = Vec2(x: size.x - amount, y: size.y)
-        }
-
-        if edges.contains(.right) {
-            size = Vec2(x: size.x - amount, y: size.y)
-        }
-
-        if edges.contains(.top) {
-            origin = Vec2(x: origin.x, y: origin.y + amount)
-            size = Vec2(x: size.x, y: size.y - amount)
-        }
-
-        if edges.contains(.bottom) {
-            size = Vec2(x: size.x, y: size.y - amount)
-        }
-
-        return Rect(origin: origin, size: size)
+        Rect(
+            x: origin.x + amount,
+            y: origin.y + amount,
+            width: size.width - (amount * 2),
+            height: size.height - (amount * 2)
+        )
     }
 
     /// Returns whether this rectangle overlaps another rectangle.

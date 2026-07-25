@@ -5,8 +5,8 @@ public struct VStackLayout: Layout {
     public var spacing: Float
     public init(alignment: HorizontalAlignment = .center, spacing: Float? = nil) { self.alignment = alignment; self.spacing = spacing ?? 10 }
     public static var layoutProperties: LayoutProperties { var p = LayoutProperties(); p.stackOrientation = .vertical; return p }
-    public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
-        var result = CGSize.zero
+    public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> Size {
+        var result = Size.zero
         var hasFlexible = false
         for subview in subviews {
             let size = subview.sizeThatFits(.init(width: proposal.width, height: nil)); result.width = max(result.width, size.width); result.height += size.height
@@ -16,7 +16,7 @@ public struct VStackLayout: Layout {
         if hasFlexible, let height = proposal.height, height.isFinite { result.height = max(result.height, height) }
         return result
     }
-    public func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+    public func placeSubviews(in bounds: Rect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
         var y = bounds.minY
         var fixed: Float = Float(max(0, subviews.count - 1)) * spacing, flexibleCount = 0
         for subview in subviews {

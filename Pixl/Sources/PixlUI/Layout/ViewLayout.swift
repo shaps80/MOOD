@@ -1,22 +1,22 @@
 import Swift
 
 public struct ViewLayout: Sendable, CustomStringConvertible {
-    public let size: CGSize
+    public let size: Size
     public let displayScale: Float
-    public let frames: ContiguousArray<CGRect>
-    public subscript(_ node: ViewGraph.NodeID) -> CGRect { frames[Int(node.rawValue)] }
+    public let frames: ContiguousArray<Rect>
+    public subscript(_ node: ViewGraph.NodeID) -> Rect { frames[Int(node.rawValue)] }
     public var description: String { frames.enumerated().map { "\($0.offset): \($0.element.debugDescription)" }.joined(separator: "\n") }
 }
 
 extension ViewGraph {
-    public func layout(in size: CGSize, displayScale: Float = 1) -> ViewLayout {
+    public func layout(in size: Size, displayScale: Float = 1) -> ViewLayout {
         precondition(displayScale.isFinite && displayScale > 0, "displayScale must be finite and greater than zero")
         let pass = _LayoutPass(graph: self, displayScale: displayScale)
         var root = NodeID(rawValue: 0)
         while root.isValid {
             pass.place(
                 root,
-                CGPoint(x: size.width / 2, y: size.height / 2),
+                Point(x: size.width / 2, y: size.height / 2),
                 .center,
                 ProposedViewSize(size),
                 nil
@@ -35,7 +35,7 @@ extension ViewGraph {
         (value * displayScale).rounded() / displayScale
     }
 
-    @usableFromInline func snap(_ rect: CGRect) -> CGRect {
+    @usableFromInline func snap(_ rect: Rect) -> Rect {
         let minX = snap(rect.minX)
         let minY = snap(rect.minY)
         let maxX = snap(rect.maxX)
@@ -47,7 +47,7 @@ extension ViewGraph {
 @usableFromInline final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
     @usableFromInline let graph: ViewGraph
     @usableFromInline let context: _LayoutContext
-    @usableFromInline var frames: ContiguousArray<CGRect>
+    @usableFromInline var frames: ContiguousArray<Rect>
     private var caches: [Int: Any] = [:]
     @usableFromInline init(graph: ViewGraph, displayScale: Float) {
         self.graph = graph
@@ -55,8 +55,8 @@ extension ViewGraph {
         frames = .init(repeating: .zero, count: graph.nodes.count)
     }
 
-    @usableFromInline override func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> CGSize { measure(id, proposal, orientation) }
-    @usableFromInline override func place(_ id: ViewGraph.NodeID, _ position: CGPoint, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) { placeNode(id, position, anchor, proposal, orientation) }
+    @usableFromInline override func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size { measure(id, proposal, orientation) }
+    @usableFromInline override func place(_ id: ViewGraph.NodeID, _ position: Point, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) { placeNode(id, position, anchor, proposal, orientation) }
 
     private func subviews(_ id: ViewGraph.NodeID, orientation: Axis?) -> LayoutSubviews {
         .init(storage: self, ids: graph.children, bounds: graph.childRanges[Int(id.rawValue)], orientation: orientation)
@@ -65,7 +65,7 @@ extension ViewGraph {
     private func finite(_ value: Float?) -> Float? { guard let value, value.isFinite else { return value }; return max(0, value) }
     private func flexible(_ value: Float?, ideal: Float = 0) -> Float { value ?? ideal }
 
-    private func measure(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> CGSize {
+    private func measure(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size {
         let node = graph.nodes[Int(id.rawValue)]
         switch node.kind {
         case .empty: return .zero
@@ -90,6 +90,8 @@ extension ViewGraph {
             var cache: Any? = caches[index] ?? box.makeCache(subviews: views)
             let result = box.sizeThatFits(proposal: proposal, subviews: views, cache: &cache)
             if let cache { caches[index] = cache }; return result
+        case .shape:
+            return graph.shapes[Int(node.payload)].shape.sizeThatFits(proposal)
         case .composition:
             let range = graph.childRanges[Int(id.rawValue)]
             guard !range.isEmpty else { return .zero }
@@ -97,13 +99,13 @@ extension ViewGraph {
             let primaryIndex = composition.order == .background ? range.index(before: range.endIndex) : range.startIndex
             return measure(graph.children[primaryIndex], proposal, orientation)
         case .group:
-            var result = CGSize.zero
+            var result = Size.zero
             for child in subviews(id, orientation: orientation) { let size = child.sizeThatFits(proposal); result.width = max(result.width, size.width); result.height = max(result.height, size.height) }
             return result
         }
     }
 
-    private func measureText(_ text: String, proposal: ProposedViewSize) -> CGSize {
+    private func measureText(_ text: String, proposal: ProposedViewSize) -> Size {
         guard !text.isEmpty else { return .zero }
 
         let glyphWidth: Float = 20
@@ -137,12 +139,12 @@ extension ViewGraph {
         )
     }
 
-    private func placeNode(_ id: ViewGraph.NodeID, _ position: CGPoint, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) {
+    private func placeNode(_ id: ViewGraph.NodeID, _ position: Point, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) {
         let size = measure(id, proposal, orientation)
-        let bounds = CGRect(origin: .init(x: position.x - anchor.x * size.width, y: position.y - anchor.y * size.height), size: size)
+        let bounds = Rect(origin: .init(x: position.x - anchor.x * size.width, y: position.y - anchor.y * size.height), size: size)
         let node = graph.nodes[Int(id.rawValue)]
         switch node.kind {
-        case .primitive:
+        case .primitive, .shape:
             frames[Int(id.rawValue)] = context.snap(bounds)
         default:
             frames[Int(id.rawValue)] = bounds
@@ -164,7 +166,7 @@ extension ViewGraph {
                 let child = graph.children[index]
                 let childSize = measure(child, .init(size), orientation)
                 let dimensions = ViewDimensions(size: childSize)
-                let point = CGPoint(
+                let point = Point(
                     x: bounds.minX + container[alignment.horizontal] - dimensions[alignment.horizontal],
                     y: bounds.minY + container[alignment.vertical] - dimensions[alignment.vertical]
                 )

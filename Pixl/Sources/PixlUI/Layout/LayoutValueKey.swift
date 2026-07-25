@@ -63,7 +63,7 @@ import Swift
 ///             proposal: ProposedViewSize,
 ///             subviews: Subviews,
 ///             cache: inout Void
-///         ) -> CGSize {
+///         ) -> Size {
 ///
 ///             // Map the flexibility property of each subview into an array.
 ///             let flexibilities = subviews.map { subview in

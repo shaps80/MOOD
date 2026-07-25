@@ -15,7 +15,7 @@ import Swift
 /// multiply each component of the unit point with the corresponding
 /// component of the view's size:
 ///
-///     let projectedPoint = CGPoint(
+///     let projectedPoint = Point(
 ///         x: unitPoint.x * size.width,
 ///         y: unitPoint.y * size.height
 ///     )

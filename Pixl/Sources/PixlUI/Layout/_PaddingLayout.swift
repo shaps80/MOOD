@@ -7,7 +7,7 @@ import Swift
         proposal: ProposedViewSize,
         subviews: Subviews,
         cache: inout Void
-    ) -> CGSize {
+    ) -> Size {
         guard let child = subviews.first else { return .zero }
         let horizontal = insets.leading + insets.trailing
         let vertical = insets.top + insets.bottom
@@ -19,13 +19,13 @@ import Swift
     }
 
     @usableFromInline func placeSubviews(
-        in bounds: CGRect,
+        in bounds: Rect,
         proposal: ProposedViewSize,
         subviews: Subviews,
         cache: inout Void
     ) {
         guard let child = subviews.first else { return }
-        let childSize = CGSize(
+        let childSize = Size(
             width: max(0, bounds.size.width - insets.leading - insets.trailing),
             height: max(0, bounds.size.height - insets.top - insets.bottom)
         )

@@ -15,7 +15,7 @@ import Swift
         alignment = modifier.alignment
     }
 
-    @usableFromInline func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+    @usableFromInline func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> Size {
         guard let child = subviews.first else { return .zero }
         let childProposal = ProposedViewSize(
             width: proposed(proposal.width, min: minWidth, ideal: idealWidth, max: maxWidth),
@@ -28,7 +28,7 @@ import Swift
         )
     }
 
-    @usableFromInline func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+    @usableFromInline func placeSubviews(in bounds: Rect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
         guard let child = subviews.first else { return }
         let childSize = child.sizeThatFits(.init(bounds.size))
         let container = ViewDimensions(size: bounds.size)

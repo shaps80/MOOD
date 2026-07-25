@@ -22,6 +22,7 @@ public struct Test: View {
                 Text("Third")
                 EmptyView()
                 Rectangle()
+                    .foregroundStyle(.secondary)
             }
         }
         .background {

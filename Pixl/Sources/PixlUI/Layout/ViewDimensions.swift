@@ -86,9 +86,9 @@ import Swift
 /// string appears horizontally offset to the left from the right side of the
 /// first string by about the width of one character.](ViewDimensions-2-iOS)
 public struct ViewDimensions {
-    @usableFromInline let size: CGSize
+    @usableFromInline let size: Size
 
-    @usableFromInline init(size: CGSize) { self.size = size }
+    @usableFromInline init(size: Size) { self.size = size }
     public init() { self.size = .zero }
 
     /// The view's width.
