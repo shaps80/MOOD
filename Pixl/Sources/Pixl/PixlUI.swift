@@ -23,5 +23,13 @@ struct Test: View {
                 EmptyView()
             }
         }
+        .background {
+            Text("")
+            EmptyView()
+        }
+        .overlay {
+            Text("")
+            EmptyView()
+        }
     }
 }
