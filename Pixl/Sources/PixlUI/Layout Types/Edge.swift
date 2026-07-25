@@ -24,7 +24,7 @@ import Swift
 
         /// Creates an instance containing just `e`
         public init(_ e: Edge) {
-            self.init(rawValue: e.rawValue)
+            self.init(rawValue: Int8(1) << e.rawValue)
         }
     }
 }

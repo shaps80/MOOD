@@ -9,8 +9,15 @@ public struct _FrameModifier: ViewModifier {
         let payload = Int32(inputs.graph.layouts.count)
         inputs.graph.layouts.append(.init(box: _LayoutBox(_FrameLayout(modifier.value))))
         let node = inputs.graph.appendNode(kind: .layout, payload: payload, parent: inputs.parent)
-        _ = body(inputs.graph, .init(graph: inputs.graph, parent: node)); return .init(node: node)
+        _ = body(inputs.graph, .init(
+            graph: inputs.graph,
+            parent: node,
+            modifierBody: inputs.modifierBody,
+            modifierBodyList: inputs.modifierBodyList
+        ))
+        return .init(node: node)
     }
+
 }
 
 extension View {

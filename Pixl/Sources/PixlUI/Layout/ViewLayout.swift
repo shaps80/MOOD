@@ -108,7 +108,7 @@ extension ViewGraph {
 
         let glyphWidth: Float = 20
         let lineHeight: Float = 30
-        let lineSpacing: Float = 5
+        let lineSpacing: Float = 0
 
         let columns: Int
         if let width = proposal.width, width.isFinite {

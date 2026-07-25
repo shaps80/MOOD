@@ -34,10 +34,11 @@ public struct Test: View {
     }
 }
 
-// origin: (350.0, 285.0), size: (100.0, 30.0)
 let root = ViewGraph.build {
-    Text("Hello")
-        .padding(.all, 30)
+    VStack(alignment: .trailing) {
+        Text("Hello world")
+        Text("Hello")
+    }
 }
 
 print(

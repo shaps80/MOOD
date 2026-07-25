@@ -12,19 +12,32 @@ public struct _PaddingModifier: ViewModifier {
         let payload = Int32(inputs.graph.layouts.count)
         inputs.graph.layouts.append(.init(box: _LayoutBox(_PaddingLayout(insets: modifier.value.insets))))
         let node = inputs.graph.appendNode(kind: .layout, payload: payload, parent: inputs.parent)
-        _ = body(inputs.graph, .init(graph: inputs.graph, parent: node))
+        _ = body(inputs.graph, .init(
+            graph: inputs.graph,
+            parent: node,
+            modifierBody: inputs.modifierBody,
+            modifierBodyList: inputs.modifierBodyList
+        ))
         return .init(node: node)
     }
+
 }
 
 extension View {
+    @ViewBuilder
     public func padding(_ insets: EdgeInsets) -> some View {
         modifier(_PaddingModifier(insets: insets))
     }
 
+    @ViewBuilder
+    public func padding(_ length: Float) -> some View {
+        padding(.all, length)
+    }
+
+    @ViewBuilder
     public func padding(_ edges: Edge.Set = .all, _ length: Float? = nil) -> some View {
         let length = length ?? 10
-        return padding(.init(
+        padding(.init(
             top: edges.contains(.top) ? length : 0,
             leading: edges.contains(.leading) ? length : 0,
             bottom: edges.contains(.bottom) ? length : 0,

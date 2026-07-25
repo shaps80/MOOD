@@ -15,8 +15,13 @@ import Swift
             self.rawValue = rawValue
         }
 
-        public static var horizontal: Axis.Set { .init(rawValue: Axis.horizontal.rawValue) }
-        public static var vertical: Axis.Set { .init(rawValue: Axis.vertical.rawValue) }
+        public static var horizontal: Axis.Set { .init(.horizontal) }
+        public static var vertical: Axis.Set { .init(.vertical) }
+        public static var all: Axis.Set { [.horizontal, .vertical] }
+
+        public init(_ axis: Axis) {
+            self.init(rawValue: Int8(1) << axis.rawValue)
+        }
         public typealias RawValue = Int8
     }
 }

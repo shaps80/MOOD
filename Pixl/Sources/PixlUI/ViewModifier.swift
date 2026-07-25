@@ -53,28 +53,28 @@ extension ViewModifier {
         inputs: _ViewListInputs,
         body: @escaping (_Graph, _ViewListInputs) -> _ViewListOutputs
     ) -> _ViewListOutputs {
-        let content = modifier.value.body(content: .init())
-        let bodyView: (_Graph, _ViewInputs) -> _ViewOutputs = { graph, inputs in
-            let output = body(
-                graph,
-                .init(graph: inputs.graph, parent: inputs.parent)
-            )
-            guard output.first.isValid else {
-                return .init(
-                    node: inputs.graph.appendNode(kind: .empty, parent: inputs.parent)
-                )
-            }
-            return .init(node: output.first)
-        }
-        return Body._makeViewList(
-            view: .init(content, graph: modifier.graph),
+        let output = _makeView(
+            modifier: modifier,
             inputs: .init(
                 graph: inputs.graph,
                 parent: inputs.parent,
-                modifierBody: body,
-                modifierBodyView: bodyView
+                modifierBody: inputs.modifierBodyView,
+                modifierBodyList: inputs.modifierBody
             )
-        )
+        ) { graph, viewInputs in
+            let group = graph.appendNode(kind: .group, parent: viewInputs.parent)
+            _ = body(
+                graph,
+                .init(
+                    graph: graph,
+                    parent: group,
+                    modifierBody: viewInputs.modifierBodyList,
+                    modifierBodyView: viewInputs.modifierBody
+                )
+            )
+            return .init(node: group)
+        }
+        return .init(first: output.node, last: output.node, count: 1)
     }
 }
 
