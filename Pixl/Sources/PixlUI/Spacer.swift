@@ -5,7 +5,7 @@ import Swift
     @inlinable public init(minLength: Float? = nil) { self.minLength = minLength }
     public var body: Never { fatalError() }
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        let payload = Int32(inputs.graph.spacers.count); inputs.graph.spacers.append(view.value.minLength)
-        return .init(node: inputs.graph.appendNode(kind: .spacer, payload: payload, parent: inputs.parent))
+        let payload = Int32(inputs.graph.primitives.count); inputs.graph.primitives.append(.spacer(minLength: view.value.minLength))
+        return .init(node: inputs.graph.appendNode(kind: .primitive, payload: payload, parent: inputs.parent))
     }
 }

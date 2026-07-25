@@ -15,13 +15,9 @@ public struct _GraphValue<Value> {
 @_documentation(visibility: internal)
 public final class _Graph {
     @usableFromInline var nodes: ContiguousArray<ViewGraph.Node> = []
-    @usableFromInline var texts: ContiguousArray<ViewGraph.TextRecord> = []
-    @usableFromInline var stacks: ContiguousArray<ViewGraph.StackRecord> = []
-    @usableFromInline var layers: ContiguousArray<ViewGraph.LayerRecord> = []
+    @usableFromInline var primitives: ContiguousArray<ViewGraph.PrimitiveRecord> = []
+    @usableFromInline var compositions: ContiguousArray<ViewGraph.CompositionRecord> = []
     @usableFromInline var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
-    @usableFromInline var frames: ContiguousArray<ViewGraph.FrameRecord> = []
-    @usableFromInline var spacers: ContiguousArray<Float?> = []
-    @usableFromInline var colors: ContiguousArray<Color> = []
 
     @usableFromInline init() { }
 
@@ -56,7 +52,7 @@ public final class _Graph {
             while child.isValid { children.append(child); child = nodes[Int(child.rawValue)].nextSibling }
             ranges.append(start..<children.count)
         }
-        return .init(nodes: nodes, texts: texts, stacks: stacks, layers: layers, layouts: layouts, frames: frames, spacers: spacers, colors: colors, children: children, childRanges: ranges)
+        return .init(nodes: nodes, primitives: primitives, compositions: compositions, layouts: layouts, children: children, childRanges: ranges)
     }
 }
 

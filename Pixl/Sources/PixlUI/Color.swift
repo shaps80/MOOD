@@ -14,7 +14,7 @@ import Swift
     public static let blue = Color(red: 0, green: 0, blue: 1)
     public var body: Never { fatalError() }
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        let payload = Int32(inputs.graph.colors.count); inputs.graph.colors.append(view.value)
-        return .init(node: inputs.graph.appendNode(kind: .color, payload: payload, parent: inputs.parent))
+        let payload = Int32(inputs.graph.primitives.count); inputs.graph.primitives.append(.fill(view.value))
+        return .init(node: inputs.graph.appendNode(kind: .primitive, payload: payload, parent: inputs.parent))
     }
 }

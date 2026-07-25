@@ -32,7 +32,16 @@ public struct AnyLayout: Layout, @unchecked Sendable {
     @usableFromInline let properties: LayoutProperties
     @usableFromInline init(_ layout: L) { self.layout = layout; properties = (layout as? AnyLayout)?.box.layoutProperties ?? L.layoutProperties }
     @usableFromInline override var layoutProperties: LayoutProperties { properties }
-    @usableFromInline override var debugName: String { String(describing: L.self) }
+    @usableFromInline override var debugName: String {
+        switch String(describing: L.self) {
+        case "VStackLayout": return "VStack"
+        case "HStackLayout": return "HStack"
+        case "ZStackLayout": return "ZStack"
+        case "_FrameLayout": return "Frame"
+        case "_PaddingLayout": return "Padding"
+        default: return String(describing: L.self)
+        }
+    }
     @usableFromInline override func makeCache(subviews: LayoutSubviews) -> Any { layout.makeCache(subviews: subviews) }
     @usableFromInline override func updateCache(_ cache: inout Any?, subviews: LayoutSubviews) { var value = cache as! L.Cache; layout.updateCache(&value, subviews: subviews); cache = value }
     @usableFromInline override func spacing(subviews: LayoutSubviews, cache: inout Any?) -> ViewSpacing { var value = cache as! L.Cache; let result = layout.spacing(subviews: subviews, cache: &value); cache = value; return result }

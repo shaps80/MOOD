@@ -69,35 +69,34 @@ extension ViewGraph {
         let node = graph.nodes[Int(id.rawValue)]
         switch node.kind {
         case .empty: return .zero
-        case .text:
-            let text = graph.texts[Int(node.payload)].content
-            return measureText(text, proposal: proposal)
-        case .color: return .init(width: flexible(proposal.width), height: flexible(proposal.height))
-        case .spacer:
-            let minimum = graph.spacers[Int(node.payload)] ?? 0
-            if orientation == .horizontal { return .init(width: proposal.width ?? minimum, height: proposal.height ?? 0) }
-            if orientation == .vertical { return .init(width: proposal.width ?? 0, height: proposal.height ?? minimum) }
-            return .init(width: proposal.width ?? minimum, height: proposal.height ?? minimum)
-        case .divider:
-            if orientation == .horizontal { return .init(width: context.pixelLength, height: proposal.height ?? 0) }
-            return .init(width: proposal.width ?? 0, height: context.pixelLength)
+        case .primitive:
+            switch graph.primitives[Int(node.payload)] {
+            case .text(let text):
+                return measureText(text, proposal: proposal)
+            case .fill:
+                return .init(width: flexible(proposal.width), height: flexible(proposal.height))
+            case .spacer(let minimum):
+                let minimum = minimum ?? 0
+                if orientation == .horizontal { return .init(width: proposal.width ?? minimum, height: proposal.height ?? 0) }
+                if orientation == .vertical { return .init(width: proposal.width ?? 0, height: proposal.height ?? minimum) }
+                return .init(width: proposal.width ?? minimum, height: proposal.height ?? minimum)
+            case .divider:
+                if orientation == .horizontal { return .init(width: context.pixelLength, height: proposal.height ?? 0) }
+                return .init(width: proposal.width ?? 0, height: context.pixelLength)
+            }
         case .layout:
             let index = Int(node.payload), box = graph.layouts[index].box
             let views = subviews(id, orientation: box.layoutProperties.stackOrientation)
             var cache: Any? = caches[index] ?? box.makeCache(subviews: views)
             let result = box.sizeThatFits(proposal: proposal, subviews: views, cache: &cache)
             if let cache { caches[index] = cache }; return result
-        case .frame:
-            let frame = graph.frames[Int(node.payload)], child = graph.children[graph.childRanges[Int(id.rawValue)].lowerBound]
-            let childProposal = ProposedViewSize(width: frame.idealWidth ?? frame.maxWidth ?? proposal.width, height: frame.idealHeight ?? frame.maxHeight ?? proposal.height)
-            let childSize = measure(child, childProposal, orientation)
-            return .init(width: clamp(frame.idealWidth ?? childSize.width, min: frame.minWidth, max: frame.maxWidth), height: clamp(frame.idealHeight ?? childSize.height, min: frame.minHeight, max: frame.maxHeight))
-        case .background, .overlay:
+        case .composition:
             let range = graph.childRanges[Int(id.rawValue)]
             guard !range.isEmpty else { return .zero }
-            let primaryIndex = node.kind == .background ? range.index(before: range.endIndex) : range.startIndex
+            let composition = graph.compositions[Int(node.payload)]
+            let primaryIndex = composition.order == .background ? range.index(before: range.endIndex) : range.startIndex
             return measure(graph.children[primaryIndex], proposal, orientation)
-        case .group, .verticalStack, .horizontalStack, .depthStack:
+        case .group:
             var result = CGSize.zero
             for child in subviews(id, orientation: orientation) { let size = child.sizeThatFits(proposal); result.width = max(result.width, size.width); result.height = max(result.height, size.height) }
             return result
@@ -138,14 +137,12 @@ extension ViewGraph {
         )
     }
 
-    private func clamp(_ value: Float, min minimum: Float?, max maximum: Float?) -> Float { Swift.max(minimum ?? -.infinity, Swift.min(maximum ?? .infinity, value)) }
-
     private func placeNode(_ id: ViewGraph.NodeID, _ position: CGPoint, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) {
         let size = measure(id, proposal, orientation)
         let bounds = CGRect(origin: .init(x: position.x - anchor.x * size.width, y: position.y - anchor.y * size.height), size: size)
         let node = graph.nodes[Int(id.rawValue)]
         switch node.kind {
-        case .text, .color, .divider:
+        case .primitive:
             frames[Int(id.rawValue)] = context.snap(bounds)
         default:
             frames[Int(id.rawValue)] = bounds
@@ -155,17 +152,13 @@ extension ViewGraph {
             let index = Int(node.payload), box = graph.layouts[index].box, views = subviews(id, orientation: box.layoutProperties.stackOrientation)
             var cache: Any? = caches[index] ?? box.makeCache(subviews: views)
             box.placeSubviews(in: bounds, proposal: proposal, subviews: views, cache: &cache); if let cache { caches[index] = cache }
-        case .frame:
-            let child = graph.children[graph.childRanges[Int(id.rawValue)].lowerBound], record = graph.frames[Int(node.payload)]
-            let childSize = measure(child, .init(size), orientation), container = ViewDimensions(size: size), dimensions = ViewDimensions(size: childSize)
-            let point = CGPoint(x: bounds.minX + container[record.alignment.horizontal] - dimensions[record.alignment.horizontal], y: bounds.minY + container[record.alignment.vertical] - dimensions[record.alignment.vertical])
-            placeNode(child, point, .topLeading, .init(childSize), orientation)
-        case .background, .overlay:
+        case .composition:
             let range = graph.childRanges[Int(id.rawValue)]
             guard !range.isEmpty else { return }
-            let primary = node.kind == .background ? graph.children[range.index(before: range.endIndex)] : graph.children[range.startIndex]
+            let composition = graph.compositions[Int(node.payload)]
+            let primary = composition.order == .background ? graph.children[range.index(before: range.endIndex)] : graph.children[range.startIndex]
             placeNode(primary, bounds.origin, .topLeading, .init(size), orientation)
-            let alignment = graph.layers[Int(node.payload)].alignment
+            let alignment = composition.alignment
             let container = ViewDimensions(size: size)
             for index in range where graph.children[index] != primary {
                 let child = graph.children[index]
@@ -177,7 +170,7 @@ extension ViewGraph {
                 )
                 placeNode(child, point, .topLeading, .init(childSize), orientation)
             }
-        case .group, .verticalStack, .horizontalStack, .depthStack:
+        case .group:
             for child in graph.children[graph.childRanges[Int(id.rawValue)]] { placeNode(child, .init(x: bounds.midX, y: bounds.midY), .center, proposal, orientation) }
         default: break
         }

@@ -6,8 +6,9 @@ public struct _FrameModifier: ViewModifier {
     public var minHeight: Float?; public var idealHeight: Float?; public var maxHeight: Float?
     public var alignment: Alignment
     public static func _makeView(modifier: _GraphValue<Self>, inputs: _ViewInputs, body: @escaping (_Graph, _ViewInputs) -> _ViewOutputs) -> _ViewOutputs {
-        let payload = Int32(inputs.graph.frames.count); inputs.graph.frames.append(.init(modifier.value))
-        let node = inputs.graph.appendNode(kind: .frame, payload: payload, parent: inputs.parent)
+        let payload = Int32(inputs.graph.layouts.count)
+        inputs.graph.layouts.append(.init(box: _LayoutBox(_FrameLayout(modifier.value))))
+        let node = inputs.graph.appendNode(kind: .layout, payload: payload, parent: inputs.parent)
         _ = body(inputs.graph, .init(graph: inputs.graph, parent: node)); return .init(node: node)
     }
 }

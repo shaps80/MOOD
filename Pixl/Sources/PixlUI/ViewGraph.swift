@@ -16,17 +16,9 @@ public struct ViewGraph {
         public enum Kind: String, Sendable {
             case empty
             case group
-            case text
-            case verticalStack
-            case horizontalStack
-            case depthStack
-            case background
-            case overlay
             case layout
-            case spacer
-            case divider
-            case color
-            case frame
+            case primitive
+            case composition
         }
 
         public let kind: Kind
@@ -37,44 +29,25 @@ public struct ViewGraph {
         public internal(set) var nextSibling: NodeID = .invalid
     }
 
-    public struct TextRecord: Sendable {
-        public let content: String
+    public enum PrimitiveRecord: Sendable {
+        case text(String)
+        case fill(Color)
+        case spacer(minLength: Float?)
+        case divider
     }
 
-    public struct StackRecord: Sendable {
-        public enum Axis: Sendable {
-            case horizontal
-            case vertical
-            case depth
-        }
-
-        public let axis: Axis
-        public let spacing: Float?
-        public let horizontalAlignment: HorizontalAlignment?
-        public let verticalAlignment: VerticalAlignment?
-        public let alignment: Alignment?
-    }
-
-    public struct LayerRecord: Sendable {
+    public struct CompositionRecord: Sendable {
+        public enum Order: Sendable { case background, overlay }
+        public let order: Order
         public let alignment: Alignment
     }
 
     @usableFromInline struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
-    @usableFromInline struct FrameRecord: Sendable {
-        let minWidth: Float?, idealWidth: Float?, maxWidth: Float?
-        let minHeight: Float?, idealHeight: Float?, maxHeight: Float?
-        let alignment: Alignment
-        init(_ value: _FrameModifier) { minWidth = value.minWidth; idealWidth = value.idealWidth; maxWidth = value.maxWidth; minHeight = value.minHeight; idealHeight = value.idealHeight; maxHeight = value.maxHeight; alignment = value.alignment }
-    }
 
     public let nodes: ContiguousArray<Node>
-    public let texts: ContiguousArray<TextRecord>
-    public let stacks: ContiguousArray<StackRecord>
-    public let layers: ContiguousArray<LayerRecord>
+    public let primitives: ContiguousArray<PrimitiveRecord>
+    public let compositions: ContiguousArray<CompositionRecord>
     @usableFromInline let layouts: ContiguousArray<LayoutRecord>
-    @usableFromInline let frames: ContiguousArray<FrameRecord>
-    @usableFromInline let spacers: ContiguousArray<Float?>
-    @usableFromInline let colors: ContiguousArray<Color>
     @usableFromInline let children: ContiguousArray<NodeID>
     @usableFromInline let childRanges: ContiguousArray<Range<Int>>
 
@@ -147,32 +120,24 @@ extension ViewGraph: CustomStringConvertible {
 
     private func label(for node: Node) -> String {
         switch node.kind {
-        case .text:
-            return "Text(\(String(reflecting: texts[Int(node.payload)].content)))"
-        case .verticalStack:
-            return "VStack"
-        case .horizontalStack:
-            return "HStack"
-        case .depthStack:
-            return "ZStack"
-        case .background:
-            return "Background"
-        case .overlay:
-            return "Overlay"
         case .empty:
             return "EmptyView"
         case .group:
             return "TupleContent"
         case .layout:
             return layouts[Int(node.payload)].box.debugName
-        case .spacer:
-            return "Spacer"
-        case .divider:
-            return "Divider"
-        case .color:
-            return "Color"
-        case .frame:
-            return "Frame"
+        case .primitive:
+            switch primitives[Int(node.payload)] {
+            case .text(let content): return "Text(\(String(reflecting: content)))"
+            case .fill: return "Color"
+            case .spacer: return "Spacer"
+            case .divider: return "Divider"
+            }
+        case .composition:
+            switch compositions[Int(node.payload)].order {
+            case .background: return "Background"
+            case .overlay: return "Overlay"
+            }
         }
     }
 }

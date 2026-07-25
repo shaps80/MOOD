@@ -19,10 +19,10 @@ import Swift
         inputs: _ViewInputs,
         body: @escaping (_Graph, _ViewInputs) -> _ViewOutputs
     ) -> _ViewOutputs {
-        let payload = Int32(inputs.graph.layers.count)
-        inputs.graph.layers.append(.init(alignment: modifier.value.alignment))
+        let payload = Int32(inputs.graph.compositions.count)
+        inputs.graph.compositions.append(.init(order: .background, alignment: modifier.value.alignment))
         let node = inputs.graph.appendNode(
-            kind: .background,
+            kind: .composition,
             payload: payload,
             parent: inputs.parent
         )
@@ -52,10 +52,10 @@ import Swift
         inputs: _ViewListInputs,
         body: @escaping (_Graph, _ViewListInputs) -> _ViewListOutputs
     ) -> _ViewListOutputs {
-        let payload = Int32(inputs.graph.layers.count)
-        inputs.graph.layers.append(.init(alignment: modifier.value.alignment))
+        let payload = Int32(inputs.graph.compositions.count)
+        inputs.graph.compositions.append(.init(order: .background, alignment: modifier.value.alignment))
         let node = inputs.graph.appendNode(
-            kind: .background,
+            kind: .composition,
             payload: payload,
             parent: inputs.parent
         )
