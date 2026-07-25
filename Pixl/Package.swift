@@ -139,17 +139,6 @@ let package = Package(
             swiftSettings: defaultNonisolated()
         ),
         .testTarget(
-            name: "PixlFoundationTests",
-            dependencies: [
-                "PixlFoundation",
-                .product(
-                    name: "PixlPlatform",
-                    package: "PixlPlatform"
-                )
-            ],
-            swiftSettings: defaultNonisolated()
-        ),
-        .testTarget(
             name: "PixlTests",
             dependencies: [
                 "Pixl",

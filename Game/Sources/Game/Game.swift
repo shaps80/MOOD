@@ -32,7 +32,7 @@ import Pixl2D
 
  */
 
-@main
+//@main
 struct Game: Pixl.Game {
     private var player: Player
     private var camera: OrthographicCamera = .init(halfHeight: 200)

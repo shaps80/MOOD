@@ -28,15 +28,23 @@ extension TupleContent: View where repeat each Content: View {
         var count = 0
 
         for child in repeat each view.value.content {
-            let output = type(of: child)._makeViewList(
-                view: .init(child, graph: view.graph),
-                inputs: inputs
-            )
+            let output = makeViewList(child, graph: view.graph, inputs: inputs)
             if !first.isValid { first = output.first }
             if output.last.isValid { last = output.last }
             count += output.count
         }
 
         return .init(first: first, last: last, count: count)
+    }
+
+    private static func makeViewList<Child: View>(
+        _ child: Child,
+        graph: _Graph,
+        inputs: _ViewListInputs
+    ) -> _ViewListOutputs {
+        Child._makeViewList(
+            view: .init(child, graph: graph),
+            inputs: inputs
+        )
     }
 }
