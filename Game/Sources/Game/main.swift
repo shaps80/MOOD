@@ -1,38 +1,32 @@
 import PixlUI
 
+extension View {
+    func highlight(_ color: Color) -> some View {
+        background {
+            Rectangle()
+                .stroke(color, lineWidth: 1)
+        }
+    }
+}
+
 public struct Test: View {
     public init() { }
     public var body: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .firstBaseline) {
-                    Text("First")
-                    EmptyView()
-                }
+        VStack(spacing: 2) {
+            HStack(spacing: 2) {
+                Text("First")
+                    .highlight(.green)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack(alignment: .firstBaseline) {
-                        Text("Second")
-                        EmptyView()
-                    }
-                }
+                Text("Second")
+                    .highlight(.blue)
             }
+            .highlight(.tertiary)
 
-            HStack(alignment: .firstBaseline) {
-                Text("Third")
-                EmptyView()
-                Rectangle()
-                    .foregroundStyle(.secondary)
-            }
+            Text("Third")
+                .highlight(.orange)
         }
-        .background {
-            Text("Background")
-            EmptyView()
-        }
-        .overlay {
-            Text("Overlay")
-            EmptyView()
-        }
+        .padding(2)
+        .highlight(.quaternary)
     }
 }
 

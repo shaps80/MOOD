@@ -76,13 +76,14 @@ public struct ViewGraph {
         let value = content()
         let graph = _Graph()
         let foregroundStyle = graph.internStyle(.color(.primary))
+        let tint = graph.internStyle(.color(.orange))
         let root = _GraphValue(value, graph: graph)
         _ = Root._makeView(
             view: root,
             inputs: .init(
                 graph: graph,
                 parent: .invalid,
-                environment: .init(foregroundStyle: foregroundStyle)
+                environment: .init(foregroundStyle: foregroundStyle, tint: tint)
             )
         )
         return .init(value: value, graphValue: root, graph: graph.snapshot())
