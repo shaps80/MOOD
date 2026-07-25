@@ -16,7 +16,7 @@ import Swift
 
     @usableFromInline func resolveStyle(
         in graph: _Graph,
-        environment: _ViewEnvironment
+        environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         let color: Color
         switch level {

@@ -4,7 +4,7 @@ import Swift
 extension Color: ShapeStyle, _TerminalShapeStyle {
     @usableFromInline func resolveStyle(
         in graph: _Graph,
-        environment: _ViewEnvironment
+        environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         graph.internStyle(.color(self))
     }

@@ -67,23 +67,18 @@ public final class _Graph {
     }
 }
 
-@usableFromInline struct _ViewEnvironment {
-    @usableFromInline var values: EnvironmentValues = .init()
-    @usableFromInline var foregroundStyle: ViewGraph.StyleID
-}
-
 @_documentation(visibility: internal)
 public struct _ViewInputs {
     @usableFromInline let graph: _Graph
     @usableFromInline let parent: ViewGraph.NodeID
-    @usableFromInline var environment: _ViewEnvironment
+    @usableFromInline var environment: EnvironmentValues
     @usableFromInline let modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)?
     @usableFromInline let modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
 
     @usableFromInline init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
-        environment: _ViewEnvironment,
+        environment: EnvironmentValues,
         modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil,
         modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil
     ) {
@@ -108,14 +103,14 @@ public struct _ViewOutputs {
 public struct _ViewListInputs {
     @usableFromInline let graph: _Graph
     @usableFromInline let parent: ViewGraph.NodeID
-    @usableFromInline var environment: _ViewEnvironment
+    @usableFromInline var environment: EnvironmentValues
     @usableFromInline let modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
     @usableFromInline let modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)?
 
     @usableFromInline init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
-        environment: _ViewEnvironment,
+        environment: EnvironmentValues,
         modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil,
         modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil
     ) {

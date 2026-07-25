@@ -13,7 +13,7 @@ import Swift
 
     @usableFromInline func resolveStyle(
         in graph: _Graph,
-        environment: _ViewEnvironment
+        environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         let baseID = _resolveShapeStyle(base, in: graph, environment: environment)
         guard case .color(var color) = graph.styles[Int(baseID.rawValue)] else {

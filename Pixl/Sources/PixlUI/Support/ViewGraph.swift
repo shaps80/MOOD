@@ -5,6 +5,7 @@ public struct ViewGraph {
     public struct StyleID: Hashable, Sendable {
         public let rawValue: Int32
         @inlinable public init(rawValue: Int32) { self.rawValue = rawValue }
+        public static let invalid = Self(rawValue: -1)
     }
 
     public enum ResolvedStyle: Hashable, Sendable {

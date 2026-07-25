@@ -21,6 +21,7 @@ public struct Test: View {
             HStack(alignment: .firstBaseline) {
                 Text("Third")
                 EmptyView()
+                Rectangle()
             }
         }
         .background {

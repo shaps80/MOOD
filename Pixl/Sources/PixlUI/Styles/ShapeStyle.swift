@@ -27,14 +27,14 @@ public struct AnyShapeStyle: ShapeStyle, @unchecked Sendable {
 extension AnyShapeStyle: _TerminalShapeStyle {
     @usableFromInline func resolveStyle(
         in graph: _Graph,
-        environment: _ViewEnvironment
+        environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         box.resolve(in: graph, environment: environment)
     }
 }
 
 @usableFromInline protocol _TerminalShapeStyle {
-    func resolveStyle(in graph: _Graph, environment: _ViewEnvironment) -> ViewGraph.StyleID
+    func resolveStyle(in graph: _Graph, environment: EnvironmentValues) -> ViewGraph.StyleID
 }
 
 @usableFromInline protocol _FixedColorShapeStyle: _TerminalShapeStyle {
@@ -44,14 +44,14 @@ extension AnyShapeStyle: _TerminalShapeStyle {
 extension _FixedColorShapeStyle {
     @usableFromInline func resolveStyle(
         in graph: _Graph,
-        environment: _ViewEnvironment
+        environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         graph.internStyle(.color(Self.color))
     }
 }
 
 @usableFromInline class _AnyShapeStyleBox: @unchecked Sendable {
-    @usableFromInline func resolve(in graph: _Graph, environment: _ViewEnvironment) -> ViewGraph.StyleID {
+    @usableFromInline func resolve(in graph: _Graph, environment: EnvironmentValues) -> ViewGraph.StyleID {
         fatalError()
     }
 }
@@ -62,13 +62,13 @@ extension _FixedColorShapeStyle {
 
     @usableFromInline override func resolve(
         in graph: _Graph,
-        environment: _ViewEnvironment
+        environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         if let terminal = style as? any _TerminalShapeStyle {
             return terminal.resolveStyle(in: graph, environment: environment)
         }
         let resolved: _AnyShapeStyleBox = _ShapeStyleBox<S.Resolved>(
-            style.resolve(in: environment.values)
+            style.resolve(in: environment)
         )
         return resolved.resolve(in: graph, environment: environment)
     }
@@ -77,7 +77,7 @@ extension _FixedColorShapeStyle {
 @usableFromInline func _resolveShapeStyle<S: ShapeStyle>(
     _ style: S,
     in graph: _Graph,
-    environment: _ViewEnvironment
+    environment: EnvironmentValues
 ) -> ViewGraph.StyleID {
     let box: _AnyShapeStyleBox = _ShapeStyleBox(style)
     return box.resolve(in: graph, environment: environment)
