@@ -12,6 +12,7 @@ public struct _FrameModifier: ViewModifier {
         _ = body(inputs.graph, .init(
             graph: inputs.graph,
             parent: node,
+            environment: inputs.environment,
             modifierBody: inputs.modifierBody,
             modifierBodyList: inputs.modifierBodyList
         ))

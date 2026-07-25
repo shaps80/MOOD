@@ -28,7 +28,7 @@ extension GameContext {
         through camera: OrthographicCamera,
         to output: RenderTarget,
         frame: borrowing Frame,
-        clear color: Color = .init(0, 0, 0, 1)
+        clear color: PixlGraphics.Color = .black
     ) throws {
         try render(
             queue: renderQueue,
@@ -86,7 +86,7 @@ extension GameContext {
         through camera: OrthographicCamera,
         to output: RenderTexture,
         frame: borrowing Frame,
-        clear color: Color = .init(0, 0, 0, 1)
+        clear color: PixlGraphics.Color = .black
     ) throws {
         try render(
             queue: renderQueue,
@@ -211,7 +211,7 @@ extension GameContext {
         let loadAction: LoadAction
         switch initialState {
         case .clear(let color):
-            loadAction = .clear(color)
+            loadAction = .clear(color.rgba)
         case .preserve:
             loadAction = .load
         }

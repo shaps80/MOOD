@@ -31,6 +31,7 @@ import Swift
             inputs: .init(
                 graph: inputs.graph,
                 parent: node,
+                environment: inputs.environment,
                 modifierBody: inputs.modifierBody,
                 modifierBodyList: inputs.modifierBodyList
             )
@@ -40,6 +41,7 @@ import Swift
             .init(
                 graph: inputs.graph,
                 parent: node,
+                environment: inputs.environment,
                 modifierBody: inputs.modifierBody,
                 modifierBodyList: inputs.modifierBodyList
             )

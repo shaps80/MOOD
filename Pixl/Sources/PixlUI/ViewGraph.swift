@@ -1,6 +1,16 @@
+import PixlGraphics
 import Swift
 
 public struct ViewGraph {
+    public struct StyleID: Hashable, Sendable {
+        public let rawValue: Int32
+        @inlinable public init(rawValue: Int32) { self.rawValue = rawValue }
+    }
+
+    public enum ResolvedStyle: Hashable, Sendable {
+        case color(Color)
+    }
+
     public struct NodeID: Hashable, Sendable {
         public let rawValue: Int32
 
@@ -29,9 +39,14 @@ public struct ViewGraph {
         public internal(set) var nextSibling: NodeID = .invalid
     }
 
+    public struct TextRecord: Sendable {
+        public let content: String
+        public let foregroundStyle: StyleID
+    }
+
     public enum PrimitiveRecord: Sendable {
-        case text(String)
-        case fill(Color)
+        case text(TextRecord)
+        case fill(StyleID)
         case spacer(minLength: Float?)
         case divider
     }
@@ -47,6 +62,7 @@ public struct ViewGraph {
     public let nodes: ContiguousArray<Node>
     public let primitives: ContiguousArray<PrimitiveRecord>
     public let compositions: ContiguousArray<CompositionRecord>
+    public let styles: ContiguousArray<ResolvedStyle>
     @usableFromInline let layouts: ContiguousArray<LayoutRecord>
     @usableFromInline let children: ContiguousArray<NodeID>
     @usableFromInline let childRanges: ContiguousArray<Range<Int>>
@@ -56,10 +72,15 @@ public struct ViewGraph {
     ) -> ViewGraphRoot<Root> {
         let value = content()
         let graph = _Graph()
+        let foregroundStyle = graph.internStyle(.color(.primary))
         let root = _GraphValue(value, graph: graph)
         _ = Root._makeView(
             view: root,
-            inputs: .init(graph: graph, parent: .invalid)
+            inputs: .init(
+                graph: graph,
+                parent: .invalid,
+                environment: .init(foregroundStyle: foregroundStyle)
+            )
         )
         return .init(value: value, graphValue: root, graph: graph.snapshot())
     }
@@ -128,7 +149,7 @@ extension ViewGraph: CustomStringConvertible {
             return layouts[Int(node.payload)].box.debugName
         case .primitive:
             switch primitives[Int(node.payload)] {
-            case .text(let content): return "Text(\(String(reflecting: content)))"
+            case .text(let text): return "Text(\(String(reflecting: text.content)))"
             case .fill: return "Color"
             case .spacer: return "Spacer"
             case .divider: return "Divider"

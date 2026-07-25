@@ -17,9 +17,20 @@ public final class _Graph {
     @usableFromInline var nodes: ContiguousArray<ViewGraph.Node> = []
     @usableFromInline var primitives: ContiguousArray<ViewGraph.PrimitiveRecord> = []
     @usableFromInline var compositions: ContiguousArray<ViewGraph.CompositionRecord> = []
+    @usableFromInline var styles: ContiguousArray<ViewGraph.ResolvedStyle> = []
+    @usableFromInline var styleIDs: [ViewGraph.ResolvedStyle: ViewGraph.StyleID] = [:]
     @usableFromInline var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
 
     @usableFromInline init() { }
+
+    @usableFromInline
+    func internStyle(_ style: ViewGraph.ResolvedStyle) -> ViewGraph.StyleID {
+        if let id = styleIDs[style] { return id }
+        let id = ViewGraph.StyleID(rawValue: Int32(styles.count))
+        styles.append(style)
+        styleIDs[style] = id
+        return id
+    }
 
     @usableFromInline
     func appendNode(
@@ -52,25 +63,33 @@ public final class _Graph {
             while child.isValid { children.append(child); child = nodes[Int(child.rawValue)].nextSibling }
             ranges.append(start..<children.count)
         }
-        return .init(nodes: nodes, primitives: primitives, compositions: compositions, layouts: layouts, children: children, childRanges: ranges)
+        return .init(nodes: nodes, primitives: primitives, compositions: compositions, styles: styles, layouts: layouts, children: children, childRanges: ranges)
     }
+}
+
+@usableFromInline struct _ViewEnvironment {
+    @usableFromInline var values: EnvironmentValues = .init()
+    @usableFromInline var foregroundStyle: ViewGraph.StyleID
 }
 
 @_documentation(visibility: internal)
 public struct _ViewInputs {
     @usableFromInline let graph: _Graph
     @usableFromInline let parent: ViewGraph.NodeID
+    @usableFromInline var environment: _ViewEnvironment
     @usableFromInline let modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)?
     @usableFromInline let modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
 
     @usableFromInline init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
+        environment: _ViewEnvironment,
         modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil,
         modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil
     ) {
         self.graph = graph
         self.parent = parent
+        self.environment = environment
         self.modifierBody = modifierBody
         self.modifierBodyList = modifierBodyList
     }
@@ -89,17 +108,20 @@ public struct _ViewOutputs {
 public struct _ViewListInputs {
     @usableFromInline let graph: _Graph
     @usableFromInline let parent: ViewGraph.NodeID
+    @usableFromInline var environment: _ViewEnvironment
     @usableFromInline let modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
     @usableFromInline let modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)?
 
     @usableFromInline init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
+        environment: _ViewEnvironment,
         modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil,
         modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil
     ) {
         self.graph = graph
         self.parent = parent
+        self.environment = environment
         self.modifierBody = modifierBody
         self.modifierBodyView = modifierBodyView
     }

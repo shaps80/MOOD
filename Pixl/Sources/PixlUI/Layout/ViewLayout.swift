@@ -72,7 +72,7 @@ extension ViewGraph {
         case .primitive:
             switch graph.primitives[Int(node.payload)] {
             case .text(let text):
-                return measureText(text, proposal: proposal)
+                return measureText(text.content, proposal: proposal)
             case .fill:
                 return .init(width: flexible(proposal.width), height: flexible(proposal.height))
             case .spacer(let minimum):

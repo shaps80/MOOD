@@ -14,7 +14,7 @@ extension TupleContent: View where repeat each Content: View {
         let node = inputs.graph.appendNode(kind: .group, parent: inputs.parent)
         _ = _makeViewList(
             view: view,
-            inputs: .init(graph: inputs.graph, parent: node)
+            inputs: .init(graph: inputs.graph, parent: node, environment: inputs.environment)
         )
         return .init(node: node)
     }

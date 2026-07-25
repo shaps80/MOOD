@@ -1,20 +1,47 @@
 import Swift
 
-/// RGBA colour with floating-point components conventionally in `0...1`.
-public typealias Color = SIMD4<Float>
+/// A linear RGBA colour with floating-point components conventionally in `0...1`.
+@frozen public struct Color: Hashable, Sendable {
+    /// GPU-ready red, green, blue, and alpha components.
+    public var rgba: SIMD4<Float>
 
-/// Game-facing construction and a discoverable colour palette.
-public extension Color {
-    /// Creates a colour from red, green, blue, and opacity components.
-    /// - Parameters:
-    ///   - red: Red component, conventionally in `0...1`.
-    ///   - green: Green component, conventionally in `0...1`.
-    ///   - blue: Blue component, conventionally in `0...1`.
-    ///   - opacity: Alpha component, conventionally in `0...1`.
-    init(red: Float, green: Float, blue: Float, opacity: Float = 1) {
-        self = [red, green, blue, opacity]
+    /// Creates a colour from GPU-ready RGBA storage.
+    @inlinable public init(_ rgba: SIMD4<Float>) {
+        self.rgba = rgba
     }
 
+    /// Creates a colour from positional red, green, blue, and alpha components.
+    @inlinable public init(_ red: Float, _ green: Float, _ blue: Float, _ opacity: Float = 1) {
+        rgba = .init(red, green, blue, opacity)
+    }
+
+    /// Creates a colour from named red, green, blue, and opacity components.
+    @inlinable public init(red: Float, green: Float, blue: Float, opacity: Float = 1) {
+        rgba = .init(red, green, blue, opacity)
+    }
+
+    public var red: Float {
+        @inlinable get { rgba.x }
+        @inlinable set { rgba.x = newValue }
+    }
+
+    public var green: Float {
+        @inlinable get { rgba.y }
+        @inlinable set { rgba.y = newValue }
+    }
+
+    public var blue: Float {
+        @inlinable get { rgba.z }
+        @inlinable set { rgba.z = newValue }
+    }
+
+    public var opacity: Float {
+        @inlinable get { rgba.w }
+        @inlinable set { rgba.w = newValue }
+    }
+}
+
+public extension Color {
     /// Opaque white.
     static let white: Self = .init(red: 1, green: 1, blue: 1)
     /// Opaque black.
@@ -72,4 +99,11 @@ public extension Color {
     static let separator = Self(red: 0.32941177, green: 0.32941177, blue: 0.34509805, opacity: 0.5)
     static let opaqueSeparator = Self(red: 0.21960784, green: 0.21960784, blue: 0.22745098)
     static let link = Self(red: 0.03529412, green: 0.5176471, blue: 1)
+}
+
+public extension Color {
+    @inlinable static func + (lhs: Self, rhs: Self) -> Self { .init(lhs.rgba + rhs.rgba) }
+    @inlinable static func - (lhs: Self, rhs: Self) -> Self { .init(lhs.rgba - rhs.rgba) }
+    @inlinable static func * (lhs: Self, rhs: Float) -> Self { .init(lhs.rgba * rhs) }
+    @inlinable static func * (lhs: Float, rhs: Self) -> Self { rhs * lhs }
 }

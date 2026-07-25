@@ -10,7 +10,10 @@ import Swift
         let payload = Int32(inputs.graph.layouts.count)
         inputs.graph.layouts.append(.init(box: _LayoutBox(view.value.layout)))
         let node = inputs.graph.appendNode(kind: .layout, payload: payload, parent: inputs.parent)
-        _ = Content._makeViewList(view: .init(view.value.content, graph: view.graph), inputs: .init(graph: inputs.graph, parent: node))
+        _ = Content._makeViewList(
+            view: .init(view.value.content, graph: view.graph),
+            inputs: .init(graph: inputs.graph, parent: node, environment: inputs.environment)
+        )
         return .init(node: node)
     }
 }

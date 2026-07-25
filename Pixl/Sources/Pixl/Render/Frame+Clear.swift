@@ -8,14 +8,14 @@ public extension Frame {
     ///   - target: Texture subresource cleared and rendered into.
     /// - Returns: Encoder for recording commands into the new pass.
     func clear(
-        _ color: Color = .init(0, 0, 0, 1),
+        _ color: PixlGraphics.Color = .black,
         target: RenderTarget
     ) -> RenderPassEncoder {
         beginRenderPass(
             RenderPassDescriptor(
                 ColorAttachment(
                     target: target,
-                    loadAction: .clear(color)
+                    loadAction: .clear(color.rgba)
                 )
             )
         )

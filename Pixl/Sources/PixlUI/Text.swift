@@ -5,7 +5,12 @@ public struct Text: View {
 
     public static func _makeView(view: _GraphValue<Text>, inputs: _ViewInputs) -> _ViewOutputs {
         let payload = Int32(inputs.graph.primitives.count)
-        inputs.graph.primitives.append(.text(view.value.content))
+        inputs.graph.primitives.append(
+            .text(.init(
+                content: view.value.content,
+                foregroundStyle: inputs.environment.foregroundStyle
+            ))
+        )
         return .init(
             node: inputs.graph.appendNode(
                 kind: .primitive,

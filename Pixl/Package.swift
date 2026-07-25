@@ -128,6 +128,7 @@ let package = Package(
         ),
         .target(
             name: "PixlUI",
+            dependencies: ["PixlGraphics"],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(

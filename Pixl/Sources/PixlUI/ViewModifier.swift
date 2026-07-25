@@ -33,7 +33,7 @@ extension ViewModifier {
         let bodyList: (_Graph, _ViewListInputs) -> _ViewListOutputs = { graph, inputs in
             let output = body(
                 graph,
-                .init(graph: inputs.graph, parent: inputs.parent)
+                .init(graph: inputs.graph, parent: inputs.parent, environment: inputs.environment)
             )
             return .init(first: output.node, last: output.node, count: 1)
         }
@@ -42,6 +42,7 @@ extension ViewModifier {
             inputs: .init(
                 graph: inputs.graph,
                 parent: inputs.parent,
+                environment: inputs.environment,
                 modifierBody: body,
                 modifierBodyList: bodyList
             )
@@ -58,6 +59,7 @@ extension ViewModifier {
             inputs: .init(
                 graph: inputs.graph,
                 parent: inputs.parent,
+                environment: inputs.environment,
                 modifierBody: inputs.modifierBodyView,
                 modifierBodyList: inputs.modifierBody
             )
@@ -68,6 +70,7 @@ extension ViewModifier {
                 .init(
                     graph: graph,
                     parent: group,
+                    environment: viewInputs.environment,
                     modifierBody: viewInputs.modifierBodyList,
                     modifierBodyView: viewInputs.modifierBody
                 )

@@ -82,10 +82,10 @@ public struct GradientFill: Hashable, Sendable {
         for index in 0..<256 {
             let location = Float(index) / 255
             let color = sample(gradient, at: location)
-            let alpha = min(max(color.w, 0), 1)
-            bytes[index * 4] = byte(min(max(color.x, 0), 1) * alpha)
-            bytes[index * 4 + 1] = byte(min(max(color.y, 0), 1) * alpha)
-            bytes[index * 4 + 2] = byte(min(max(color.z, 0), 1) * alpha)
+            let alpha = min(max(color.opacity, 0), 1)
+            bytes[index * 4] = byte(min(max(color.red, 0), 1) * alpha)
+            bytes[index * 4 + 1] = byte(min(max(color.green, 0), 1) * alpha)
+            bytes[index * 4 + 2] = byte(min(max(color.blue, 0), 1) * alpha)
             bytes[index * 4 + 3] = byte(alpha)
         }
         return bytes

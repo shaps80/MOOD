@@ -26,7 +26,7 @@ extension View {
     ) -> _ViewListOutputs {
         let output = _makeView(
             view: view,
-            inputs: .init(graph: inputs.graph, parent: inputs.parent)
+            inputs: .init(graph: inputs.graph, parent: inputs.parent, environment: inputs.environment)
         )
         return .init(first: output.node, last: output.node, count: 1)
     }

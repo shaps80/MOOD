@@ -224,7 +224,7 @@ extension ShapeSubmission {
             abs(transformX.y) + abs(transformY.y)
         ) * 0.5
 
-        let fillColor: Color
+        let fillColor: PixlGraphics.Color
         let gradientLine: SIMD4<Float>
         let gradientPlacement: UInt32
         switch shape.fill {
@@ -274,8 +274,10 @@ extension ShapeSubmission {
     }
 }
 
-private extension Color {
-    var premultiplied: Self { .init(x * w, y * w, z * w, w) }
+private extension PixlGraphics.Color {
+    var premultiplied: SIMD4<Float> {
+        .init(red * opacity, green * opacity, blue * opacity, opacity)
+    }
 }
 
 private extension Sprite.Material.BlendMode {
