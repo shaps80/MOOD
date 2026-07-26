@@ -78,7 +78,7 @@ struct ShapeCatalogue {
         Shape(.circleWave),
     ].map {
         var shape = $0
-//            .fill(.blue)
+            .fill(.clear)
             .stroke(.blue, width: 0.04, alignment: .center)
 //            .rounding(0.2)
         shape.layer = 1

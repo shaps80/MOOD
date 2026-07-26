@@ -61,27 +61,19 @@ struct Game: Pixl.Game {
     ) throws {
         shapeCatalogue.submit(to: context.renderQueue)
 
-        let spatialStart = ContinuousClock.now
-        player.submit(to: context.renderQueue)
-        let seconds = Self.seconds(spatialStart.duration(to: .now))
-
         context.clear(
             target: output,
             color: .white,
             frame: frame
         )
 
-//        try context.render(
-//            through: camera,
-//            to: output,
-//            frame: frame
-//        )
-
         try context.render(
-            scene: hud,
+            through: shapeCamera,
             to: output,
             frame: frame
         )
+
+        player.submit(to: context.renderQueue)
 
         try context.render(
             through: camera,
@@ -89,11 +81,13 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-        logMetrics(
-            time: time,
-            spatialSeconds: seconds,
-            submittedCount: 1
+        try context.render(
+            scene: hud,
+            to: output,
+            frame: frame
         )
+
+        logMetrics(time: time)
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
@@ -112,11 +106,7 @@ struct Game: Pixl.Game {
         shapeCatalogue.update(time, context: context)
     }
 
-    private func logMetrics(
-        time: RenderTime,
-        spatialSeconds: Double,
-        submittedCount: Int
-    ) {
+    private func logMetrics(time: RenderTime) {
         let interval = UInt64(Self.gameSettings.preferredFps * 5)
         guard time.frameIndex > 0,
             time.frameIndex.isMultiple(of: interval)
@@ -124,10 +114,6 @@ struct Game: Pixl.Game {
             return
         }
         print(time.metrics.summary)
-        print(
-            "Spatial grid: \(spatialSeconds * 1_000)ms | "
-                + "Submitted: \(submittedCount)"
-        )
     }
 
     private static func seconds(_ duration: Duration) -> Double {

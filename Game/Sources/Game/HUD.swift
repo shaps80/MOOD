@@ -14,6 +14,11 @@ public struct HUD: View {
             Text("Third")
                 .highlight(.orange)
         }
+        .padding(4)
+        .background {
+            Rectangle()
+                .foregroundStyle(.red.opacity(0.3))
+        }
     }
 }
 
