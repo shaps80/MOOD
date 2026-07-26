@@ -63,11 +63,81 @@ extension GameContext {
         compilation.submissions.withUnsafeBufferPointer {
             sceneRenderQueue.submit(contentsOf: $0)
         }
-        defer { sceneRenderQueue.reset() }
+        try render(queue: sceneRenderQueue, to: output, frame: frame)
+    }
 
-        let pass = beginPass(
-            on: output,
+    /// Renders the default queue in logical screen-space coordinates.
+    ///
+    /// The origin is top-left, positive y points down, and target contents are
+    /// preserved. The default queue resets after rendering finishes or throws.
+    public func render(
+        to output: RenderTarget,
+        frame: borrowing Frame
+    ) throws {
+        try render(queue: renderQueue, to: output, frame: frame)
+    }
+
+    /// Renders one queue in logical screen-space coordinates.
+    ///
+    /// The origin is top-left, positive y points down, and target contents are
+    /// preserved. The queue resets after rendering finishes or throws.
+    public func render(
+        queue: RenderQueue,
+        to output: RenderTarget,
+        frame: borrowing Frame
+    ) throws {
+        let pass = beginPass(on: output, frame: frame)
+        try render(queue: queue, to: output, on: pass)
+    }
+
+    /// Renders the default queue in logical screen space into a render texture.
+    public func render(
+        to output: RenderTexture,
+        frame: borrowing Frame
+    ) throws {
+        try render(queue: renderQueue, to: output, frame: frame)
+    }
+
+    /// Renders one queue in logical screen space into a render texture.
+    public func render(
+        queue: RenderQueue,
+        to output: RenderTexture,
+        frame: borrowing Frame
+    ) throws {
+        guard let texture = assets.texture(for: output.texture) else {
+            preconditionFailure("Render texture does not belong to this game context")
+        }
+        try render(
+            queue: queue,
+            to: RenderTarget(texture: texture),
             frame: frame
+        )
+    }
+
+    /// Renders the default queue in logical screen space into an existing pass.
+    public func render(
+        to output: RenderTarget,
+        on pass: RenderPassEncoder
+    ) throws {
+        try render(queue: renderQueue, to: output, on: pass)
+    }
+
+    /// Renders one queue in logical screen space into an existing pass.
+    public func render(
+        queue: RenderQueue,
+        to output: RenderTarget,
+        on pass: RenderPassEncoder
+    ) throws {
+        defer { queue.reset() }
+        let workspace = workspace(for: queue)
+        let pixels = output.texture.descriptor.size
+        precondition(
+            pixels.width > 0 && pixels.height > 0,
+            "Screen-space render target dimensions must be greater than zero"
+        )
+        let logicalSize = Size(
+            x: Float(pixels.width) / displayScale,
+            y: Float(pixels.height) / displayScale
         )
         var view = RenderQueue.View(
             projectionX: .init(2 / logicalSize.width, 0, 0),
@@ -77,17 +147,13 @@ extension GameContext {
             boundsMaximum: logicalSize
         )
         let encodingMetrics = try withUnsafePointer(to: &view) { pointer in
-            try sceneRenderQueue.execute(
+            try queue.execute(
                 views: UnsafeBufferPointer(start: pointer, count: 1)
             ) { execution in
-                try sceneRenderWorkspace.encode(
-                    execution,
-                    viewIndex: 0,
-                    on: pass
-                )
+                try workspace.encode(execution, viewIndex: 0, on: pass)
             }
         }
-        var metrics = sceneRenderQueue.latestMetrics
+        var metrics = queue.latestMetrics
         metrics.instancesSeconds += encodingMetrics.instancesSeconds
         record(metrics)
     }

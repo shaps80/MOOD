@@ -13,6 +13,7 @@ public struct _FrameModifier: ViewModifier {
             graph: inputs.graph,
             parent: node,
             environment: inputs.environment,
+            identity: inputs.identity,
             modifierBody: inputs.modifierBody,
             modifierBodyList: inputs.modifierBodyList
         ))

@@ -73,18 +73,19 @@ package struct ViewGraph {
     package static func build<Root: View>(
         @ContentBuilder content: () -> Root
     ) -> ViewGraphRoot<Root> {
-        build(content(), displayScale: 1)
+        build(content(), displayScale: 1, stateStore: _StateStore())
     }
 
     static func build<Root: View>(
         _ value: Root,
-        displayScale: Float
+        displayScale: Float,
+        stateStore: _StateStore
     ) -> ViewGraphRoot<Root> {
         precondition(
             displayScale.isFinite && displayScale > 0,
             "displayScale must be finite and greater than zero"
         )
-        let graph = _Graph()
+        let graph = _Graph(stateStore: stateStore)
         let foregroundStyle = graph.internStyle(.color(.primary))
         let tint = graph.internStyle(.color(.orange))
         let root = _GraphValue(value, graph: graph)

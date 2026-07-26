@@ -22,8 +22,8 @@ public struct Text: View {
 }
 
 extension Text {
-    public init(_ value: String) {
-        content = value
+    public init(_ value: some StringProtocol) {
+        content = .init(value)
     }
 }
 

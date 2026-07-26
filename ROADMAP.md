@@ -31,7 +31,8 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - [x] Add screen-space execution with logical point dimensions, top-left origin, y-down projection, native display scale, and preserved existing render-target contents.
 - [x] Add `GameContext.render(_:to:frame:)` for `Scene`, with rendering-call order controlling composition and no implicit padding, camera, or final-overlay policy.
 - [x] Keep rendering immediate: replay cached submissions into reusable queue storage, execute through the existing analytic-shape batching pipeline, then reset the queue normally.
-- [ ] Later connect `@State`, `@Binding`, and relevant environment changes to Scene invalidation; retain state/resources and expensive domain caches rather than renderer submissions.
+- [x] Add macro-based `@State` and typed `Binding`, preserve state by structural view identity, and invalidate Scene compilation when state mutates.
+- [ ] Connect relevant environment changes to Scene invalidation; retain resources and expensive domain caches rather than renderer submissions.
 - [ ] Validate Rectangle/Color fill, stroke, pixel alignment, display-scale changes, graph order, and interleaving with game render calls on Metal and WebGPU.
 
 ### First Game and 2D Rendering

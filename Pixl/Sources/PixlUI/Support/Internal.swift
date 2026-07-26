@@ -13,6 +13,7 @@ public struct _GraphValue<Value> {
 
 @_documentation(visibility: internal)
 public final class _Graph {
+    let stateStore: _StateStore
     var nodes: ContiguousArray<ViewGraph.Node> = []
     var primitives: ContiguousArray<ViewGraph.PrimitiveRecord> = []
     var compositions: ContiguousArray<ViewGraph.CompositionRecord> = []
@@ -21,7 +22,9 @@ public final class _Graph {
     var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
     var shapes: ContiguousArray<_ShapeRecord> = []
 
-    init() { }
+    init(stateStore: _StateStore) {
+        self.stateStore = stateStore
+    }
 
         func internStyle(_ style: ViewGraph.ResolvedStyle) -> ViewGraph.StyleID {
         if let id = styleIDs[style] { return id }
@@ -69,6 +72,7 @@ public struct _ViewInputs {
     let graph: _Graph
     let parent: ViewGraph.NodeID
     var environment: EnvironmentValues
+    let identity: _ViewIdentity
     let modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)?
     let modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
 
@@ -76,14 +80,27 @@ public struct _ViewInputs {
         graph: _Graph,
         parent: ViewGraph.NodeID,
         environment: EnvironmentValues,
+        identity: _ViewIdentity = .root,
         modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil,
         modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil
     ) {
         self.graph = graph
         self.parent = parent
         self.environment = environment
+        self.identity = identity
         self.modifierBody = modifierBody
         self.modifierBodyList = modifierBodyList
+    }
+
+    func withIdentity(_ identity: _ViewIdentity) -> Self {
+        .init(
+            graph: graph,
+            parent: parent,
+            environment: environment,
+            identity: identity,
+            modifierBody: modifierBody,
+            modifierBodyList: modifierBodyList
+        )
     }
 }
 
@@ -101,6 +118,7 @@ public struct _ViewListInputs {
     let graph: _Graph
     let parent: ViewGraph.NodeID
     var environment: EnvironmentValues
+    let identity: _ViewIdentity
     let modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
     let modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)?
 
@@ -108,14 +126,27 @@ public struct _ViewListInputs {
         graph: _Graph,
         parent: ViewGraph.NodeID,
         environment: EnvironmentValues,
+        identity: _ViewIdentity = .root,
         modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil,
         modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil
     ) {
         self.graph = graph
         self.parent = parent
         self.environment = environment
+        self.identity = identity
         self.modifierBody = modifierBody
         self.modifierBodyView = modifierBodyView
+    }
+
+    func withIdentity(_ identity: _ViewIdentity) -> Self {
+        .init(
+            graph: graph,
+            parent: parent,
+            environment: environment,
+            identity: identity,
+            modifierBody: modifierBody,
+            modifierBodyView: modifierBodyView
+        )
     }
 }
 

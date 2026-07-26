@@ -12,7 +12,12 @@ import Swift
         let node = inputs.graph.appendNode(kind: .layout, payload: payload, parent: inputs.parent)
         _ = Content._makeViewList(
             view: .init(view.value.content, graph: view.graph),
-            inputs: .init(graph: inputs.graph, parent: node, environment: inputs.environment)
+            inputs: .init(
+                graph: inputs.graph,
+                parent: node,
+                environment: inputs.environment,
+                identity: inputs.identity
+            )
         )
         return .init(node: node)
     }

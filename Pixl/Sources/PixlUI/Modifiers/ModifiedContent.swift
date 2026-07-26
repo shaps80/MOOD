@@ -18,11 +18,11 @@ extension ModifiedContent: View where Content: View, Modifier: ViewModifier {
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
         Modifier._makeView(
             modifier: .init(view.value.modifier, graph: view.graph),
-            inputs: inputs
+            inputs: inputs.withIdentity(inputs.identity.child(0))
         ) { graph, inputs in
             Content._makeView(
                 view: .init(view.value.content, graph: graph),
-                inputs: inputs
+                inputs: inputs.withIdentity(inputs.identity.child(1))
             )
         }
     }
@@ -33,11 +33,11 @@ extension ModifiedContent: View where Content: View, Modifier: ViewModifier {
     ) -> _ViewListOutputs {
         Modifier._makeViewList(
             modifier: .init(view.value.modifier, graph: view.graph),
-            inputs: inputs
+            inputs: inputs.withIdentity(inputs.identity.child(0))
         ) { graph, inputs in
             Content._makeViewList(
                 view: .init(view.value.content, graph: graph),
-                inputs: inputs
+                inputs: inputs.withIdentity(inputs.identity.child(1))
             )
         }
     }

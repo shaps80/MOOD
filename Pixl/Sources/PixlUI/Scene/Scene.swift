@@ -2,7 +2,8 @@ import Swift
 
 public final class Scene<Content: View> {
     package let content: Content
-    package var generation: UInt64 = 0
+    private let stateStore = _StateStore()
+    package var generation: UInt64 { stateStore.generation }
     package var preparedGeneration: UInt64?
     package var preparedDisplayScale: Float?
     package var preparedSize: Size?
@@ -20,7 +21,7 @@ public final class Scene<Content: View> {
     }
 
     package func invalidate() {
-        generation &+= 1
+        stateStore.invalidate()
     }
 
     package func prepare(
@@ -42,7 +43,11 @@ public final class Scene<Content: View> {
             || preparedDisplayScale != displayScale
 
         if needsGraph {
-            root = ViewGraph.build(content, displayScale: displayScale)
+            root = ViewGraph.build(
+                content,
+                displayScale: displayScale,
+                stateStore: stateStore
+            )
             preparedGeneration = generation
             preparedDisplayScale = displayScale
             preparedSize = nil

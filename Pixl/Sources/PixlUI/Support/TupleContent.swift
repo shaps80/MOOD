@@ -14,7 +14,12 @@ extension TupleContent: View where repeat each Content: View {
         let node = inputs.graph.appendNode(kind: .group, parent: inputs.parent)
         _ = _makeViewList(
             view: view,
-            inputs: .init(graph: inputs.graph, parent: node, environment: inputs.environment)
+            inputs: .init(
+                graph: inputs.graph,
+                parent: node,
+                environment: inputs.environment,
+                identity: inputs.identity
+            )
         )
         return .init(node: node)
     }
@@ -27,11 +32,24 @@ extension TupleContent: View where repeat each Content: View {
         var last = ViewGraph.NodeID.invalid
         var count = 0
 
+        var childIndex: UInt32 = 0
         for child in repeat each view.value.content {
-            let output = makeViewList(child, graph: view.graph, inputs: inputs)
+            let output = makeViewList(
+                child,
+                graph: view.graph,
+                inputs: .init(
+                    graph: inputs.graph,
+                    parent: inputs.parent,
+                    environment: inputs.environment,
+                    identity: inputs.identity.child(childIndex),
+                    modifierBody: inputs.modifierBody,
+                    modifierBodyView: inputs.modifierBodyView
+                )
+            )
             if !first.isValid { first = output.first }
             if output.last.isValid { last = output.last }
             count += output.count
+            childIndex &+= 1
         }
 
         return .init(first: first, last: last, count: count)

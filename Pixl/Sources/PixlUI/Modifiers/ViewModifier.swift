@@ -29,11 +29,24 @@ extension ViewModifier {
         inputs: _ViewInputs,
         body: @escaping (_Graph, _ViewInputs) -> _ViewOutputs
     ) -> _ViewOutputs {
-        let content = modifier.value.body(content: .init())
+        let content = _StateRuntime.$context.withValue(
+            .init(
+                store: modifier.graph.stateStore,
+                path: inputs.identity.path,
+                viewType: ObjectIdentifier(Self.self)
+            )
+        ) {
+            modifier.value.body(content: .init())
+        }
         let bodyList: (_Graph, _ViewListInputs) -> _ViewListOutputs = { graph, inputs in
             let output = body(
                 graph,
-                .init(graph: inputs.graph, parent: inputs.parent, environment: inputs.environment)
+                .init(
+                    graph: inputs.graph,
+                    parent: inputs.parent,
+                    environment: inputs.environment,
+                    identity: inputs.identity
+                )
             )
             return .init(first: output.node, last: output.node, count: 1)
         }
@@ -43,6 +56,7 @@ extension ViewModifier {
                 graph: inputs.graph,
                 parent: inputs.parent,
                 environment: inputs.environment,
+                identity: inputs.identity,
                 modifierBody: body,
                 modifierBodyList: bodyList
             )
@@ -60,6 +74,7 @@ extension ViewModifier {
                 graph: inputs.graph,
                 parent: inputs.parent,
                 environment: inputs.environment,
+                identity: inputs.identity,
                 modifierBody: inputs.modifierBodyView,
                 modifierBodyList: inputs.modifierBody
             )
@@ -71,6 +86,7 @@ extension ViewModifier {
                     graph: graph,
                     parent: group,
                     environment: viewInputs.environment,
+                    identity: viewInputs.identity,
                     modifierBody: viewInputs.modifierBodyList,
                     modifierBodyView: viewInputs.modifierBody
                 )

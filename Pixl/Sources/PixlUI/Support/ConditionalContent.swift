@@ -24,12 +24,12 @@ extension _ConditionalContent: View where TrueContent: View, FalseContent: View 
         case let .trueContent(content):
             TrueContent._makeView(
                 view: .init(content, graph: view.graph),
-                inputs: inputs
+                inputs: inputs.withIdentity(inputs.identity.child(0))
             )
         case let .falseContent(content):
             FalseContent._makeView(
                 view: .init(content, graph: view.graph),
-                inputs: inputs
+                inputs: inputs.withIdentity(inputs.identity.child(1))
             )
         }
     }
@@ -42,12 +42,12 @@ extension _ConditionalContent: View where TrueContent: View, FalseContent: View 
         case let .trueContent(content):
             TrueContent._makeViewList(
                 view: .init(content, graph: view.graph),
-                inputs: inputs
+                inputs: inputs.withIdentity(inputs.identity.child(0))
             )
         case let .falseContent(content):
             FalseContent._makeViewList(
                 view: .init(content, graph: view.graph),
-                inputs: inputs
+                inputs: inputs.withIdentity(inputs.identity.child(1))
             )
         }
     }

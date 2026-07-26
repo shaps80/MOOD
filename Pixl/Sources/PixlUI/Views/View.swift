@@ -14,8 +14,17 @@ public protocol View {
 
 extension View {
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        Body._makeView(
-            view: .init(view.value.body, graph: view.graph),
+        let body = _StateRuntime.$context.withValue(
+            .init(
+                store: view.graph.stateStore,
+                path: inputs.identity.path,
+                viewType: ObjectIdentifier(Self.self)
+            )
+        ) {
+            view.value.body
+        }
+        return Body._makeView(
+            view: .init(body, graph: view.graph),
             inputs: inputs
         )
     }
@@ -26,7 +35,12 @@ extension View {
     ) -> _ViewListOutputs {
         let output = _makeView(
             view: view,
-            inputs: .init(graph: inputs.graph, parent: inputs.parent, environment: inputs.environment)
+            inputs: .init(
+                graph: inputs.graph,
+                parent: inputs.parent,
+                environment: inputs.environment,
+                identity: inputs.identity
+            )
         )
         return .init(first: output.node, last: output.node, count: 1)
     }

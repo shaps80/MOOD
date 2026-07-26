@@ -32,6 +32,7 @@ import Swift
                 graph: inputs.graph,
                 parent: node,
                 environment: inputs.environment,
+                identity: inputs.identity.child(0),
                 modifierBody: inputs.modifierBody,
                 modifierBodyList: inputs.modifierBodyList
             )
@@ -42,6 +43,7 @@ import Swift
                 graph: inputs.graph,
                 parent: node,
                 environment: inputs.environment,
+                identity: inputs.identity.child(1),
                 modifierBody: inputs.modifierBody,
                 modifierBodyList: inputs.modifierBodyList
             )

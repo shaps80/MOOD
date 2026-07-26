@@ -91,6 +91,7 @@ public final class GameContext {
 
     func workspace(for queue: RenderQueue) -> SpriteRenderWorkspace {
         if queue === renderQueue { return spriteRenderWorkspace }
+        if queue === sceneRenderQueue { return sceneRenderWorkspace }
         let identity = ObjectIdentifier(queue)
         if let workspace = spriteRenderWorkspaces[identity] {
             return workspace
