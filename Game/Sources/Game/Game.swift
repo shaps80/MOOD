@@ -35,23 +35,21 @@ import PixlUI
 
 @main
 struct Game: Pixl.Game {
-    private var player: Player
+    private var player: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
-    private let cameraBindings: CameraBindings = .init()
+    private var shapeCamera: OrthographicCamera = .init(halfHeight: 1)
+//    private let cameraBindings: CameraBindings = .init()
     private let hud = Scene(HUD())
     private var shapeCatalogue: ShapeCatalogue
 //    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
-        player = try Player(
-            count: 1,
-            worldSize: 100,
-            context: context
-        )
 //        cameraBindings.bind(to: context.inputs)
 
-        self.shapeCatalogue = .init(context: context)
+        player = try .init(context: context)
+        shapeCatalogue = .init(context: context)
+
     }
 
     func render(
@@ -61,32 +59,40 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-//        shapeCatalogue.submit(to: context.renderQueue)
+        shapeCatalogue.submit(to: context.renderQueue)
 
         let spatialStart = ContinuousClock.now
-        let submittedCount = player.submit(
-            visibleBounds: camera.visibleBounds(for: output),
-            to: context.renderQueue
-        )
+        player.submit(to: context.renderQueue)
         let seconds = Self.seconds(spatialStart.duration(to: .now))
+
+        context.clear(
+            target: output,
+            color: .white,
+            frame: frame
+        )
+
+//        try context.render(
+//            through: camera,
+//            to: output,
+//            frame: frame
+//        )
+
+        try context.render(
+            scene: hud,
+            to: output,
+            frame: frame
+        )
 
         try context.render(
             through: camera,
-            to: output,
-            frame: frame,
-            clear: .white
-        )
-
-        try context.render(
-            hud,
             to: output,
             frame: frame
         )
 
         logMetrics(
-            time,
+            time: time,
             spatialSeconds: seconds,
-            submittedCount: submittedCount
+            submittedCount: 1
         )
     }
 
@@ -103,11 +109,11 @@ struct Game: Pixl.Game {
 //        camera.center += cameraBindings.direction * (600 * Float(time.delta))
 
 //        gameState.update(time, context: context)
-//        shapeCatalogue.update(time, context: context)
+        shapeCatalogue.update(time, context: context)
     }
 
     private func logMetrics(
-        _ time: RenderTime,
+        time: RenderTime,
         spatialSeconds: Double,
         submittedCount: Int
     ) {

@@ -17,7 +17,7 @@ struct ShapeCatalogue {
     private var rounding: Float = 0
 
     init(context: GameContext) {
-        bindings.bind(to: context.inputs)
+//        bindings.bind(to: context.inputs)
     }
 
     // Row-major, following the IQ article while omitting deliberately absent
