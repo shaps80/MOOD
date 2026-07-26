@@ -1,5 +1,6 @@
 import Pixl
 import Pixl2D
+import PixlUI
 
 /*
 
@@ -32,11 +33,12 @@ import Pixl2D
 
  */
 
-//@main
+@main
 struct Game: Pixl.Game {
     private var player: Player
     private var camera: OrthographicCamera = .init(halfHeight: 200)
     private let cameraBindings: CameraBindings = .init()
+    private let hud = Scene(HUD())
 //    private var shapeCatalogue: ShapeCatalogue
 //    private var gameState: GameStateHandler
 
