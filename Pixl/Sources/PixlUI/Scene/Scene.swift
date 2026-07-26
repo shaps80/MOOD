@@ -1,3 +1,4 @@
+import PixlGraphics
 import Swift
 
 public final class Scene<Content: View> {
@@ -26,8 +27,9 @@ public final class Scene<Content: View> {
 
     package func prepare(
         size: Size,
-        displayScale: Float
-    ) -> (root: ViewGraphRoot<Content>, layout: ViewLayout) {
+        displayScale: Float,
+        resolveImage: (String) throws -> TextureAsset
+    ) throws -> (root: ViewGraphRoot<Content>, layout: ViewLayout) {
         precondition(
             size.width.isFinite && size.height.isFinite
                 && size.width >= 0 && size.height >= 0,
@@ -48,6 +50,12 @@ public final class Scene<Content: View> {
                 displayScale: displayScale,
                 stateStore: stateStore
             )
+            for index in root!.graph.primitives.indices {
+                guard case var .image(image) = root!.graph.primitives[index]
+                else { continue }
+                image.asset = try resolveImage(image.name)
+                root!.graph.primitives[index] = .image(image)
+            }
             preparedGeneration = generation
             preparedDisplayScale = displayScale
             preparedSize = nil

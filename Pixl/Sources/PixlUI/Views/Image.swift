@@ -8,7 +8,17 @@ public struct Image: View {
     }
 
     public static func _makeView(view: _GraphValue<Image>, inputs: _ViewInputs) -> _ViewOutputs {
-        fatalError("LLM: todo")
+        let payload = Int32(inputs.graph.primitives.count)
+        inputs.graph.primitives.append(
+            .image(.init(name: view.value.name, asset: nil))
+        )
+        return .init(
+            node: inputs.graph.appendNode(
+                kind: .primitive,
+                payload: payload,
+                parent: inputs.parent
+            )
+        )
     }
 }
 

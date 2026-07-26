@@ -54,7 +54,7 @@ extension GameContext {
             x: Float(pixels.width) / scale,
             y: Float(pixels.height) / scale
         )
-        let compilation = compilation(
+        let compilation = try compilation(
             for: scene,
             size: logicalSize,
             displayScale: scale

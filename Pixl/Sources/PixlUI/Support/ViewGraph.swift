@@ -46,8 +46,14 @@ package struct ViewGraph {
         package let foregroundStyle: StyleID
     }
 
+    package struct ImageRecord: Sendable {
+        package let name: String
+        package var asset: TextureAsset?
+    }
+
     package enum PrimitiveRecord: Sendable {
         case text(TextRecord)
+        case image(ImageRecord)
         case fill(StyleID)
         case spacer(minLength: Float?)
         case divider
@@ -62,7 +68,7 @@ package struct ViewGraph {
     package struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
 
     package let nodes: ContiguousArray<Node>
-    package let primitives: ContiguousArray<PrimitiveRecord>
+    package var primitives: ContiguousArray<PrimitiveRecord>
     package let compositions: ContiguousArray<CompositionRecord>
     package let styles: ContiguousArray<ResolvedStyle>
     package let layouts: ContiguousArray<LayoutRecord>
@@ -108,7 +114,7 @@ package struct ViewGraph {
 package struct ViewGraphRoot<Root: View>: CustomStringConvertible {
     package let value: Root
     package let graphValue: _GraphValue<Root>
-    package let graph: ViewGraph
+    package var graph: ViewGraph
 
     package var description: String { graph.description }
 
@@ -169,6 +175,7 @@ extension ViewGraph: CustomStringConvertible {
         case .primitive:
             switch primitives[Int(node.payload)] {
             case .text(let text): return "Text(\(String(reflecting: text.content)))"
+            case .image(let image): return "Image(\(String(reflecting: image.name)))"
             case .fill: return "Color"
             case .spacer: return "Spacer"
             case .divider: return "Divider"

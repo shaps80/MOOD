@@ -73,6 +73,12 @@ final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
             switch graph.primitives[Int(node.payload)] {
             case .text(let text):
                 return measureText(text.content, proposal: proposal)
+            case .image(let image):
+                guard let asset = image.asset else { return .zero }
+                return .init(
+                    width: Float(asset.size.x) / context.displayScale,
+                    height: Float(asset.size.y) / context.displayScale
+                )
             case .fill:
                 return .init(width: flexible(proposal.width), height: flexible(proposal.height))
             case .spacer(let minimum):

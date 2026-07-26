@@ -1,6 +1,7 @@
 import PixlFoundation
 import PixlGraphics
 import PixlPlatform
+import Pixl2D
 import PixlUI
 
 final class SceneCompilation {
@@ -8,14 +9,19 @@ final class SceneCompilation {
     let generation: UInt64
     let size: Size
     let displayScale: Float
-    let submissions: ContiguousArray<ShapeSubmission>
+    let submissions: ContiguousArray<RenderQueue.Submission>
 
     init<Content: View>(
         scene: Scene<Content>,
         size: Size,
-        displayScale: Float
-    ) {
-        let prepared = scene.prepare(size: size, displayScale: displayScale)
+        displayScale: Float,
+        context: GameContext
+    ) throws {
+        let prepared = try scene.prepare(
+            size: size,
+            displayScale: displayScale,
+            resolveImage: { try context.assets.load(texture: $0) }
+        )
         self.scene = scene
         generation = scene.generation
         self.size = size
@@ -40,8 +46,8 @@ final class SceneCompilation {
     private static func lower(
         graph: ViewGraph,
         layout: ViewLayout
-    ) -> ContiguousArray<ShapeSubmission> {
-        var submissions: ContiguousArray<ShapeSubmission> = []
+    ) -> ContiguousArray<RenderQueue.Submission> {
+        var submissions: ContiguousArray<RenderQueue.Submission> = []
         submissions.reserveCapacity(graph.primitives.count + graph.shapes.count)
 
         for (index, node) in graph.nodes.enumerated() {
@@ -50,19 +56,35 @@ final class SceneCompilation {
 
             switch node.kind {
             case .primitive:
-                guard case .fill(let style) = graph.primitives[Int(node.payload)] else {
+                switch graph.primitives[Int(node.payload)] {
+                case .fill(let style):
+                    let fill = color(for: style, in: graph)
+                    guard fill.opacity > 0 else { continue }
+                    submissions.append(
+                        .shape(rectangle(
+                            frame: frame,
+                            fill: fill,
+                            stroke: .clear,
+                            strokeWidth: 0
+                        ))
+                    )
+                case .image(let image):
+                    guard let asset = image.asset else { continue }
+                    let sourceSize = Size(
+                        x: Float(asset.size.x),
+                        y: Float(asset.size.y)
+                    )
+                    let sprite = Sprite(region: .init(asset: asset))
+                    let transform = Transform2D(
+                        frame.origin + frame.size * 0.5,
+                        scale: frame.size / sourceSize
+                    )
+                    submissions.append(
+                        .sprite(.init(sprite: sprite, transform: transform))
+                    )
+                default:
                     continue
                 }
-                let fill = color(for: style, in: graph)
-                guard fill.opacity > 0 else { continue }
-                submissions.append(
-                    rectangle(
-                        frame: frame,
-                        fill: fill,
-                        stroke: .clear,
-                        strokeWidth: 0
-                    )
-                )
 
             case .shape:
                 let shape = graph.shapes[Int(node.payload)]
@@ -74,12 +96,12 @@ final class SceneCompilation {
                     } ?? .clear
                     guard fill.opacity > 0 || stroke.opacity > 0 else { continue }
                     submissions.append(
-                        rectangle(
+                        .shape(rectangle(
                             frame: rect,
                             fill: fill,
                             stroke: stroke,
                             strokeWidth: shape.stroke?.lineWidth ?? 0
-                        )
+                        ))
                     )
                 }
 

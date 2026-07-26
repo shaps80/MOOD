@@ -7,7 +7,7 @@ import Swift
 /// of its closure. Direct Foundation users reset explicitly; Pixl's
 /// `GameContext` convenience resets its default queue automatically.
 public final class RenderQueue {
-    private enum Submission {
+    package enum Submission {
         case sprite(SpriteSubmission)
         case shape(ShapeSubmission)
     }
@@ -457,6 +457,20 @@ public final class RenderQueue {
             destination.initialize(to: .shape(submission))
             destination = destination.advanced(by: 1)
         }
+        count += submissions.count
+    }
+
+    /// Appends already-lowered mixed submissions using one capacity check.
+    package func submit(contentsOf submissions: UnsafeBufferPointer<Submission>) {
+        guard !submissions.isEmpty else { return }
+        precondition(
+            submissions.count <= settings.capacity - count,
+            "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + submissions.count)"
+        )
+        self.submissions.advanced(by: count).initialize(
+            from: submissions.baseAddress!,
+            count: submissions.count
+        )
         count += submissions.count
     }
 

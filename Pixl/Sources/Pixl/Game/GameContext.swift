@@ -105,7 +105,7 @@ public final class GameContext {
         for scene: Scene<Content>,
         size: Size,
         displayScale: Float
-    ) -> SceneCompilation {
+    ) throws -> SceneCompilation {
         let identity = ObjectIdentifier(scene)
         if let compilation = sceneCompilations[identity],
            compilation.matches(
@@ -115,10 +115,11 @@ public final class GameContext {
            ) {
             return compilation
         }
-        let compilation = SceneCompilation(
+        let compilation = try SceneCompilation(
             scene: scene,
             size: size,
-            displayScale: displayScale
+            displayScale: displayScale,
+            context: self
         )
         sceneCompilations[identity] = compilation
         return compilation
