@@ -10,9 +10,7 @@ final class MetalPlatform: @MainActor Platform {
 
     var device: any Device { metalDevice }
     var audioDevice: any AudioDevice { metalAudio }
-    var displayScale: Float {
-        Float(view.window?.backingScaleFactor ?? 1)
-    }
+    var displayScale: Float
     let keyboard = Keyboard()
     let gamepads = Gamepads()
     nonisolated let assetSource: (any AssetSource)?
@@ -28,6 +26,7 @@ final class MetalPlatform: @MainActor Platform {
         guard let nativeDevice = view.device else {
             fatalError("MTKView requires an MTLDevice")
         }
+        displayScale = Float(view.window?.backingScaleFactor ?? 1)
 
         let metalDevice = MetalDevice(
             device: nativeDevice,

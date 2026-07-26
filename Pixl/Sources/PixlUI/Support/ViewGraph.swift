@@ -73,7 +73,17 @@ public struct ViewGraph {
     public static func build<Root: View>(
         @ContentBuilder content: () -> Root
     ) -> ViewGraphRoot<Root> {
-        let value = content()
+        build(content(), displayScale: 1)
+    }
+
+    @usableFromInline static func build<Root: View>(
+        _ value: Root,
+        displayScale: Float
+    ) -> ViewGraphRoot<Root> {
+        precondition(
+            displayScale.isFinite && displayScale > 0,
+            "displayScale must be finite and greater than zero"
+        )
         let graph = _Graph()
         let foregroundStyle = graph.internStyle(.color(.primary))
         let tint = graph.internStyle(.color(.orange))
@@ -83,7 +93,11 @@ public struct ViewGraph {
             inputs: .init(
                 graph: graph,
                 parent: .invalid,
-                environment: .init(foregroundStyle: foregroundStyle, tint: tint)
+                environment: .init(
+                    displayScale: displayScale,
+                    foregroundStyle: foregroundStyle,
+                    tint: tint
+                )
             )
         )
         return .init(value: value, graphValue: root, graph: graph.snapshot())

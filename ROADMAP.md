@@ -21,6 +21,19 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 ## Near-Term Work
 
+### PixlUI Immediate Rendering
+
+- [x] Change `Scene` to retain content, state/invalidation generation, and reusable graph/layout storage while deferring its first evaluation until display scale and logical output size are available.
+- [ ] On first render or invalidation, evaluate the complete view tree, run complete layout, and cache the results; initially rebuild the whole tree rather than implementing incremental diffing.
+- [ ] Expose only the package-internal PixlUI graph/layout seam required by Pixl; do not introduce a second UI display-list abstraction or expose graph construction to games.
+- [ ] Lower cached PixlUI `Rectangle`, `Color`, fill, and stroke results directly into existing `ShapeSubmission` values in Pixl, recompiling only when Scene generation, logical output size, or display scale changes.
+- [ ] Add an engine-internal bulk `RenderQueue` append for contiguous `ShapeSubmission` values. It must capacity-check once, append at the queue's current global submission ordinal, and preserve existing layer/order/ordinal semantics; games do not call this API.
+- [ ] Add screen-space execution with logical point dimensions, top-left origin, y-down projection, native display scale, and preserved existing render-target contents.
+- [ ] Add `GameContext.render(_:to:frame:)` for `Scene`, with rendering-call order controlling composition and no implicit padding, camera, or final-overlay policy.
+- [ ] Keep rendering immediate: replay cached submissions into reusable queue storage, execute through the existing analytic-shape batching pipeline, then reset the queue normally.
+- [ ] Later connect `@State`, `@Binding`, and relevant environment changes to Scene invalidation; retain state/resources and expensive domain caches rather than renderer submissions.
+- [ ] Validate Rectangle/Color fill, stroke, pixel alignment, display-scale changes, graph order, and interleaving with game render calls on Metal and WebGPU.
+
 ### First Game and 2D Rendering
 
 - [ ] Route future backgrounds, tiles, players, enemies, and UI through the agreed immediate submission path as the Game needs them.
