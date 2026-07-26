@@ -21,6 +21,13 @@ public extension Input {
             profiles.append(profile)
         }
 
+        func bind(_ input: Input) {
+            guard let profile = input.owner as? Profile else {
+                preconditionFailure("Input was created by an incompatible profile")
+            }
+            bind(profile)
+        }
+
         func update() {
             let modifiers = currentModifiers
             let gamepad = gamepads.first

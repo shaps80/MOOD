@@ -23,10 +23,12 @@ public struct Input: Hashable, @unchecked Sendable {
 
     package let storage: Storage
     package let index: Int
+    package let owner: AnyObject
 
-    package init(storage: Storage, index: Int) {
+    package init(storage: Storage, index: Int, owner: AnyObject) {
         self.storage = storage
         self.index = index
+        self.owner = owner
     }
 
     package func index(in storage: Storage) -> Int? {

@@ -28,6 +28,9 @@ final class SceneCompilation {
         self.size = size
         self.displayScale = displayScale
         inputHandlers = prepared.root.graph.inputHandlers
+        for handler in inputHandlers {
+            context.inputs.bind(handler.input)
+        }
         submissions = Self.lower(
             graph: prepared.root.graph,
             layout: prepared.layout

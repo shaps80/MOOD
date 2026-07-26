@@ -45,7 +45,11 @@ public extension Input {
             sourceBindings.append(ContiguousArray(bindings))
             storage.states.append(State())
             compile(bindings, for: inputIndex)
-            return Input(storage: storage, index: inputIndex)
+            return Input(
+                storage: storage,
+                index: inputIndex,
+                owner: self
+            )
         }
 
         /// Replaces one semantic input's physical bindings.
