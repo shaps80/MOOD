@@ -218,7 +218,7 @@ fn pixlShapeFragment(input: ShapeVertexOutput) -> @location(0) vec4f {
     let distance = pixlCompactShapeDistance(kind,input.localPosition,input.parameters)-input.style.w;
     let width = input.style.y;
     let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);
-    let aa = max(fwidth(distance), 0.00001);
+    let aa = max(fwidth(distance) * 0.5, 0.00001);
     let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);
     let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);
     let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);
@@ -232,7 +232,7 @@ fn pixlShapeFragment(input: ShapeVertexOutput) -> @location(0) vec4f {
 fn pixlGradientShapeFragment(input: ShapeVertexOutput) -> @location(0) vec4f {
     let packed=u32(input.style.x+.5);let kind=packed&63u;let row=((packed/64u)&255u)-1u;let placement=packed/16384u;
     let distance=pixlCompactShapeDistance(kind,input.localPosition,input.parameters)-input.style.w;
-    let width=input.style.y;let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);let aa=max(fwidth(distance),.00001);let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);let strokeCoverage=select(0.,max(total-fillCoverage,0.),width>0.);
+    let width=input.style.y;let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);let aa=max(fwidth(distance)*.5,.00001);let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);let strokeCoverage=select(0.,max(total-fillCoverage,0.),width>0.);
     let start=input.fillColor.xy;let end=input.fillColor.zw;let delta=end-start;var t=dot(input.localPosition-start,delta)/dot(delta,delta);
     if(placement==1u){t=length(input.localPosition-start)/input.fillColor.z;}else if(placement==2u){t=fract((atan2(input.localPosition.y-start.y,input.localPosition.x-start.x)-input.fillColor.z)/6.28318530718);}t=clamp(t,0.,1.);
     let height=f32(textureDimensions(texture).y);let fill=textureSample(texture,textureSampler,vec2f(t,(f32(row)+.5)/height))*fillCoverage;let stroke=input.strokeColor*strokeCoverage;
@@ -253,7 +253,7 @@ fn pixlExtendedShapeFragment(input: ExtendedShapeVertexOutput) -> @location(0) v
     distance-=input.style.w;
     let width = input.style.y;
     let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);
-    let aa = max(fwidth(distance), 0.00001);
+    let aa = max(fwidth(distance) * 0.5, 0.00001);
     let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);let strokeCoverage=select(0.,max(total-fillCoverage,0.),width>0.);
     let fill=input.fillColor*fillCoverage;
     let stroke=input.strokeColor*strokeCoverage;
@@ -265,7 +265,7 @@ fn pixlGradientExtendedShapeFragment(input: ExtendedShapeVertexOutput) -> @locat
     let packed=u32(input.style.x+.5);let kind=packed&63u;let row=((packed/64u)&255u)-1u;let placement=packed/16384u;
     var distance=pixlQuadraticBezierDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy);
     if(kind==8u){distance=pixlTriangleDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy);}
-    distance-=input.style.w;let width=input.style.y;let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);let aa=max(fwidth(distance),.00001);let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);let strokeCoverage=select(0.,max(total-fillCoverage,0.),width>0.);
+    distance-=input.style.w;let width=input.style.y;let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);let aa=max(fwidth(distance)*.5,.00001);let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);let strokeCoverage=select(0.,max(total-fillCoverage,0.),width>0.);
     let start=input.fillColor.xy;let end=input.fillColor.zw;let delta=end-start;var t=dot(input.localPosition-start,delta)/dot(delta,delta);
     if(placement==1u){t=length(input.localPosition-start)/input.fillColor.z;}else if(placement==2u){t=fract((atan2(input.localPosition.y-start.y,input.localPosition.x-start.x)-input.fillColor.z)/6.28318530718);}t=clamp(t,0.,1.);
     let height=f32(textureDimensions(texture).y);let fill=textureSample(texture,textureSampler,vec2f(t,(f32(row)+.5)/height))*fillCoverage;let stroke=input.strokeColor*strokeCoverage;

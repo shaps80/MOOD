@@ -304,7 +304,7 @@ static float pixlCompactShapeDistance(uint kind,float2 p,float4 v){
 }
 
 static float2 pixlShapeCoverages(float distance,float width,float alignment,bool smooth) {
-    float aa=max(fwidth(distance),1e-5);
+    float aa=max(fwidth(distance)*0.5,1e-5);
     float base=smooth?1.0-smoothstep(-aa,aa,distance):step(distance,0.0);
     if(width<=0.0)return float2(base,0.0);
     float outer=alignment<-.5?0.0:(alignment>.5?width:width*.5);

@@ -39,6 +39,12 @@ import Swift
         @inlinable get { rgba.w }
         @inlinable set { rgba.w = newValue }
     }
+
+    public func opacity(_ opacity: Float) -> Self {
+        var copy = self
+        copy.opacity = opacity
+        return copy
+    }
 }
 
 public extension Color {

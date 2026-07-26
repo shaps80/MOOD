@@ -13,7 +13,7 @@ struct ShapeCatalogue {
     private static let shapeScale: Float = 0.1
 
     private let bindings: ShapeBindings = .init()
-    private var alignment: Shape.StrokeAlignment = .outside
+    private var alignment: Shape.StrokeAlignment = .center
     private var rounding: Float = 0
 
     init(context: GameContext) {
@@ -78,9 +78,9 @@ struct ShapeCatalogue {
         Shape(.circleWave),
     ].map {
         var shape = $0
-            .fill(.blue)
-            .stroke(.white, width: 0.04, alignment: .outside)
-            .rounding(0.2)
+//            .fill(.blue)
+            .stroke(.blue, width: 0.04, alignment: .center)
+//            .rounding(0.2)
         shape.layer = 1
         return shape
     }
@@ -131,8 +131,8 @@ struct ShapeCatalogue {
         }
 
         for index in shapes.indices {
-            shapes[index].strokeAlignment = alignment
-            shapes[index].rounding = rounding
+//            shapes[index].strokeAlignment = alignment
+//            shapes[index].rounding = rounding
         }
     }
 

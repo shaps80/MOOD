@@ -53,10 +53,12 @@ final class SceneCompilation {
                 guard case .fill(let style) = graph.primitives[Int(node.payload)] else {
                     continue
                 }
+                let fill = color(for: style, in: graph)
+                guard fill.opacity > 0 else { continue }
                 submissions.append(
                     rectangle(
                         frame: frame,
-                        fill: color(for: style, in: graph),
+                        fill: fill,
                         stroke: .clear,
                         strokeWidth: 0
                     )
@@ -64,15 +66,18 @@ final class SceneCompilation {
 
             case .shape:
                 let shape = graph.shapes[Int(node.payload)]
-                switch shape.shape.path(in: frame) {
+                switch shape.path(in: frame, displayScale: layout.displayScale) {
                 case .rectangle(let rect):
+                    let fill = color(for: shape.fill, in: graph)
+                    let stroke = shape.stroke.map {
+                        color(for: $0.style, in: graph)
+                    } ?? .clear
+                    guard fill.opacity > 0 || stroke.opacity > 0 else { continue }
                     submissions.append(
                         rectangle(
                             frame: rect,
-                            fill: color(for: shape.fill, in: graph),
-                            stroke: shape.stroke.map {
-                                color(for: $0.style, in: graph)
-                            } ?? .clear,
+                            fill: fill,
+                            stroke: stroke,
                             strokeWidth: shape.stroke?.lineWidth ?? 0
                         )
                     )

@@ -14,7 +14,7 @@ func _makeShapeView<S: _Shape, Stroke: ShapeStyle>(
     }
     let record = _ShapeRecord(
         shape: _ShapeBox(shape),
-        fill: inputs.environment.foregroundStyle,
+        fill: inputs.graph.internStyle(.color(.clear)),
         stroke: stroke
     )
     let payload = Int32(inputs.graph.shapes.count)

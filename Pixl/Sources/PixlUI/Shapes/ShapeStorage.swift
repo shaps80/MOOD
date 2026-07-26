@@ -7,8 +7,34 @@ package struct _ShapeStroke: Sendable {
 
 package struct _ShapeRecord: @unchecked Sendable {
     package let shape: _AnyShapeBox
-    package let fill: ViewGraph.StyleID
+    package var fill: ViewGraph.StyleID
     package let stroke: _ShapeStroke?
+
+    package func path(in rect: Rect, displayScale: Float) -> _ShapePath {
+        let path = shape.path(in: rect)
+        guard let stroke, stroke.lineWidth > 0 else { return path }
+
+        switch path {
+        case .rectangle(let rect):
+            let outwardPixels = stroke.lineWidth * displayScale * 0.5
+            let alignedMinX = (
+                (rect.minX * displayScale - outwardPixels).rounded()
+                    + outwardPixels
+            ) / displayScale
+            let alignedMinY = (
+                (rect.minY * displayScale - outwardPixels).rounded()
+                    + outwardPixels
+            ) / displayScale
+            return .rectangle(
+                rect.translated(
+                    by: .init(
+                        x: alignedMinX - rect.minX,
+                        y: alignedMinY - rect.minY
+                    )
+                )
+            )
+        }
+    }
 }
 
 package class _AnyShapeBox: @unchecked Sendable {

@@ -39,7 +39,7 @@ struct Game: Pixl.Game {
     private var camera: OrthographicCamera = .init(halfHeight: 200)
     private let cameraBindings: CameraBindings = .init()
     private let hud = Scene(HUD())
-//    private var shapeCatalogue: ShapeCatalogue
+    private var shapeCatalogue: ShapeCatalogue
 //    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
@@ -49,9 +49,9 @@ struct Game: Pixl.Game {
             worldSize: 100,
             context: context
         )
-        cameraBindings.bind(to: context.inputs)
+//        cameraBindings.bind(to: context.inputs)
 
-//        self.shapeCatalogue = .init(context: context)
+        self.shapeCatalogue = .init(context: context)
     }
 
     func render(
@@ -100,7 +100,7 @@ struct Game: Pixl.Game {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
-        camera.center += cameraBindings.direction * (600 * Float(time.delta))
+//        camera.center += cameraBindings.direction * (600 * Float(time.delta))
 
 //        gameState.update(time, context: context)
 //        shapeCatalogue.update(time, context: context)
@@ -143,23 +143,23 @@ extension Game {
 
     static let assetSettings: AssetSettings = .init()
 
-    static var renderSettings: RenderSettings {
-        .init(
-            frameCommandCapacity: 16,
-            frameByteCapacity: 128 * 1024,
-            bufferCapacity: 4,
-            pipelineCapacity: 2,
-            samplerCapacity: 2,
-            textureCapacity: 4,
-            drawableCapacity: 1
-        )
-    }
-
-    static var renderQueueSettings: RenderQueue.Settings {
-        .init(
-            capacity: 4_096,
-            viewCapacity: 1,
-            gradientCapacity: 1
-        )
-    }
+//    static var renderSettings: RenderSettings {
+//        .init(
+//            frameCommandCapacity: 16,
+//            frameByteCapacity: 128 * 1024,
+//            bufferCapacity: 4,
+//            pipelineCapacity: 2,
+//            samplerCapacity: 2,
+//            textureCapacity: 4,
+//            drawableCapacity: 1
+//        )
+//    }
+//
+//    static var renderQueueSettings: RenderQueue.Settings {
+//        .init(
+//            capacity: 4_096,
+//            viewCapacity: 1,
+//            gradientCapacity: 1
+//        )
+//    }
 }
