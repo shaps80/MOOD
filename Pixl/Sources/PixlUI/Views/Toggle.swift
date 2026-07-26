@@ -5,19 +5,30 @@ public struct Toggle<Label: View>: View {
     @Binding var isOn: Bool
 
     public var body: some View {
-        label
+        Button {
+            isOn.toggle()
+        } label: {
+            label
+        }
     }
 }
 
 extension Toggle where Label == Text {
-    public init(_ title: some StringProtocol, isOn: Binding<Bool>) {
-        self.label = Text(title)
+    nonisolated public init(_ title: some StringProtocol, isOn: Binding<Bool>) {
+        self.label = .init(title)
+        self._isOn = isOn
+    }
+}
+
+extension Toggle where Label == PixlUI.Label<Text, Image> {
+    nonisolated public init(_ title: some StringProtocol, image name: String, isOn: Binding<Bool>) {
+        self.label = .init(title, image: name)
         self._isOn = isOn
     }
 }
 
 extension Toggle {
-    public init(isOn: Binding<Bool>, @ViewBuilder _ label: () -> Label) {
+    nonisolated public init(isOn: Binding<Bool>, @ViewBuilder _ label: () -> Label) {
         self._isOn = isOn
         self.label = label()
     }

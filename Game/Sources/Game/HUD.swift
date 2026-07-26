@@ -1,7 +1,8 @@
 import PixlUI
+import Foundation
 
 public struct HUD: View {
-    @State private var isOn: Bool = false
+    @State private var isOn: Bool = true
 
     public var body: some View {
         VStack(spacing: 10) {
@@ -13,13 +14,8 @@ public struct HUD: View {
                     .highlight(.blue)
             }
 
-            Toggle("", isOn: $isOn)
-                .highlight(.red)
-        }
-        .padding(10)
-        .background {
-            Rectangle()
-                .highlight(.black)
+            Toggle(isOn ? "ON" : "OFF", isOn: $isOn)
+                .highlight(isOn ? .orange : .gray)
         }
     }
 }
