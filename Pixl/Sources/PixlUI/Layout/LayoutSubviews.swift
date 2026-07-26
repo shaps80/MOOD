@@ -5,13 +5,13 @@ public struct LayoutSubviews: Equatable, RandomAccessCollection, @unchecked Send
     public typealias Index = Int
     public typealias SubSequence = LayoutSubviews
 
-    @usableFromInline let storage: _LayoutSubviewStorage
-    @usableFromInline let ids: ContiguousArray<ViewGraph.NodeID>
-    @usableFromInline let bounds: Range<Int>
-    @usableFromInline let orientation: Axis?
+    let storage: _LayoutSubviewStorage
+    let ids: ContiguousArray<ViewGraph.NodeID>
+    let bounds: Range<Int>
+    let orientation: Axis?
     public let layoutDirection: LayoutDirection
 
-    @usableFromInline init(storage: _LayoutSubviewStorage, ids: ContiguousArray<ViewGraph.NodeID>, bounds: Range<Int>? = nil, orientation: Axis?, layoutDirection: LayoutDirection = .leftToRight) {
+    init(storage: _LayoutSubviewStorage, ids: ContiguousArray<ViewGraph.NodeID>, bounds: Range<Int>? = nil, orientation: Axis?, layoutDirection: LayoutDirection = .leftToRight) {
         self.storage = storage; self.ids = ids; self.bounds = bounds ?? ids.indices; self.orientation = orientation; self.layoutDirection = layoutDirection
     }
 

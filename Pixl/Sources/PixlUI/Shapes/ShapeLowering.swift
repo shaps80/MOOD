@@ -1,6 +1,6 @@
 import Swift
 
-@usableFromInline func _makeShapeView<S: _Shape, Stroke: ShapeStyle>(
+func _makeShapeView<S: _Shape, Stroke: ShapeStyle>(
     shape: S,
     stroke: Stroke?,
     lineWidth: Float,
@@ -22,4 +22,4 @@ import Swift
     return .init(node: inputs.graph.appendNode(kind: .shape, payload: payload, parent: inputs.parent))
 }
 
-@usableFromInline struct _NoShapeStyle: ShapeStyle, Sendable { }
+struct _NoShapeStyle: ShapeStyle, Sendable { }

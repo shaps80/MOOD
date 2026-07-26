@@ -1,30 +1,30 @@
 import PixlGraphics
 import Swift
 
-public struct ViewGraph {
-    public struct StyleID: Hashable, Sendable {
-        public let rawValue: Int32
-        @inlinable public init(rawValue: Int32) { self.rawValue = rawValue }
-        public static let invalid = Self(rawValue: -1)
+package struct ViewGraph {
+    package struct StyleID: Hashable, Sendable {
+        package let rawValue: Int32
+        @inlinable package init(rawValue: Int32) { self.rawValue = rawValue }
+        package static let invalid = Self(rawValue: -1)
     }
 
-    public enum ResolvedStyle: Hashable, Sendable {
+    package enum ResolvedStyle: Hashable, Sendable {
         case color(Color)
     }
 
-    public struct NodeID: Hashable, Sendable {
-        public let rawValue: Int32
+    package struct NodeID: Hashable, Sendable {
+        package let rawValue: Int32
 
-        @inlinable public init(rawValue: Int32) {
+        @inlinable package init(rawValue: Int32) {
             self.rawValue = rawValue
         }
 
-        public static let invalid = NodeID(rawValue: -1)
-        public var isValid: Bool { rawValue >= 0 }
+        package static let invalid = NodeID(rawValue: -1)
+        package var isValid: Bool { rawValue >= 0 }
     }
 
-    public struct Node: Sendable {
-        public enum Kind: String, Sendable {
+    package struct Node: Sendable {
+        package enum Kind: String, Sendable {
             case empty
             case group
             case layout
@@ -33,50 +33,50 @@ public struct ViewGraph {
             case shape
         }
 
-        public let kind: Kind
-        public let payload: Int32
-        public let parent: NodeID
-        public internal(set) var firstChild: NodeID = .invalid
-        public internal(set) var lastChild: NodeID = .invalid
-        public internal(set) var nextSibling: NodeID = .invalid
+        package let kind: Kind
+        package let payload: Int32
+        package let parent: NodeID
+        package internal(set) var firstChild: NodeID = .invalid
+        package internal(set) var lastChild: NodeID = .invalid
+        package internal(set) var nextSibling: NodeID = .invalid
     }
 
-    public struct TextRecord: Sendable {
-        public let content: String
-        public let foregroundStyle: StyleID
+    package struct TextRecord: Sendable {
+        package let content: String
+        package let foregroundStyle: StyleID
     }
 
-    public enum PrimitiveRecord: Sendable {
+    package enum PrimitiveRecord: Sendable {
         case text(TextRecord)
         case fill(StyleID)
         case spacer(minLength: Float?)
         case divider
     }
 
-    public struct CompositionRecord: Sendable {
-        public enum Order: Sendable { case background, overlay }
-        public let order: Order
-        public let alignment: Alignment
+    package struct CompositionRecord: Sendable {
+        package enum Order: Sendable { case background, overlay }
+        package let order: Order
+        package let alignment: Alignment
     }
 
-    @usableFromInline struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
+    package struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
 
-    public let nodes: ContiguousArray<Node>
-    public let primitives: ContiguousArray<PrimitiveRecord>
-    public let compositions: ContiguousArray<CompositionRecord>
-    public let styles: ContiguousArray<ResolvedStyle>
-    @usableFromInline let layouts: ContiguousArray<LayoutRecord>
-    @usableFromInline let shapes: ContiguousArray<_ShapeRecord>
-    @usableFromInline let children: ContiguousArray<NodeID>
-    @usableFromInline let childRanges: ContiguousArray<Range<Int>>
+    package let nodes: ContiguousArray<Node>
+    package let primitives: ContiguousArray<PrimitiveRecord>
+    package let compositions: ContiguousArray<CompositionRecord>
+    package let styles: ContiguousArray<ResolvedStyle>
+    package let layouts: ContiguousArray<LayoutRecord>
+    package let shapes: ContiguousArray<_ShapeRecord>
+    package let children: ContiguousArray<NodeID>
+    package let childRanges: ContiguousArray<Range<Int>>
 
-    public static func build<Root: View>(
+    package static func build<Root: View>(
         @ContentBuilder content: () -> Root
     ) -> ViewGraphRoot<Root> {
         build(content(), displayScale: 1)
     }
 
-    @usableFromInline static func build<Root: View>(
+    static func build<Root: View>(
         _ value: Root,
         displayScale: Float
     ) -> ViewGraphRoot<Root> {
@@ -104,20 +104,20 @@ public struct ViewGraph {
     }
 }
 
-public struct ViewGraphRoot<Root: View>: CustomStringConvertible {
-    public let value: Root
-    public let graphValue: _GraphValue<Root>
-    public let graph: ViewGraph
+package struct ViewGraphRoot<Root: View>: CustomStringConvertible {
+    package let value: Root
+    package let graphValue: _GraphValue<Root>
+    package let graph: ViewGraph
 
-    public var description: String { graph.description }
+    package var description: String { graph.description }
 
-    public func layout(in size: Size, displayScale: Float = 1) -> ViewLayout {
+    package func layout(in size: Size, displayScale: Float = 1) -> ViewLayout {
         graph.layout(in: size, displayScale: displayScale)
     }
 }
 
 extension ViewGraph: CustomStringConvertible {
-    public var description: String {
+    package var description: String {
         guard !nodes.isEmpty else { return "<empty>" }
         var result = ""
         var root = NodeID(rawValue: 0)

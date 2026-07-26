@@ -1,15 +1,15 @@
 import Swift
 
-public struct ViewLayout: Sendable, CustomStringConvertible {
-    public let size: Size
-    public let displayScale: Float
-    public let frames: ContiguousArray<Rect>
-    public subscript(_ node: ViewGraph.NodeID) -> Rect { frames[Int(node.rawValue)] }
-    public var description: String { frames.enumerated().map { "\($0.offset): \($0.element.debugDescription)" }.joined(separator: "\n") }
+package struct ViewLayout: Sendable, CustomStringConvertible {
+    package let size: Size
+    package let displayScale: Float
+    package let frames: ContiguousArray<Rect>
+    package subscript(_ node: ViewGraph.NodeID) -> Rect { frames[Int(node.rawValue)] }
+    package var description: String { frames.enumerated().map { "\($0.offset): \($0.element.debugDescription)" }.joined(separator: "\n") }
 }
 
 extension ViewGraph {
-    public func layout(in size: Size, displayScale: Float = 1) -> ViewLayout {
+    package func layout(in size: Size, displayScale: Float = 1) -> ViewLayout {
         precondition(displayScale.isFinite && displayScale > 0, "displayScale must be finite and greater than zero")
         let pass = _LayoutPass(graph: self, displayScale: displayScale)
         var root = NodeID(rawValue: 0)
@@ -27,15 +27,15 @@ extension ViewGraph {
     }
 }
 
-@usableFromInline struct _LayoutContext: Sendable {
-    @usableFromInline let displayScale: Float
-    @usableFromInline var pixelLength: Float { 1 / displayScale }
+struct _LayoutContext: Sendable {
+    let displayScale: Float
+    var pixelLength: Float { 1 / displayScale }
 
-    @usableFromInline func snap(_ value: Float) -> Float {
+    func snap(_ value: Float) -> Float {
         (value * displayScale).rounded() / displayScale
     }
 
-    @usableFromInline func snap(_ rect: Rect) -> Rect {
+    func snap(_ rect: Rect) -> Rect {
         let minX = snap(rect.minX)
         let minY = snap(rect.minY)
         let maxX = snap(rect.maxX)
@@ -44,19 +44,19 @@ extension ViewGraph {
     }
 }
 
-@usableFromInline final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
-    @usableFromInline let graph: ViewGraph
-    @usableFromInline let context: _LayoutContext
-    @usableFromInline var frames: ContiguousArray<Rect>
+final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
+    let graph: ViewGraph
+    let context: _LayoutContext
+    var frames: ContiguousArray<Rect>
     private var caches: [Int: Any] = [:]
-    @usableFromInline init(graph: ViewGraph, displayScale: Float) {
+    init(graph: ViewGraph, displayScale: Float) {
         self.graph = graph
         context = .init(displayScale: displayScale)
         frames = .init(repeating: .zero, count: graph.nodes.count)
     }
 
-    @usableFromInline override func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size { measure(id, proposal, orientation) }
-    @usableFromInline override func place(_ id: ViewGraph.NodeID, _ position: Point, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) { placeNode(id, position, anchor, proposal, orientation) }
+    override func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size { measure(id, proposal, orientation) }
+    override func place(_ id: ViewGraph.NodeID, _ position: Point, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) { placeNode(id, position, anchor, proposal, orientation) }
 
     private func subviews(_ id: ViewGraph.NodeID, orientation: Axis?) -> LayoutSubviews {
         .init(storage: self, ids: graph.children, bounds: graph.childRanges[Int(id.rawValue)], orientation: orientation)

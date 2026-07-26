@@ -24,8 +24,8 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 ### PixlUI Immediate Rendering
 
 - [x] Change `Scene` to retain content, state/invalidation generation, and reusable graph/layout storage while deferring its first evaluation until display scale and logical output size are available.
-- [ ] On first render or invalidation, evaluate the complete view tree, run complete layout, and cache the results; initially rebuild the whole tree rather than implementing incremental diffing.
-- [ ] Expose only the package-internal PixlUI graph/layout seam required by Pixl; do not introduce a second UI display-list abstraction or expose graph construction to games.
+- [x] On first render or invalidation, evaluate the complete view tree, run complete layout, and cache the results; initially rebuild the whole tree rather than implementing incremental diffing.
+- [x] Expose only the package-internal PixlUI graph/layout seam required by Pixl; do not introduce a second UI display-list abstraction or expose graph construction to games.
 - [ ] Lower cached PixlUI `Rectangle`, `Color`, fill, and stroke results directly into existing `ShapeSubmission` values in Pixl, recompiling only when Scene generation, logical output size, or display scale changes.
 - [ ] Add an engine-internal bulk `RenderQueue` append for contiguous `ShapeSubmission` values. It must capacity-check once, append at the queue's current global submission ordinal, and preserve existing layer/order/ordinal semantics; games do not call this API.
 - [ ] Add screen-space execution with logical point dimensions, top-left origin, y-down projection, native display scale, and preserved existing render-target contents.

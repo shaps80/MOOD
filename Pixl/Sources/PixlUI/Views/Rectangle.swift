@@ -14,5 +14,5 @@ public struct Rectangle: View, Sendable {
 }
 
 extension Rectangle: _Shape {
-    @usableFromInline func path(in rect: Rect) -> _ShapePath { .rectangle(rect) }
+    package func path(in rect: Rect) -> _ShapePath { .rectangle(rect) }
 }

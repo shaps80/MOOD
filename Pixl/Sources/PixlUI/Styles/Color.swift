@@ -2,7 +2,7 @@
 import Swift
 
 extension Color: ShapeStyle, _TerminalShapeStyle {
-    @usableFromInline func resolveStyle(
+    func resolveStyle(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {

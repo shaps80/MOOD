@@ -3,10 +3,9 @@ import Swift
 @_documentation(visibility: internal)
 public struct _GraphValue<Value> {
     public let value: Value
-    @usableFromInline let graph: _Graph
+    let graph: _Graph
 
-    @usableFromInline
-    init(_ value: Value, graph: _Graph) {
+        init(_ value: Value, graph: _Graph) {
         self.value = value
         self.graph = graph
     }
@@ -14,18 +13,17 @@ public struct _GraphValue<Value> {
 
 @_documentation(visibility: internal)
 public final class _Graph {
-    @usableFromInline var nodes: ContiguousArray<ViewGraph.Node> = []
-    @usableFromInline var primitives: ContiguousArray<ViewGraph.PrimitiveRecord> = []
-    @usableFromInline var compositions: ContiguousArray<ViewGraph.CompositionRecord> = []
-    @usableFromInline var styles: ContiguousArray<ViewGraph.ResolvedStyle> = []
-    @usableFromInline var styleIDs: [ViewGraph.ResolvedStyle: ViewGraph.StyleID] = [:]
-    @usableFromInline var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
-    @usableFromInline var shapes: ContiguousArray<_ShapeRecord> = []
+    var nodes: ContiguousArray<ViewGraph.Node> = []
+    var primitives: ContiguousArray<ViewGraph.PrimitiveRecord> = []
+    var compositions: ContiguousArray<ViewGraph.CompositionRecord> = []
+    var styles: ContiguousArray<ViewGraph.ResolvedStyle> = []
+    var styleIDs: [ViewGraph.ResolvedStyle: ViewGraph.StyleID] = [:]
+    var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
+    var shapes: ContiguousArray<_ShapeRecord> = []
 
-    @usableFromInline init() { }
+    init() { }
 
-    @usableFromInline
-    func internStyle(_ style: ViewGraph.ResolvedStyle) -> ViewGraph.StyleID {
+        func internStyle(_ style: ViewGraph.ResolvedStyle) -> ViewGraph.StyleID {
         if let id = styleIDs[style] { return id }
         let id = ViewGraph.StyleID(rawValue: Int32(styles.count))
         styles.append(style)
@@ -33,8 +31,7 @@ public final class _Graph {
         return id
     }
 
-    @usableFromInline
-    func appendNode(
+        func appendNode(
         kind: ViewGraph.Node.Kind,
         payload: Int32 = -1,
         parent: ViewGraph.NodeID
@@ -53,8 +50,7 @@ public final class _Graph {
         return id
     }
 
-    @usableFromInline
-    func snapshot() -> ViewGraph {
+        func snapshot() -> ViewGraph {
         var children: ContiguousArray<ViewGraph.NodeID> = []
         var ranges: ContiguousArray<Range<Int>> = []
         ranges.reserveCapacity(nodes.count)
@@ -70,13 +66,13 @@ public final class _Graph {
 
 @_documentation(visibility: internal)
 public struct _ViewInputs {
-    @usableFromInline let graph: _Graph
-    @usableFromInline let parent: ViewGraph.NodeID
-    @usableFromInline var environment: EnvironmentValues
-    @usableFromInline let modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)?
-    @usableFromInline let modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
+    let graph: _Graph
+    let parent: ViewGraph.NodeID
+    var environment: EnvironmentValues
+    let modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)?
+    let modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
 
-    @usableFromInline init(
+    init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
         environment: EnvironmentValues,
@@ -93,22 +89,22 @@ public struct _ViewInputs {
 
 @_documentation(visibility: internal)
 public struct _ViewOutputs {
-    public let node: ViewGraph.NodeID
+    package let node: ViewGraph.NodeID
 
-    @usableFromInline init(node: ViewGraph.NodeID) {
+    init(node: ViewGraph.NodeID) {
         self.node = node
     }
 }
 
 @_documentation(visibility: internal)
 public struct _ViewListInputs {
-    @usableFromInline let graph: _Graph
-    @usableFromInline let parent: ViewGraph.NodeID
-    @usableFromInline var environment: EnvironmentValues
-    @usableFromInline let modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
-    @usableFromInline let modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)?
+    let graph: _Graph
+    let parent: ViewGraph.NodeID
+    var environment: EnvironmentValues
+    let modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
+    let modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)?
 
-    @usableFromInline init(
+    init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
         environment: EnvironmentValues,
@@ -125,12 +121,11 @@ public struct _ViewListInputs {
 
 @_documentation(visibility: internal)
 public struct _ViewListOutputs {
-    public let first: ViewGraph.NodeID
-    public let last: ViewGraph.NodeID
+    package let first: ViewGraph.NodeID
+    package let last: ViewGraph.NodeID
     public let count: Int
 
-    @usableFromInline
-    init(first: ViewGraph.NodeID = .invalid, last: ViewGraph.NodeID = .invalid, count: Int = 0) {
+        init(first: ViewGraph.NodeID = .invalid, last: ViewGraph.NodeID = .invalid, count: Int = 0) {
         self.first = first
         self.last = last
         self.count = count

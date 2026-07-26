@@ -17,7 +17,7 @@ extension Never: ShapeStyle {
 
 public struct AnyShapeStyle: ShapeStyle, @unchecked Sendable {
     public typealias Resolved = Never
-    @usableFromInline let box: _AnyShapeStyleBox
+    let box: _AnyShapeStyleBox
 
     public init<S: ShapeStyle>(_ style: S) {
         box = _ShapeStyleBox(style)
@@ -25,7 +25,7 @@ public struct AnyShapeStyle: ShapeStyle, @unchecked Sendable {
 }
 
 extension AnyShapeStyle: _TerminalShapeStyle {
-    @usableFromInline func resolveStyle(
+    func resolveStyle(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
@@ -33,16 +33,16 @@ extension AnyShapeStyle: _TerminalShapeStyle {
     }
 }
 
-@usableFromInline protocol _TerminalShapeStyle {
+protocol _TerminalShapeStyle {
     func resolveStyle(in graph: _Graph, environment: EnvironmentValues) -> ViewGraph.StyleID
 }
 
-@usableFromInline protocol _FixedColorShapeStyle: _TerminalShapeStyle {
+protocol _FixedColorShapeStyle: _TerminalShapeStyle {
     static var color: Color { get }
 }
 
 extension _FixedColorShapeStyle {
-    @usableFromInline func resolveStyle(
+    func resolveStyle(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
@@ -50,17 +50,17 @@ extension _FixedColorShapeStyle {
     }
 }
 
-@usableFromInline class _AnyShapeStyleBox: @unchecked Sendable {
-    @usableFromInline func resolve(in graph: _Graph, environment: EnvironmentValues) -> ViewGraph.StyleID {
+class _AnyShapeStyleBox: @unchecked Sendable {
+    func resolve(in graph: _Graph, environment: EnvironmentValues) -> ViewGraph.StyleID {
         fatalError()
     }
 }
 
-@usableFromInline final class _ShapeStyleBox<S: ShapeStyle>: _AnyShapeStyleBox, @unchecked Sendable {
-    @usableFromInline let style: S
-    @usableFromInline init(_ style: S) { self.style = style }
+final class _ShapeStyleBox<S: ShapeStyle>: _AnyShapeStyleBox, @unchecked Sendable {
+    let style: S
+    init(_ style: S) { self.style = style }
 
-    @usableFromInline override func resolve(
+    override func resolve(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
@@ -74,7 +74,7 @@ extension _FixedColorShapeStyle {
     }
 }
 
-@usableFromInline func _resolveShapeStyle<S: ShapeStyle>(
+func _resolveShapeStyle<S: ShapeStyle>(
     _ style: S,
     in graph: _Graph,
     environment: EnvironmentValues

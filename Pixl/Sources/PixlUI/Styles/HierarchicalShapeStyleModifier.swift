@@ -3,15 +3,15 @@ import Swift
 @frozen public struct HierarchicalShapeStyleModifier<Base: ShapeStyle>: ShapeStyle, _TerminalShapeStyle {
     public typealias Resolved = Never
 
-    @usableFromInline var base: Base
-    @usableFromInline var level: UInt8
+    var base: Base
+    var level: UInt8
 
-    @usableFromInline init(base: Base, level: UInt8) {
+    init(base: Base, level: UInt8) {
         self.base = base
         self.level = level
     }
 
-    @usableFromInline func resolveStyle(
+    func resolveStyle(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
@@ -32,19 +32,19 @@ import Swift
 }
 
 extension ShapeStyle {
-    @inlinable public var secondary: some ShapeStyle {
+    public var secondary: some ShapeStyle {
         HierarchicalShapeStyleModifier(base: self, level: 1)
     }
 
-    @inlinable public var tertiary: some ShapeStyle {
+    public var tertiary: some ShapeStyle {
         HierarchicalShapeStyleModifier(base: self, level: 2)
     }
 
-    @inlinable public var quaternary: some ShapeStyle {
+    public var quaternary: some ShapeStyle {
         HierarchicalShapeStyleModifier(base: self, level: 3)
     }
 
-    @inlinable public var quinary: some ShapeStyle {
+    public var quinary: some ShapeStyle {
         HierarchicalShapeStyleModifier(base: self, level: 4)
     }
 }

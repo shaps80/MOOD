@@ -3,8 +3,8 @@ import Swift
 @frozen public struct HierarchicalShapeStyle: ShapeStyle, _FixedColorShapeStyle {
     public typealias Resolved = Never
 
-    @usableFromInline let level: UInt8
-    @usableFromInline init(level: UInt8) { self.level = level }
+    let level: UInt8
+    init(level: UInt8) { self.level = level }
 
     public static let primary = Self(level: 0)
     public static let secondary = Self(level: 1)
@@ -12,9 +12,9 @@ import Swift
     public static let quaternary = Self(level: 3)
     public static let quinary = Self(level: 4)
 
-    @usableFromInline static var color: Color { .primary }
+    static var color: Color { .primary }
 
-    @usableFromInline func resolveStyle(
+    func resolveStyle(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {

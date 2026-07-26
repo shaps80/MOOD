@@ -1,11 +1,11 @@
 import Swift
 
 public struct LayoutSubview: Equatable, @unchecked Sendable {
-    @usableFromInline let storage: _LayoutSubviewStorage
-    @usableFromInline let id: ViewGraph.NodeID
-    @usableFromInline let orientation: Axis?
+    let storage: _LayoutSubviewStorage
+    let id: ViewGraph.NodeID
+    let orientation: Axis?
 
-    @usableFromInline init(storage: _LayoutSubviewStorage, id: ViewGraph.NodeID, orientation: Axis?) {
+    init(storage: _LayoutSubviewStorage, id: ViewGraph.NodeID, orientation: Axis?) {
         self.storage = storage; self.id = id; self.orientation = orientation
     }
 
@@ -20,8 +20,8 @@ public struct LayoutSubview: Equatable, @unchecked Sendable {
     }
 }
 
-@usableFromInline class _LayoutSubviewStorage: @unchecked Sendable {
-    @usableFromInline func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size { fatalError() }
-    @usableFromInline func spacing(_ id: ViewGraph.NodeID) -> ViewSpacing { .zero }
-    @usableFromInline func place(_ id: ViewGraph.NodeID, _ position: Point, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) { fatalError() }
+class _LayoutSubviewStorage: @unchecked Sendable {
+    func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size { fatalError() }
+    func spacing(_ id: ViewGraph.NodeID) -> ViewSpacing { .zero }
+    func place(_ id: ViewGraph.NodeID, _ position: Point, _ anchor: UnitPoint, _ proposal: ProposedViewSize, _ orientation: Axis?) { fatalError() }
 }

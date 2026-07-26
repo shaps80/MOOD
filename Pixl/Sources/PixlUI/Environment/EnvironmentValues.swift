@@ -4,12 +4,12 @@ import Swift
 public struct EnvironmentValues: Sendable {
     /// Current number of presentation pixels per logical screen-space point.
     public internal(set) var displayScale: Float = 1
-    @usableFromInline var foregroundStyle: ViewGraph.StyleID = .invalid
-    @usableFromInline var tint: ViewGraph.StyleID = .invalid
+    var foregroundStyle: ViewGraph.StyleID = .invalid
+    var tint: ViewGraph.StyleID = .invalid
 
     public init() { }
 
-    @usableFromInline init(
+    init(
         displayScale: Float,
         foregroundStyle: ViewGraph.StyleID,
         tint: ViewGraph.StyleID

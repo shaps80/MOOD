@@ -1,5 +1,5 @@
 import Swift
 
-@usableFromInline enum _ShapePath: Sendable {
+package enum _ShapePath: Sendable {
     case rectangle(Rect)
 }

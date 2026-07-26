@@ -4,7 +4,7 @@ import Swift
     public typealias Resolved = Never
     @inlinable public init() { }
 
-    @usableFromInline func resolveStyle(
+    func resolveStyle(
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
