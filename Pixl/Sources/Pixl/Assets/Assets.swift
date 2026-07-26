@@ -14,6 +14,7 @@ public final class Assets {
     private let soundWriter: (Sound) -> (any SoundWriter)?
     let textureResources: TextureResources?
     private var textures: [TextureCacheKey: TextureAsset] = [:]
+    private var uiTextures: [String: TextureAsset] = [:]
     private var sounds: [AssetPath: SoundAsset] = [:]
     private var reloadContinuation: AsyncStream<AssetReloadEvent>.Continuation?
     private var reloadTask: Task<Void, Never>?
@@ -150,6 +151,28 @@ public final class Assets {
         textureResources?.texture(
             for: TextureResourceID(rawValue: asset.identity)
         )
+    }
+
+    func loadUITexture(named name: String) throws(AssetError) -> TextureAsset {
+        if let texture = uiTextures[name] { return texture }
+
+        let lastComponent = name.split(separator: "/").last ?? ""
+        if lastComponent.contains(".") {
+            let texture = try loadTexture(name, alpha: .premultiplied)
+            uiTextures[name] = texture
+            return texture
+        }
+
+        for path in ["\(name).png", "\(name).jpg", "\(name).jpeg"] {
+            do {
+                let texture = try loadTexture(path, alpha: .premultiplied)
+                uiTextures[name] = texture
+                return texture
+            } catch AssetError.notFound {
+                continue
+            }
+        }
+        throw .notFound(name)
     }
 
     func texture(for resource: TextureResourceID) -> Texture? {

@@ -14,8 +14,10 @@ public struct HUD: View {
                     .highlight(.blue)
             }
 
-            Toggle(isOn ? "ON" : "OFF", isOn: $isOn)
-                .highlight(isOn ? .orange : .gray)
+            Toggle(isOn: $isOn) {
+                Image("checked")
+            }
+//            .highlight(isOn ? .orange : .gray)
         }
     }
 }

@@ -20,7 +20,7 @@ final class SceneCompilation {
         let prepared = try scene.prepare(
             size: size,
             displayScale: displayScale,
-            resolveImage: { try context.assets.load(texture: $0) }
+            resolveImage: { try context.assets.loadUITexture(named: $0) }
         )
         self.scene = scene
         generation = scene.generation
@@ -77,7 +77,10 @@ final class SceneCompilation {
                     let sprite = Sprite(region: .init(asset: asset))
                     let transform = Transform2D(
                         frame.origin + frame.size * 0.5,
-                        scale: frame.size / sourceSize
+                        scale: .init(
+                            frame.size.x / sourceSize.x,
+                            -frame.size.y / sourceSize.y
+                        )
                     )
                     submissions.append(
                         .sprite(.init(sprite: sprite, transform: transform))
