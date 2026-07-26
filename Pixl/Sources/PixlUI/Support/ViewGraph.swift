@@ -1,4 +1,5 @@
 import PixlGraphics
+import PixlInput
 import Swift
 
 package struct ViewGraph {
@@ -67,12 +68,19 @@ package struct ViewGraph {
 
     package struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
 
+    package struct InputHandler: @unchecked Sendable {
+        package let input: Input
+        package let phases: UInt8
+        package let action: (Input, Input.Phase) -> Void
+    }
+
     package let nodes: ContiguousArray<Node>
     package var primitives: ContiguousArray<PrimitiveRecord>
     package let compositions: ContiguousArray<CompositionRecord>
     package let styles: ContiguousArray<ResolvedStyle>
     package let layouts: ContiguousArray<LayoutRecord>
     package let shapes: ContiguousArray<_ShapeRecord>
+    package let inputHandlers: ContiguousArray<InputHandler>
     package let children: ContiguousArray<NodeID>
     package let childRanges: ContiguousArray<Range<Int>>
 

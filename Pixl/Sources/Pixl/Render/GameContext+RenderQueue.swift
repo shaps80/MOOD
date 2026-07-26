@@ -54,11 +54,19 @@ extension GameContext {
             x: Float(pixels.width) / scale,
             y: Float(pixels.height) / scale
         )
-        let compilation = try compilation(
+        var compilation = try compilation(
             for: scene,
             size: logicalSize,
             displayScale: scale
         )
+        if shouldDispatchInput(for: scene) {
+            compilation.dispatchInputs()
+            compilation = try self.compilation(
+                for: scene,
+                size: logicalSize,
+                displayScale: scale
+            )
+        }
 
         compilation.submissions.withUnsafeBufferPointer {
             sceneRenderQueue.submit(contentsOf: $0)

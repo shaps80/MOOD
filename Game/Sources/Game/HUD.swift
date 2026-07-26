@@ -2,6 +2,7 @@ import PixlUI
 import Foundation
 
 public struct HUD: View {
+    let bindings: PlayerBindings = .init()
     @State private var isOn: Bool = true
 
     public var body: some View {
@@ -16,6 +17,9 @@ public struct HUD: View {
 
             Toggle(isOn: $isOn) {
                 Image("checked")
+            }
+            .onInput(bindings.space) { input, _ in
+                isOn.toggle()
             }
 //            .highlight(isOn ? .orange : .gray)
         }

@@ -18,7 +18,7 @@ public struct InputProfileMacro: MemberMacro {
         let inputs = try declaration.inputProperties
         guard !inputs.isEmpty else {
             throw MacroExpansionErrorMessage(
-                "@InputProfile requires at least one @Binding property"
+                "@InputProfile requires at least one @InputMap property"
             )
         }
 
@@ -79,7 +79,7 @@ private extension DeclGroupSyntax {
                       binding.initializer == nil
                 else {
                     throw MacroExpansionErrorMessage(
-                        "@Binding requires an uninitialized `var` property without an explicit type"
+                        "@InputMap requires an uninitialized `var` property without an explicit type"
                     )
                 }
 
@@ -87,7 +87,7 @@ private extension DeclGroupSyntax {
                     LabeledExprListSyntax.self
                 ), !arguments.isEmpty else {
                     throw MacroExpansionErrorMessage(
-                        "@Binding requires at least one binding"
+                        "@InputMap requires at least one binding"
                     )
                 }
 
@@ -122,7 +122,7 @@ private extension VariableDeclSyntax {
             element.as(AttributeSyntax.self)
         }.first { attribute in
             let name = attribute.attributeName.trimmedDescription
-            return name == "Binding" || name.hasSuffix(".Binding")
+            return name == "InputMap" || name.hasSuffix(".InputMap")
         }
     }
 }

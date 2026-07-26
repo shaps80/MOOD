@@ -3,7 +3,7 @@ import Testing
 
 @InputProfile
 private struct TestInputProfile {
-    @Binding(
+    @InputMap(
         .key(.a),
         .key(.arrowLeft),
         .button(.left),

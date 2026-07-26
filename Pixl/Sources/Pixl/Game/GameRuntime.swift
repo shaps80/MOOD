@@ -52,6 +52,7 @@ final class GameRuntime<G: Game>: PlatformGame {
             to: frameStart,
             timeScale: context.timeScale
         )
+        context.presentationFrameIndex = schedule.renderTime.frameIndex
         let gameStart = ContinuousClock.now
 
         runLifecycle(schedule)

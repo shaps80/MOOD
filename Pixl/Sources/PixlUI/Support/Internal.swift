@@ -21,6 +21,7 @@ public final class _Graph {
     var styleIDs: [ViewGraph.ResolvedStyle: ViewGraph.StyleID] = [:]
     var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
     var shapes: ContiguousArray<_ShapeRecord> = []
+    var inputHandlers: ContiguousArray<ViewGraph.InputHandler> = []
 
     init(stateStore: _StateStore) {
         self.stateStore = stateStore
@@ -63,7 +64,17 @@ public final class _Graph {
             while child.isValid { children.append(child); child = nodes[Int(child.rawValue)].nextSibling }
             ranges.append(start..<children.count)
         }
-        return .init(nodes: nodes, primitives: primitives, compositions: compositions, styles: styles, layouts: layouts, shapes: shapes, children: children, childRanges: ranges)
+        return .init(
+            nodes: nodes,
+            primitives: primitives,
+            compositions: compositions,
+            styles: styles,
+            layouts: layouts,
+            shapes: shapes,
+            inputHandlers: inputHandlers,
+            children: children,
+            childRanges: ranges
+        )
     }
 }
 

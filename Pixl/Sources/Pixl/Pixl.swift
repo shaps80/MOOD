@@ -1,4 +1,5 @@
 @_exported import PixlGraphics
+@_exported import PixlInput
 import PixlFoundation
 import PixlPlatform
 

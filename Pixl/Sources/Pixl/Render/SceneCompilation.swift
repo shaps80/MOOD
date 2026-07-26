@@ -10,6 +10,7 @@ final class SceneCompilation {
     let size: Size
     let displayScale: Float
     let submissions: ContiguousArray<RenderQueue.Submission>
+    let inputHandlers: ContiguousArray<ViewGraph.InputHandler>
 
     init<Content: View>(
         scene: Scene<Content>,
@@ -26,6 +27,7 @@ final class SceneCompilation {
         generation = scene.generation
         self.size = size
         self.displayScale = displayScale
+        inputHandlers = prepared.root.graph.inputHandlers
         submissions = Self.lower(
             graph: prepared.root.graph,
             layout: prepared.layout
@@ -41,6 +43,17 @@ final class SceneCompilation {
             && generation == scene.generation
             && self.size == size
             && self.displayScale == displayScale
+    }
+
+    func dispatchInputs() {
+        for handler in inputHandlers {
+            if handler.phases & 1 != 0, handler.input.is(.down) {
+                handler.action(handler.input, .down)
+            }
+            if handler.phases & 2 != 0, handler.input.is(.up) {
+                handler.action(handler.input, .up)
+            }
+        }
     }
 
     private static func lower(

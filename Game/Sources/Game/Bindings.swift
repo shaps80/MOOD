@@ -3,33 +3,37 @@ import Pixl2D
 
 @InputProfile
 struct PlayerBindings {
-    @Binding(
+    @InputMap(
         .key(.a),
         .key(.arrowLeft),
         .button(.left),
         .axis(.leftStickX, direction: .negative, deadZone: 0.12)
     ) var left
 
-    @Binding(
+    @InputMap(
         .key(.d),
         .key(.arrowRight),
         .button(.right),
         .axis(.leftStickX, direction: .positive, deadZone: 0.12)
     ) var right
 
-    @Binding(
+    @InputMap(
         .key(.w),
-//        .key(.arrowUp),
+        .key(.arrowUp),
         .button(.up),
         .axis(.leftStickY, direction: .positive, deadZone: 0.12)
     ) var up
 
-    @Binding(
+    @InputMap(
         .key(.s),
-//        .key(.arrowDown),
+        .key(.arrowDown),
         .button(.down),
         .axis(.leftStickY, direction: .negative, deadZone: 0.12)
     ) var down
+
+    @InputMap(
+        .key(.space)
+    ) var space
 }
 
 extension PlayerBindings {
@@ -43,10 +47,10 @@ extension PlayerBindings {
 
 @InputProfile
 struct CameraBindings {
-    @Binding(.key(.arrowLeft)) var left
-    @Binding(.key(.arrowRight)) var right
-    @Binding(.key(.arrowUp)) var up
-    @Binding(.key(.arrowDown)) var down
+    @InputMap(.key(.arrowLeft)) var left
+    @InputMap(.key(.arrowRight)) var right
+    @InputMap(.key(.arrowUp)) var up
+    @InputMap(.key(.arrowDown)) var down
 }
 
 extension CameraBindings {
@@ -60,7 +64,7 @@ extension CameraBindings {
 
 @InputProfile
 struct GameBindings {
-    @Binding(
+    @InputMap(
         .key(.escape),
         .button(.menu)
     ) var menu
@@ -68,23 +72,23 @@ struct GameBindings {
 
 @InputProfile
 struct ShapeBindings {
-    @Binding(
+    @InputMap(
         .key(.arrowUp)
     ) var up
 
-    @Binding(
+    @InputMap(
         .key(.arrowDown)
     ) var down
 
-    @Binding(
+    @InputMap(
         .key(.one)
     ) var inside
 
-    @Binding(
+    @InputMap(
         .key(.two)
     ) var center
 
-    @Binding(
+    @InputMap(
         .key(.three)
     ) var outside
 }

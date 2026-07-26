@@ -1,4 +1,5 @@
 import PixlPlatform
+import PixlInput
 import Swift
 
 public extension Input {

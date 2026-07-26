@@ -40,6 +40,10 @@ let package = Package(
             name: "PixlGraphics",
             targets: ["PixlGraphics"]
         ),
+        .library(
+            name: "PixlInput",
+            targets: ["PixlInput"]
+        ),
     ],
     dependencies: [
         .package(path: "../PixlPlatform"),
@@ -58,6 +62,7 @@ let package = Package(
             name: "Pixl",
             dependencies: [
                 "PixlMacros",
+                "PixlInput",
                 "PixlFoundation",
                 "PixlGraphics",
                 "Pixl2D",
@@ -78,6 +83,10 @@ let package = Package(
                     condition: .when(platforms: [.wasi])
                 )
             ],
+            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
+        ),
+        .target(
+            name: "PixlInput",
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
@@ -128,7 +137,7 @@ let package = Package(
         ),
         .target(
             name: "PixlUI",
-            dependencies: ["PixlGraphics", "PixlMacros"],
+            dependencies: ["PixlGraphics", "PixlInput", "PixlMacros"],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .testTarget(

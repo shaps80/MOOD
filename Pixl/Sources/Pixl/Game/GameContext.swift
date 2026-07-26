@@ -29,6 +29,8 @@ public final class GameContext {
     let sceneRenderWorkspace: SpriteRenderWorkspace
     private var spriteRenderWorkspaces: [ObjectIdentifier: SpriteRenderWorkspace] = [:]
     private var sceneCompilations: [ObjectIdentifier: SceneCompilation] = [:]
+    private var sceneInputFrames: [ObjectIdentifier: UInt64] = [:]
+    var presentationFrameIndex: UInt64 = 0
     private var renderMetrics = RenderQueue.Metrics()
 
     /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
@@ -123,5 +125,14 @@ public final class GameContext {
         )
         sceneCompilations[identity] = compilation
         return compilation
+    }
+
+    func shouldDispatchInput<Content: View>(for scene: Scene<Content>) -> Bool {
+        let identity = ObjectIdentifier(scene)
+        guard sceneInputFrames[identity] != presentationFrameIndex else {
+            return false
+        }
+        sceneInputFrames[identity] = presentationFrameIndex
+        return true
     }
 }
