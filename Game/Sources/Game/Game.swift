@@ -45,8 +45,8 @@ struct Game: Pixl.Game {
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
         player = try Player(
-            count: 100_000,
-            worldSize: 10_000,
+            count: 1,
+            worldSize: 100,
             context: context
         )
         cameraBindings.bind(to: context.inputs)
@@ -75,6 +75,12 @@ struct Game: Pixl.Game {
             to: output,
             frame: frame,
             clear: .white
+        )
+
+        try context.render(
+            hud,
+            to: output,
+            frame: frame
         )
 
         logMetrics(
@@ -139,7 +145,6 @@ extension Game {
 
     static var renderSettings: RenderSettings {
         .init(
-            framePassCapacity: 1,
             frameCommandCapacity: 16,
             frameByteCapacity: 128 * 1024,
             bufferCapacity: 4,

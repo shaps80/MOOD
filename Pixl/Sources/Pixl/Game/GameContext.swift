@@ -1,5 +1,7 @@
 import PixlFoundation
+import PixlGraphics
 import PixlPlatform
+import PixlUI
 
 /// Stable runtime services and controls supplied throughout the game lifecycle.
 public final class GameContext {
@@ -21,9 +23,12 @@ public final class GameContext {
     public let inputs: Input.Map
     /// Default retained queue for render submissions.
     public let renderQueue: RenderQueue
+    let sceneRenderQueue: RenderQueue
     let spriteRenderResources: SpriteRenderResources
     let spriteRenderWorkspace: SpriteRenderWorkspace
+    let sceneRenderWorkspace: SpriteRenderWorkspace
     private var spriteRenderWorkspaces: [ObjectIdentifier: SpriteRenderWorkspace] = [:]
+    private var sceneCompilations: [ObjectIdentifier: SceneCompilation] = [:]
     private var renderMetrics = RenderQueue.Metrics()
 
     /// Nonnegative simulation-time multiplier. Zero pauses scaled simulation.
@@ -54,12 +59,14 @@ public final class GameContext {
         )
         self.assets = assets
         renderQueue = RenderQueue(settings: renderQueueSettings)
+        sceneRenderQueue = RenderQueue(settings: renderQueueSettings)
         let spriteRenderResources = SpriteRenderResources(
             device: platform.device,
             textures: assets.textureResources!
         )
         self.spriteRenderResources = spriteRenderResources
         spriteRenderWorkspace = spriteRenderResources.makeWorkspace(for: renderQueue)
+        sceneRenderWorkspace = spriteRenderResources.makeWorkspace(for: sceneRenderQueue)
     }
 
     /// Pauses or resumes scaled simulation using ``timeScale``.
@@ -91,5 +98,28 @@ public final class GameContext {
         let workspace = spriteRenderResources.makeWorkspace(for: queue)
         spriteRenderWorkspaces[identity] = workspace
         return workspace
+    }
+
+    func compilation<Content: View>(
+        for scene: Scene<Content>,
+        size: Size,
+        displayScale: Float
+    ) -> SceneCompilation {
+        let identity = ObjectIdentifier(scene)
+        if let compilation = sceneCompilations[identity],
+           compilation.matches(
+               scene: scene,
+               size: size,
+               displayScale: displayScale
+           ) {
+            return compilation
+        }
+        let compilation = SceneCompilation(
+            scene: scene,
+            size: size,
+            displayScale: displayScale
+        )
+        sceneCompilations[identity] = compilation
+        return compilation
     }
 }

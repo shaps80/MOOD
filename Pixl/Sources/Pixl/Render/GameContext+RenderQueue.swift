@@ -2,8 +2,67 @@ import Pixl2D
 import PixlFoundation
 import PixlGraphics
 import PixlPlatform
+import PixlUI
 
 extension GameContext {
+    /// Renders a retained UI scene in logical screen-space coordinates.
+    ///
+    /// Existing target contents are preserved. Repeated calls compose in call
+    /// order, allowing game rendering before, between, or after UI scenes.
+    public func render<Content: View>(
+        _ scene: Scene<Content>,
+        to output: RenderTarget,
+        frame: borrowing Frame
+    ) throws {
+        let scale = displayScale
+        let pixels = output.texture.descriptor.size
+        precondition(
+            pixels.width > 0 && pixels.height > 0,
+            "UI render target dimensions must be greater than zero"
+        )
+        let logicalSize = Size(
+            x: Float(pixels.width) / scale,
+            y: Float(pixels.height) / scale
+        )
+        let compilation = compilation(
+            for: scene,
+            size: logicalSize,
+            displayScale: scale
+        )
+
+        compilation.submissions.withUnsafeBufferPointer {
+            sceneRenderQueue.submit(contentsOf: $0)
+        }
+        defer { sceneRenderQueue.reset() }
+
+        let pass = beginPass(
+            on: output,
+            frame: frame,
+            initialState: .preserve
+        )
+        var view = RenderQueue.View(
+            projectionX: .init(2 / logicalSize.width, 0, 0),
+            projectionY: .init(0, -2 / logicalSize.height, 0),
+            projectionTranslation: .init(-1, 1, 1),
+            boundsMinimum: .zero,
+            boundsMaximum: logicalSize
+        )
+        let encodingMetrics = try withUnsafePointer(to: &view) { pointer in
+            try sceneRenderQueue.execute(
+                views: UnsafeBufferPointer(start: pointer, count: 1)
+            ) { execution in
+                try sceneRenderWorkspace.encode(
+                    execution,
+                    viewIndex: 0,
+                    on: pass
+                )
+            }
+        }
+        var metrics = sceneRenderQueue.latestMetrics
+        metrics.instancesSeconds += encodingMetrics.instancesSeconds
+        record(metrics)
+    }
+
     /// Renders the default queue through an orthographic camera after clearing the target.
     ///
     /// ```swift

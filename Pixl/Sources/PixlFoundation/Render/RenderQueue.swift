@@ -445,6 +445,21 @@ public final class RenderQueue {
         count += 1
     }
 
+    /// Appends analytic-shape snapshots using one capacity check.
+    package func submit(contentsOf submissions: UnsafeBufferPointer<ShapeSubmission>) {
+        guard !submissions.isEmpty else { return }
+        precondition(
+            submissions.count <= settings.capacity - count,
+            "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + submissions.count)"
+        )
+        var destination = self.submissions.advanced(by: count)
+        for submission in submissions {
+            destination.initialize(to: .shape(submission))
+            destination = destination.advanced(by: 1)
+        }
+        count += submissions.count
+    }
+
     /// Registers one premultiplied 256-pixel RGBA8 gradient row.
     /// - Parameters:
     ///   - fingerprint: Stable content fingerprint used for cold-path lookup.
