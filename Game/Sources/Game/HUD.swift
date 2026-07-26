@@ -14,10 +14,10 @@ public struct HUD: View {
             Text("Third")
                 .highlight(.orange)
         }
-        .padding(4)
+        .padding(10)
         .background {
             Rectangle()
-                .foregroundStyle(.red.opacity(0.3))
+                .highlight(.red)
         }
     }
 }
@@ -27,7 +27,7 @@ extension View {
         background {
             Rectangle()
                 .stroke(color, lineWidth: 2)
-//                .foregroundStyle(color.opacity(0.2))
+                .foregroundStyle(color.opacity(0.3))
         }
     }
 }

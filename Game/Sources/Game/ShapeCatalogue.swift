@@ -131,8 +131,8 @@ struct ShapeCatalogue {
         }
 
         for index in shapes.indices {
-//            shapes[index].strokeAlignment = alignment
-//            shapes[index].rounding = rounding
+            shapes[index].strokeAlignment = alignment
+            shapes[index].rounding = rounding
         }
     }
 
