@@ -91,6 +91,9 @@ WebGPU/Vulkan may require adapter-owned grouping or pipeline variants to impleme
 `Platform`
 : Frame-presentation seam. Exposes the device, acquires a frame-scoped `Drawable`, and presents a recorded `Frame`.
 
+`Platform.displayScale`
+: Current presentation-pixel density expressed as pixels per logical screen-space point. Concrete window/canvas adapters source it from native presentation state; adapters without density-aware presentation default to `1`. `GameContext` exposes the value to games, and higher layers use it for logical screen-space layout and pixel alignment.
+
 `Frame`
 : Reusable, fixed-capacity, allocation-free recording storage for ordered passes and primitive encoder commands. Public callers cannot append internal pass/command values directly.
 

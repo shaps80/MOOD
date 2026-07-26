@@ -68,7 +68,7 @@ struct Game: Pixl.Game {
             visibleBounds: camera.visibleBounds(for: output),
             to: context.renderQueue
         )
-        let spatialSeconds = Self.seconds(spatialStart.duration(to: .now))
+        let seconds = Self.seconds(spatialStart.duration(to: .now))
 
         try context.render(
             through: camera,
@@ -79,7 +79,7 @@ struct Game: Pixl.Game {
 
         logMetrics(
             time,
-            spatialSeconds: spatialSeconds,
+            spatialSeconds: seconds,
             submittedCount: submittedCount
         )
     }

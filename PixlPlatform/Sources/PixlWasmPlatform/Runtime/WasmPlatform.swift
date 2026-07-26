@@ -12,6 +12,10 @@ final class WasmPlatform: Platform {
 
     var device: any Device { wasmDevice }
     var audioDevice: any AudioDevice { wasmAudio }
+    var displayScale: Float {
+        let value = Float(JSObject.global.window.devicePixelRatio.number ?? 1)
+        return value.isFinite && value > 0 ? value : 1
+    }
     let keyboard = Keyboard()
     let gamepads = Gamepads()
     let assetSource: (any AssetSource)?
@@ -32,7 +36,7 @@ final class WasmPlatform: Platform {
     }
 
     func resize() {
-        let ratio = JSObject.global.window.devicePixelRatio.number ?? 1
+        let ratio = Double(displayScale)
         let width = max(1, Int((canvas.clientWidth.number ?? 1) * ratio))
         let height = max(1, Int((canvas.clientHeight.number ?? 1) * ratio))
         if Int(canvas.width.number ?? 0) != width { canvas.width = .number(Double(width)) }

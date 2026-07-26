@@ -7,6 +7,8 @@ public final class GameContext {
     public let platform: any Platform
     /// Pixel format of platform presentation targets.
     public let drawableFormat: PixelFormat
+    /// Current number of presentation pixels per logical screen-space point.
+    public var displayScale: Float { platform.displayScale }
     /// Game-facing audio access.
     public let audio: Audio
     /// Context-owned asset loader and cache.

@@ -44,6 +44,8 @@ public extension PlatformGame {
 
 /// Lowest-level portable runtime seam over presentation and platform services.
 public protocol Platform: AnyObject {
+    /// Current number of presentation pixels per logical screen-space point.
+    var displayScale: Float { get }
     /// Logical GPU device.
     var device: any Device { get }
     /// Platform audio device.
@@ -75,6 +77,8 @@ public protocol Platform: AnyObject {
 }
 
 public extension Platform {
+    /// Unit display scale for adapters without density-aware presentation.
+    var displayScale: Float { 1 }
     /// No asset source by default.
     var assetSource: (any AssetSource)? { nil }
 }
