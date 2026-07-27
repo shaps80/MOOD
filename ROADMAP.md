@@ -10,7 +10,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 ## Current State
 
 - One game-facing Swift path runs on macOS/Metal and browsers/WebGPU.
-- Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts.
+- Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts. PixlPlatform supplies allocation-free keyboard, gamepad, and high-fidelity physical mouse state and per-frame events on macOS and Web.
 - Pixl2D provides value-semantic sprites, analytic SDF shapes, gradients, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
 - Spatial, graphical, and normalized input values use compact `Float` storage throughout portable layers; time and accumulated durations remain `Double`.
 - Fixed-capacity immediate submission performs shared culling, ordering, batching, instance compaction, and indexed instanced sprite/shape drawing without steady-state growth by design.

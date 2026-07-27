@@ -54,6 +54,8 @@ public protocol Platform: AnyObject {
     var assetSource: (any AssetSource)? { get }
     /// Current physical keyboard state.
     var keyboard: Keyboard { get }
+    /// Current physical mouse state.
+    var mouse: Mouse { get }
     /// Connected game controllers.
     var gamepads: Gamepads { get }
 

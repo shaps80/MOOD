@@ -6,28 +6,20 @@ public struct Debug: View {
 
     public var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(spacing: 28) {
+            VStack(spacing: 5) {
                 RoundedRectangle(cornerRadius: 28)
-                    .frame(width: 200, height: 200)
+                    .frame(width: 200, height: 100)
                     .foregroundStyle(.red)
 
                 Capsule()
-                    .frame(width: 80, height: 200)
+                    .frame(width: 80, height: 100)
 
                 Circle()
                     .frame(height: 100)
             }
-            .padding()
         } label: {
-            Label {
-                Text("Hello, world!")
-            } icon: {
-                ZStack {
-                    Image("unchecked").hidden()
-                    Text(isExpanded ? "▼" : "▶")
-                        .highlight(.green)
-                }
-            }
+            Text("\(isExpanded ? "▼" : "▶") Title")
+                .highlight(.green)
         }
         .onInput(bindings.space) { _, _ in
             isExpanded.toggle()
@@ -40,7 +32,7 @@ public struct Debug: View {
 extension View {
     func highlight(_ color: Color = .white) -> some View {
         background {
-            Rectangle()
+            ConcentricRectangle(.concentric, isUniform: true)
                 .foregroundStyle(color.opacity(0.5))
         }
     }

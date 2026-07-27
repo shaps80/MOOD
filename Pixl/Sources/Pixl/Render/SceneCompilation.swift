@@ -85,6 +85,17 @@ final class SceneCompilation {
                             strokeWidth: 0
                         ))
                     )
+                case .divider(let style):
+                    let fill = color(for: style, in: graph)
+                    guard fill.opacity > 0 else { continue }
+                    submissions.append(
+                        .shape(rectangle(
+                            frame: frame,
+                            fill: fill,
+                            stroke: .clear,
+                            strokeWidth: 0
+                        ))
+                    )
                 case .image(let image):
                     guard let asset = image.asset else { continue }
                     let sourceSize = Size(
@@ -324,12 +335,12 @@ final class SceneCompilation {
         layout: ViewLayout
     ) -> RectangleCornerRadii {
         guard container.isValid else {
-            return .init(
+            return uniformRadiiIfNeeded(.init(
                 topLeading: resolve(corners.topLeading, concentricRadius: 0),
                 bottomLeading: resolve(corners.bottomLeading, concentricRadius: 0),
                 bottomTrailing: resolve(corners.bottomTrailing, concentricRadius: 0),
                 topTrailing: resolve(corners.topTrailing, concentricRadius: 0)
-            )
+            ), corners: corners)
         }
 
         let node = graph.nodes[Int(container.rawValue)]
@@ -345,7 +356,7 @@ final class SceneCompilation {
         let bottom = max(0, containerFrame.maxY - rect.maxY)
         let trailing = max(0, containerFrame.maxX - rect.maxX)
 
-        return .init(
+        return uniformRadiiIfNeeded(.init(
             topLeading: resolve(
                 corners.topLeading,
                 concentricRadius: max(0, outer.topLeading - max(top, leading))
@@ -362,6 +373,23 @@ final class SceneCompilation {
                 corners.topTrailing,
                 concentricRadius: max(0, outer.topTrailing - max(top, trailing))
             )
+        ), corners: corners)
+    }
+
+    private static func uniformRadiiIfNeeded(
+        _ radii: RectangleCornerRadii,
+        corners: _ConcentricCornerStyles
+    ) -> RectangleCornerRadii {
+        guard corners.isUniform else { return radii }
+        let radius = max(
+            max(radii.topLeading, radii.bottomLeading),
+            max(radii.bottomTrailing, radii.topTrailing)
+        )
+        return .init(
+            topLeading: radius,
+            bottomLeading: radius,
+            bottomTrailing: radius,
+            topTrailing: radius
         )
     }
 

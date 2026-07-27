@@ -103,8 +103,8 @@ final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
                 if orientation == .vertical { return .init(width: proposal.width ?? 0, height: proposal.height ?? minimum) }
                 return .init(width: proposal.width ?? minimum, height: proposal.height ?? minimum)
             case .divider:
-                if orientation == .horizontal { return .init(width: context.pixelLength, height: proposal.height ?? 0) }
-                return .init(width: proposal.width ?? 0, height: context.pixelLength)
+                if orientation == .horizontal { return .init(width: 1, height: proposal.height ?? 0) }
+                return .init(width: proposal.width ?? 0, height: 1)
             }
         case .layout:
             let index = Int(node.payload), box = graph.layouts[index].box

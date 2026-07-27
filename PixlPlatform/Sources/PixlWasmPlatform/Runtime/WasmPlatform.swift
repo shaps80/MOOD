@@ -17,6 +17,7 @@ final class WasmPlatform: Platform {
         return value.isFinite && value > 0 ? value : 1
     }
     let keyboard = Keyboard()
+    let mouse = Mouse()
     let gamepads = Gamepads()
     let assetSource: (any AssetSource)?
 

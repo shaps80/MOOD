@@ -86,6 +86,8 @@ final class Runtime: NSObject {
             defer: false
         )
         window.contentView = view
+        window.acceptsMouseMovedEvents = true
+        NSEvent.isMouseCoalescingEnabled = false
 
         view.delegate = self
         view.preferredFramesPerSecond = gameSettings.preferredFps
@@ -98,6 +100,7 @@ final class Runtime: NSObject {
             assetSourcePath: assetSourcePath
         )
         view.keyboard = platform?.keyboard
+        view.mouse = platform?.mouse
         gamepadAdapter = MetalGamepads(gamepads: platform!.gamepads)
 
         do {
@@ -186,6 +189,7 @@ extension Runtime: MTKViewDelegate {
         do {
             gamepadAdapter?.poll()
             platform.keyboard.publishPendingEvents()
+            platform.mouse.publishPendingEvents()
             platform.gamepads.publishPendingEvents()
             guard let drawable = platform.drawable() else { return }
 
@@ -214,20 +218,24 @@ extension Runtime: NSWindowDelegate {
 
     func windowDidMiniaturize(_ notification: Notification) {
         platform?.keyboard.focus(false)
+        platform?.mouse.focus(false, timestamp: ProcessInfo.processInfo.systemUptime)
         game?.didEnter(.background)
     }
 
     func windowDidDeminiaturize(_ notification: Notification) {
         platform?.keyboard.focus(true)
+        platform?.mouse.focus(true)
         updatePhase()
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
         platform?.keyboard.focus(true)
+        platform?.mouse.focus(true)
         window?.makeFirstResponder(gameView)
     }
 
     func windowDidResignKey(_ notification: Notification) {
         platform?.keyboard.focus(false)
+        platform?.mouse.focus(false, timestamp: ProcessInfo.processInfo.systemUptime)
     }
 }

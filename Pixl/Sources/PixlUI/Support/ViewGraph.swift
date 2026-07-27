@@ -69,7 +69,7 @@ package struct ViewGraph {
         case image(ImageRecord)
         case fill(StyleID)
         case spacer(minLength: Float?)
-        case divider
+        case divider(StyleID)
     }
 
     package struct CompositionRecord: Sendable {

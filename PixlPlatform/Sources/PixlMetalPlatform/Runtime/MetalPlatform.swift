@@ -12,6 +12,7 @@ final class MetalPlatform: @MainActor Platform {
     var audioDevice: any AudioDevice { metalAudio }
     var displayScale: Float
     let keyboard = Keyboard()
+    let mouse = Mouse()
     let gamepads = Gamepads()
     nonisolated let assetSource: (any AssetSource)?
 

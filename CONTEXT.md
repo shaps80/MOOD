@@ -150,6 +150,20 @@ Keyboard event storage is runtime-owned, fixed-capacity, contiguous, and double-
 `Gamepad.Button.Event`
 : A coalesced `.down` or `.up` transition carrying its normalized value. Current pressed state and continuous analogue values remain independently queryable in constant time. Stick displacement does not produce button events.
 
+## Mouse Input
+
+`Mouse`
+: Platform-owned physical mouse state exposed through `Platform`. `location` is the latest presentation-pixel location using the game-native bottom-left origin and y-up orientation. `translation` is the total physical movement published for the current presentation frame. Button state and current-frame transitions are independently queryable in constant time.
+
+`Mouse.Sample`
+: One chronological high-fidelity motion measurement containing a monotonic `Double` timestamp, presentation-pixel location, and physical translation. macOS disables native mouse-event coalescing; Web adapters recover the browser's ordered coalesced Pointer Event samples. Samples publish through fixed-capacity, double-buffered contiguous storage without steady-state allocation. Overflow preserves final location and total translation by merging excess measurements into the final stored sample.
+
+`Mouse.Button`
+: Open raw physical button identity. `.primary`, `.secondary`, and `.tertiary` normalize native button numbering while additional buttons retain raw identities. Focus loss synthesizes releases for every held button so state cannot remain stuck.
+
+`Mouse.ScrollEvent`
+: Ordered scrolling input remains distinct from buttons. Translation uses the game-native y-up orientation and retains its native semantic unit—pixel, line, or page—rather than applying adapter-specific scaling policy. Pixel scrolling and pointer locations use physical presentation pixels; higher UI layers convert them to logical points and UI coordinates.
+
 ## Resource Ownership
 
 `ResourceID`
