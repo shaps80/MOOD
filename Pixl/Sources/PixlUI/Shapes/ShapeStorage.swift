@@ -16,21 +16,17 @@ package struct _ShapeRecord: @unchecked Sendable {
 
         switch path {
         case .rectangle(let rect):
-            let outwardPixels = stroke.lineWidth * displayScale * 0.5
-            let alignedMinX = (
-                (rect.minX * displayScale - outwardPixels).rounded()
-                    + outwardPixels
-            ) / displayScale
-            let alignedMinY = (
-                (rect.minY * displayScale - outwardPixels).rounded()
-                    + outwardPixels
-            ) / displayScale
+            let alignedMinX = (rect.minX * displayScale).rounded() / displayScale
+            let alignedMinY = (rect.minY * displayScale).rounded() / displayScale
+            let alignedMaxX = (rect.maxX * displayScale).rounded() / displayScale
+            let alignedMaxY = (rect.maxY * displayScale).rounded() / displayScale
+            let halfWidth = stroke.lineWidth * 0.5
             return .rectangle(
-                rect.translated(
-                    by: .init(
-                        x: alignedMinX - rect.minX,
-                        y: alignedMinY - rect.minY
-                    )
+                .init(
+                    x: alignedMinX + halfWidth,
+                    y: alignedMinY + halfWidth,
+                    width: max(0, alignedMaxX - alignedMinX - stroke.lineWidth),
+                    height: max(0, alignedMaxY - alignedMinY - stroke.lineWidth)
                 )
             )
         }

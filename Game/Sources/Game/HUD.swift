@@ -29,11 +29,8 @@ extension View {
     func highlight(_ color: Color) -> some View {
         background {
             Rectangle()
-                .foregroundStyle(color.opacity(0.3))
-
-            Rectangle()
                 .stroke(color, lineWidth: 1)
-                .padding(2)
+                .foregroundStyle(color.opacity(0.3))
         }
     }
 }
