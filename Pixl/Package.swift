@@ -149,6 +149,11 @@ let package = Package(
             swiftSettings: defaultNonisolated()
         ),
         .testTarget(
+            name: "PixlUITests",
+            dependencies: ["PixlUI"],
+            swiftSettings: defaultNonisolated()
+        ),
+        .testTarget(
             name: "PixlTests",
             dependencies: [
                 "Pixl",

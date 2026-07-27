@@ -45,10 +45,18 @@ struct _LayoutContext: Sendable {
 }
 
 final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
+    private struct MeasureKey: Hashable {
+        var id: ViewGraph.NodeID
+        var width: Float?
+        var height: Float?
+        var orientation: Axis?
+    }
+
     let graph: ViewGraph
     let context: _LayoutContext
     var frames: ContiguousArray<Rect>
     private var caches: [Int: Any] = [:]
+    private var measurements: [MeasureKey: Size] = [:]
     init(graph: ViewGraph, displayScale: Float) {
         self.graph = graph
         context = .init(displayScale: displayScale)
@@ -66,6 +74,14 @@ final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
     private func flexible(_ value: Float?, ideal: Float = 0) -> Float { value ?? ideal }
 
     private func measure(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size {
+        let key = MeasureKey(id: id, width: proposal.width, height: proposal.height, orientation: orientation)
+        if let size = measurements[key] { return size }
+        let size = measureUncached(id, proposal, orientation)
+        measurements[key] = size
+        return size
+    }
+
+    private func measureUncached(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size {
         let node = graph.nodes[Int(id.rawValue)]
         switch node.kind {
         case .empty: return .zero

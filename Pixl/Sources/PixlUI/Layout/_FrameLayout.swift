@@ -53,7 +53,10 @@ import Swift
         if let min, let max, min == max { return min }
         var value = child
         if proposal == nil, let ideal { value = ideal }
-        if max == .infinity, let proposal, proposal.isFinite { value = proposal }
+        if min != nil || ideal != nil || max != nil, let proposal {
+            let proposed = Swift.max(min ?? -.infinity, Swift.min(max ?? .infinity, proposal))
+            value = Swift.max(child, proposed)
+        }
         return Swift.max(min ?? -.infinity, Swift.min(max ?? .infinity, value))
     }
 }

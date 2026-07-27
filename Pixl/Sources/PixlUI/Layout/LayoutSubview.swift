@@ -20,6 +20,28 @@ public struct LayoutSubview: Equatable, @unchecked Sendable {
     }
 }
 
+extension LayoutSubview {
+    func flexibility(along axis: Axis, cross: Float?) -> _LayoutFlexibility {
+        func proposal(_ value: Float?) -> ProposedViewSize {
+            switch axis {
+            case .horizontal: .init(width: value, height: cross)
+            case .vertical: .init(width: cross, height: value)
+            }
+        }
+
+        func dimension(_ value: Float?) -> Float {
+            let size = sizeThatFits(proposal(value))
+            return axis == .horizontal ? size.width : size.height
+        }
+
+        return .init(
+            minimum: dimension(0),
+            ideal: dimension(nil),
+            maximum: dimension(.infinity)
+        )
+    }
+}
+
 class _LayoutSubviewStorage: @unchecked Sendable {
     func sizeThatFits(_ id: ViewGraph.NodeID, _ proposal: ProposedViewSize, _ orientation: Axis?) -> Size { fatalError() }
     func spacing(_ id: ViewGraph.NodeID) -> ViewSpacing { .zero }

@@ -6,27 +6,20 @@ public struct VStackLayout: Layout {
     public init(alignment: HorizontalAlignment = .center, spacing: Float? = nil) { self.alignment = alignment; self.spacing = spacing ?? 10 }
     public static var layoutProperties: LayoutProperties { var p = LayoutProperties(); p.stackOrientation = .vertical; return p }
     public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> Size {
-        var result = Size.zero
-        var hasFlexible = false
-        for subview in subviews {
-            let size = subview.sizeThatFits(.init(width: proposal.width, height: nil)); result.width = max(result.width, size.width); result.height += size.height
-            hasFlexible = hasFlexible || subview.sizeThatFits(.init(width: proposal.width, height: .infinity)).height.isInfinite
+        let allocations = _StackLayout.allocate(subviews, along: .vertical, proposal: proposal.height, cross: proposal.width, spacing: spacing)
+        var result = Size(width: 0, height: Float(max(0, subviews.count - 1)) * spacing)
+        for allocation in allocations {
+            result.width = max(result.width, allocation.size.width)
+            result.height += allocation.size.height
         }
-        result.height += Float(max(0, subviews.count - 1)) * spacing
-        if hasFlexible, let height = proposal.height, height.isFinite { result.height = max(result.height, height) }
         return result
     }
     public func placeSubviews(in bounds: Rect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let allocations = _StackLayout.allocate(subviews, along: .vertical, proposal: bounds.size.height, cross: bounds.size.width, spacing: spacing)
         var y = bounds.minY
-        var fixed: Float = Float(max(0, subviews.count - 1)) * spacing, flexibleCount = 0
-        for subview in subviews {
-            if subview.sizeThatFits(.init(width: bounds.size.width, height: .infinity)).height.isInfinite { flexibleCount += 1 }
-            else { fixed += subview.sizeThatFits(.init(width: bounds.size.width, height: nil)).height }
-        }
-        let share = flexibleCount == 0 ? 0 : max(0, bounds.size.height - fixed) / Float(flexibleCount)
-        for subview in subviews {
-            let isFlexible = subview.sizeThatFits(.init(width: bounds.size.width, height: .infinity)).height.isInfinite
-            let size = subview.sizeThatFits(.init(width: bounds.size.width, height: isFlexible ? share : nil))
+        for allocation in allocations {
+            let subview = subviews[allocation.index]
+            let size = allocation.size
             let dimensions = ViewDimensions(size: size)
             let x = bounds.minX + ViewDimensions(size: bounds.size)[alignment] - dimensions[alignment]
             subview.place(at: .init(x: x, y: y), anchor: .topLeading, proposal: .init(size))
