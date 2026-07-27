@@ -54,17 +54,14 @@ extension ViewModifier {
             )
             return .init(first: output.node, last: output.node, count: 1)
         }
-        return Body._makeView(
-            view: .init(content, graph: modifier.graph),
-            inputs: .init(
-                graph: inputs.graph,
-                parent: inputs.parent,
-                environment: inputs.environment,
-                identity: inputs.identity,
-                modifierBody: body,
-                modifierBodyList: bodyList
+        return _ViewModifierRuntime.$content.withValue(
+            .init(makeView: body, makeViewList: bodyList)
+        ) {
+            Body._makeView(
+                view: .init(content, graph: modifier.graph),
+                inputs: inputs
             )
-        )
+        }
     }
 
     public static func _makeViewList(
@@ -78,9 +75,7 @@ extension ViewModifier {
                 graph: inputs.graph,
                 parent: inputs.parent,
                 environment: inputs.environment,
-                identity: inputs.identity,
-                modifierBody: inputs.modifierBodyView,
-                modifierBodyList: inputs.modifierBody
+                identity: inputs.identity
             )
         ) { graph, viewInputs in
             let group = graph.appendNode(kind: .group, parent: viewInputs.parent)
@@ -90,9 +85,7 @@ extension ViewModifier {
                     graph: graph,
                     parent: group,
                     environment: viewInputs.environment,
-                    identity: viewInputs.identity,
-                    modifierBody: viewInputs.modifierBodyList,
-                    modifierBodyView: viewInputs.modifierBody
+                    identity: viewInputs.identity
                 )
             )
             return .init(node: group)

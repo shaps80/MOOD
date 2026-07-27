@@ -32,9 +32,7 @@ import Swift
                 graph: inputs.graph,
                 parent: node,
                 environment: inputs.environment,
-                identity: inputs.identity.child(0),
-                modifierBody: inputs.modifierBody,
-                modifierBodyList: inputs.modifierBodyList
+                identity: inputs.identity.child(0)
             )
         )
         _ = body(
@@ -43,9 +41,7 @@ import Swift
                 graph: inputs.graph,
                 parent: node,
                 environment: inputs.environment,
-                identity: inputs.identity.child(1),
-                modifierBody: inputs.modifierBody,
-                modifierBodyList: inputs.modifierBodyList
+                identity: inputs.identity.child(1)
             )
         )
         return .init(node: node)

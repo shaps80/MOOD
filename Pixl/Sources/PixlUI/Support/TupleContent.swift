@@ -41,9 +41,7 @@ extension TupleContent: View where repeat each Content: View {
                     graph: inputs.graph,
                     parent: inputs.parent,
                     environment: inputs.environment,
-                    identity: inputs.identity.child(childIndex),
-                    modifierBody: inputs.modifierBody,
-                    modifierBodyView: inputs.modifierBodyView
+                    identity: inputs.identity.child(childIndex)
                 )
             )
             if !first.isValid { first = output.first }

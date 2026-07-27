@@ -95,23 +95,17 @@ public struct _ViewInputs {
     let parent: ViewGraph.NodeID
     var environment: EnvironmentValues
     let identity: _ViewIdentity
-    let modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)?
-    let modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
 
     init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
         environment: EnvironmentValues,
-        identity: _ViewIdentity = .root,
-        modifierBody: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil,
-        modifierBodyList: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil
+        identity: _ViewIdentity = .root
     ) {
         self.graph = graph
         self.parent = parent
         self.environment = environment
         self.identity = identity
-        self.modifierBody = modifierBody
-        self.modifierBodyList = modifierBodyList
     }
 
     func withIdentity(_ identity: _ViewIdentity) -> Self {
@@ -119,9 +113,7 @@ public struct _ViewInputs {
             graph: graph,
             parent: parent,
             environment: environment,
-            identity: identity,
-            modifierBody: modifierBody,
-            modifierBodyList: modifierBodyList
+            identity: identity
         )
     }
 }
@@ -141,23 +133,17 @@ public struct _ViewListInputs {
     let parent: ViewGraph.NodeID
     var environment: EnvironmentValues
     let identity: _ViewIdentity
-    let modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)?
-    let modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)?
 
     init(
         graph: _Graph,
         parent: ViewGraph.NodeID,
         environment: EnvironmentValues,
-        identity: _ViewIdentity = .root,
-        modifierBody: ((_Graph, _ViewListInputs) -> _ViewListOutputs)? = nil,
-        modifierBodyView: ((_Graph, _ViewInputs) -> _ViewOutputs)? = nil
+        identity: _ViewIdentity = .root
     ) {
         self.graph = graph
         self.parent = parent
         self.environment = environment
         self.identity = identity
-        self.modifierBody = modifierBody
-        self.modifierBodyView = modifierBodyView
     }
 
     func withIdentity(_ identity: _ViewIdentity) -> Self {
@@ -165,9 +151,7 @@ public struct _ViewListInputs {
             graph: graph,
             parent: parent,
             environment: environment,
-            identity: identity,
-            modifierBody: modifierBody,
-            modifierBodyView: modifierBodyView
+            identity: identity
         )
     }
 }
