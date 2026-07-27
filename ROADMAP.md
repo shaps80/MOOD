@@ -22,7 +22,22 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 ## Near-Term Work
 
-### Next — Bitmap Font Text
+### First Playable Game Gate
+
+Complete these in order before expanding the engine surface:
+
+1. Streaming music so playback no longer requires fully decoded resident storage.
+2. Bitmap-font text for game HUD, scoring, and PixlUI menus.
+3. Small deterministic 2D collision vocabulary suitable for the first game.
+4. Minimal 2D platformer physics: velocity integration, gravity, grounded state, and collision response.
+
+With these complete, build the first proper Retro Invaders game using the existing sprites, animation, input, PixlUI pause menu, music, sound effects, and scoring paths.
+
+### Next — Streaming Music
+
+- [ ] Add an explicit streaming audio source so music streams by default instead of requiring fully decoded resident storage.
+
+### Bitmap Font Text
 
 - [ ] Decide the initial pre-baked bitmap-font metadata format, comparing an existing format such as AngelCode BMFont with a compact Pixl-owned asset format.
 - [ ] Define the smallest font domain values: atlas texture, Unicode glyph lookup, bounds, advance, bearing, line height, and kerning.
@@ -42,14 +57,24 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 ### Audio
 
-- [ ] Add an explicit streaming audio source so music no longer requires fully decoded resident storage; music should stream by default.
 - [ ] Add compressed formats only when a playable Game need justifies decoder and packaging costs.
 - [ ] Move Web Audio graph control behind an AudioWorklet or worker boundary only if profiling shows current control-thread work affecting frames.
 
 ### Collision
 
 - [ ] Design a separate collision target before implementation, keeping bodies, broadphase ownership, and simulation outside PixlPlatform and the engine foundation.
-- [ ] Define the smallest playable 2D collision vocabulary, beginning with AABBs and deterministic query/contact results.
+- [ ] Define the smallest playable 2D collision vocabulary, beginning with AABBs and deterministic overlap/contact results required by the first game.
+- [ ] Provide direct collision queries without introducing engine-owned entities, worlds, or simulation ownership.
+
+### Minimal 2D Physics
+
+- [ ] Define lightweight game-owned 2D motion state with velocity and gravity integration over fixed updates.
+- [ ] Resolve the first game's body against static AABB platforms with deterministic position correction and velocity response.
+- [ ] Expose grounded/contact state sufficient for jumping and ordinary platformer movement.
+- [ ] Defer general rigid bodies, rotation, impulses, joints, restitution, friction, and continuous collision detection.
+
+### Later Collision Scaling
+
 - [ ] Prototype a persistent spatial-grid broadphase and measure candidate generation before selecting more complex structures.
 - [ ] Evaluate bitsets for collision filtering, worker-local deterministic result collection, and fast set merging.
 - [ ] Introduce `PixlConcurrency` only after a representative collision workload proves useful parallel depth and defines deterministic merging.

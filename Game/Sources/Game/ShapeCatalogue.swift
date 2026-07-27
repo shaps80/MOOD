@@ -146,7 +146,7 @@ struct ShapeCatalogue {
             var line = Shape(.segment(
                 from: .init(x, 0),
                 to: .init(x, size.height)
-            )).stroke(.separator, width: 1)
+            )).stroke(.opaqueSeparator, width: 1)
             line.layer = 2
             screenSpace.submit(line, transform: .identity)
         }
@@ -156,7 +156,7 @@ struct ShapeCatalogue {
             var line = Shape(.segment(
                 from: .init(0, y),
                 to: .init(size.width, y)
-            )).stroke(.separator, width: 1)
+            )).stroke(.opaqueSeparator, width: 1)
             line.layer = 2
             screenSpace.submit(line, transform: .identity)
         }
