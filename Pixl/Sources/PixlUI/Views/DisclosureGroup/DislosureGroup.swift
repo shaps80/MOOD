@@ -1,36 +1,20 @@
 import Swift
 
 public struct DislosureGroup<Label: View, Content: View>: View {
+    @Environment(\.disclosureGroupStyle) private var style
     @Binding private var isExpanded: Bool
-    let style: any DisclosureGroupStyle = AutomaticDisclosureGroupStyle()
-
+    
     let label: Label
     let content: Content
 
     public var body: some View {
-//        style.resolve(configuration: .init(
-//            label: .init(),
-//            content: .init(),
-//            isExpanded: $isExpanded
-//        ))
-
-        VStack(alignment: .leading) {
-            Button {
-                isExpanded.toggle()
-            } label: {
-                label
-                    .padding(5)
-            }
-
-            if isExpanded {
-                content
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .background {
-            Rectangle()
-                .foregroundStyle(.background.opacity(0.2))
-        }
+        style.makeBody(
+            configuration: .init(
+                label: label,
+                content: content,
+                isExpanded: $isExpanded
+            )
+        )
     }
 }
 

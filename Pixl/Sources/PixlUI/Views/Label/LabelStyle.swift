@@ -8,6 +8,19 @@ public protocol LabelStyle {
     func makeBody(configuration: Configuration) -> Body
 }
 
+public struct LabelStyleConfiguration {
+    public typealias Title = StyleContent
+    public typealias Icon = StyleContent
+
+    public let title: Title
+    public let icon: Icon
+
+    init<Title: View, Icon: View>(title: Title, icon: Icon) {
+        self.title = .init(title)
+        self.icon = .init(icon)
+    }
+}
+
 public typealias AnyLabelStyle = AnyStyle<LabelStyleConfiguration>
 
 extension AnyStyle where Configuration == LabelStyleConfiguration {
@@ -27,5 +40,15 @@ extension AnyStyle where Configuration == LabelStyleConfiguration {
 
     public static var iconOnly: Self {
         .init(IconOnlyLabelStyle())
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var labelStyle: AnyLabelStyle = .titleAndIcon
+}
+
+extension View {
+    public func labelStyle<Style: LabelStyle>(_ style: Style) -> some View {
+        environment(\.labelStyle, .init(style))
     }
 }

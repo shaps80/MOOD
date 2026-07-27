@@ -16,12 +16,6 @@ public struct Label<Title: View, Icon: View>: View {
     }
 }
 
-extension View {
-    public func labelStyle<Style: LabelStyle>(_ style: Style) -> some View {
-        environment(\.labelStyle, AnyLabelStyle(style))
-    }
-}
-
 extension Label {
     nonisolated public init(
         @ContentBuilder title: () -> Title,

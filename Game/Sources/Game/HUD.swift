@@ -10,35 +10,55 @@ public struct Debug: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Label {
-                Text("Test")
-                    .background {
-                        Rectangle()
-                    }
-            } icon: {
-                Image("checked")
-                    .renderingMode(.template)
+            DislosureGroup(
+                "Hello, world!",
+                image: isExpanded ? "checked" : "unchecked",
+                isExpanded: $isExpanded
+            ) {
+                Label {
+                    Text("Test")
+                        .background {
+                            Rectangle()
+                        }
+                } icon: {
+                    Image("checked")
+                        .renderingMode(.template)
+                }
+                .foregroundStyle(.orange)
+                .padding(5)
             }
-            .foregroundStyle(.orange)
-//            .labelStyle(.titleAndIcon)
-//            .padding(2)
-//            .highlight(.gray)
-            
-//            DislosureGroup(
-//                "\(chevron) Hello, world!",
-//                image: "unchecked",
-//                isExpanded: $isExpanded
-//            ) {
-//                Text("This is some useful text")
-//            }
-//            .onInput(bindings.space) { _, _ in
-//                isExpanded.toggle()
-//            }
+            .disclosureGroupStyle(.plain)
+            .onInput(bindings.space) { _, _ in
+                isExpanded.toggle()
+            }
         }
         .padding(5)
         .sidebar()
     }
 }
+
+public struct PlainDisclosureGroupStyle: DisclosureGroupStyle {
+    public init() { }
+
+    public func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading) {
+            Button {
+                configuration.isExpanded.toggle()
+            } label: {
+                configuration.label
+            }
+
+            if configuration.isExpanded {
+                configuration.content
+            }
+        }
+    }
+}
+
+extension DisclosureGroupStyle where Self == PlainDisclosureGroupStyle {
+    public static var plain: Self { .init() }
+}
+
 
 extension View {
     func highlight(_ color: Color = .white) -> some View {
