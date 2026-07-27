@@ -16,7 +16,7 @@ public struct HUD: View {
             }
 
             Toggle(isOn: $isOn) {
-                Image("checked")
+                Image(isOn ? "checked" : "unchecked")
             }
             .onInput(bindings.space) { input, _ in
                 isOn.toggle()

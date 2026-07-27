@@ -27,6 +27,7 @@ struct _OnInputModifier: ViewModifier {
 }
 
 public extension View {
+    @inline(never)
     func onInput(
         _ input: Input,
         phases: [Input.Phase] = [.down],
@@ -35,6 +36,7 @@ public extension View {
         onInput([input], phases: phases, perform: action)
     }
 
+    @inline(never)
     func onInput(
         _ inputs: [Input],
         phases: [Input.Phase] = [.down],
