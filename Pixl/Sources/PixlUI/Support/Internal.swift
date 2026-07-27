@@ -35,6 +35,17 @@ public final class _Graph {
         return id
     }
 
+    func hideSubtree(_ id: ViewGraph.NodeID) {
+        guard id.isValid else { return }
+        nodes[Int(id.rawValue)].isHidden = true
+        var child = nodes[Int(id.rawValue)].firstChild
+        while child.isValid {
+            let next = nodes[Int(child.rawValue)].nextSibling
+            hideSubtree(child)
+            child = next
+        }
+    }
+
         func appendNode(
         kind: ViewGraph.Node.Kind,
         payload: Int32 = -1,

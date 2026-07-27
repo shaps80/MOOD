@@ -17,6 +17,26 @@ public struct HUD: View {
 
             Toggle(isOn: $isOn) {
                 Image(isOn ? "checked" : "unchecked")
+            }
+            .hidden()
+        }
+    }
+}
+
+public struct HUDOverlay: View {
+    let bindings: PlayerBindings = .init()
+    @State private var isOn: Bool = true
+
+    public var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Text("First")
+                Text("Second")
+            }
+            .hidden()
+
+            Toggle(isOn: $isOn) {
+                Image(isOn ? "checked" : "unchecked")
                     .renderingMode(.template)
                     .tint(.purple)
             }

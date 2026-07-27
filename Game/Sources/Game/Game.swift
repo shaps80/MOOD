@@ -7,7 +7,8 @@ struct Game: Pixl.Game {
     private var player: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 //    private let cameraBindings: CameraBindings = .init()
-    private let hud = Scene(HUD())
+    private let bg = Scene(HUD())
+    private let fg = Scene(HUDOverlay())
     private var shapeCatalogue: ShapeCatalogue
 //    private var gameState: GameStateHandler
 
@@ -50,7 +51,7 @@ struct Game: Pixl.Game {
         )
 
         try context.render(
-            scene: hud,
+            scene: bg,
             to: output,
             frame: frame
         )
@@ -59,6 +60,12 @@ struct Game: Pixl.Game {
 
         try context.render(
             through: camera,
+            to: output,
+            frame: frame
+        )
+
+        try context.render(
+            scene: fg,
             to: output,
             frame: frame
         )

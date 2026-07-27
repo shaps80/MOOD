@@ -67,6 +67,7 @@ final class SceneCompilation {
         submissions.reserveCapacity(graph.primitives.count + graph.shapes.count)
 
         for (index, node) in graph.nodes.enumerated() {
+            guard !node.isHidden else { continue }
             let frame = layout.frames[index]
             guard frame.size.width > 0, frame.size.height > 0 else { continue }
 

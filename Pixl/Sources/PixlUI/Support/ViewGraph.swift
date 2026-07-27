@@ -37,6 +37,7 @@ package struct ViewGraph {
         package let kind: Kind
         package let payload: Int32
         package let parent: NodeID
+        package internal(set) var isHidden = false
         package internal(set) var firstChild: NodeID = .invalid
         package internal(set) var lastChild: NodeID = .invalid
         package internal(set) var nextSibling: NodeID = .invalid
