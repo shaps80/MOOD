@@ -26,17 +26,17 @@ public struct _PaddingModifier: ViewModifier {
 }
 
 extension View {
-    @ViewBuilder
+    @ContentBuilder
     public func padding(_ insets: EdgeInsets) -> some View {
         modifier(_PaddingModifier(insets: insets))
     }
 
-    @ViewBuilder
+    @ContentBuilder
     public func padding(_ length: Float) -> some View {
         padding(.all, length)
     }
 
-    @ViewBuilder
+    @ContentBuilder
     public func padding(_ edges: Edge.Set = .all, _ length: Float? = nil) -> some View {
         let length = length ?? 10
         padding(.init(

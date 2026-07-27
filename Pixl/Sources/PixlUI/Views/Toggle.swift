@@ -28,7 +28,7 @@ extension Toggle where Label == PixlUI.Label<Text, Image> {
 }
 
 extension Toggle {
-    nonisolated public init(isOn: Binding<Bool>, @ViewBuilder _ label: () -> Label) {
+    nonisolated public init(isOn: Binding<Bool>, @ContentBuilder _ label: () -> Label) {
         self._isOn = isOn
         self.label = label()
     }

@@ -3,6 +3,7 @@ import Swift
 public protocol ShapeStyle: Sendable {
     associatedtype Resolved: ShapeStyle = Never
     func resolve(in environment: EnvironmentValues) -> Resolved
+    func opacity(_ opacity: Float) -> OpacityShapeStyleModifier<Self>
 }
 
 extension ShapeStyle where Resolved == Never {

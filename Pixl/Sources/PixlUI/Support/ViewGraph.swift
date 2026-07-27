@@ -11,6 +11,14 @@ package struct ViewGraph {
 
     package enum ResolvedStyle: Hashable, Sendable {
         case color(Color)
+
+        package func applyingOpacity(_ opacity: Float) -> Self {
+            switch self {
+            case .color(var color):
+                color.opacity *= opacity
+                return .color(color)
+            }
+        }
     }
 
     package struct NodeID: Hashable, Sendable {

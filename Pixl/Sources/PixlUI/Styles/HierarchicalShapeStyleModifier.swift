@@ -16,9 +16,6 @@ import Swift
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
         let baseID = _resolveShapeStyle(base, in: graph, environment: environment)
-        guard case .color(var color) = graph.styles[Int(baseID.rawValue)] else {
-            return baseID
-        }
         let opacity: Float
         switch level {
         case 1: opacity = 0.6
@@ -26,8 +23,8 @@ import Swift
         case 3: opacity = 0.16
         default: opacity = 0.08
         }
-        color.opacity *= opacity
-        return graph.internStyle(.color(color))
+        let style = graph.styles[Int(baseID.rawValue)].applyingOpacity(opacity)
+        return graph.internStyle(style)
     }
 }
 

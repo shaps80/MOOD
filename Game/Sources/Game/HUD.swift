@@ -1,58 +1,35 @@
 import PixlUI
-import Foundation
 
-public struct HUD: View {
-    let bindings: PlayerBindings = .init()
-    @State private var isOn: Bool = true
+public struct Debug: View {
+    private let bindings: PlayerBindings = .init()
+    @State private var isExpanded: Bool = false
 
-    public var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                Text("First")
-                    .highlight(.green)
-
-                Text("Second")
-                    .highlight(.blue)
-            }
-
-            Toggle(isOn: $isOn) {
-                Image(isOn ? "checked" : "unchecked")
-            }
-            .hidden()
-        }
+    private var chevron: String {
+        isExpanded ? "▼" : "▶"
     }
-}
-
-public struct HUDOverlay: View {
-    let bindings: PlayerBindings = .init()
-    @State private var isOn: Bool = true
 
     public var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                Text("First")
-                Text("Second")
+        VStack(alignment: .leading, spacing: 5) {
+            DislosureGroup(
+                "\(chevron) Hello, world!",
+                isExpanded: $isExpanded
+            ) {
+                Text("This is some useful text")
             }
-            .hidden()
-
-            Toggle(isOn: $isOn) {
-                Image(isOn ? "checked" : "unchecked")
-                    .renderingMode(.template)
-                    .tint(.purple)
-            }
-            .onInput(bindings.space) { input, _ in
-                isOn.toggle()
+            .onInput(bindings.space) { _, _ in
+                isExpanded.toggle()
             }
         }
+        .padding(5)
+        .sidebar()
     }
 }
 
 extension View {
-    func highlight(_ color: Color) -> some View {
+    func highlight(_ color: Color = .white) -> some View {
         background {
             Rectangle()
-                .stroke(color, lineWidth: 1)
-                .foregroundStyle(color.opacity(0.3))
+                .foregroundStyle(color.opacity(0.5))
         }
     }
 }

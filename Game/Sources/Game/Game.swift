@@ -6,19 +6,16 @@ import PixlUI
 struct Game: Pixl.Game {
     private var player: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
-//    private let cameraBindings: CameraBindings = .init()
-    private let bg = Scene(HUD())
-    private let fg = Scene(HUDOverlay())
+
+    private let debug = Scene(Debug())
     private var shapeCatalogue: ShapeCatalogue
-//    private var gameState: GameStateHandler
+    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-//        self.gameState = try .init(context: context)
-//        cameraBindings.bind(to: context.inputs)
+        self.gameState = try .init(context: context)
 
         player = try .init(context: context)
         shapeCatalogue = .init(context: context)
-
     }
 
     func render(
@@ -50,12 +47,6 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-        try context.render(
-            scene: bg,
-            to: output,
-            frame: frame
-        )
-
         player.submit(to: context.renderQueue)
 
         try context.render(
@@ -65,7 +56,7 @@ struct Game: Pixl.Game {
         )
 
         try context.render(
-            scene: fg,
+            scene: debug,
             to: output,
             frame: frame
         )
