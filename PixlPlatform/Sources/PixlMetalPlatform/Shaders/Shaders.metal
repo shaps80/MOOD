@@ -188,14 +188,16 @@ static float pixlRoundedBoxDistance(float2 point, float2 halfSize, float roundin
 }
 
 static float pixlContinuousRoundedBoxDistance(float2 point, float2 halfSize, float rounding) {
-    float2 q = abs(point) - halfSize;
+    float2 outerHalfSize = halfSize + rounding;
+    float extent = min(rounding * 1.5286648, min(outerHalfSize.x, outerHalfSize.y));
+    float2 q = abs(point) - (outerHalfSize - extent);
     float2 outside = max(q, 0.0);
-    float circular = length(outside) + min(max(q.x, q.y), 0.0) - rounding;
     float2 outside2 = outside * outside;
-    float2 outside4 = outside2 * outside2;
-    float continuous = sqrt(sqrt(max(outside4.x + outside4.y, 0.0)))
-        + min(max(q.x, q.y), 0.0) - rounding;
-    return mix(circular, continuous, 0.28 * step(0.0001, rounding));
+    float continuous = pow(
+        max(outside2.x * outside.x + outside2.y * outside.y, 0.0),
+        1.0 / 3.0
+    );
+    return continuous + min(max(q.x, q.y), 0.0) - extent;
 }
 
 static float pixlSegmentDistance(float2 p, float2 a, float2 b) {
