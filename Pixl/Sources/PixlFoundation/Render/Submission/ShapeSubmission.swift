@@ -79,6 +79,8 @@ public enum ShapeKind: UInt32, Hashable, Sendable {
     case coolS
     /// Signed distance to a waved ring.
     case circleWave
+    /// Signed distance to a rectangle with independent continuous corner radii.
+    case unevenRoundedRectangle
 }
 
 /// Primitive, camera-independent CPU snapshot of one submitted analytic shape.

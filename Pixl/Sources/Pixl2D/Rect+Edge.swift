@@ -1,4 +1,3 @@
-import PixlGraphics
 import Swift
 
 public extension Rect {
@@ -6,11 +5,11 @@ public extension Rect {
         var origin = origin
         var size = size
 
-        if edges.contains(.left) {
+        if edges.contains(.leading) {
             origin.x += amount
             size.x -= amount
         }
-        if edges.contains(.right) { size.x -= amount }
+        if edges.contains(.trailing) { size.x -= amount }
         if edges.contains(.top) {
             origin.y += amount
             size.y -= amount

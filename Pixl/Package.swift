@@ -137,7 +137,7 @@ let package = Package(
         ),
         .target(
             name: "PixlUI",
-            dependencies: ["PixlGraphics", "PixlInput", "PixlMacros"],
+            dependencies: ["Pixl2D", "PixlGraphics", "PixlInput", "PixlMacros"],
             swiftSettings: defaultNonisolated()
         ),
         .testTarget(

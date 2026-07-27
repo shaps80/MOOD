@@ -191,6 +191,15 @@ fn pixlContinuousRoundedBoxDistance(point: vec2f, halfSize: vec2f, rounding: f32
     return continuous + min(max(q.x, q.y), 0.0) - extent;
 }
 
+fn pixlUnevenContinuousRoundedBoxDistance(point:vec2f,halfSize:vec2f,radii:vec4f)->f32{
+    var radius=radii.x;
+    if(point.y<0.){radius=select(radii.x,radii.y,point.x>=0.);}else{radius=select(radii.z,radii.w,point.x>=0.);}
+    let extent=min(radius*1.5286648,min(halfSize.x,halfSize.y));
+    let q=abs(point)-(halfSize-extent);let outside=max(q,vec2f(0.));let outside2=outside*outside;
+    let continuous=pow(max(outside2.x*outside.x+outside2.y*outside.y,0.),1./3.);
+    return continuous+min(max(q.x,q.y),0.)-extent;
+}
+
 fn pixlSegmentDistance(p:vec2f,a:vec2f,b:vec2f)->f32{let pa=p-a;let ba=b-a;let h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
 fn pixlRhombusDistance(p0:vec2f,b:vec2f)->f32{let p=abs(p0);let h=clamp((-2.*dot(p,vec2f(b.x,-b.y))+dot(b,vec2f(b.x,-b.y)))/dot(b,b),-1.,1.);let d=length(p-.5*b*vec2f(1.-h,1.+h));return d*sign(p.x*b.y+p.y*b.x-b.x*b.y);}
 fn pixlTrapezoidDistance(p0:vec2f,r1:f32,r2:f32,he:f32)->f32{let k1=vec2f(r2,he);let k2=vec2f(r2-r1,2.*he);let p=vec2f(abs(p0.x),p0.y);let ca=vec2f(p.x-min(p.x,select(r2,r1,p.y<0.)),abs(p.y)-he);let cb=p-k1+k2*clamp(dot(k1-p,k2)/dot(k2,k2),0.,1.);let s=select(1.,-1.,cb.x<0.&&ca.y<0.);return s*sqrt(min(dot(ca,ca),dot(cb,cb)));}
@@ -295,6 +304,10 @@ fn pixlExtendedShapeFragment(input: ExtendedShapeVertexOutput) -> @location(0) v
         distance = pixlTriangleDistance(
             input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy
         );
+    } else if kind == 38u {
+        distance = pixlUnevenContinuousRoundedBoxDistance(
+            input.localPosition,input.parameters.xy,vec4f(input.parameters.zw,input.extendedParameters.xy)
+        );
     }
     distance-=input.style.w;
     let width = input.style.y;
@@ -311,6 +324,7 @@ fn pixlGradientExtendedShapeFragment(input: ExtendedShapeVertexOutput) -> @locat
     let packed=u32(input.style.x+.5);let kind=packed&63u;let row=((packed/64u)&255u)-1u;let placement=packed/16384u;
     var distance=pixlQuadraticBezierDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy);
     if(kind==8u){distance=pixlTriangleDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy);}
+    else if(kind==38u){distance=pixlUnevenContinuousRoundedBoxDistance(input.localPosition,input.parameters.xy,vec4f(input.parameters.zw,input.extendedParameters.xy));}
     distance-=input.style.w;let width=input.style.y;let isSmooth=input.style.z>2.;let alignment=input.style.z-select(0.,4.,isSmooth);let aa=max(fwidth(distance)*.5,.00001);let outer=select(select(width*.5,width,alignment>.5),0.,alignment<-.5);let inner=select(select(-width*.5,0.,alignment>.5),-width,alignment<-.5);let total=select(select(0.,1.,distance<=outer),1.-smoothstep(outer-aa,outer+aa,distance),isSmooth);let fillCoverage=select(select(0.,1.,distance<=inner),1.-smoothstep(inner-aa,inner+aa,distance),isSmooth);let strokeCoverage=select(0.,max(total-fillCoverage,0.),width>0.);
     let start=input.fillColor.xy;let end=input.fillColor.zw;let delta=end-start;var t=dot(input.localPosition-start,delta)/dot(delta,delta);
     if(placement==1u){t=length(input.localPosition-start)/input.fillColor.z;}else if(placement==2u){t=fract((atan2(input.localPosition.y-start.y,input.localPosition.x-start.x)-input.fillColor.z)/6.28318530718);}t=clamp(t,0.,1.);

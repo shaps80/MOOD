@@ -200,6 +200,14 @@ static float pixlContinuousRoundedBoxDistance(float2 point, float2 halfSize, flo
     return continuous + min(max(q.x, q.y), 0.0) - extent;
 }
 
+static float pixlUnevenContinuousRoundedBoxDistance(float2 point,float2 halfSize,float4 radii) {
+    float radius=point.y<0.0?(point.x<0.0?radii.x:radii.y):(point.x<0.0?radii.z:radii.w);
+    float extent=min(radius*1.5286648,min(halfSize.x,halfSize.y));
+    float2 q=abs(point)-(halfSize-extent),outside=max(q,0.0),outside2=outside*outside;
+    float continuous=pow(max(outside2.x*outside.x+outside2.y*outside.y,0.0),1.0/3.0);
+    return continuous+min(max(q.x,q.y),0.0)-extent;
+}
+
 static float pixlSegmentDistance(float2 p, float2 a, float2 b) {
     float2 pa = p - a, ba = b - a;
     float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
@@ -398,9 +406,12 @@ fragment float4 pixlGradientShapeFragment(
 
 fragment float4 pixlExtendedShapeFragment(ExtendedShapeVertexOutput input [[stage_in]]) {
     uint kind = uint(input.style.x + 0.5);
-    float distance = (kind == 8
+    float distance = kind == 8
         ? pixlTriangleDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy)
-        : pixlQuadraticBezierDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy))-input.style.w;
+        : kind == 38
+            ? pixlUnevenContinuousRoundedBoxDistance(input.localPosition,input.parameters.xy,float4(input.parameters.zw,input.extendedParameters.xy))
+            : pixlQuadraticBezierDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy);
+    distance-=input.style.w;
     float width = input.style.y;
     bool smooth=input.style.z>2.0;float alignment=input.style.z-(smooth?4.0:0.0);float2 coverages=pixlShapeCoverages(distance,width,alignment,smooth);float fillCoverage=coverages.x,strokeCoverage=coverages.y;
     float4 fill=input.fillColor*fillCoverage,stroke=input.strokeColor*strokeCoverage;
@@ -413,7 +424,7 @@ fragment float4 pixlGradientExtendedShapeFragment(
     sampler atlasSampler [[sampler(1)]]
 ) {
     uint packed=uint(input.style.x+.5),kind=packed&63u,row=((packed/64u)&255u)-1u,placement=packed/16384u;
-    float distance=(kind==8?pixlTriangleDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy):pixlQuadraticBezierDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy))-input.style.w;
+    float distance=kind==8?pixlTriangleDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy):kind==38?pixlUnevenContinuousRoundedBoxDistance(input.localPosition,input.parameters.xy,float4(input.parameters.zw,input.extendedParameters.xy)):pixlQuadraticBezierDistance(input.localPosition,input.parameters.xy,input.parameters.zw,input.extendedParameters.xy);distance-=input.style.w;
     float width=input.style.y;
     bool smooth=input.style.z>2.0;float alignment=input.style.z-(smooth?4.0:0.0);float2 coverages=pixlShapeCoverages(distance,width,alignment,smooth);float fillCoverage=coverages.x,strokeCoverage=coverages.y;
     float2 start=input.fillColor.xy,end=input.fillColor.zw,delta=end-start;

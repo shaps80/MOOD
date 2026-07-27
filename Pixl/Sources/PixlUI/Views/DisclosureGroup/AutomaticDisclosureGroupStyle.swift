@@ -1,4 +1,5 @@
 import Swift
+import Pixl2D
 
 public struct AutomaticDisclosureGroupStyle: DisclosureGroupStyle {
     public init() { }
@@ -16,7 +17,7 @@ public struct AutomaticDisclosureGroupStyle: DisclosureGroupStyle {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(.background.opacity(0.2), in: .rect)
+        .background(.gray, in: .rect(cornerRadius: 9))
     }
 }
 

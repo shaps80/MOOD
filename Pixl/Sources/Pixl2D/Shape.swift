@@ -12,6 +12,8 @@ public struct Shape: Hashable, Sendable {
         case circle(Circle)
         /// Rectangle geometry.
         case rectangle(Rectangle)
+        /// Rectangle geometry with independent continuous corner radii.
+        case unevenRoundedRectangle(UnevenRoundedRectangle)
         /// Finite line-segment geometry.
         case segment(Segment)
         /// Rhombus geometry.
@@ -161,6 +163,11 @@ public struct Shape: Hashable, Sendable {
         precondition(rounding.isFinite && rounding >= 0)
         self.init(geometry: .rectangle(geometry))
         self.rounding = rounding
+    }
+
+    /// Creates a rectangle shape with independent continuous corner radii.
+    public init(_ geometry: UnevenRoundedRectangle) {
+        self.init(geometry: .unevenRoundedRectangle(geometry))
     }
 
     /// Creates a segment shape. Use `Shape(.segment)` for the canonical unit segment.

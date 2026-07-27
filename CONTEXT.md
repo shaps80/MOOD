@@ -18,7 +18,7 @@ Game-facing value initializers require only the minimum structurally necessary i
 The domain libraries remain independent horizontal streams:
 
 ```text
-PixlUI -> PixlInput + PixlGraphics
+PixlUI -> Pixl2D + PixlInput + PixlGraphics
 Pixl2D -> PixlGraphics + PixlMath
 Pixl3D -> PixlGraphics
 future PixlPhysics -> PixlMath

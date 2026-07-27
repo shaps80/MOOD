@@ -26,6 +26,23 @@ extension ShapeSubmission {
                 0
             )
             kind = .rectangle
+        case .unevenRoundedRectangle(let rectangle):
+            let localSize = rectangle.size ?? .one
+            size = .init(Float(localSize.x), Float(localSize.y))
+            let radii = rectangle.cornerRadii.normalized(to: size)
+            parameters = .init(
+                size.x * 0.5,
+                size.y * 0.5,
+                radii.topLeading,
+                radii.topTrailing
+            )
+            extendedParameters = .init(
+                radii.bottomLeading,
+                radii.bottomTrailing,
+                0,
+                0
+            )
+            kind = .unevenRoundedRectangle
         case .segment(let segment):
             let minimum = SIMD2<Float>(Float(min(segment.start.x, segment.end.x)), Float(min(segment.start.y, segment.end.y)))
             let maximum = SIMD2<Float>(Float(max(segment.start.x, segment.end.x)), Float(max(segment.start.y, segment.end.y)))

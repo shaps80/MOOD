@@ -128,6 +128,21 @@ final class SceneCompilation {
                             cornerRadius: cornerRadius
                         ))
                     )
+                case .unevenRoundedRectangle(let rect, let cornerRadii):
+                    let fill = color(for: shape.fill, in: graph)
+                    let stroke = shape.stroke.map {
+                        color(for: $0.style, in: graph)
+                    } ?? .clear
+                    guard fill.opacity > 0 || stroke.opacity > 0 else { continue }
+                    submissions.append(
+                        .shape(unevenRoundedRectangle(
+                            frame: rect,
+                            cornerRadii: cornerRadii,
+                            fill: fill,
+                            stroke: stroke,
+                            strokeWidth: shape.stroke?.lineWidth ?? 0
+                        ))
+                    )
                 case .circle(let rect):
                     let fill = color(for: shape.fill, in: graph)
                     let stroke = shape.stroke.map {
@@ -225,6 +240,51 @@ final class SceneCompilation {
             fillColor: fill.premultiplied,
             strokeColor: stroke.premultiplied,
             kind: .circle,
+            strokeWidth: strokeWidth,
+            strokeAlignment: 0,
+            smoothAntialiasing: 1,
+            blendMode: .premultiplied,
+            layer: 0,
+            order: 0
+        )
+    }
+
+    private static func unevenRoundedRectangle(
+        frame: Rect,
+        cornerRadii: RectangleCornerRadii,
+        fill: PixlGraphics.Color,
+        stroke: PixlGraphics.Color,
+        strokeWidth: Float
+    ) -> ShapeSubmission {
+        let halfSize = frame.size * 0.5
+        let center = frame.origin + halfSize
+        let radii = cornerRadii.normalized(to: frame.size)
+        let strokeWidth = max(0, strokeWidth)
+        let extent = halfSize + SIMD2<Float>(repeating: strokeWidth * 0.5)
+        let quadSize = extent * 2
+
+        return ShapeSubmission(
+            boundsMinimum: center - extent,
+            boundsMaximum: center + extent,
+            transformX: .init(quadSize.x, 0),
+            transformY: .init(0, quadSize.y),
+            transformTranslation: center,
+            quadHalfExtent: extent,
+            parameters: .init(
+                halfSize.x,
+                halfSize.y,
+                radii.topLeading,
+                radii.topTrailing
+            ),
+            extendedParameters: .init(
+                radii.bottomLeading,
+                radii.bottomTrailing,
+                0,
+                0
+            ),
+            fillColor: fill.premultiplied,
+            strokeColor: stroke.premultiplied,
+            kind: .unevenRoundedRectangle,
             strokeWidth: strokeWidth,
             strokeAlignment: 0,
             smoothAntialiasing: 1,

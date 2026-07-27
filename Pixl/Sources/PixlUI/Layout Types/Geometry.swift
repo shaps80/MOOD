@@ -1,1 +1,1 @@
-@_exported import PixlGraphics
+@_exported import Pixl2D

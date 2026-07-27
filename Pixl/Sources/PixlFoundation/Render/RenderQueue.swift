@@ -632,7 +632,9 @@ public final class RenderQueue {
                 shapeInstance = Self.emptyShapeInstance
                 extendedShapeInstance = Self.emptyExtendedShapeInstance
             case .shape(let source):
-                let isExtended = source.kind == .triangle || source.kind == .quadraticBezier
+                let isExtended = source.kind == .triangle
+                    || source.kind == .quadraticBezier
+                    || source.kind == .unevenRoundedRectangle
                 materialSlot = resolveShapeMaterial(.init(
                     blendMode: source.blendMode,
                     usesGradient: source.gradientSlot != .max
