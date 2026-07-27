@@ -65,7 +65,7 @@ struct Game: Pixl.Game {
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
-//        gameState.didEnter(phase, context: context)
+        gameState.didEnter(phase, context: context)
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
@@ -74,9 +74,7 @@ struct Game: Pixl.Game {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
-//        camera.center += cameraBindings.direction * (600 * Float(time.delta))
-
-//        gameState.update(time, context: context)
+        gameState.update(time, context: context)
         shapeCatalogue.update(time, context: context)
     }
 

@@ -5,7 +5,7 @@ public struct Debug: View {
     @State private var isExpanded: Bool = false
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        DisclosureGroup(isExpanded: $isExpanded) {
             VStack(spacing: 28) {
                 Rectangle()
                     .frame(width: 200, height: 200)
@@ -16,33 +16,19 @@ public struct Debug: View {
                     .foregroundStyle(.red)
             }
             .padding()
-//            DisclosureGroup(isExpanded: $isExpanded) {
-//                Label {
-//                    Text("Test")
-//                        .background {
-//                            Rectangle()
-//                        }
-//                } icon: {
-//                    Image("checked")
-//                }
-//                .renderingMode(.template)
-//                .foregroundStyle(.orange)
-//                .padding(5)
-//            } label: {
-//                Label {
-//                    Text("Hello, world!")
-//                } icon: {
-//                    ZStack {
-//                        Image("unchecked").hidden()
-//                        Text(isExpanded ? "▼" : "▶")
-//                            .highlight(.green)
-//                    }
-//                }
-//            }
-//            .background(isExpanded ? .red : .gray, in: .rect)
-//            .onInput(bindings.space) { _, _ in
-//                isExpanded.toggle()
-//            }
+        } label: {
+            Label {
+                Text("Hello, world!")
+            } icon: {
+                ZStack {
+                    Image("unchecked").hidden()
+                    Text(isExpanded ? "▼" : "▶")
+                        .highlight(.green)
+                }
+            }
+        }
+        .onInput(bindings.space) { _, _ in
+            isExpanded.toggle()
         }
         .padding(5)
         .sidebar()
