@@ -14,7 +14,7 @@ private struct SidebarModifier: ViewModifier {
             .frame(maxWidth: 300, maxHeight: .infinity, alignment: .top)
             .background {
                 Rectangle()
-                    .foregroundStyle(.black.opacity(0.6))
+                    .foregroundStyle(.gray6.opacity(0.8))
             }
             .frame(
                 maxWidth: .infinity,
