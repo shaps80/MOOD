@@ -12,18 +12,8 @@ public struct _ForegroundStyleModifier<Style: ShapeStyle>: ViewModifier {
         body: @escaping (_Graph, _ViewInputs) -> _ViewOutputs
     ) -> _ViewOutputs {
         var inputs = inputs
-        let style = _resolveShapeStyle(
-            modifier.value.style,
-            in: inputs.graph,
-            environment: inputs.environment
-        )
-        inputs.environment.foregroundStyle = style
-        let outputs = body(inputs.graph, inputs)
-        let node = inputs.graph.nodes[Int(outputs.node.rawValue)]
-        if node.kind == .shape {
-            inputs.graph.shapes[Int(node.payload)].fill = style
-        }
-        return outputs
+        inputs.environment.foregroundStyle = .init(modifier.value.style)
+        return body(inputs.graph, inputs)
     }
 
     public static func _makeViewList(
@@ -32,20 +22,8 @@ public struct _ForegroundStyleModifier<Style: ShapeStyle>: ViewModifier {
         body: @escaping (_Graph, _ViewListInputs) -> _ViewListOutputs
     ) -> _ViewListOutputs {
         var inputs = inputs
-        let style = _resolveShapeStyle(
-            modifier.value.style,
-            in: inputs.graph,
-            environment: inputs.environment
-        )
-        inputs.environment.foregroundStyle = style
-        let outputs = body(inputs.graph, inputs)
-        if outputs.count == 1, outputs.first.isValid {
-            let node = inputs.graph.nodes[Int(outputs.first.rawValue)]
-            if node.kind == .shape {
-                inputs.graph.shapes[Int(node.payload)].fill = style
-            }
-        }
-        return outputs
+        inputs.environment.foregroundStyle = .init(modifier.value.style)
+        return body(inputs.graph, inputs)
     }
 }
 

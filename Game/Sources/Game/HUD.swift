@@ -12,12 +12,15 @@ public struct Debug: View {
         VStack(alignment: .leading, spacing: 5) {
             Label {
                 Text("Test")
-                    .highlight()
+                    .background {
+                        Rectangle()
+                    }
             } icon: {
                 Image("checked")
-                    .highlight()
+                    .renderingMode(.template)
             }
-            .labelStyle(.titleOnly)
+            .foregroundStyle(.orange)
+//            .labelStyle(.titleAndIcon)
 //            .padding(2)
 //            .highlight(.gray)
             

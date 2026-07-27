@@ -33,8 +33,7 @@ struct _HiddenModifier: ViewModifier {
 }
 
 public extension View {
-    @inline(never)
-    func hidden() -> some View {
+    nonisolated func hidden() -> some View {
         modifier(_HiddenModifier())
     }
 }

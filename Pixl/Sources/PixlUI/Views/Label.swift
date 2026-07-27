@@ -1,30 +1,24 @@
 import Swift
 
 public struct Label<Title: View, Icon: View>: View {
+    @Environment(\.labelStyle) private var style
+
     let title: Title
     let icon: Icon
 
     public var body: some View {
-        TitleAndIconLabelStyle()
-            .makeBody(
-                configuration: .init(
-                    title: title,
-                    icon: icon
-                )
+        style.makeBody(
+            configuration: .init(
+                title: title,
+                icon: icon
             )
+        )
     }
 }
 
-extension Label {
-    @inline(never)
+extension View {
     public func labelStyle<Style: LabelStyle>(_ style: Style) -> some View {
-        AnyStyle<LabelStyleConfiguration>(style)
-            .makeBody(
-                configuration: .init(
-                    title: title,
-                    icon: icon
-                )
-            )
+        environment(\.labelStyle, AnyLabelStyle(style))
     }
 }
 
@@ -44,7 +38,10 @@ extension Label where Title == Text, Icon == Image {
         self.icon = .init(name)
     }
 
-    nonisolated public init(_ title: some StringProtocol, @ViewBuilder icon: () -> Icon) {
+    nonisolated public init(
+        _ title: some StringProtocol,
+        @ViewBuilder icon: () -> Icon
+    ) {
         self.title = .init(title)
         self.icon = icon()
     }

@@ -29,14 +29,18 @@ extension ViewModifier {
         inputs: _ViewInputs,
         body: @escaping (_Graph, _ViewInputs) -> _ViewOutputs
     ) -> _ViewOutputs {
-        let content = _StateRuntime.$context.withValue(
-            .init(
-                store: modifier.graph.stateStore,
-                path: inputs.identity.path,
-                viewType: ObjectIdentifier(Self.self)
-            )
+        let content = _EnvironmentRuntime.$context.withValue(
+            .init(values: inputs.environment)
         ) {
-            modifier.value.body(content: .init())
+            _StateRuntime.$context.withValue(
+                .init(
+                    store: modifier.graph.stateStore,
+                    path: inputs.identity.path,
+                    viewType: ObjectIdentifier(Self.self)
+                )
+            ) {
+                modifier.value.body(content: .init())
+            }
         }
         let bodyList: (_Graph, _ViewListInputs) -> _ViewListOutputs = { graph, inputs in
             let output = body(
@@ -97,6 +101,7 @@ extension ViewModifier {
     }
 }
 
+extension Never: ViewModifier { }
 extension ViewModifier where Body == Never {
     public func body(content: Content) -> Never { fatalError() }
 }

@@ -9,7 +9,10 @@ import Swift
         in graph: _Graph,
         environment: EnvironmentValues
     ) -> ViewGraph.StyleID {
-        environment.tint
+        environment.tint.resolveStyle(
+            in: graph,
+            environment: environment
+        )
     }
 }
 

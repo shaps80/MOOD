@@ -8,7 +8,10 @@ public struct Text: View {
         inputs.graph.primitives.append(
             .text(.init(
                 content: view.value.content,
-                foregroundStyle: inputs.environment.foregroundStyle
+                foregroundStyle: inputs.environment.foregroundStyle.resolveStyle(
+                    in: inputs.graph,
+                    environment: inputs.environment
+                )
             ))
         )
         return .init(

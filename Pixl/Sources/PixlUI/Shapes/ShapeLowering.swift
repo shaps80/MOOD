@@ -6,6 +6,14 @@ func _makeShapeView<S: _Shape, Stroke: ShapeStyle>(
     lineWidth: Float,
     inputs: _ViewInputs
 ) -> _ViewOutputs {
+    let fill = if stroke == nil {
+        inputs.environment.foregroundStyle.resolveStyle(
+            in: inputs.graph,
+            environment: inputs.environment
+        )
+    } else {
+        inputs.graph.internStyle(.color(.clear))
+    }
     let stroke = stroke.map {
         _ShapeStroke(
             style: _resolveShapeStyle($0, in: inputs.graph, environment: inputs.environment),
@@ -14,7 +22,7 @@ func _makeShapeView<S: _Shape, Stroke: ShapeStyle>(
     }
     let record = _ShapeRecord(
         shape: _ShapeBox(shape),
-        fill: inputs.graph.internStyle(.color(.clear)),
+        fill: fill,
         stroke: stroke
     )
     let payload = Int32(inputs.graph.shapes.count)

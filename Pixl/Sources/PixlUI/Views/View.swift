@@ -14,14 +14,18 @@ public protocol View {
 
 extension View {
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
-        let body = _StateRuntime.$context.withValue(
-            .init(
-                store: view.graph.stateStore,
-                path: inputs.identity.path,
-                viewType: ObjectIdentifier(Self.self)
-            )
+        let body = _EnvironmentRuntime.$context.withValue(
+            .init(values: inputs.environment)
         ) {
-            view.value.body
+            _StateRuntime.$context.withValue(
+                .init(
+                    store: view.graph.stateStore,
+                    path: inputs.identity.path,
+                    viewType: ObjectIdentifier(Self.self)
+                )
+            ) {
+                view.value.body
+            }
         }
         return Body._makeView(
             view: .init(body, graph: view.graph),
@@ -56,7 +60,6 @@ extension Never: View {
 public struct EmptyView: View {
     @inlinable public init() { }
 
-    public var body: Never { fatalError() }
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
         .init(node: inputs.graph.appendNode(kind: .empty, parent: inputs.parent))
     }
@@ -67,6 +70,10 @@ public struct EmptyView: View {
     ) -> _ViewListOutputs {
         .init()
     }
+}
+
+extension View where Body == Never {
+    public var body: Never { fatalError() }
 }
 
 public typealias EmptyContent = EmptyView

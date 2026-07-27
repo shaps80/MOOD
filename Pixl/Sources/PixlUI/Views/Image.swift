@@ -25,7 +25,10 @@ public struct Image: View {
             .image(.init(
                 name: view.value.name,
                 renderingMode: view.value.mode,
-                tint: inputs.environment.tint,
+                tint: inputs.environment.tint.resolveStyle(
+                    in: inputs.graph,
+                    environment: inputs.environment
+                ),
                 asset: nil
             ))
         )

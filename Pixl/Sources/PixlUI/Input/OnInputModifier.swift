@@ -27,8 +27,7 @@ struct _OnInputModifier: ViewModifier {
 }
 
 public extension View {
-    @inline(never)
-    func onInput(
+    nonisolated func onInput(
         _ input: Input,
         phases: [Input.Phase] = [.down],
         perform action: @escaping (Input, Input.Phase) -> Void
@@ -36,8 +35,7 @@ public extension View {
         onInput([input], phases: phases, perform: action)
     }
 
-    @inline(never)
-    func onInput(
+    nonisolated func onInput(
         _ inputs: [Input],
         phases: [Input.Phase] = [.down],
         perform action: @escaping (Input, Input.Phase) -> Void

@@ -1,21 +1,27 @@
 import Swift
 
 /// Values inherited by views while building and resolving a view graph.
-public struct EnvironmentValues: Sendable {
-    /// Current number of presentation pixels per logical screen-space point.
-    public internal(set) var displayScale: Float = 1
-    var foregroundStyle: ViewGraph.StyleID = .invalid
-    var tint: ViewGraph.StyleID = .invalid
+public struct EnvironmentValues {
+    private var storage: [ObjectIdentifier: Any] = [:]
 
     public init() { }
 
-    init(
-        displayScale: Float,
-        foregroundStyle: ViewGraph.StyleID,
-        tint: ViewGraph.StyleID
-    ) {
-        self.displayScale = displayScale
-        self.foregroundStyle = foregroundStyle
-        self.tint = tint
+    public subscript<Key: EnvironmentKey>(_ key: Key.Type) -> Key.Value {
+        get {
+            storage[ObjectIdentifier(key)] as? Key.Value
+                ?? Key.defaultValue
+        }
+        set {
+            storage[ObjectIdentifier(key)] = newValue
+        }
     }
+
+    init(displayScale: Float) {
+        self.displayScale = displayScale
+    }
+}
+
+extension EnvironmentValues {
+    /// Current number of presentation pixels per logical screen-space point.
+    @Entry public internal(set) var displayScale: Float = 1
 }

@@ -5,6 +5,7 @@ import SwiftSyntaxMacros
 struct PixlPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         InputProfileMacro.self,
+        EntryMacro.self,
         StateMacro.self,
         StateProjectionMacro.self
     ]

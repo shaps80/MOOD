@@ -111,19 +111,13 @@ package struct ViewGraph {
             "displayScale must be finite and greater than zero"
         )
         let graph = _Graph(stateStore: stateStore)
-        let foregroundStyle = graph.internStyle(.color(.primary))
-        let tint = graph.internStyle(.color(.orange))
         let root = _GraphValue(value, graph: graph)
         _ = Root._makeView(
             view: root,
             inputs: .init(
                 graph: graph,
                 parent: .invalid,
-                environment: .init(
-                    displayScale: displayScale,
-                    foregroundStyle: foregroundStyle,
-                    tint: tint
-                )
+                environment: .init(displayScale: displayScale)
             )
         )
         return .init(value: value, graphValue: root, graph: graph.snapshot())

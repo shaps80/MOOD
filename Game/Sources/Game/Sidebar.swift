@@ -6,6 +6,15 @@ extension View {
     }
 }
 
+private struct TestModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        ZStack {
+            Color.red
+            content
+        }
+    }
+}
+
 private struct SidebarModifier: ViewModifier {
     var alignment: HorizontalAlignment
 

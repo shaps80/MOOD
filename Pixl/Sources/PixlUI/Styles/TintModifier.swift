@@ -12,11 +12,7 @@ public struct _TintModifier: ViewModifier {
         body: @escaping (_Graph, _ViewInputs) -> _ViewOutputs
     ) -> _ViewOutputs {
         var inputs = inputs
-        inputs.environment.tint = _resolveShapeStyle(
-            modifier.value.color,
-            in: inputs.graph,
-            environment: inputs.environment
-        )
+        inputs.environment.tint = .init(modifier.value.color)
         return body(inputs.graph, inputs)
     }
 
@@ -26,11 +22,7 @@ public struct _TintModifier: ViewModifier {
         body: @escaping (_Graph, _ViewListInputs) -> _ViewListOutputs
     ) -> _ViewListOutputs {
         var inputs = inputs
-        inputs.environment.tint = _resolveShapeStyle(
-            modifier.value.color,
-            in: inputs.graph,
-            environment: inputs.environment
-        )
+        inputs.environment.tint = .init(modifier.value.color)
         return body(inputs.graph, inputs)
     }
 }
