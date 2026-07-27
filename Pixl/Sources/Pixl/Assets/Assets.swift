@@ -156,7 +156,11 @@ public final class Assets {
     func loadUITexture(named name: String) throws(AssetError) -> TextureAsset {
         if let texture = uiTextures[name] { return texture }
 
-        let lastComponent = name.split(separator: "/").last ?? ""
+        let lastComponent = if let separator = name.lastIndex(of: "/") {
+            name[name.index(after: separator)...]
+        } else {
+            name[...]
+        }
         if lastComponent.contains(".") {
             let texture = try loadTexture(name, alpha: .premultiplied)
             uiTextures[name] = texture

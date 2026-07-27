@@ -4,7 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CONFIGURATION="release"
-SDK="swift-6.3.2-RELEASE_wasm"
+SDK="swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm"
+TOOLCHAIN="6.4.x-snapshot-2026-07-17"
 
 rm -rf \
   "${ROOT_DIR}/PixlConcurrency/.build/test-wasm/wasm32-unknown-wasip1/release/ModuleCache" \
@@ -16,6 +17,7 @@ swiftly run swift test \
   --package-path "${ROOT_DIR}/PixlConcurrency" \
   --scratch-path "${ROOT_DIR}/PixlConcurrency/.build/test-wasm" \
   --swift-sdk "${SDK}" \
+  +"${TOOLCHAIN}" \
   -c "${CONFIGURATION}"
 
 echo
@@ -24,4 +26,5 @@ PIXL_PLATFORM_TEST=1 swiftly run swift test \
   --package-path "${ROOT_DIR}/PixlPlatform" \
   --scratch-path "${ROOT_DIR}/PixlPlatform/.build/test-wasm" \
   --swift-sdk "${SDK}" \
+  +"${TOOLCHAIN}" \
   -c "${CONFIGURATION}"

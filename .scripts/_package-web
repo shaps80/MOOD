@@ -12,7 +12,8 @@ fi
 
 CONFIGURATION="release"
 PRODUCT="${2:-${1:-Game}}"
-SDK="swift-6.3.2-RELEASE_wasm"
+SDK="swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm"
+TOOLCHAIN="6.4.x-snapshot-2026-07-17"
 WRAPPER_DIR="${PROJECT_DIR}/.build/wasm-package"
 PACKAGE_DIR="${WRAPPER_DIR}/.build/package"
 DIST_DIR="${PROJECT_DIR}/.dist"
@@ -92,7 +93,7 @@ copy_target_resources() {
   while IFS= read -r resource_path; do
     resource_paths+=("${resource_path}")
   done < <(
-    swiftly run swift package --package-path "${PROJECT_DIR}" dump-package | python3 -c '
+    swiftly run swift package --package-path "${PROJECT_DIR}" dump-package +"${TOOLCHAIN}" | python3 -c '
 import json
 import pathlib
 import sys
@@ -155,7 +156,7 @@ let package = Package(
 )
 SWIFT
 
-swiftly run swift package   --package-path "${WRAPPER_DIR}"   --swift-sdk "${SDK}"   --allow-writing-to-package-directory   js   --product "${PRODUCT}"   -c "${CONFIGURATION}"   --debug-info-format none   --output "${PACKAGE_DIR}"
+swiftly run swift package   --package-path "${WRAPPER_DIR}"   --swift-sdk "${SDK}"   --build-system native   --allow-writing-to-package-directory   js   --product "${PRODUCT}"   -c "${CONFIGURATION}"   --debug-info-format none   --output "${PACKAGE_DIR}"   +"${TOOLCHAIN}"
 
 npm install --prefix "${PACKAGE_DIR}" --omit=dev
 npx --yes esbuild "${PACKAGE_DIR}/index.js"   --bundle   --format=esm   --minify   --platform=browser   --legal-comments=none   --outfile="${DIST_DIR}/pixl.js"
