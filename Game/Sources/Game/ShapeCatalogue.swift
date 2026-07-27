@@ -106,7 +106,7 @@ struct ShapeCatalogue {
         }
     }
 
-    func submit(to queue: RenderQueue, in size: Size) {
+    func submit(to context: GameContext, in size: Size) {
         let cellWidth = size.width / Float(Self.columns)
         let cellHeight = size.height / Float(Self.rows)
 
@@ -121,12 +121,13 @@ struct ShapeCatalogue {
             var shape = shape
             shape.strokeWidth = 2 / Self.shapeScale
 
-            queue.submit(
+            context.submit(
                 shape,
                 transform: .init(
                     position,
                     scale: .init(Self.shapeScale, -Self.shapeScale)
-                )
+                ),
+                in: .screen
             )
         }
 
@@ -137,7 +138,7 @@ struct ShapeCatalogue {
                 to: .init(x, size.height)
             )).stroke(.opaqueSeparator, width: 1)
             line.layer = 2
-            queue.submit(line, transform: .identity)
+            context.submit(line, transform: .identity, in: .screen)
         }
 
         for row in 0...Self.rows {
@@ -147,7 +148,7 @@ struct ShapeCatalogue {
                 to: .init(size.width, y)
             )).stroke(.opaqueSeparator, width: 1)
             line.layer = 2
-            queue.submit(line, transform: .identity)
+            context.submit(line, transform: .identity, in: .screen)
         }
     }
 }

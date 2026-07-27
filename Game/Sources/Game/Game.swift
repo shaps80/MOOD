@@ -29,7 +29,7 @@ struct Game: Pixl.Game {
     ) throws {
         let pixels = output.texture.descriptor.size
         shapeCatalogue.submit(
-            to: context.renderQueue,
+            to: context,
             in: .init(
                 width: Float(pixels.width) / context.displayScale,
                 height: Float(pixels.height) / context.displayScale
@@ -47,16 +47,16 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-        player.submit(to: context.renderQueue)
-
         try context.render(
-            through: camera,
+            scene: hud,
             to: output,
             frame: frame
         )
 
+        player.submit(to: context.renderQueue)
+
         try context.render(
-            scene: hud,
+            through: camera,
             to: output,
             frame: frame
         )
