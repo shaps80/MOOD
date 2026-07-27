@@ -20,6 +20,7 @@ private struct SidebarModifier: ViewModifier {
                 .gray6.opacity(0.85),
                 in: .rect(cornerRadius: 14)
             )
+            .containerShape(.rect(cornerRadius: 14))
             .frame(
                 maxWidth: .infinity,
                 maxHeight: .infinity,

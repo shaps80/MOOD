@@ -40,6 +40,7 @@ package struct ViewGraph {
             case primitive
             case composition
             case shape
+            case containerShape
         }
 
         package let kind: Kind
@@ -79,6 +80,10 @@ package struct ViewGraph {
 
     package struct LayoutRecord: @unchecked Sendable { let box: _AnyLayoutBox }
 
+    package struct ContainerShapeRecord: @unchecked Sendable {
+        package let shape: _AnyShapeBox
+    }
+
     package struct InputHandler: @unchecked Sendable {
         package let input: Input
         package let phases: UInt8
@@ -91,6 +96,7 @@ package struct ViewGraph {
     package let styles: ContiguousArray<ResolvedStyle>
     package let layouts: ContiguousArray<LayoutRecord>
     package let shapes: ContiguousArray<_ShapeRecord>
+    package let containerShapes: ContiguousArray<ContainerShapeRecord>
     package let inputHandlers: ContiguousArray<InputHandler>
     package let children: ContiguousArray<NodeID>
     package let childRanges: ContiguousArray<Range<Int>>
@@ -200,6 +206,8 @@ extension ViewGraph: CustomStringConvertible {
             }
         case .shape:
             return shapes[Int(node.payload)].stroke == nil ? "Rectangle.fill" : "Rectangle.fill+stroke"
+        case .containerShape:
+            return "ContainerShape"
         }
     }
 }

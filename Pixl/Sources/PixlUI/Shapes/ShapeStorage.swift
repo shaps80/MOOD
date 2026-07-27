@@ -9,6 +9,7 @@ package struct _ShapeRecord: @unchecked Sendable {
     package let shape: _AnyShapeBox
     package var fill: ViewGraph.StyleID
     package let stroke: _ShapeStroke?
+    package let containerShape: ViewGraph.NodeID
 
     package func path(in rect: Rect, displayScale: Float) -> _ShapePath {
         let path = shape.path(in: rect)
@@ -49,6 +50,21 @@ package struct _ShapeRecord: @unchecked Sendable {
                     bottomTrailing: max(0, cornerRadii.bottomTrailing - halfWidth),
                     topTrailing: max(0, cornerRadii.topTrailing - halfWidth)
                 )
+            )
+        case .concentricRectangle(let rect, let corners):
+            let alignedMinX = (rect.minX * displayScale).rounded() / displayScale
+            let alignedMinY = (rect.minY * displayScale).rounded() / displayScale
+            let alignedMaxX = (rect.maxX * displayScale).rounded() / displayScale
+            let alignedMaxY = (rect.maxY * displayScale).rounded() / displayScale
+            let halfWidth = stroke.lineWidth * 0.5
+            return .concentricRectangle(
+                .init(
+                    x: alignedMinX + halfWidth,
+                    y: alignedMinY + halfWidth,
+                    width: max(0, alignedMaxX - alignedMinX - stroke.lineWidth),
+                    height: max(0, alignedMaxY - alignedMinY - stroke.lineWidth)
+                ),
+                corners: corners
             )
         case .circle(let rect):
             let alignedMinX = (rect.minX * displayScale).rounded() / displayScale

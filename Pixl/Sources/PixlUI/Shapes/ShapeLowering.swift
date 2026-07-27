@@ -23,7 +23,8 @@ func _makeShapeView<S: _Shape, Stroke: ShapeStyle>(
     let record = _ShapeRecord(
         shape: _ShapeBox(shape),
         fill: fill,
-        stroke: stroke
+        stroke: stroke,
+        containerShape: inputs.environment.containerShape
     )
     let payload = Int32(inputs.graph.shapes.count)
     inputs.graph.shapes.append(record)

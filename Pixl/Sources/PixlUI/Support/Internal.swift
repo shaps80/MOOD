@@ -21,6 +21,7 @@ public final class _Graph {
     var styleIDs: [ViewGraph.ResolvedStyle: ViewGraph.StyleID] = [:]
     var layouts: ContiguousArray<ViewGraph.LayoutRecord> = []
     var shapes: ContiguousArray<_ShapeRecord> = []
+    var containerShapes: ContiguousArray<ViewGraph.ContainerShapeRecord> = []
     var inputHandlers: ContiguousArray<ViewGraph.InputHandler> = []
 
     init(stateStore: _StateStore) {
@@ -82,6 +83,7 @@ public final class _Graph {
             styles: styles,
             layouts: layouts,
             shapes: shapes,
+            containerShapes: containerShapes,
             inputHandlers: inputHandlers,
             children: children,
             childRanges: ranges

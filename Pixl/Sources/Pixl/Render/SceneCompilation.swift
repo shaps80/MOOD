@@ -143,6 +143,28 @@ final class SceneCompilation {
                             strokeWidth: shape.stroke?.lineWidth ?? 0
                         ))
                     )
+                case .concentricRectangle(let rect, let corners):
+                    let fill = color(for: shape.fill, in: graph)
+                    let stroke = shape.stroke.map {
+                        color(for: $0.style, in: graph)
+                    } ?? .clear
+                    guard fill.opacity > 0 || stroke.opacity > 0 else { continue }
+                    let radii = concentricRadii(
+                        for: rect,
+                        corners: corners,
+                        container: shape.containerShape,
+                        graph: graph,
+                        layout: layout
+                    )
+                    submissions.append(
+                        .shape(unevenRoundedRectangle(
+                            frame: rect,
+                            cornerRadii: radii,
+                            fill: fill,
+                            stroke: stroke,
+                            strokeWidth: shape.stroke?.lineWidth ?? 0
+                        ))
+                    )
                 case .circle(let rect):
                     let fill = color(for: shape.fill, in: graph)
                     let stroke = shape.stroke.map {
@@ -292,6 +314,97 @@ final class SceneCompilation {
             layer: 0,
             order: 0
         )
+    }
+
+    private static func concentricRadii(
+        for rect: Rect,
+        corners: _ConcentricCornerStyles,
+        container: ViewGraph.NodeID,
+        graph: ViewGraph,
+        layout: ViewLayout
+    ) -> RectangleCornerRadii {
+        guard container.isValid else {
+            return .init(
+                topLeading: resolve(corners.topLeading, concentricRadius: 0),
+                bottomLeading: resolve(corners.bottomLeading, concentricRadius: 0),
+                bottomTrailing: resolve(corners.bottomTrailing, concentricRadius: 0),
+                topTrailing: resolve(corners.topTrailing, concentricRadius: 0)
+            )
+        }
+
+        let node = graph.nodes[Int(container.rawValue)]
+        guard node.kind == .containerShape else { return .init() }
+        let containerFrame = layout.frames[Int(container.rawValue)]
+        let containerShape = graph.containerShapes[Int(node.payload)].shape
+        let outer = cornerRadii(
+            for: containerShape.path(in: containerFrame),
+            size: containerFrame.size
+        )
+        let top = max(0, rect.minY - containerFrame.minY)
+        let leading = max(0, rect.minX - containerFrame.minX)
+        let bottom = max(0, containerFrame.maxY - rect.maxY)
+        let trailing = max(0, containerFrame.maxX - rect.maxX)
+
+        return .init(
+            topLeading: resolve(
+                corners.topLeading,
+                concentricRadius: max(0, outer.topLeading - max(top, leading))
+            ),
+            bottomLeading: resolve(
+                corners.bottomLeading,
+                concentricRadius: max(0, outer.bottomLeading - max(bottom, leading))
+            ),
+            bottomTrailing: resolve(
+                corners.bottomTrailing,
+                concentricRadius: max(0, outer.bottomTrailing - max(bottom, trailing))
+            ),
+            topTrailing: resolve(
+                corners.topTrailing,
+                concentricRadius: max(0, outer.topTrailing - max(top, trailing))
+            )
+        )
+    }
+
+    private static func cornerRadii(
+        for path: _ShapePath,
+        size: Size
+    ) -> RectangleCornerRadii {
+        switch path {
+        case .rectangle(_, let radius):
+            return RectangleCornerRadii(
+                topLeading: radius,
+                bottomLeading: radius,
+                bottomTrailing: radius,
+                topTrailing: radius
+            ).normalized(to: size)
+        case .unevenRoundedRectangle(_, let radii):
+            return radii.normalized(to: size)
+        case .circle:
+            let radius = min(size.width, size.height) * 0.5
+            return .init(
+                topLeading: radius,
+                bottomLeading: radius,
+                bottomTrailing: radius,
+                topTrailing: radius
+            )
+        case .concentricRectangle:
+            return .init()
+        }
+    }
+
+    private static func resolve(
+        _ style: Edge.Corner.Style,
+        concentricRadius: Float
+    ) -> Float {
+        switch style.storage {
+        case .fixed(let radius):
+            return radius
+        case .concentric(let minimum):
+            return max(
+                concentricRadius,
+                minimum.map { resolve($0, concentricRadius: concentricRadius) } ?? 0
+            )
+        }
     }
 }
 

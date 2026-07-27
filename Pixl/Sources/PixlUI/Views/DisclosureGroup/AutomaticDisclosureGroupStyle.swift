@@ -17,7 +17,7 @@ public struct AutomaticDisclosureGroupStyle: DisclosureGroupStyle {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(.gray, in: .rect(cornerRadius: 9))
+        .background(.gray, in: .concentric)
     }
 }
 

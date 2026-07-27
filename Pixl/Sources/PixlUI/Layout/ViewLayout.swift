@@ -120,7 +120,7 @@ final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
             let composition = graph.compositions[Int(node.payload)]
             let primaryIndex = composition.order == .background ? range.index(before: range.endIndex) : range.startIndex
             return measure(graph.children[primaryIndex], proposal, orientation)
-        case .group:
+        case .group, .containerShape:
             var result = Size.zero
             for child in subviews(id, orientation: orientation) { let size = child.sizeThatFits(proposal); result.width = max(result.width, size.width); result.height = max(result.height, size.height) }
             return result
@@ -194,7 +194,7 @@ final class _LayoutPass: _LayoutSubviewStorage, @unchecked Sendable {
                 )
                 placeNode(child, point, .topLeading, .init(childSize), orientation)
             }
-        case .group:
+        case .group, .containerShape:
             for child in graph.children[graph.childRanges[Int(id.rawValue)]] { placeNode(child, .init(x: bounds.midX, y: bounds.midY), .center, proposal, orientation) }
         default: break
         }

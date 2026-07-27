@@ -3,6 +3,7 @@ import Swift
 /// Values inherited by views while building and resolving a view graph.
 public struct EnvironmentValues {
     private var storage: [ObjectIdentifier: Any] = [:]
+    var containerShape: ViewGraph.NodeID = .invalid
 
     public init() { }
 
