@@ -1,6 +1,6 @@
 import Swift
 
-public struct Rectangle: View, Sendable {
+public struct Rectangle: Shape {
     @inlinable public init() { }
     public var body: Never { fatalError() }
 
@@ -15,4 +15,8 @@ public struct Rectangle: View, Sendable {
 
 extension Rectangle: _Shape {
     package func path(in rect: Rect) -> _ShapePath { .rectangle(rect) }
+}
+
+extension Shape where Self == Rectangle {
+    public static var rect: Self { .init() }
 }

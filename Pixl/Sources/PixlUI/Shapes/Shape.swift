@@ -1,6 +1,8 @@
 import Swift
 
-package protocol _Shape: Sendable {
+public protocol Shape: View, Sendable { }
+
+package protocol _Shape: Shape {
     func path(in rect: Rect) -> _ShapePath
     func sizeThatFits(_ proposal: ProposedViewSize) -> Size
 }

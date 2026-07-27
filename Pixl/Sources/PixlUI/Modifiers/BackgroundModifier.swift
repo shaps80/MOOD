@@ -50,6 +50,15 @@ import Swift
 }
 
 extension View {
+    @inlinable public func background<Style: ShapeStyle, Background: Shape>(
+        _ style: Style,
+        in shape: Background
+    ) -> some View {
+        background {
+            shape.foregroundStyle(style)
+        }
+    }
+
     @inlinable public func background<Background: View>(
         alignment: Alignment = .center,
         @ContentBuilder content: () -> Background

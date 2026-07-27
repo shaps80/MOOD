@@ -1,6 +1,6 @@
 import Swift
 
-public struct DislosureGroup<Label: View, Content: View>: View {
+public struct DisclosureGroup<Label: View, Content: View>: View {
     @Environment(\.disclosureGroupStyle) private var style
     @Binding private var isExpanded: Bool
     
@@ -18,7 +18,7 @@ public struct DislosureGroup<Label: View, Content: View>: View {
     }
 }
 
-extension DislosureGroup {
+extension DisclosureGroup {
     public init(
         isExpanded: Binding<Bool>,
         @ContentBuilder content: () -> Content,
@@ -39,7 +39,7 @@ extension DislosureGroup {
     }
 }
 
-extension DislosureGroup where Label == Text {
+extension DisclosureGroup where Label == Text {
     public init(
         _ title: some StringProtocol,
         isExpanded: Binding<Bool>,
@@ -60,7 +60,7 @@ extension DislosureGroup where Label == Text {
     }
 }
 
-extension DislosureGroup where Label == PixlUI.Label<Text, Image> {
+extension DisclosureGroup where Label == PixlUI.Label<Text, Image> {
     public init(
         _ title: some StringProtocol,
         image name: String,

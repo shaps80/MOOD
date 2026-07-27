@@ -16,10 +16,7 @@ public struct AutomaticDisclosureGroupStyle: DisclosureGroupStyle {
             }
         }
         .frame(maxWidth: .infinity)
-        .background {
-            Rectangle()
-                .foregroundStyle(.background.opacity(0.2))
-        }
+        .background(.background.opacity(0.2), in: .rect)
     }
 }
 

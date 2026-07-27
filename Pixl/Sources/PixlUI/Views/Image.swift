@@ -2,7 +2,6 @@ import Swift
 
 public struct Image: View {
     private let name: String
-    private var mode: RenderingMode = .original
 
     public enum RenderingMode: Sendable {
         case original
@@ -13,18 +12,12 @@ public struct Image: View {
         self.name = name
     }
 
-    public func renderingMode(_ renderingMode: RenderingMode) -> Image {
-        var copy = self
-        copy.mode = renderingMode
-        return copy
-    }
-
     public static func _makeView(view: _GraphValue<Image>, inputs: _ViewInputs) -> _ViewOutputs {
         let payload = Int32(inputs.graph.primitives.count)
         inputs.graph.primitives.append(
             .image(.init(
                 name: view.value.name,
-                renderingMode: view.value.mode,
+                renderingMode: inputs.environment.imageRenderingMode,
                 tint: inputs.environment.tint.resolveStyle(
                     in: inputs.graph,
                     environment: inputs.environment
@@ -44,4 +37,16 @@ public struct Image: View {
 
 extension Image {
     public var body: Never { fatalError() }
+}
+
+extension EnvironmentValues {
+    @Entry public var imageRenderingMode: Image.RenderingMode = .original
+}
+
+extension View {
+    public func renderingMode(
+        _ renderingMode: Image.RenderingMode
+    ) -> some View {
+        environment(\.imageRenderingMode, renderingMode)
+    }
 }
