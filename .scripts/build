@@ -3,6 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${SCRIPT_DIR}/_web-toolchain"
+ensure_web_toolchain
 PACKAGE_DIR="${ROOT_DIR}/${1:-Game}"
 
 if [[ ! -f "${PACKAGE_DIR}/Package.swift" ]]; then
@@ -13,8 +15,6 @@ fi
 cd "${PACKAGE_DIR}"
 
 CONFIGURATION="release"
-SDK="swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm"
-TOOLCHAIN="6.4.x-snapshot-2026-07-17"
 TARGET="${2:-${1:-Game}}"
 
-swiftly run swift build   --scratch-path ".build/wasm-${TARGET}"   --swift-sdk "${SDK}"   --target "${TARGET}"   -c "${CONFIGURATION}"   +"${TOOLCHAIN}"
+swiftly run swift build   --scratch-path ".build/wasm-${TARGET}"   --swift-sdk "${WEB_SDK}"   --target "${TARGET}"   -c "${CONFIGURATION}"   +"${WEB_TOOLCHAIN}"
