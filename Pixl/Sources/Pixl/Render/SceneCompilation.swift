@@ -113,7 +113,7 @@ final class SceneCompilation {
             case .shape:
                 let shape = graph.shapes[Int(node.payload)]
                 switch shape.path(in: frame, displayScale: layout.displayScale) {
-                case .rectangle(let rect):
+                case .rectangle(let rect, let cornerRadius):
                     let fill = color(for: shape.fill, in: graph)
                     let stroke = shape.stroke.map {
                         color(for: $0.style, in: graph)
@@ -124,7 +124,8 @@ final class SceneCompilation {
                             frame: rect,
                             fill: fill,
                             stroke: stroke,
-                            strokeWidth: shape.stroke?.lineWidth ?? 0
+                            strokeWidth: shape.stroke?.lineWidth ?? 0,
+                            cornerRadius: cornerRadius
                         ))
                     )
                 }
@@ -150,12 +151,20 @@ final class SceneCompilation {
         frame: Rect,
         fill: PixlGraphics.Color,
         stroke: PixlGraphics.Color,
-        strokeWidth: Float
+        strokeWidth: Float,
+        cornerRadius: Float = 0
     ) -> ShapeSubmission {
-        let halfSize = frame.size * 0.5
-        let center = frame.origin + halfSize
+        let outerHalfSize = frame.size * 0.5
+        let center = frame.origin + outerHalfSize
+        let cornerRadius = min(
+            max(0, cornerRadius),
+            min(outerHalfSize.x, outerHalfSize.y)
+        )
+        let halfSize = outerHalfSize - SIMD2<Float>(repeating: cornerRadius)
         let strokeWidth = max(0, strokeWidth)
-        let extent = halfSize + SIMD2<Float>(repeating: strokeWidth * 0.5)
+        let extent = halfSize + SIMD2<Float>(
+            repeating: cornerRadius + strokeWidth * 0.5
+        )
         let quadSize = extent * 2
 
         return ShapeSubmission(
@@ -165,13 +174,14 @@ final class SceneCompilation {
             transformY: .init(0, quadSize.y),
             transformTranslation: center,
             quadHalfExtent: extent,
-            parameters: .init(halfSize.x, halfSize.y, 0, 0),
+            parameters: .init(halfSize.x, halfSize.y, 1, 0),
             fillColor: fill.premultiplied,
             strokeColor: stroke.premultiplied,
             kind: .rectangle,
             strokeWidth: strokeWidth,
             strokeAlignment: 0,
             smoothAntialiasing: 1,
+            rounding: cornerRadius,
             blendMode: .premultiplied,
             layer: 0,
             order: 0

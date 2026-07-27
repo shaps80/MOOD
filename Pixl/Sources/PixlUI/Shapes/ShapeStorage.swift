@@ -15,7 +15,7 @@ package struct _ShapeRecord: @unchecked Sendable {
         guard let stroke, stroke.lineWidth > 0 else { return path }
 
         switch path {
-        case .rectangle(let rect):
+        case .rectangle(let rect, let cornerRadius):
             let alignedMinX = (rect.minX * displayScale).rounded() / displayScale
             let alignedMinY = (rect.minY * displayScale).rounded() / displayScale
             let alignedMaxX = (rect.maxX * displayScale).rounded() / displayScale
@@ -27,7 +27,8 @@ package struct _ShapeRecord: @unchecked Sendable {
                     y: alignedMinY + halfWidth,
                     width: max(0, alignedMaxX - alignedMinX - stroke.lineWidth),
                     height: max(0, alignedMaxY - alignedMinY - stroke.lineWidth)
-                )
+                ),
+                cornerRadius: max(0, cornerRadius - halfWidth)
             )
         }
     }

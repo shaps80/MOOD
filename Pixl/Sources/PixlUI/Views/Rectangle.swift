@@ -1,7 +1,12 @@
 import Swift
 
 public struct Rectangle: Shape {
-    @inlinable public init() { }
+    public var cornerRadius: Float
+
+    @inlinable public init(cornerRadius: Float = 0) {
+        self.cornerRadius = max(0, cornerRadius)
+    }
+
     public var body: Never { fatalError() }
 
     public static func _makeView(view: _GraphValue<Self>, inputs: _ViewInputs) -> _ViewOutputs {
@@ -14,9 +19,17 @@ public struct Rectangle: Shape {
 }
 
 extension Rectangle: _Shape {
-    package func path(in rect: Rect) -> _ShapePath { .rectangle(rect) }
+    package func path(in rect: Rect) -> _ShapePath {
+        .rectangle(rect, cornerRadius: cornerRadius)
+    }
 }
 
 extension Shape where Self == Rectangle {
     public static var rect: Self { .init() }
+
+    public static func rect(cornerRadius: Float) -> Self {
+        .init(cornerRadius: cornerRadius)
+    }
 }
+
+public typealias RoundedRectangle = Rectangle

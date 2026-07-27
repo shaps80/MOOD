@@ -53,6 +53,11 @@ final class MetalPlatform: @MainActor Platform {
     }
 
     @MainActor
+    func updateDisplayScale() {
+        displayScale = Float(view.window?.backingScaleFactor ?? 1)
+    }
+
+    @MainActor
     func drawable() -> Drawable? {
         guard let drawable = view.currentDrawable,
               let format = drawable.texture.pixelFormat.pixlPixelFormat,

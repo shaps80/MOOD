@@ -187,6 +187,17 @@ static float pixlRoundedBoxDistance(float2 point, float2 halfSize, float roundin
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rounding;
 }
 
+static float pixlContinuousRoundedBoxDistance(float2 point, float2 halfSize, float rounding) {
+    float2 q = abs(point) - halfSize;
+    float2 outside = max(q, 0.0);
+    float circular = length(outside) + min(max(q.x, q.y), 0.0) - rounding;
+    float2 outside2 = outside * outside;
+    float2 outside4 = outside2 * outside2;
+    float continuous = sqrt(sqrt(max(outside4.x + outside4.y, 0.0)))
+        + min(max(q.x, q.y), 0.0) - rounding;
+    return mix(circular, continuous, 0.28 * step(0.0001, rounding));
+}
+
 static float pixlSegmentDistance(float2 p, float2 a, float2 b) {
     float2 pa = p - a, ba = b - a;
     float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
@@ -342,9 +353,16 @@ static float2 pixlShapeCoverages(float distance,float width,float alignment,bool
     return float2(fill,max(total-fill,0.0));
 }
 
+static float pixlShapeDistance(uint kind,float2 point,float4 parameters,float rounding) {
+    if (kind == 1u && parameters.z > 0.5) {
+        return pixlContinuousRoundedBoxDistance(point, parameters.xy, rounding);
+    }
+    return pixlCompactShapeDistance(kind, point, parameters) - rounding;
+}
+
 fragment float4 pixlShapeFragment(ShapeVertexOutput input [[stage_in]]) {
     uint kind = uint(input.style.x + 0.5);
-    float distance = pixlCompactShapeDistance(kind,input.localPosition,input.parameters)-input.style.w;
+    float distance = pixlShapeDistance(kind,input.localPosition,input.parameters,input.style.w);
     float width = input.style.y;
     bool smooth=input.style.z>2.0;
     float alignment=input.style.z-(smooth?4.0:0.0);
@@ -364,7 +382,7 @@ fragment float4 pixlGradientShapeFragment(
     uint kind = packed & 63u;
     uint row = ((packed / 64u) & 255u) - 1u;
     uint placement = packed / 16384u;
-    float distance = pixlCompactShapeDistance(kind,input.localPosition,input.parameters)-input.style.w;
+    float distance = pixlShapeDistance(kind,input.localPosition,input.parameters,input.style.w);
     float width=input.style.y;
     bool smooth=input.style.z>2.0;float alignment=input.style.z-(smooth?4.0:0.0);float2 coverages=pixlShapeCoverages(distance,width,alignment,smooth);float fillCoverage=coverages.x,strokeCoverage=coverages.y;
     float2 start=input.fillColor.xy,end=input.fillColor.zw,delta=end-start;

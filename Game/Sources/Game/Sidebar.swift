@@ -11,7 +11,7 @@ private struct SidebarModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .frame(maxWidth: 350, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: 300, maxHeight: .infinity, alignment: .top)
             .background {
                 Rectangle()
                     .foregroundStyle(.black.opacity(0.6))

@@ -85,6 +85,7 @@ final class Runtime: NSObject {
             backing: .buffered,
             defer: false
         )
+        window.contentView = view
 
         view.delegate = self
         view.preferredFramesPerSecond = gameSettings.preferredFps
@@ -106,7 +107,6 @@ final class Runtime: NSObject {
         }
 
         window.title = gameSettings.title
-        window.contentView = view
         window.delegate = self
 
         self.window = window
@@ -204,6 +204,10 @@ extension Runtime: MTKViewDelegate {
 }
 
 extension Runtime: NSWindowDelegate {
+    func windowDidChangeBackingProperties(_ notification: Notification) {
+        platform?.updateDisplayScale()
+    }
+
     func windowWillClose(_ notification: Notification) {
         NSApplication.shared.terminate(nil)
     }
