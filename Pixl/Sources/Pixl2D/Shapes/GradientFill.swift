@@ -5,6 +5,16 @@ import PixlGraphics
 /// Construction bakes a premultiplied 256-sample row for the renderer's shared
 /// gradient atlas. Store and reuse styled shapes as ordinary retained values.
 public struct GradientFill: Hashable, Sendable {
+    package final class Storage: @unchecked Sendable {
+        package let rgba8: [UInt8]
+        package let fingerprint: UInt64
+
+        init(rgba8: [UInt8], fingerprint: UInt64) {
+            self.rgba8 = rgba8
+            self.fingerprint = fingerprint
+        }
+    }
+
     /// Shape-local gradient placement.
     public enum Placement: Hashable, Sendable {
         /// Projects colour stops along a directed line.
@@ -20,8 +30,9 @@ public struct GradientFill: Hashable, Sendable {
     /// Shape-local placement used to sample the colour ramp.
     public let placement: Placement
 
-    package let rgba8: [UInt8]
-    package let fingerprint: UInt64
+    package let storage: Storage
+    package var rgba8: [UInt8] { storage.rgba8 }
+    package var fingerprint: UInt64 { storage.fingerprint }
 
     /// Creates a directed linear gradient fill.
     /// - Parameters:
@@ -38,8 +49,10 @@ public struct GradientFill: Hashable, Sendable {
         self.gradient = gradient
         self.placement = .linear(from: start, to: end)
         let rgba8 = Self.rasterize(gradient)
-        self.rgba8 = rgba8
-        self.fingerprint = Self.fingerprint(rgba8)
+        self.storage = Storage(
+            rgba8: rgba8,
+            fingerprint: Self.fingerprint(rgba8)
+        )
     }
 
     /// Creates a radial gradient fill.
@@ -53,8 +66,10 @@ public struct GradientFill: Hashable, Sendable {
         self.gradient = gradient
         self.placement = .radial(center: center, radius: radius)
         let rgba8 = Self.rasterize(gradient)
-        self.rgba8 = rgba8
-        self.fingerprint = Self.fingerprint(rgba8)
+        self.storage = Storage(
+            rgba8: rgba8,
+            fingerprint: Self.fingerprint(rgba8)
+        )
     }
 
     /// Creates an angular gradient fill.
@@ -67,8 +82,19 @@ public struct GradientFill: Hashable, Sendable {
         self.gradient = gradient
         self.placement = .angular(center: center, angle: angle)
         let rgba8 = Self.rasterize(gradient)
-        self.rgba8 = rgba8
-        self.fingerprint = Self.fingerprint(rgba8)
+        self.storage = Storage(
+            rgba8: rgba8,
+            fingerprint: Self.fingerprint(rgba8)
+        )
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.gradient == rhs.gradient && lhs.placement == rhs.placement
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(gradient)
+        hasher.combine(placement)
     }
 
     private static func fingerprint(_ rgba8: [UInt8]) -> UInt64 {

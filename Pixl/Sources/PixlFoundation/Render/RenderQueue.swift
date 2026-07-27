@@ -299,6 +299,7 @@ public final class RenderQueue {
     private let viewContexts: UnsafeMutablePointer<ViewContext>
     private let viewOutputs: UnsafeMutablePointer<ViewOutput>
     private let gradientFingerprints: UnsafeMutablePointer<UInt64>
+    private let gradientIdentities: UnsafeMutablePointer<AnyObject?>
     private let gradientBytes: UnsafeMutablePointer<UInt8>
     private let registryCapacity: Int
     private var initializedExecutionCount = 0
@@ -308,6 +309,8 @@ public final class RenderQueue {
     private var layerGeneration = UInt32(0)
     private var gradientCount = 0
     private var gradientGeneration = UInt64(0)
+    private var lastGradientIdentity: AnyObject?
+    private var lastGradientSlot = UInt32.max
 
     /// Allocates all retained submission and execution storage.
     /// - Parameter settings: Fixed submission and view capacities.
@@ -338,8 +341,10 @@ public final class RenderQueue {
         viewContexts = .allocate(capacity: settings.viewCapacity)
         viewOutputs = .allocate(capacity: settings.viewCapacity)
         gradientFingerprints = .allocate(capacity: settings.gradientCapacity)
+        gradientIdentities = .allocate(capacity: settings.gradientCapacity)
         gradientBytes = .allocate(capacity: settings.gradientCapacity * 256 * 4)
         gradientFingerprints.initialize(repeating: 0, count: settings.gradientCapacity)
+        gradientIdentities.initialize(repeating: nil, count: settings.gradientCapacity)
         gradientBytes.initialize(repeating: 0, count: settings.gradientCapacity * 256 * 4)
 
         visibilityMasks.initialize(repeating: 0, count: capacity)
@@ -415,6 +420,8 @@ public final class RenderQueue {
         viewOutputs.deallocate()
         gradientFingerprints.deinitialize(count: settings.gradientCapacity)
         gradientFingerprints.deallocate()
+        gradientIdentities.deinitialize(count: settings.gradientCapacity)
+        gradientIdentities.deallocate()
         gradientBytes.deinitialize(count: settings.gradientCapacity * 256 * 4)
         gradientBytes.deallocate()
     }
@@ -485,7 +492,33 @@ public final class RenderQueue {
         fingerprint: UInt64,
         rgba8: [UInt8]
     ) -> UInt32 {
+        registerGradient(identity: nil, fingerprint: fingerprint, rgba8: rgba8)
+    }
+
+    package func registerGradient(
+        identity: AnyObject,
+        fingerprint: UInt64,
+        rgba8: [UInt8]
+    ) -> UInt32 {
+        registerGradient(identity: Optional(identity), fingerprint: fingerprint, rgba8: rgba8)
+    }
+
+    private func registerGradient(
+        identity: AnyObject?,
+        fingerprint: UInt64,
+        rgba8: [UInt8]
+    ) -> UInt32 {
         precondition(rgba8.count == 256 * 4)
+        if let identity, lastGradientIdentity === identity {
+            return lastGradientSlot
+        }
+        if let identity {
+            for slot in 0..<gradientCount where gradientIdentities[slot] === identity {
+                lastGradientIdentity = identity
+                lastGradientSlot = UInt32(slot)
+                return UInt32(slot)
+            }
+        }
         for slot in 0..<gradientCount where gradientFingerprints[slot] == fingerprint {
             var matches = true
             let offset = slot * 256 * 4
@@ -493,7 +526,13 @@ public final class RenderQueue {
                 matches = false
                 break
             }
-            if matches { return UInt32(slot) }
+            if matches {
+                if let identity {
+                    lastGradientIdentity = identity
+                    lastGradientSlot = UInt32(slot)
+                }
+                return UInt32(slot)
+            }
         }
         precondition(
             gradientCount < settings.gradientCapacity,
@@ -501,6 +540,7 @@ public final class RenderQueue {
         )
         let slot = gradientCount
         gradientFingerprints[slot] = fingerprint
+        gradientIdentities[slot] = identity
         let offset = slot * 256 * 4
         rgba8.withUnsafeBytes { source in
             gradientBytes.advanced(by: offset).update(
@@ -510,6 +550,10 @@ public final class RenderQueue {
         }
         gradientCount += 1
         gradientGeneration &+= 1
+        if let identity {
+            lastGradientIdentity = identity
+            lastGradientSlot = UInt32(slot)
+        }
         return UInt32(slot)
     }
 

@@ -13,6 +13,7 @@ extension RenderQueue {
             gradientSlot = .max
         case .gradient(let gradient):
             gradientSlot = registerGradient(
+                identity: gradient.storage,
                 fingerprint: gradient.fingerprint,
                 rgba8: gradient.rgba8
             )
