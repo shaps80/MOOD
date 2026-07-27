@@ -1,26 +1,24 @@
 import Pixl2D
-import PixlMath
 
-public extension GameContext {
-    /// Submits an analytic shape in logical screen space.
+/// A lightweight submission source using logical, top-left screen coordinates.
+public struct ScreenSpace {
+    package let context: GameContext
+
+    package init(context: GameContext) {
+        self.context = context
+    }
+
+    /// Submits an analytic shape to the context's normal render queue.
     ///
-    /// Axis-aligned centred segment strokes are aligned in physical-pixel
-    /// space before entering the normal render queue. Layer, order, and
-    /// submission ordering are otherwise unchanged.
-    func submit(
-        _ shape: Shape,
-        transform: Transform2D,
-        in coordinateSpace: ScreenCoordinateSpace
-    ) {
-        renderQueue.submit(
+    /// Axis-aligned centred segment strokes are aligned to physical pixels.
+    public func submit(_ shape: Shape, transform: Transform2D) {
+        context.renderQueue.submit(
             shape,
-            transform: alignedScreenTransform(for: shape, transform: transform)
+            transform: alignedTransform(for: shape, transform: transform)
         )
     }
-}
 
-private extension GameContext {
-    func alignedScreenTransform(for shape: Shape, transform: Transform2D) -> Transform2D {
+    private func alignedTransform(for shape: Shape, transform: Transform2D) -> Transform2D {
         guard
             case .segment(let segment) = shape.geometry,
             shape.strokeColor != nil,
@@ -55,8 +53,14 @@ private extension GameContext {
         )
     }
 
-    func alignedStrokeCenter(_ value: Float, width: Float) -> Float {
-        let halfWidth = width * displayScale * 0.5
-        return ((value * displayScale - halfWidth).rounded() + halfWidth) / displayScale
+    private func alignedStrokeCenter(_ value: Float, width: Float) -> Float {
+        let halfWidth = width * context.displayScale * 0.5
+        return ((value * context.displayScale - halfWidth).rounded() + halfWidth)
+            / context.displayScale
     }
+}
+
+public extension GameContext {
+    /// A lightweight source for aligned logical screen-space submissions.
+    var screenSpace: ScreenSpace { .init(context: self) }
 }

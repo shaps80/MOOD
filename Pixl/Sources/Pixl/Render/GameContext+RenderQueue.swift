@@ -74,14 +74,15 @@ extension GameContext {
         try render(queue: sceneRenderQueue, to: output, frame: frame)
     }
 
-    /// Renders the default queue in logical screen-space coordinates.
+    /// Renders screen-space submissions into a presentation target.
     ///
-    /// The origin is top-left, positive y points down, and target contents are
-    /// preserved. The default queue resets after rendering finishes or throws.
+    /// The origin is top-left, positive y points down, and target contents are preserved.
     public func render(
+        _ screenSpace: ScreenSpace,
         to output: RenderTarget,
         frame: borrowing Frame
     ) throws {
+        precondition(screenSpace.context === self, "ScreenSpace belongs to another game context")
         try render(queue: renderQueue, to: output, frame: frame)
     }
 
@@ -89,7 +90,7 @@ extension GameContext {
     ///
     /// The origin is top-left, positive y points down, and target contents are
     /// preserved. The queue resets after rendering finishes or throws.
-    public func render(
+    private func render(
         queue: RenderQueue,
         to output: RenderTarget,
         frame: borrowing Frame
@@ -98,16 +99,18 @@ extension GameContext {
         try render(queue: queue, to: output, on: pass)
     }
 
-    /// Renders the default queue in logical screen space into a render texture.
+    /// Renders screen-space submissions into a render texture.
     public func render(
+        _ screenSpace: ScreenSpace,
         to output: RenderTexture,
         frame: borrowing Frame
     ) throws {
+        precondition(screenSpace.context === self, "ScreenSpace belongs to another game context")
         try render(queue: renderQueue, to: output, frame: frame)
     }
 
     /// Renders one queue in logical screen space into a render texture.
-    public func render(
+    private func render(
         queue: RenderQueue,
         to output: RenderTexture,
         frame: borrowing Frame
@@ -122,16 +125,18 @@ extension GameContext {
         )
     }
 
-    /// Renders the default queue in logical screen space into an existing pass.
+    /// Renders screen-space submissions into an existing pass.
     public func render(
+        _ screenSpace: ScreenSpace,
         to output: RenderTarget,
         on pass: RenderPassEncoder
     ) throws {
+        precondition(screenSpace.context === self, "ScreenSpace belongs to another game context")
         try render(queue: renderQueue, to: output, on: pass)
     }
 
     /// Renders one queue in logical screen space into an existing pass.
-    public func render(
+    private func render(
         queue: RenderQueue,
         to output: RenderTarget,
         on pass: RenderPassEncoder

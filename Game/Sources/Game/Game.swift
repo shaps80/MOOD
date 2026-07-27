@@ -28,8 +28,9 @@ struct Game: Pixl.Game {
         context: GameContext
     ) throws {
         let pixels = output.texture.descriptor.size
+        let screenSpace = context.screenSpace
         shapeCatalogue.submit(
-            to: context,
+            to: screenSpace,
             in: .init(
                 width: Float(pixels.width) / context.displayScale,
                 height: Float(pixels.height) / context.displayScale
@@ -43,6 +44,7 @@ struct Game: Pixl.Game {
         )
 
         try context.render(
+            screenSpace,
             to: output,
             frame: frame
         )
