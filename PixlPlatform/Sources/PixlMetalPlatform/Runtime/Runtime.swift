@@ -87,7 +87,7 @@ final class Runtime: NSObject {
         )
         window.contentView = view
         window.acceptsMouseMovedEvents = true
-        NSEvent.isMouseCoalescingEnabled = false
+        NSEvent.isMouseCoalescingEnabled = true
 
         view.delegate = self
         view.preferredFramesPerSecond = gameSettings.preferredFps

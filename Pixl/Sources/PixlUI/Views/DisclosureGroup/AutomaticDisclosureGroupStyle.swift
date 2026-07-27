@@ -23,7 +23,10 @@ public struct AutomaticDisclosureGroupStyle: DisclosureGroupStyle {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(.gray6.opacity(0.5), in: .concentric)
+        .background(
+            .gray6.opacity(0.5),
+            in: ConcentricRectangle(.concentric, isUniform: true)
+        )
     }
 }
 

@@ -8,14 +8,22 @@ struct ShapeCatalogue {
     // Leaves room for the tallest canonical geometry, outward rounding, and a
     // fully outside stroke so the grid reveals shape clipping rather than
     // introducing viewport or neighbouring-cell clipping of its own.
-    private static let shapeScale: Float = 48
+    private static let shapeScale: Float = 40
 
     private let bindings: ShapeBindings = .init()
     private var alignment: Shape.StrokeAlignment = .center
     private var rounding: Float = 0
+    private let fill: Shape.Fill
 
     init(context: GameContext) {
 //        bindings.bind(to: context.inputs)
+
+        fill = Shape.Fill.gradient(
+            .init(
+                .init(colors: [.purple, .blue]),
+                angle: .degrees(-45)
+            )
+        )
     }
 
     // Row-major, following the IQ article while omitting deliberately absent
@@ -76,9 +84,9 @@ struct ShapeCatalogue {
         Shape(.circleWave),
     ].map {
         var shape = $0
-            .fill(.clear)
-            .stroke(.blue, width: 2 / shapeScale, alignment: .center)
-//            .rounding(0.2)
+            .fill(.primary.opacity(0.3))
+            .stroke(.separator, width: 1, alignment: .center)
+            .rounding(0.2)
         shape.layer = 1
         return shape
     }
@@ -119,7 +127,10 @@ struct ShapeCatalogue {
             )
 
             var shape = shape
-            shape.strokeWidth = 2 / Self.shapeScale
+            shape.strokeWidth = 1 / Self.shapeScale
+            shape.rounding = 0.1
+            shape.strokeColor = nil
+            shape.fill = fill
 
             screenSpace.submit(
                 shape,
@@ -135,7 +146,7 @@ struct ShapeCatalogue {
             var line = Shape(.segment(
                 from: .init(x, 0),
                 to: .init(x, size.height)
-            )).stroke(.opaqueSeparator, width: 1)
+            )).stroke(.separator, width: 1)
             line.layer = 2
             screenSpace.submit(line, transform: .identity)
         }
@@ -145,7 +156,7 @@ struct ShapeCatalogue {
             var line = Shape(.segment(
                 from: .init(0, y),
                 to: .init(size.width, y)
-            )).stroke(.opaqueSeparator, width: 1)
+            )).stroke(.separator, width: 1)
             line.layer = 2
             screenSpace.submit(line, transform: .identity)
         }

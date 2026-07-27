@@ -6,7 +6,7 @@ public struct Debug: View {
 
     public var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(spacing: 5) {
+            VStack {
                 RoundedRectangle(cornerRadius: 28)
                     .frame(width: 200, height: 100)
                     .foregroundStyle(.red)
@@ -17,6 +17,7 @@ public struct Debug: View {
                 Circle()
                     .frame(height: 100)
             }
+            .padding(.vertical, 5)
         } label: {
             Text("\(isExpanded ? "▼" : "▶") Title")
                 .highlight(.green)
