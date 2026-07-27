@@ -29,6 +29,13 @@ extension ShapeStyle where Self == Color {
     public static var black: Self { .black }
     public static var clear: Self { .clear }
 
+    public static var gray: Self { .gray }
+    public static var gray2: Self { .gray2 }
+    public static var gray3: Self { .gray3 }
+    public static var gray4: Self { .gray4 }
+    public static var gray5: Self { .gray5 }
+    public static var gray6: Self { .gray6 }
+
     public static var red: Self { .red }
     public static var orange: Self { .orange }
     public static var yellow: Self { .yellow }

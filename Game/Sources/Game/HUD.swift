@@ -21,7 +21,6 @@ public struct HUD: View {
             .onInput(bindings.space) { input, _ in
                 isOn.toggle()
             }
-//            .highlight(isOn ? .orange : .gray)
         }
     }
 }
@@ -30,8 +29,11 @@ extension View {
     func highlight(_ color: Color) -> some View {
         background {
             Rectangle()
-                .stroke(color, lineWidth: 2)
                 .foregroundStyle(color.opacity(0.3))
+
+            Rectangle()
+                .stroke(color, lineWidth: 1)
+                .padding(2)
         }
     }
 }

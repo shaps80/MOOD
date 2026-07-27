@@ -32,12 +32,20 @@ public struct _ForegroundStyleModifier<Style: ShapeStyle>: ViewModifier {
         body: @escaping (_Graph, _ViewListInputs) -> _ViewListOutputs
     ) -> _ViewListOutputs {
         var inputs = inputs
-        inputs.environment.foregroundStyle = _resolveShapeStyle(
+        let style = _resolveShapeStyle(
             modifier.value.style,
             in: inputs.graph,
             environment: inputs.environment
         )
-        return body(inputs.graph, inputs)
+        inputs.environment.foregroundStyle = style
+        let outputs = body(inputs.graph, inputs)
+        if outputs.count == 1, outputs.first.isValid {
+            let node = inputs.graph.nodes[Int(outputs.first.rawValue)]
+            if node.kind == .shape {
+                inputs.graph.shapes[Int(node.payload)].fill = style
+            }
+        }
+        return outputs
     }
 }
 
