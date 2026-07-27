@@ -17,24 +17,18 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - Game-provided render and queue capacities are authoritative. The current Game sizes them from actual visible submission needs rather than total world population.
 - `OrthographicCamera` exposes visible world bounds. The Game validates game-owned coarse spatial selection with 100,000 animated world sprites while Pixl retains precise final culling.
 - Context-owned render textures support independent offscreen queues, render-then-sample composition, target-format pipeline variants, preserve/clear initial state, and per-sprite filtering on Metal and WebGPU.
+- PixlUI retains and invalidates scenes, propagates environment values, lays out in logical points, and lowers styled controls and analytic shapes through the shared Metal/WebGPU rendering path. Current shapes include continuous and uneven rounded rectangles, capsules, circles, and container-relative concentric rectangles.
 - The Game verifies movement, input, layered animation, filtering, blend modes, pause/time scaling, music, assets, metrics, visuals, and hot reload.
 
 ## Near-Term Work
 
-### PixlUI Immediate Rendering
+### Next — Bitmap Font Text
 
-- [x] Change `Scene` to retain content, state/invalidation generation, and reusable graph/layout storage while deferring its first evaluation until display scale and logical output size are available.
-- [x] On first render or invalidation, evaluate the complete view tree, run complete layout, and cache the results; initially rebuild the whole tree rather than implementing incremental diffing.
-- [x] Expose only the package-internal PixlUI graph/layout seam required by Pixl; do not introduce a second UI display-list abstraction or expose graph construction to games.
-- [x] Lower cached PixlUI `Rectangle`, `Color`, fill, and stroke results directly into existing `ShapeSubmission` values in Pixl, recompiling only when Scene generation, logical output size, or display scale changes.
-- [x] Add an engine-internal bulk `RenderQueue` append for contiguous `ShapeSubmission` values. It must capacity-check once, append at the queue's current global submission ordinal, and preserve existing layer/order/ordinal semantics; games do not call this API.
-- [x] Add screen-space execution with logical point dimensions, top-left origin, y-down projection, native display scale, and preserved existing render-target contents.
-- [x] Add `GameContext.render(_:to:frame:)` for `Scene`, with rendering-call order controlling composition and no implicit padding, camera, or final-overlay policy.
-- [x] Keep rendering immediate: replay cached submissions into reusable queue storage, execute through the existing analytic-shape batching pipeline, then reset the queue normally.
-- [x] Add macro-based `@State` and typed `Binding`, preserve state by structural view identity, and invalidate Scene compilation when state mutates.
-- [x] Split semantic `Input` into platform-independent `PixlInput`, rename profile declarations to `@InputMap`, and dispatch PixlUI `onInput` handlers once per presentation frame.
-- [ ] Connect relevant environment changes to Scene invalidation; retain resources and expensive domain caches rather than renderer submissions.
-- [ ] Validate Rectangle/Color fill, stroke, pixel alignment, display-scale changes, graph order, and interleaving with game render calls on Metal and WebGPU.
+- [ ] Decide the initial pre-baked bitmap-font metadata format, comparing an existing format such as AngelCode BMFont with a compact Pixl-owned asset format.
+- [ ] Define the smallest font domain values: atlas texture, Unicode glyph lookup, bounds, advance, bearing, line height, and kerning.
+- [ ] Replace placeholder `Text` measurement with font metrics and lower visible glyphs through the existing ordered sprite batching path.
+- [ ] Support alpha-mask foreground styling and one atlas page first; defer vector rasterization, shaping, fallback, and multi-page atlases.
+- [ ] Cache text layout and glyph submissions with the retained Scene so unchanged text performs no steady-state work.
 
 ### First Game and 2D Rendering
 
@@ -59,12 +53,6 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - [ ] Prototype a persistent spatial-grid broadphase and measure candidate generation before selecting more complex structures.
 - [ ] Evaluate bitsets for collision filtering, worker-local deterministic result collection, and fast set merging.
 - [ ] Introduce `PixlConcurrency` only after a representative collision workload proves useful parallel depth and defines deterministic merging.
-
-### Text
-
-- [ ] Add the smallest game-facing text path needed for playable UI and feedback.
-- [ ] Scope the initial implementation to bitmap-font atlas glyphs and reuse the immediate ordered batching path where compatible.
-- [ ] Keep vector font loading/rasterization, shaping, localization depth, and advanced layout behind later concrete Game needs.
 
 ### In-Game Editing
 
