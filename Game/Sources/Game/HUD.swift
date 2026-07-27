@@ -7,13 +7,19 @@ public struct Debug: View {
     public var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             VStack(spacing: 28) {
-                Rectangle()
-                    .frame(width: 200, height: 200)
-                    .foregroundStyle(.red)
+//                Rectangle()
+//                    .frame(width: 200, height: 200)
+//                    .foregroundStyle(.red)
 
                 RoundedRectangle(cornerRadius: 28)
                     .frame(width: 200, height: 200)
                     .foregroundStyle(.red)
+
+                Capsule()
+                    .frame(width: 80, height: 200)
+
+                Circle()
+                    .frame(height: 100)
             }
             .padding()
         } label: {

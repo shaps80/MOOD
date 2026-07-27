@@ -11,11 +11,15 @@ private struct SidebarModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .frame(maxWidth: 300, maxHeight: .infinity, alignment: .top)
-            .background {
-                Rectangle()
-                    .foregroundStyle(.gray6.opacity(0.8))
-            }
+            .frame(
+                maxWidth: 300,
+                maxHeight: .infinity,
+                alignment: .top
+            )
+            .background(
+                .gray6.opacity(0.85),
+                in: .rect(cornerRadius: 14)
+            )
             .frame(
                 maxWidth: .infinity,
                 maxHeight: .infinity,

@@ -128,6 +128,20 @@ final class SceneCompilation {
                             cornerRadius: cornerRadius
                         ))
                     )
+                case .circle(let rect):
+                    let fill = color(for: shape.fill, in: graph)
+                    let stroke = shape.stroke.map {
+                        color(for: $0.style, in: graph)
+                    } ?? .clear
+                    guard fill.opacity > 0 || stroke.opacity > 0 else { continue }
+                    submissions.append(
+                        .shape(circle(
+                            frame: rect,
+                            fill: fill,
+                            stroke: stroke,
+                            strokeWidth: shape.stroke?.lineWidth ?? 0
+                        ))
+                    )
                 }
 
             default:
@@ -182,6 +196,38 @@ final class SceneCompilation {
             strokeAlignment: 0,
             smoothAntialiasing: 1,
             rounding: cornerRadius,
+            blendMode: .premultiplied,
+            layer: 0,
+            order: 0
+        )
+    }
+
+    private static func circle(
+        frame: Rect,
+        fill: PixlGraphics.Color,
+        stroke: PixlGraphics.Color,
+        strokeWidth: Float
+    ) -> ShapeSubmission {
+        let radius = min(frame.size.x, frame.size.y) * 0.5
+        let center = frame.origin + frame.size * 0.5
+        let strokeWidth = max(0, strokeWidth)
+        let extent = radius + strokeWidth * 0.5
+        let quadSize = extent * 2
+
+        return ShapeSubmission(
+            boundsMinimum: center - SIMD2<Float>(repeating: extent),
+            boundsMaximum: center + SIMD2<Float>(repeating: extent),
+            transformX: .init(quadSize, 0),
+            transformY: .init(0, quadSize),
+            transformTranslation: center,
+            quadHalfExtent: .init(repeating: extent),
+            parameters: .init(radius, radius, 0, 0),
+            fillColor: fill.premultiplied,
+            strokeColor: stroke.premultiplied,
+            kind: .circle,
+            strokeWidth: strokeWidth,
+            strokeAlignment: 0,
+            smoothAntialiasing: 1,
             blendMode: .premultiplied,
             layer: 0,
             order: 0

@@ -30,6 +30,20 @@ package struct _ShapeRecord: @unchecked Sendable {
                 ),
                 cornerRadius: max(0, cornerRadius - halfWidth)
             )
+        case .circle(let rect):
+            let alignedMinX = (rect.minX * displayScale).rounded() / displayScale
+            let alignedMinY = (rect.minY * displayScale).rounded() / displayScale
+            let alignedMaxX = (rect.maxX * displayScale).rounded() / displayScale
+            let alignedMaxY = (rect.maxY * displayScale).rounded() / displayScale
+            let halfWidth = stroke.lineWidth * 0.5
+            return .circle(
+                .init(
+                    x: alignedMinX + halfWidth,
+                    y: alignedMinY + halfWidth,
+                    width: max(0, alignedMaxX - alignedMinX - stroke.lineWidth),
+                    height: max(0, alignedMaxY - alignedMinY - stroke.lineWidth)
+                )
+            )
         }
     }
 }
