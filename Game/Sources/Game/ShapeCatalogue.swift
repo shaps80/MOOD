@@ -4,13 +4,11 @@ import Pixl2D
 /// Temporary visual diagnostic for the fixed-parameter IQ shape catalogue.
 struct ShapeCatalogue {
     private static let columns = 5
-    private static let halfWidth: Float = 16.0 / 9.0
-    private static let halfHeight: Float = 1.0
     private static let rows = 8
     // Leaves room for the tallest canonical geometry, outward rounding, and a
     // fully outside stroke so the grid reveals shape clipping rather than
     // introducing viewport or neighbouring-cell clipping of its own.
-    private static let shapeScale: Float = 0.1
+    private static let shapeScale: Float = 48
 
     private let bindings: ShapeBindings = .init()
     private var alignment: Shape.StrokeAlignment = .center
@@ -79,39 +77,11 @@ struct ShapeCatalogue {
     ].map {
         var shape = $0
             .fill(.clear)
-            .stroke(.blue, width: 0.04, alignment: .center)
+            .stroke(.blue, width: 2 / shapeScale, alignment: .center)
 //            .rounding(0.2)
         shape.layer = 1
         return shape
     }
-
-    private let grid: [Shape] = {
-        var lines: [Shape] = []
-        let cellWidth = halfWidth * 2 / Float(columns)
-        let cellHeight = halfHeight * 2 / Float(rows)
-
-        for column in 0...columns {
-            let x = -halfWidth + Float(column) * cellWidth
-            var line = Shape(.segment(
-                from: .init(x, -halfHeight),
-                to: .init(x, halfHeight)
-            )).stroke(.opaqueSeparator, width: 0.001)
-            line.layer = 2
-            lines.append(line)
-        }
-
-        for row in 0...rows {
-            let y = halfHeight - Float(row) * cellHeight
-            var line = Shape(.segment(
-                from: .init(-halfWidth, y),
-                to: .init(halfWidth, y)
-            )).stroke(.opaqueSeparator, width: 0.001)
-            line.layer = 2
-            lines.append(line)
-        }
-
-        return lines
-    }()
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         if bindings.inside.is(.down) {
@@ -136,28 +106,47 @@ struct ShapeCatalogue {
         }
     }
 
-    func submit(to queue: RenderQueue) {
-        let cellWidth = Self.halfWidth * 2 / Float(Self.columns)
-        let cellHeight = Self.halfHeight * 2 / Float(Self.rows)
+    func submit(to queue: RenderQueue, in size: Size) {
+        let cellWidth = size.width / Float(Self.columns)
+        let cellHeight = size.height / Float(Self.rows)
 
         for (index, shape) in shapes.enumerated() {
             let column = index % Self.columns
             let row = index / Self.columns
             let position = Vec2(
-                -Self.halfWidth + (Float(column) + 0.5) * cellWidth,
-                Self.halfHeight - (Float(row) + 0.5) * cellHeight
+                (Float(column) + 0.5) * cellWidth,
+                (Float(row) + 0.5) * cellHeight
             )
+
+            var shape = shape
+            shape.strokeWidth = 2 / Self.shapeScale
 
             queue.submit(
                 shape,
                 transform: .init(
                     position,
-                    scale: .init(repeating: Self.shapeScale)
+                    scale: .init(Self.shapeScale, -Self.shapeScale)
                 )
             )
         }
 
-        for line in grid {
+        for column in 0...Self.columns {
+            let x = Float(column) * cellWidth
+            var line = Shape(.segment(
+                from: .init(x, 0),
+                to: .init(x, size.height)
+            )).stroke(.opaqueSeparator, width: 1)
+            line.layer = 2
+            queue.submit(line, transform: .identity)
+        }
+
+        for row in 0...Self.rows {
+            let y = Float(row) * cellHeight
+            var line = Shape(.segment(
+                from: .init(0, y),
+                to: .init(size.width, y)
+            )).stroke(.opaqueSeparator, width: 1)
+            line.layer = 2
             queue.submit(line, transform: .identity)
         }
     }

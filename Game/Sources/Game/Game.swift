@@ -6,7 +6,6 @@ import PixlUI
 struct Game: Pixl.Game {
     private var player: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
-    private var shapeCamera: OrthographicCamera = .init(halfHeight: 1)
 //    private let cameraBindings: CameraBindings = .init()
     private let hud = Scene(HUD())
     private var shapeCatalogue: ShapeCatalogue
@@ -28,7 +27,14 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-        shapeCatalogue.submit(to: context.renderQueue)
+        let pixels = output.texture.descriptor.size
+        shapeCatalogue.submit(
+            to: context.renderQueue,
+            in: .init(
+                width: Float(pixels.width) / context.displayScale,
+                height: Float(pixels.height) / context.displayScale
+            )
+        )
 
         context.clear(
             target: output,
@@ -37,7 +43,6 @@ struct Game: Pixl.Game {
         )
 
         try context.render(
-            through: shapeCamera,
             to: output,
             frame: frame
         )
