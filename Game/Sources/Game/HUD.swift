@@ -10,15 +10,27 @@ public struct Debug: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            DislosureGroup(
-                "\(chevron) Hello, world!",
-                isExpanded: $isExpanded
-            ) {
-                Text("This is some useful text")
+            Label {
+                Text("Test")
+                    .highlight()
+            } icon: {
+                Image("checked")
+                    .highlight()
             }
-            .onInput(bindings.space) { _, _ in
-                isExpanded.toggle()
-            }
+            .labelStyle(.titleOnly)
+//            .padding(2)
+//            .highlight(.gray)
+            
+//            DislosureGroup(
+//                "\(chevron) Hello, world!",
+//                image: "unchecked",
+//                isExpanded: $isExpanded
+//            ) {
+//                Text("This is some useful text")
+//            }
+//            .onInput(bindings.space) { _, _ in
+//                isExpanded.toggle()
+//            }
         }
         .padding(5)
         .sidebar()

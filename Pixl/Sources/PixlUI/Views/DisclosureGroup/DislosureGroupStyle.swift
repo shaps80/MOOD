@@ -24,11 +24,11 @@ public struct DisclosureGroupStyleConfiguration {
     @Binding var isExpanded: Bool
 }
 
-//public protocol DislosureStyle: DynamicProperty {
-//    associatedtype Body: View
-//    @ViewBuilder func makeBody(configuration: Configuration) -> Body
-//    typealias Configuration = DisclosureGroupStyleConfiguration
-//}
+public protocol DislosureStyle {
+    associatedtype Body: View
+    @ContentBuilder func makeBody(configuration: Configuration) -> Body
+    typealias Configuration = DisclosureGroupStyleConfiguration
+}
 
 internal extension DisclosureGroupStyle {
     func resolve(configuration: Configuration) -> some View {
@@ -50,11 +50,12 @@ private struct ResolvedDislosureStyle<Style: DisclosureGroupStyle>: View {
 //    @Entry var dislosureGroupStyle: (any DislosureGroupStyle)?
 //}
 //
-//public extension View {
-//    func DislosureGroupStyle(_ style: some DislosureGroupStyle) -> some View {
+public extension View {
+    func dislosureGroupStyle(_ style: some DisclosureGroupStyle) -> some View {
 //        environment(\.<#style#>Style, style)
-//    }
-//}
+        EmptyView()
+    }
+}
 
 extension DisclosureGroupStyle where Self == AutomaticDisclosureGroupStyle {
     static var `default`: Self { .init() }
