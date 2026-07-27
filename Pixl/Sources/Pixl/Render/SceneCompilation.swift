@@ -90,7 +90,11 @@ final class SceneCompilation {
                         x: Float(asset.size.x),
                         y: Float(asset.size.y)
                     )
-                    let sprite = Sprite(region: .init(asset: asset))
+                    var sprite = Sprite(region: .init(asset: asset))
+                    if image.renderingMode == .template {
+                        sprite.modulation = color(for: image.tint, in: graph)
+                        sprite.modulationMode = .alphaMask
+                    }
                     let transform = Transform2D(
                         frame.origin + frame.size * 0.5,
                         scale: .init(

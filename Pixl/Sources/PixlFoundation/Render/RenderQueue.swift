@@ -120,6 +120,8 @@ public final class RenderQueue {
         public let textureScale: SIMD2<Float>
         /// Packed eight-bit RGBA tint.
         public let tintRGBA8: UInt32
+        /// Packed modulation behaviour and texture-alpha representation.
+        public let modulationMode: UInt32
     }
 
     /// Compact GPU-facing analytic-shape instance produced during lowering.
@@ -624,7 +626,8 @@ public final class RenderQueue {
                     translation: source.transformTranslation,
                     textureOrigin: source.textureCoordinateOrigin,
                     textureScale: source.textureCoordinateScale,
-                    tintRGBA8: source.tintRGBA8
+                    tintRGBA8: source.tintRGBA8,
+                    modulationMode: source.modulationMode
                 )
                 shapeInstance = Self.emptyShapeInstance
                 extendedShapeInstance = Self.emptyExtendedShapeInstance
@@ -914,7 +917,8 @@ public final class RenderQueue {
         translation: .zero,
         textureOrigin: .zero,
         textureScale: .zero,
-        tintRGBA8: 0
+        tintRGBA8: 0,
+        modulationMode: 0
     )
 
     private static let emptyShapeInstance = ShapeInstance(

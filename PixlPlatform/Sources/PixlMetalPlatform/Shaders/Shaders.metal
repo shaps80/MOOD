@@ -52,13 +52,21 @@ struct SpriteVertexInput {
     float2 textureOrigin [[attribute(6)]];
     float2 textureScale [[attribute(7)]];
     float4 tint [[attribute(8)]];
+    uint modulationMode [[attribute(9)]];
+};
+
+struct SpriteVertexOutput {
+    float4 position [[position]];
+    float4 tint;
+    float2 textureCoordinate;
+    uint modulationMode [[flat]];
 };
 
 struct SpriteViewParameters {
     float3x3 projection;
 };
 
-vertex VertexOutput pixlSpriteVertex(
+vertex SpriteVertexOutput pixlSpriteVertex(
     SpriteVertexInput input [[stage_in]],
     constant SpriteViewParameters &view [[buffer(2)]]
 ) {
@@ -69,8 +77,28 @@ vertex VertexOutput pixlSpriteVertex(
     return {
         float4(projected.xy, 0.0, 1.0),
         input.tint,
-        input.textureOrigin + input.textureCoordinate * input.textureScale
+        input.textureOrigin + input.textureCoordinate * input.textureScale,
+        input.modulationMode
     };
+}
+
+fragment float4 pixlSpriteFragment(
+    SpriteVertexOutput input [[stage_in]],
+    texture2d<float> texture [[texture(0)]],
+    sampler textureSampler [[sampler(0)]]
+) {
+    float4 sampled = texture.sample(textureSampler, input.textureCoordinate);
+    bool alphaMask = (input.modulationMode & 1u) != 0u;
+    bool premultiplied = (input.modulationMode & 2u) != 0u;
+    if (alphaMask) {
+        float alpha = sampled.a * input.tint.a;
+        return premultiplied
+            ? float4(input.tint.rgb * alpha, alpha)
+            : float4(input.tint.rgb, alpha);
+    }
+    float4 result = sampled * input.tint;
+    if (premultiplied) result.rgb *= input.tint.a;
+    return result;
 }
 
 struct ShapeVertexInput {

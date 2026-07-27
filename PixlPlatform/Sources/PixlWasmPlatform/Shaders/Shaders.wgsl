@@ -53,20 +53,48 @@ struct SpriteVertexInput {
     @location(6) textureOrigin: vec2f,
     @location(7) textureScale: vec2f,
     @location(8) tint: vec4f,
+    @location(9) modulationMode: u32,
+}
+
+struct SpriteVertexOutput {
+    @builtin(position) position: vec4f,
+    @location(0) tint: vec4f,
+    @location(1) textureCoordinate: vec2f,
+    @location(2) @interpolate(flat) modulationMode: u32,
 }
 
 @vertex
-fn pixlSpriteVertex(input: SpriteVertexInput) -> VertexOutput {
-    var output: VertexOutput;
+fn pixlSpriteVertex(input: SpriteVertexInput) -> SpriteVertexOutput {
+    var output: SpriteVertexOutput;
     let world = input.transformX * input.position.x
         + input.transformY * input.position.y
         + input.translation;
     let projected = parameters.transform * vec3f(world, 1.0);
     output.position = vec4f(projected.xy, 0.0, 1.0);
-    output.color = input.tint;
+    output.tint = input.tint;
     output.textureCoordinate = input.textureOrigin
         + input.textureCoordinate * input.textureScale;
+    output.modulationMode = input.modulationMode;
     return output;
+}
+
+@fragment
+fn pixlSpriteFragment(input: SpriteVertexOutput) -> @location(0) vec4f {
+    let sampled = textureSample(texture, textureSampler, input.textureCoordinate);
+    let alphaMask = (input.modulationMode & 1u) != 0u;
+    let premultiplied = (input.modulationMode & 2u) != 0u;
+    if alphaMask {
+        let alpha = sampled.a * input.tint.a;
+        if premultiplied {
+            return vec4f(input.tint.rgb * alpha, alpha);
+        }
+        return vec4f(input.tint.rgb, alpha);
+    }
+    var result = sampled * input.tint;
+    if premultiplied {
+        result = vec4f(result.rgb * input.tint.a, result.a);
+    }
+    return result;
 }
 
 struct ShapeVertexInput {

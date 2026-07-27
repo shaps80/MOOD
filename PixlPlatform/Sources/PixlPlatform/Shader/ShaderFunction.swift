@@ -18,6 +18,7 @@ public extension ShaderFunction {
     static let vertex = Self(name: "pixlVertex")
     /// Built-in general fragment entry point.
     static let fragment = Self(name: "pixlFragment")
+    static let spriteFragment = Self(name: "pixlSpriteFragment")
     /// Built-in instanced-sprite vertex entry point.
     static let spriteVertex = Self(name: "pixlSpriteVertex")
     /// Built-in instanced analytic-shape vertex entry point.

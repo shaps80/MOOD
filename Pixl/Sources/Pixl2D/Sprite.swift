@@ -6,6 +6,8 @@ public struct Sprite {
     public var region: TextureRegion
     /// Sampling and composition applied when rendering.
     public var material: Material
+    /// Per-instance colour multiplied with the sampled texture.
+    public var modulation: Color
     /// Coarse render layer. Lower layers render first.
     public var layer: RenderLayer
     /// Ordering within `layer`. Lower values render first.
@@ -35,16 +37,30 @@ public struct Sprite {
     public init(
         region: TextureRegion,
         material: Material = .init(),
+        modulation: Color = .white,
         layer: RenderLayer = 0,
         order: UInt32 = 0,
         isFlipped: Bool = false
     ) {
         self.region = region
         self.material = material
+        self.modulation = modulation
         self.layer = layer
         self.order = order
         self.isFlipped = isFlipped
     }
+
+    package var modulationMode: ModulationMode {
+        get { _modulationMode }
+        set { _modulationMode = newValue }
+    }
+
+    package enum ModulationMode: UInt32, Sendable {
+        case multiply
+        case alphaMask
+    }
+
+    private var _modulationMode: ModulationMode = .multiply
 }
 
 public extension Sprite {

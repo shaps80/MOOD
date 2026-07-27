@@ -103,7 +103,7 @@ public final class SpriteRenderResources {
         let pipeline = try device.makeRenderPipeline(
             .init(
                 vertex: .spriteVertex,
-                fragment: .fragment,
+            fragment: .spriteFragment,
                 vertexLayout: Self.vertexLayout,
                 colorFormat: format,
                 blendMode: blendMode
@@ -249,7 +249,7 @@ public final class SpriteRenderResources {
     private static var vertexLayout: VertexLayout {
         let layout = VertexLayout(
             bufferCapacity: 2,
-            attributeCapacity: 8
+            attributeCapacity: 9
         )
         layout.append(
             .init(
@@ -296,6 +296,14 @@ public final class SpriteRenderResources {
                 bufferIndex: 1,
                 format: .unorm8x4,
                 offset: 40
+            )
+        )
+        layout.append(
+            .init(
+                location: 9,
+                bufferIndex: 1,
+                format: .uint32,
+                offset: 44
             )
         )
         return layout

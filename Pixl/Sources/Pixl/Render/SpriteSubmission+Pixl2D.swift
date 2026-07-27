@@ -1,6 +1,7 @@
-import Pixl2D
-import PixlFoundation
 import PixlPlatform
+import PixlFoundation
+import PixlGraphics
+import Pixl2D
 
 extension SpriteSubmission {
     init(sprite: Sprite, transform: Transform2D) {
@@ -29,6 +30,9 @@ extension SpriteSubmission {
             transformX: transformX,
             transformY: transformY,
             transformTranslation: translation,
+            tintRGBA8: sprite.modulation.rgba8,
+            modulationMode: sprite.modulationMode.rawValue
+                | (sprite.asset.alpha == .premultiplied ? 2 : 0),
             sampler: SamplerDescriptor(
                 minFilter: sprite.material.filtering.minification.platform,
                 magFilter: sprite.material.filtering.magnification.platform,
@@ -41,6 +45,18 @@ extension SpriteSubmission {
             layer: sprite.layer.rawValue,
             order: sprite.order
         )
+    }
+}
+
+private extension PixlGraphics.Color {
+    var rgba8: UInt32 {
+        func channel(_ value: Float) -> UInt32 {
+            UInt32((Swift.min(Swift.max(value, 0), 1) * 255).rounded())
+        }
+        return channel(red)
+            | channel(green) << 8
+            | channel(blue) << 16
+            | channel(opacity) << 24
     }
 }
 

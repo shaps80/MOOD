@@ -52,7 +52,8 @@ public final class SpriteRenderWorkspace {
                 translation: .zero,
                 textureOrigin: .zero,
                 textureScale: .zero,
-                tintRGBA8: 0
+                tintRGBA8: 0,
+                modulationMode: 0
             ),
             count: capacity
         )

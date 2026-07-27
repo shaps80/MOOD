@@ -49,6 +49,8 @@ package struct ViewGraph {
 
     package struct ImageRecord: Sendable {
         package let name: String
+        package let renderingMode: Image.RenderingMode
+        package let tint: StyleID
         package var asset: TextureAsset?
     }
 

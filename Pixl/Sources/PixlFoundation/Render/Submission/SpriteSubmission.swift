@@ -24,6 +24,8 @@ public struct SpriteSubmission: Sendable {
     public let transformTranslation: SIMD2<Float>
     /// Packed eight-bit RGBA tint.
     public let tintRGBA8: UInt32
+    /// Packed per-instance modulation behaviour.
+    public let modulationMode: UInt32
     /// Complete texture-sampling state.
     public let sampler: SamplerDescriptor
     /// Fixed-function colour composition.
@@ -58,6 +60,7 @@ public struct SpriteSubmission: Sendable {
         transformY: SIMD2<Float>,
         transformTranslation: SIMD2<Float>,
         tintRGBA8: UInt32 = .max,
+        modulationMode: UInt32 = 0,
         sampler: SamplerDescriptor,
         blendMode: BlendMode,
         layer: UInt32,
@@ -72,6 +75,7 @@ public struct SpriteSubmission: Sendable {
         self.transformY = transformY
         self.transformTranslation = transformTranslation
         self.tintRGBA8 = tintRGBA8
+        self.modulationMode = modulationMode
         self.sampler = sampler
         self.blendMode = blendMode
         self.layer = layer
