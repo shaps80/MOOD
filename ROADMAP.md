@@ -26,16 +26,16 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 Complete these in order before expanding the engine surface:
 
-1. Streaming music so playback no longer requires fully decoded resident storage.
+1. Streaming audio so long-form playback no longer requires fully decoded resident storage.
 2. Bitmap-font text for game HUD, scoring, and PixlUI menus.
 3. Small deterministic 2D collision vocabulary suitable for the first game.
 4. Minimal 2D platformer physics: velocity integration, gravity, grounded state, and collision response.
 
 With these complete, build the first proper Retro Invaders game using the existing sprites, animation, input, PixlUI pause menu, music, sound effects, and scoring paths.
 
-### Next — Streaming Music
+### Next — Streaming Audio
 
-- [ ] Add an explicit streaming audio source so music streams by default instead of requiring fully decoded resident storage.
+- [ ] Add an explicit streaming audio source for long-form playback without fully decoded resident storage; music is the first consumer, not a special-case API.
 
 ### Bitmap Font Text
 

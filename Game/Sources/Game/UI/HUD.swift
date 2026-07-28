@@ -16,6 +16,10 @@ public struct Debug: View {
 
                 Circle()
                     .frame(height: 100)
+
+                Image("checked")
+                    .renderingMode(.template)
+                    .tint(.yellow)
             }
             .padding(.vertical, 5)
         } label: {

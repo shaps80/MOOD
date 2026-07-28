@@ -6,13 +6,13 @@ import PixlUI
 struct Game: Pixl.Game {
     private var player: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
-//
+
     private let debug = Scene(Debug())
     private var shapeCatalogue: ShapeCatalogue
-//    private var gameState: GameStateHandler
+    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-//        self.gameState = try .init(context: context)
+        self.gameState = try .init(context: context)
         player = try .init(context: context)
         shapeCatalogue = .init(context: context)
     }
@@ -63,9 +63,9 @@ struct Game: Pixl.Game {
         logMetrics(time: time)
     }
 
-//    mutating func didEnter(_ phase: GamePhase, context: GameContext) {
-//        gameState.didEnter(phase, context: context)
-//    }
+    mutating func didEnter(_ phase: GamePhase, context: GameContext) {
+        gameState.didEnter(phase, context: context)
+    }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
         player.fixedUpdate(time, context: context)
@@ -73,7 +73,7 @@ struct Game: Pixl.Game {
 //
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
-//        gameState.update(time, context: context)
+        gameState.update(time, context: context)
 //        shapeCatalogue.update(time, context: context)
     }
 
@@ -95,6 +95,7 @@ struct Game: Pixl.Game {
 }
 
 import PixlPlatform
+
 extension Game {
     static var gameSettings: GameSettings {
         .init(

@@ -1,12 +1,5 @@
 import Pixl
 
-struct AudioSettings: Codable {
-    var master: Float = 0.1
-    var music: Float = 1
-    var effects: Float = 1
-    var voices: Float = 1
-}
-
 final class Mixer {
     let master: Bus
     let music: Bus
@@ -15,7 +8,7 @@ final class Mixer {
 
     init(
         audio: Audio,
-        settings: AudioSettings
+        settings: Settings
     ) throws {
         master = audio.masterBus
         music = try audio.makeBus()
@@ -29,12 +22,19 @@ final class Mixer {
         voices.volume = settings.voices
     }
 
-    func settings(audio: Audio) -> AudioSettings {
-        AudioSettings(
+    func settings(audio: Audio) -> Settings {
+        Settings(
             master: audio.masterVolume,
             music: music.volume,
             effects: effects.volume,
             voices: voices.volume
         )
+    }
+
+    struct Settings: Codable {
+        var master: Float = 0.1
+        var music: Float = 1
+        var effects: Float = 1
+        var voices: Float = 1
     }
 }
