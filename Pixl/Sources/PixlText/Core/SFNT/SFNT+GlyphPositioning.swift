@@ -38,9 +38,76 @@ extension SFNT {
             case classes(ClassPairTable)
         }
 
+        struct SingleRule {
+            let glyph: UInt16
+            let adjustment: ValueAdjustment
+        }
+
+        struct CursiveRecord {
+            let glyph: UInt16
+            let entry: OpenTypeLayout.Anchor?
+            let exit: OpenTypeLayout.Anchor?
+        }
+
+        struct MarkRecord {
+            let glyph: UInt16
+            let markClass: UInt16
+            let anchor: OpenTypeLayout.Anchor
+        }
+
+        struct BaseRecord {
+            let glyph: UInt16
+            let anchors: [OpenTypeLayout.Anchor?]
+        }
+
+        struct LigatureRecord {
+            let glyph: UInt16
+            let components: [[OpenTypeLayout.Anchor?]]
+        }
+
+        struct MarkToBaseTable {
+            let marks: [MarkRecord]
+            let bases: [BaseRecord]
+            let classCount: Int
+        }
+
+        struct MarkToLigatureTable {
+            let marks: [MarkRecord]
+            let ligatures: [LigatureRecord]
+            let classCount: Int
+        }
+
+        enum Subtable {
+            case single([SingleRule])
+            case pair(PairSubtable)
+            case cursive([CursiveRecord])
+            case markToBase(MarkToBaseTable)
+            case markToLigature(MarkToLigatureTable)
+            case markToMark(MarkToBaseTable)
+            case context(OpenTypeLayout.ContextRule)
+        }
+
         struct Lookup {
             let index: Int
-            let pairs: [PairSubtable]
+            let flags: OpenTypeLayout.LookupFlags
+            let subtables: [Subtable]
+
+            init(
+                index: Int,
+                flags: OpenTypeLayout.LookupFlags = .init(rawValue: 0, markFilteringSet: nil),
+                subtables: [Subtable]
+            ) {
+                self.index = index
+                self.flags = flags
+                self.subtables = subtables
+            }
+
+            init(index: Int, pairs: [PairSubtable]) {
+                self.init(
+                    index: index,
+                    subtables: pairs.map(Subtable.pair)
+                )
+            }
         }
 
         struct ActiveLookup {
@@ -81,11 +148,31 @@ extension SFNT {
         static func parse(table: Table, bytes: [UInt8]) throws -> Self {
             let reader = ByteReader(bytes)
             try require(table, at: table.offset, count: 10)
+            let majorVersion = try reader.uint16(at: table.offset)
+            let minorVersion = try reader.uint16(at: table.offset + 2)
+            guard majorVersion == 1, minorVersion == 0 || minorVersion == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            if minorVersion == 1 {
+                try require(table, at: table.offset, count: 14)
+                let variationsOffset = Int(try reader.uint32(at: table.offset + 10))
+                if variationsOffset != 0 {
+                    try require(table, at: table.offset + variationsOffset, count: 8)
+                }
+            }
             let scriptListOffset = Int(try reader.uint16(at: table.offset + 4))
             let featureListOffset = Int(try reader.uint16(at: table.offset + 6))
             let lookupListOffset = Int(try reader.uint16(at: table.offset + 8))
             let scripts = try parseScripts(at: table.offset + scriptListOffset, table: table, reader: reader)
             let features = try parseFeatures(at: table.offset + featureListOffset, table: table, reader: reader)
+            guard lookupListOffset != 0 else {
+                try OpenTypeLayout.validateReferences(
+                    scripts: scripts,
+                    features: features,
+                    lookupCount: 0
+                )
+                return .init(scripts: scripts, features: features, lookups: [])
+            }
             let lookupList = table.offset + lookupListOffset
             try require(table, at: lookupList, count: 2)
             let lookupCount = Int(try reader.uint16(at: lookupList))
@@ -95,48 +182,436 @@ extension SFNT {
                 let lookup = lookupList + Int(try reader.uint16(at: lookupList + 2 + index * 2))
                 try require(table, at: lookup, count: 6)
                 let type = try reader.uint16(at: lookup)
+                let rawFlags = try reader.uint16(at: lookup + 2)
+                guard rawFlags & 0x00E0 == 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
                 let count = Int(try reader.uint16(at: lookup + 4))
                 try require(table, at: lookup + 6, count: count * 2)
-                var pairs: [PairSubtable] = []
-                for subtableIndex in 0..<count {
-                    let subtable = lookup + Int(try reader.uint16(at: lookup + 6 + subtableIndex * 2))
-                    if let parsed = try parsePairSubtable(type: type, at: subtable, table: table, reader: reader) {
-                        pairs.append(parsed)
-                    }
+                let markFilteringSet: UInt16?
+                if rawFlags & 0x0010 != 0 {
+                    try require(table, at: lookup + 6 + count * 2, count: 2)
+                    markFilteringSet = try reader.uint16(at: lookup + 6 + count * 2)
+                } else {
+                    markFilteringSet = nil
                 }
-                lookups.append(.init(index: index, pairs: pairs))
+                var subtables: [Subtable] = []
+                for subtableIndex in 0..<count {
+                    let relativeOffset = Int(try reader.uint16(at: lookup + 6 + subtableIndex * 2))
+                    guard relativeOffset > 0 else {
+                        throw SFNT.RegistrationError.malformedRequiredTable
+                    }
+                    subtables += try parseSubtable(
+                        type: type,
+                        at: lookup + relativeOffset,
+                        table: table,
+                        reader: reader,
+                        lookupCount: lookupCount
+                    )
+                }
+                lookups.append(.init(
+                    index: index,
+                    flags: .init(rawValue: rawFlags, markFilteringSet: markFilteringSet),
+                    subtables: subtables
+                ))
             }
+            try OpenTypeLayout.validateReferences(
+                scripts: scripts,
+                features: features,
+                lookupCount: lookups.count
+            )
             return .init(scripts: scripts, features: features, lookups: lookups)
         }
 
-        private static func parsePairSubtable(
+        private static func parseSubtable(
             type: UInt16,
             at offset: Int,
             table: Table,
-            reader: ByteReader
-        ) throws -> PairSubtable? {
+            reader: ByteReader,
+            lookupCount: Int
+        ) throws -> [Subtable] {
             if type == 9 {
                 try require(table, at: offset, count: 8)
-                guard try reader.uint16(at: offset) == 1 else { return nil }
+                guard try reader.uint16(at: offset) == 1 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
                 let extendedType = try reader.uint16(at: offset + 2)
                 let extendedOffset = Int(try reader.uint32(at: offset + 4))
                 guard extendedType != 9, extendedOffset > 0 else {
                     throw SFNT.RegistrationError.malformedRequiredTable
                 }
-                return try parsePairSubtable(
+                return try parseSubtable(
                     type: extendedType,
                     at: offset + extendedOffset,
                     table: table,
-                    reader: reader
+                    reader: reader,
+                    lookupCount: lookupCount
                 )
             }
-            guard type == 2 else { return nil }
-            try require(table, at: offset, count: 10)
-            switch try reader.uint16(at: offset) {
-            case 1: return try parseGlyphPairs(at: offset, table: table, reader: reader)
-            case 2: return try parseClassPairs(at: offset, table: table, reader: reader)
-            default: return nil
+            switch type {
+            case 1:
+                return [.single(try parseSingleAdjustments(
+                    at: offset,
+                    table: table,
+                    reader: reader
+                ))]
+            case 2:
+                try require(table, at: offset, count: 10)
+                switch try reader.uint16(at: offset) {
+                case 1: return [.pair(try parseGlyphPairs(at: offset, table: table, reader: reader))]
+                case 2: return [.pair(try parseClassPairs(at: offset, table: table, reader: reader))]
+                default: throw SFNT.RegistrationError.malformedRequiredTable
+                }
+            case 3:
+                return [.cursive(try parseCursive(at: offset, table: table, reader: reader))]
+            case 4:
+                return [.markToBase(try parseMarkToBase(at: offset, table: table, reader: reader))]
+            case 5:
+                return [.markToLigature(try parseMarkToLigature(
+                    at: offset,
+                    table: table,
+                    reader: reader
+                ))]
+            case 6:
+                return [.markToMark(try parseMarkToBase(at: offset, table: table, reader: reader))]
+            case 7:
+                return try OpenTypeLayout.contextRules(
+                    at: offset,
+                    table: table,
+                    reader: reader,
+                    lookupCount: lookupCount
+                ).map(Subtable.context)
+            case 8:
+                return try OpenTypeLayout.chainedContextRules(
+                    at: offset,
+                    table: table,
+                    reader: reader,
+                    lookupCount: lookupCount
+                ).map(Subtable.context)
+            default:
+                return []
             }
+        }
+
+        private static func parseSingleAdjustments(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [SingleRule] {
+            try require(table, at: offset, count: 6)
+            let format = try reader.uint16(at: offset)
+            let coverageOffset = Int(try reader.uint16(at: offset + 2))
+            let valueFormat = try reader.uint16(at: offset + 4)
+            guard coverageOffset > 0, validValueFormat(valueFormat) else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let glyphs = try OpenTypeLayout.coverage(
+                at: offset + coverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            switch format {
+            case 1:
+                try require(table, at: offset + 6, count: valueSize(valueFormat))
+                var cursor = offset + 6
+                let adjustment = try value(at: &cursor, format: valueFormat, reader: reader)
+                return glyphs.map { .init(glyph: $0, adjustment: adjustment) }
+            case 2:
+                try require(table, at: offset, count: 8)
+                let count = Int(try reader.uint16(at: offset + 6))
+                guard count == glyphs.count else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                let recordSize = valueSize(valueFormat)
+                let (byteCount, overflow) = count.multipliedReportingOverflow(by: recordSize)
+                guard !overflow else { throw SFNT.RegistrationError.malformedRequiredTable }
+                try require(table, at: offset + 8, count: byteCount)
+                var cursor = offset + 8
+                return try glyphs.map {
+                    .init(
+                        glyph: $0,
+                        adjustment: try value(at: &cursor, format: valueFormat, reader: reader)
+                    )
+                }
+            default:
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+        }
+
+        private static func parseCursive(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [CursiveRecord] {
+            try require(table, at: offset, count: 6)
+            guard try reader.uint16(at: offset) == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let coverageOffset = Int(try reader.uint16(at: offset + 2))
+            let count = Int(try reader.uint16(at: offset + 4))
+            guard coverageOffset > 0 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let glyphs = try OpenTypeLayout.coverage(
+                at: offset + coverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            guard glyphs.count == count else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let (byteCount, overflow) = count.multipliedReportingOverflow(by: 4)
+            guard !overflow else { throw SFNT.RegistrationError.malformedRequiredTable }
+            try require(table, at: offset + 6, count: byteCount)
+            return try (0..<count).map { index in
+                let record = offset + 6 + index * 4
+                return .init(
+                    glyph: glyphs[index],
+                    entry: try optionalAnchor(
+                        relativeOffset: Int(try reader.uint16(at: record)),
+                        base: offset,
+                        table: table,
+                        reader: reader
+                    ),
+                    exit: try optionalAnchor(
+                        relativeOffset: Int(try reader.uint16(at: record + 2)),
+                        base: offset,
+                        table: table,
+                        reader: reader
+                    )
+                )
+            }
+        }
+
+        private static func parseMarkToBase(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> MarkToBaseTable {
+            try require(table, at: offset, count: 12)
+            guard try reader.uint16(at: offset) == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let markCoverageOffset = Int(try reader.uint16(at: offset + 2))
+            let baseCoverageOffset = Int(try reader.uint16(at: offset + 4))
+            let classCount = Int(try reader.uint16(at: offset + 6))
+            let markArrayOffset = Int(try reader.uint16(at: offset + 8))
+            let baseArrayOffset = Int(try reader.uint16(at: offset + 10))
+            guard markCoverageOffset > 0,
+                  baseCoverageOffset > 0,
+                  classCount > 0,
+                  markArrayOffset > 0,
+                  baseArrayOffset > 0
+            else { throw SFNT.RegistrationError.malformedRequiredTable }
+            let markGlyphs = try OpenTypeLayout.coverage(
+                at: offset + markCoverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            let baseGlyphs = try OpenTypeLayout.coverage(
+                at: offset + baseCoverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            return .init(
+                marks: try parseMarks(
+                    at: offset + markArrayOffset,
+                    glyphs: markGlyphs,
+                    classCount: classCount,
+                    table: table,
+                    reader: reader
+                ),
+                bases: try parseBases(
+                    at: offset + baseArrayOffset,
+                    glyphs: baseGlyphs,
+                    classCount: classCount,
+                    table: table,
+                    reader: reader
+                ),
+                classCount: classCount
+            )
+        }
+
+        private static func parseMarkToLigature(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> MarkToLigatureTable {
+            try require(table, at: offset, count: 12)
+            guard try reader.uint16(at: offset) == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let markCoverageOffset = Int(try reader.uint16(at: offset + 2))
+            let ligatureCoverageOffset = Int(try reader.uint16(at: offset + 4))
+            let classCount = Int(try reader.uint16(at: offset + 6))
+            let markArrayOffset = Int(try reader.uint16(at: offset + 8))
+            let ligatureArrayOffset = Int(try reader.uint16(at: offset + 10))
+            guard markCoverageOffset > 0,
+                  ligatureCoverageOffset > 0,
+                  classCount > 0,
+                  markArrayOffset > 0,
+                  ligatureArrayOffset > 0
+            else { throw SFNT.RegistrationError.malformedRequiredTable }
+            let markGlyphs = try OpenTypeLayout.coverage(
+                at: offset + markCoverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            let ligatureGlyphs = try OpenTypeLayout.coverage(
+                at: offset + ligatureCoverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            return .init(
+                marks: try parseMarks(
+                    at: offset + markArrayOffset,
+                    glyphs: markGlyphs,
+                    classCount: classCount,
+                    table: table,
+                    reader: reader
+                ),
+                ligatures: try parseLigatures(
+                    at: offset + ligatureArrayOffset,
+                    glyphs: ligatureGlyphs,
+                    classCount: classCount,
+                    table: table,
+                    reader: reader
+                ),
+                classCount: classCount
+            )
+        }
+
+        private static func parseMarks(
+            at offset: Int,
+            glyphs: [UInt16],
+            classCount: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [MarkRecord] {
+            try require(table, at: offset, count: 2)
+            let count = Int(try reader.uint16(at: offset))
+            guard count == glyphs.count else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let (byteCount, overflow) = count.multipliedReportingOverflow(by: 4)
+            guard !overflow else { throw SFNT.RegistrationError.malformedRequiredTable }
+            try require(table, at: offset + 2, count: byteCount)
+            return try (0..<count).map { index in
+                let record = offset + 2 + index * 4
+                let markClass = try reader.uint16(at: record)
+                let anchorOffset = Int(try reader.uint16(at: record + 2))
+                guard Int(markClass) < classCount, anchorOffset > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                return .init(
+                    glyph: glyphs[index],
+                    markClass: markClass,
+                    anchor: try OpenTypeLayout.anchor(
+                        at: offset + anchorOffset,
+                        table: table,
+                        reader: reader
+                    )
+                )
+            }
+        }
+
+        private static func parseBases(
+            at offset: Int,
+            glyphs: [UInt16],
+            classCount: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [BaseRecord] {
+            try require(table, at: offset, count: 2)
+            let count = Int(try reader.uint16(at: offset))
+            guard count == glyphs.count else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let (recordCount, countOverflow) = count.multipliedReportingOverflow(by: classCount)
+            let (byteCount, byteOverflow) = recordCount.multipliedReportingOverflow(by: 2)
+            guard !countOverflow, !byteOverflow else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            try require(table, at: offset + 2, count: byteCount)
+            return try (0..<count).map { glyphIndex in
+                let record = offset + 2 + glyphIndex * classCount * 2
+                return .init(
+                    glyph: glyphs[glyphIndex],
+                    anchors: try (0..<classCount).map { classIndex in
+                        try optionalAnchor(
+                            relativeOffset: Int(try reader.uint16(at: record + classIndex * 2)),
+                            base: offset,
+                            table: table,
+                            reader: reader
+                        )
+                    }
+                )
+            }
+        }
+
+        private static func parseLigatures(
+            at offset: Int,
+            glyphs: [UInt16],
+            classCount: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [LigatureRecord] {
+            try require(table, at: offset, count: 2)
+            let count = Int(try reader.uint16(at: offset))
+            guard count == glyphs.count else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            try require(table, at: offset + 2, count: count * 2)
+            return try (0..<count).map { glyphIndex in
+                let attachOffset = Int(try reader.uint16(at: offset + 2 + glyphIndex * 2))
+                guard attachOffset > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                let attach = offset + attachOffset
+                try require(table, at: attach, count: 2)
+                let componentCount = Int(try reader.uint16(at: attach))
+                guard componentCount > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                let (recordCount, countOverflow) = componentCount.multipliedReportingOverflow(
+                    by: classCount
+                )
+                let (byteCount, byteOverflow) = recordCount.multipliedReportingOverflow(by: 2)
+                guard !countOverflow, !byteOverflow else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                try require(table, at: attach + 2, count: byteCount)
+                return .init(
+                    glyph: glyphs[glyphIndex],
+                    components: try (0..<componentCount).map { componentIndex in
+                        let record = attach + 2 + componentIndex * classCount * 2
+                        return try (0..<classCount).map { classIndex in
+                            try optionalAnchor(
+                                relativeOffset: Int(try reader.uint16(
+                                    at: record + classIndex * 2
+                                )),
+                                base: attach,
+                                table: table,
+                                reader: reader
+                            )
+                        }
+                    }
+                )
+            }
+        }
+
+        private static func optionalAnchor(
+            relativeOffset: Int,
+            base: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> OpenTypeLayout.Anchor? {
+            guard relativeOffset != 0 else { return nil }
+            return try OpenTypeLayout.anchor(
+                at: base + relativeOffset,
+                table: table,
+                reader: reader
+            )
         }
 
         private static func parseGlyphPairs(
@@ -282,41 +757,12 @@ extension SFNT {
             table: Table,
             reader: ByteReader
         ) throws -> [ClassRange] {
-            try require(table, at: offset, count: 4)
-            switch try reader.uint16(at: offset) {
-            case 1:
-                try require(table, at: offset, count: 6)
-                let start = try reader.uint16(at: offset + 2)
-                let count = Int(try reader.uint16(at: offset + 4))
-                try require(table, at: offset + 6, count: count * 2)
-                guard Int(start) + count <= Int(UInt16.max) + 1 else {
-                    throw SFNT.RegistrationError.malformedRequiredTable
-                }
-                return try (0..<count).map { index in
-                    let glyph = UInt16(truncatingIfNeeded: Int(start) + index)
-                    return .init(
-                        glyphs: glyph...glyph,
-                        value: try reader.uint16(at: offset + 6 + index * 2)
-                    )
-                }
-            case 2:
-                let count = Int(try reader.uint16(at: offset + 2))
-                try require(table, at: offset + 4, count: count * 6)
-                var previousEnd: UInt16?
-                return try (0..<count).map { index in
-                    let record = offset + 4 + index * 6
-                    let start = try reader.uint16(at: record)
-                    let end = try reader.uint16(at: record + 2)
-                    guard start <= end,
-                          previousEnd.map({ $0 < start }) ?? true
-                    else { throw SFNT.RegistrationError.malformedRequiredTable }
-                    previousEnd = end
-                    return .init(
-                        glyphs: start...end,
-                        value: try reader.uint16(at: record + 4)
-                    )
-                }
-            default: return []
+            try OpenTypeLayout.classDefinition(
+                at: offset,
+                table: table,
+                reader: reader
+            ).ranges.map {
+                .init(glyphs: $0.glyphs, value: $0.value)
             }
         }
 
@@ -325,25 +771,11 @@ extension SFNT {
             table: Table,
             reader: ByteReader
         ) throws -> [UInt16] {
-            try require(table, at: offset, count: 4)
-            switch try reader.uint16(at: offset) {
-            case 1:
-                let count = Int(try reader.uint16(at: offset + 2))
-                try require(table, at: offset + 4, count: count * 2)
-                return try (0..<count).map { try reader.uint16(at: offset + 4 + $0 * 2) }
-            case 2:
-                let count = Int(try reader.uint16(at: offset + 2))
-                try require(table, at: offset + 4, count: count * 6)
-                var result: [UInt16] = []
-                for index in 0..<count {
-                    let record = offset + 4 + index * 6
-                    let start = try reader.uint16(at: record)
-                    let end = try reader.uint16(at: record + 2)
-                    if start <= end { result.append(contentsOf: start...end) }
-                }
-                return result
-            default: return []
-            }
+            try OpenTypeLayout.coverage(
+                at: offset,
+                table: table,
+                reader: reader
+            ).glyphs
         }
 
         private static func parseScripts(
@@ -424,7 +856,18 @@ extension SFNT {
         }
 
         private static func isInitiallyEnabled(feature: UInt32) -> Bool {
-            feature == 0x6B65_726E || feature == 0x6469_7374 // kern, dist
+            switch feature {
+            case 0x6B65_726E, // kern
+                 0x6469_7374, // dist
+                 0x6375_7273, // curs
+                 0x6D61_726B, // mark
+                 0x6D6B_6D6B, // mkmk
+                 0x6162_766D, // abvm
+                 0x626C_776D: // blwm
+                true
+            default:
+                false
+            }
         }
 
         private static func require(_ table: Table, at offset: Int, count: Int) throws {

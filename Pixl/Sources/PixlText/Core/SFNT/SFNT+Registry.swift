@@ -30,6 +30,10 @@ extension SFNT {
             return Float(units) * size / Float(face.metrics.unitsPerEm)
         }
 
+        func advanceInFontUnits(for glyph: GlyphID, in face: Face) -> UInt16? {
+            storage(for: face)?.advance(for: glyph)
+        }
+
         func renderBounds(for glyph: GlyphID, in face: Face) -> GlyphBounds? {
             storage(for: face)?.renderBounds(for: glyph)
         }
@@ -40,6 +44,10 @@ extension SFNT {
 
         func glyphPositioning(in face: Face) -> GlyphPositioning? {
             storage(for: face)?.glyphPositioning
+        }
+
+        func glyphDefinition(in face: Face) -> GlyphDefinition? {
+            storage(for: face)?.glyphDefinition
         }
         
         private func storage(for face: Face) -> FaceStorage? {

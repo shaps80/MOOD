@@ -11,6 +11,7 @@ extension SFNT {
         private let trueTypeOutlines: TrueTypeOutlines?
         let glyphSubstitution: GlyphSubstitution?
         let glyphPositioning: GlyphPositioning?
+        let glyphDefinition: GlyphDefinition?
         
         init(bytes: [UInt8]) throws {
             self.bytes = bytes
@@ -24,6 +25,7 @@ extension SFNT {
             trueTypeOutlines = parsed.trueTypeOutlines
             glyphSubstitution = parsed.glyphSubstitution
             glyphPositioning = parsed.glyphPositioning
+            glyphDefinition = parsed.glyphDefinition
         }
         
         func glyphID(for scalar: Unicode.Scalar) -> GlyphID? {

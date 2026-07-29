@@ -155,7 +155,10 @@ extension Font {
                         id: glyph,
                         sourceRange: sourceRange,
                         lookupIndex: nil,
-                        feature: nil
+                        feature: nil,
+                        nominalXAdvance: Int32(
+                            sfnt.advanceInFontUnits(for: glyph, in: face) ?? 0
+                        )
                     ))
                 }
                 sourceOffset = sourceRange.upperBound
@@ -168,7 +171,16 @@ extension Font {
                 )
                 OpenTypeShaper.apply(
                     plan,
-                    to: &workspace.glyphs
+                    glyphDefinition: sfnt.glyphDefinition(in: face),
+                    workspace: &workspace
+                )
+            }
+            for glyphIndex in 0..<workspace.glyphs.count {
+                workspace.glyphs[glyphIndex].nominalXAdvance = Int32(
+                    sfnt.advanceInFontUnits(
+                        for: workspace.glyphs[glyphIndex].id,
+                        in: face
+                    ) ?? 0
                 )
             }
             if let positioning = sfnt.glyphPositioning(in: face) {
@@ -177,6 +189,7 @@ extension Font {
                 )
                 OpenTypePositioner.apply(
                     plan,
+                    glyphDefinition: sfnt.glyphDefinition(in: face),
                     to: &workspace.glyphs
                 )
             }

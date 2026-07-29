@@ -12,8 +12,8 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Complete the portable OpenType shaping and positioning foundation.
-2. Define shaped-run records and property-based run segmentation.
+1. Define shaped-run records and property-based run segmentation.
+2. Add script-specific shaping stages, feature masks, and explicit language input.
 3. Add bidirectional resolution and Unicode line-breaking opportunities.
 4. Define line and paragraph layout records over positioned glyph runs.
 
@@ -25,14 +25,17 @@ The final package name and target boundaries remain open.
 - Shaping and layout use font metrics and glyph IDs, never atlas placement.
 - PixlText depends on PixlConcurrency; initial execution is one lane with later lane scaling kept internal.
 - Hot text work uses contiguous, cache-aligned, data-oriented storage.
-- SFNT parsing, Unicode normalization/script detection, GSUB single/ligature substitution, and GPOS glyph/class pair positioning are implemented in platform-agnostic Swift.
+- Base GSUB lookup types 1–8, GPOS lookup types 1–9, and the GDEF data needed by lookup flags are implemented in platform-agnostic Swift.
 - Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
+- OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
 ## Open Design Gates
 
 - Standalone package/target structure and Pixl/PixlUI adapter boundaries.
-- Remaining GSUB/GPOS lookup coverage and feature policy.
+- Script-specific shaping stages, per-glyph feature masks, language selection, and feature policy.
+- Variable-font FeatureVariations/ItemVariationStore evaluation and size-specific Device adjustments.
+- Optional future AAT `morx`/`kerx` support for fonts whose advanced shaping is not expressed through OpenType Layout.
 - Exact low-level shaped-run, line, and paragraph records.
 - Bidirectional and Unicode line-breaking implementation boundaries.
 - Rasterisation and MSDF-generation implementation.

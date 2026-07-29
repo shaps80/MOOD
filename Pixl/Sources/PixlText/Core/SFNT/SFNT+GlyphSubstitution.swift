@@ -2,7 +2,18 @@ extension SFNT {
     struct GlyphSubstitution {
         struct Lookup {
             let index: Int
+            let flags: OpenTypeLayout.LookupFlags
             let substitutions: [Substitution]
+
+            init(
+                index: Int,
+                flags: OpenTypeLayout.LookupFlags = .init(rawValue: 0, markFilteringSet: nil),
+                substitutions: [Substitution]
+            ) {
+                self.index = index
+                self.flags = flags
+                self.substitutions = substitutions
+            }
         }
 
         struct Feature {
@@ -28,7 +39,18 @@ extension SFNT {
 
         enum Substitution {
             case single(input: UInt16, output: UInt16)
+            case multiple(input: UInt16, outputs: [UInt16])
+            case alternate(input: UInt16, outputs: [UInt16])
             case ligature(components: [UInt16], output: UInt16)
+            case context(OpenTypeLayout.ContextRule)
+            case reverse(ReverseRule)
+        }
+
+        struct ReverseRule {
+            let input: OpenTypeLayout.Coverage
+            let backtrack: [OpenTypeLayout.Coverage]
+            let lookahead: [OpenTypeLayout.Coverage]
+            let outputs: [UInt16]
         }
 
         let scripts: [Script]
@@ -72,6 +94,18 @@ extension SFNT {
         static func parse(table: Table, bytes: [UInt8]) throws -> Self {
             let reader = ByteReader(bytes)
             try require(table, relativeOffset: 0, count: 10)
+            let majorVersion = try reader.uint16(at: table.offset)
+            let minorVersion = try reader.uint16(at: table.offset + 2)
+            guard majorVersion == 1, minorVersion == 0 || minorVersion == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            if minorVersion == 1 {
+                try require(table, relativeOffset: 0, count: 14)
+                let variationsOffset = Int(try reader.uint32(at: table.offset + 10))
+                if variationsOffset != 0 {
+                    try require(table, relativeOffset: variationsOffset, count: 8)
+                }
+            }
             let scriptListOffset = Int(try reader.uint16(at: table.offset + 4))
             let featureListOffset = Int(try reader.uint16(at: table.offset + 6))
             let lookupListOffset = Int(try reader.uint16(at: table.offset + 8))
@@ -88,6 +122,11 @@ extension SFNT {
             )
 
             guard lookupListOffset != 0 else {
+                try OpenTypeLayout.validateReferences(
+                    scripts: scripts,
+                    features: features,
+                    lookupCount: 0
+                )
                 return .init(scripts: scripts, features: features, lookups: [])
             }
             let lookupList = table.offset + lookupListOffset
@@ -101,25 +140,55 @@ extension SFNT {
                 let lookup = lookupList + relativeOffset
                 try require(table, absoluteOffset: lookup, count: 6)
                 let type = try reader.uint16(at: lookup)
+                let rawFlags = try reader.uint16(at: lookup + 2)
+                guard rawFlags & 0x00E0 == 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
                 let subtableCount = Int(try reader.uint16(at: lookup + 4))
                 try require(table, absoluteOffset: lookup + 6, count: subtableCount * 2)
+
+                let markFilteringSet: UInt16?
+                if rawFlags & 0x0010 != 0 {
+                    try require(
+                        table,
+                        absoluteOffset: lookup + 6 + subtableCount * 2,
+                        count: 2
+                    )
+                    markFilteringSet = try reader.uint16(at: lookup + 6 + subtableCount * 2)
+                } else {
+                    markFilteringSet = nil
+                }
+                let flags = OpenTypeLayout.LookupFlags(
+                    rawValue: rawFlags,
+                    markFilteringSet: markFilteringSet
+                )
 
                 var substitutions: [Substitution] = []
                 for subtableIndex in 0..<subtableCount {
                     let subtableOffset = Int(try reader.uint16(at: lookup + 6 + subtableIndex * 2))
+                    guard subtableOffset > 0 else {
+                        throw SFNT.RegistrationError.malformedRequiredTable
+                    }
                     let subtable = lookup + subtableOffset
                     substitutions += try parseSubtable(
                         type: type,
                         offset: subtable,
                         table: table,
-                        reader: reader
+                        reader: reader,
+                        lookupCount: lookupCount
                     )
                 }
                 lookups.append(.init(
                     index: lookupIndex,
+                    flags: flags,
                     substitutions: substitutions
                 ))
             }
+            try OpenTypeLayout.validateReferences(
+                scripts: scripts,
+                features: features,
+                lookupCount: lookups.count
+            )
             return .init(scripts: scripts, features: features, lookups: lookups)
         }
 
@@ -204,26 +273,53 @@ extension SFNT {
             type: UInt16,
             offset: Int,
             table: Table,
-            reader: ByteReader
+            reader: ByteReader,
+            lookupCount: Int
         ) throws -> [Substitution] {
             if type == 7 {
                 try require(table, absoluteOffset: offset, count: 8)
-                guard try reader.uint16(at: offset) == 1 else { return [] }
+                guard try reader.uint16(at: offset) == 1 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
                 let extendedType = try reader.uint16(at: offset + 2)
                 let extendedOffset = Int(try reader.uint32(at: offset + 4))
+                guard extendedType != 7, extendedOffset > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
                 return try parseSubtable(
                     type: extendedType,
                     offset: offset + extendedOffset,
                     table: table,
-                    reader: reader
+                    reader: reader,
+                    lookupCount: lookupCount
                 )
             }
 
             switch type {
             case 1:
                 return try parseSingleSubstitution(at: offset, table: table, reader: reader)
+            case 2:
+                return try parseMultipleSubstitution(at: offset, table: table, reader: reader)
+            case 3:
+                return try parseAlternateSubstitution(at: offset, table: table, reader: reader)
             case 4:
                 return try parseLigatureSubstitution(at: offset, table: table, reader: reader)
+            case 5:
+                return try OpenTypeLayout.contextRules(
+                    at: offset,
+                    table: table,
+                    reader: reader,
+                    lookupCount: lookupCount
+                ).map(Substitution.context)
+            case 6:
+                return try OpenTypeLayout.chainedContextRules(
+                    at: offset,
+                    table: table,
+                    reader: reader,
+                    lookupCount: lookupCount
+                ).map(Substitution.context)
+            case 8:
+                return [try parseReverseSubstitution(at: offset, table: table, reader: reader)]
             default:
                 return []
             }
@@ -237,7 +333,14 @@ extension SFNT {
             try require(table, absoluteOffset: offset, count: 6)
             let format = try reader.uint16(at: offset)
             let coverageOffset = Int(try reader.uint16(at: offset + 2))
-            let coverage = try coverageGlyphs(at: offset + coverageOffset, table: table, reader: reader)
+            guard coverageOffset > 0 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let coverage = try OpenTypeLayout.coverage(
+                at: offset + coverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
 
             switch format {
             case 1:
@@ -253,8 +356,99 @@ extension SFNT {
                     .single(input: glyph, output: try reader.uint16(at: offset + 6 + index * 2))
                 }
             default:
-                return []
+                throw SFNT.RegistrationError.malformedRequiredTable
             }
+        }
+
+        private static func parseMultipleSubstitution(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [Substitution] {
+            try require(table, absoluteOffset: offset, count: 6)
+            guard try reader.uint16(at: offset) == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let coverageOffset = Int(try reader.uint16(at: offset + 2))
+            let sequenceCount = Int(try reader.uint16(at: offset + 4))
+            guard coverageOffset > 0 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let inputs = try OpenTypeLayout.coverage(
+                at: offset + coverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            guard inputs.count == sequenceCount else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            try require(table, absoluteOffset: offset + 6, count: sequenceCount * 2)
+            var result: [Substitution] = []
+            result.reserveCapacity(sequenceCount)
+            for index in 0..<sequenceCount {
+                let sequenceOffset = Int(try reader.uint16(at: offset + 6 + index * 2))
+                guard sequenceOffset > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                let sequence = offset + sequenceOffset
+                try require(table, absoluteOffset: sequence, count: 2)
+                let glyphCount = Int(try reader.uint16(at: sequence))
+                try require(table, absoluteOffset: sequence + 2, count: glyphCount * 2)
+                result.append(.multiple(
+                    input: inputs[index],
+                    outputs: try (0..<glyphCount).map {
+                        try reader.uint16(at: sequence + 2 + $0 * 2)
+                    }
+                ))
+            }
+            return result
+        }
+
+        private static func parseAlternateSubstitution(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [Substitution] {
+            try require(table, absoluteOffset: offset, count: 6)
+            guard try reader.uint16(at: offset) == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let coverageOffset = Int(try reader.uint16(at: offset + 2))
+            let setCount = Int(try reader.uint16(at: offset + 4))
+            guard coverageOffset > 0 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let inputs = try OpenTypeLayout.coverage(
+                at: offset + coverageOffset,
+                table: table,
+                reader: reader
+            ).glyphs
+            guard inputs.count == setCount else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            try require(table, absoluteOffset: offset + 6, count: setCount * 2)
+            var result: [Substitution] = []
+            result.reserveCapacity(setCount)
+            for index in 0..<setCount {
+                let setOffset = Int(try reader.uint16(at: offset + 6 + index * 2))
+                guard setOffset > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                let set = offset + setOffset
+                try require(table, absoluteOffset: set, count: 2)
+                let alternateCount = Int(try reader.uint16(at: set))
+                guard alternateCount > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                try require(table, absoluteOffset: set + 2, count: alternateCount * 2)
+                result.append(.alternate(
+                    input: inputs[index],
+                    outputs: try (0..<alternateCount).map {
+                        try reader.uint16(at: set + 2 + $0 * 2)
+                    }
+                ))
+            }
+            return result
         }
 
         private static func parseLigatureSubstitution(
@@ -265,11 +459,14 @@ extension SFNT {
             try require(table, absoluteOffset: offset, count: 6)
             guard try reader.uint16(at: offset) == 1 else { return [] }
             let coverageOffset = Int(try reader.uint16(at: offset + 2))
-            let firstGlyphs = try coverageGlyphs(
+            guard coverageOffset > 0 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let firstGlyphs = try OpenTypeLayout.coverage(
                 at: offset + coverageOffset,
                 table: table,
                 reader: reader
-            )
+            ).glyphs
             let setCount = Int(try reader.uint16(at: offset + 4))
             try require(table, absoluteOffset: offset + 6, count: setCount * 2)
             guard setCount == firstGlyphs.count else { return [] }
@@ -299,6 +496,81 @@ extension SFNT {
                     }
                     result.append(.ligature(components: components, output: output))
                 }
+            }
+            return result
+        }
+
+        private static func parseReverseSubstitution(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> Substitution {
+            try require(table, absoluteOffset: offset, count: 6)
+            guard try reader.uint16(at: offset) == 1 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let inputOffset = Int(try reader.uint16(at: offset + 2))
+            guard inputOffset > 0 else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            var cursor = offset + 4
+            let backtrack = try coverageArray(
+                at: &cursor,
+                relativeTo: offset,
+                table: table,
+                reader: reader
+            )
+            let lookahead = try coverageArray(
+                at: &cursor,
+                relativeTo: offset,
+                table: table,
+                reader: reader
+            )
+            try require(table, absoluteOffset: cursor, count: 2)
+            let glyphCount = Int(try reader.uint16(at: cursor))
+            cursor += 2
+            let input = try OpenTypeLayout.coverage(
+                at: offset + inputOffset,
+                table: table,
+                reader: reader
+            )
+            guard glyphCount == input.glyphs.count else {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            try require(table, absoluteOffset: cursor, count: glyphCount * 2)
+            return .reverse(.init(
+                input: input,
+                backtrack: backtrack,
+                lookahead: lookahead,
+                outputs: try (0..<glyphCount).map {
+                    try reader.uint16(at: cursor + $0 * 2)
+                }
+            ))
+        }
+
+        private static func coverageArray(
+            at cursor: inout Int,
+            relativeTo base: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> [OpenTypeLayout.Coverage] {
+            try require(table, absoluteOffset: cursor, count: 2)
+            let count = Int(try reader.uint16(at: cursor))
+            cursor += 2
+            try require(table, absoluteOffset: cursor, count: count * 2)
+            var result: [OpenTypeLayout.Coverage] = []
+            result.reserveCapacity(count)
+            for _ in 0..<count {
+                let relativeOffset = Int(try reader.uint16(at: cursor))
+                guard relativeOffset > 0 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                result.append(try OpenTypeLayout.coverage(
+                    at: base + relativeOffset,
+                    table: table,
+                    reader: reader
+                ))
+                cursor += 2
             }
             return result
         }
@@ -333,7 +605,8 @@ extension SFNT {
 
         private static func isInitiallyEnabled(feature: UInt32) -> Bool {
             switch feature {
-            case 0x6363_6D70, // ccmp
+            case 0x7276_726E, // rvrn
+                 0x6363_6D70, // ccmp
                  0x6C6F_636C, // locl
                  0x726C_6967, // rlig
                  0x6C69_6761, // liga

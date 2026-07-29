@@ -6,4 +6,8 @@ struct ShapingWorkspace: ~Copyable {
         glyphs = .init(minimumCapacity: minimumGlyphCapacity)
         scratch = .init(minimumCapacity: minimumGlyphCapacity)
     }
+
+    mutating func swapBuffers() {
+        swap(&glyphs, &scratch)
+    }
 }

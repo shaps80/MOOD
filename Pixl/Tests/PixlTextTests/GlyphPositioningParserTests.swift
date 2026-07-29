@@ -3,6 +3,21 @@ import Testing
 
 @Suite("GPOS parser hardening")
 struct GlyphPositioningParserTests {
+    @Test("An empty lookup list is valid")
+    func emptyLookupList() throws {
+        var bytes: [UInt8] = []
+        append32(0x0001_0000, to: &bytes)
+        append(10, to: &bytes) // script list
+        append(12, to: &bytes) // feature list
+        append(0, to: &bytes)  // no lookup list
+        append(0, to: &bytes)  // empty script list
+        append(0, to: &bytes)  // empty feature list
+
+        let positioning = try parse(bytes)
+
+        #expect(positioning.lookups.isEmpty)
+    }
+
     @Test("Nested extension lookup is rejected")
     func nestedExtension() {
         let bytes = tableWithLookup(type: 9, subtable: [

@@ -12,6 +12,7 @@ extension SFNT {
         private static let glyf: UInt32 = 0x676C_7966
         private static let gsub: UInt32 = 0x4753_5542
         private static let gpos: UInt32 = 0x4750_4F53
+        private static let gdef: UInt32 = 0x4744_4546
         
         struct ParsedFace {
             let metrics: SFNT.FaceMetrics
@@ -23,6 +24,7 @@ extension SFNT {
             let trueTypeOutlines: TrueTypeOutlines?
             let glyphSubstitution: GlyphSubstitution?
             let glyphPositioning: GlyphPositioning?
+            let glyphDefinition: GlyphDefinition?
         }
         
         static func parse(bytes: [UInt8]) throws -> ParsedFace {
@@ -51,6 +53,7 @@ extension SFNT {
             var glyfTable: Table?
             var gsubTable: Table?
             var gposTable: Table?
+            var gdefTable: Table?
             
             for index in 0..<Int(tableCount) {
                 let record = 12 + index * 16
@@ -72,6 +75,7 @@ extension SFNT {
                 case glyf: glyfTable = table
                 case gsub: gsubTable = table
                 case gpos: gposTable = table
+                case gdef: gdefTable = table
                 default: break
                 }
             }
@@ -141,6 +145,25 @@ extension SFNT {
             let glyphPositioning = try gposTable.map {
                 try GlyphPositioning.parse(table: $0, bytes: bytes)
             }
+            let glyphDefinition = try gdefTable.map {
+                try GlyphDefinition.parse(table: $0, bytes: bytes)
+            }
+            if let glyphSubstitution {
+                for lookup in glyphSubstitution.lookups {
+                    try GlyphDefinition.validate(
+                        flags: lookup.flags,
+                        against: glyphDefinition
+                    )
+                }
+            }
+            if let glyphPositioning {
+                for lookup in glyphPositioning.lookups {
+                    try GlyphDefinition.validate(
+                        flags: lookup.flags,
+                        against: glyphDefinition
+                    )
+                }
+            }
             
             return .init(
                 metrics: .init(
@@ -156,7 +179,8 @@ extension SFNT {
                 characterMap: try characterMap(in: cmapTable, reader: reader),
                 trueTypeOutlines: trueTypeOutlines,
                 glyphSubstitution: glyphSubstitution,
-                glyphPositioning: glyphPositioning
+                glyphPositioning: glyphPositioning,
+                glyphDefinition: glyphDefinition
             )
         }
         

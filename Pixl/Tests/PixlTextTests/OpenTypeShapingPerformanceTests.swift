@@ -28,22 +28,22 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
     private func measureHotShaping(glyphCount: Int) {
         let plan = makeSubstitutions().shapingPlan(script: latin)
         let source = makeGlyphs(count: glyphCount)
-        var glyphs = GlyphBuffer(minimumCapacity: source.count)
+        var workspace = ShapingWorkspace(minimumGlyphCapacity: source.count)
         var checksum = 0
 
         measure(metrics: metrics, options: manualOptions) {
-            glyphs.removeLast(glyphs.count)
-            for glyph in source { glyphs.append(glyph) }
+            workspace.glyphs.removeLast(workspace.glyphs.count)
+            for glyph in source { workspace.glyphs.append(glyph) }
 
             startMeasuring()
-            OpenTypeShaper.apply(plan, to: &glyphs)
+            OpenTypeShaper.apply(plan, workspace: &workspace)
             stopMeasuring()
 
-            checksum &+= glyphs.count
+            checksum &+= workspace.glyphs.count
         }
 
         XCTAssertNotEqual(checksum, 0)
-        XCTAssertLessThan(glyphs.count, source.count)
+        XCTAssertLessThan(workspace.glyphs.count, source.count)
     }
 
     private var metrics: [any XCTMetric] {
@@ -77,11 +77,12 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
     }
 
     private func makeSubstitutions() -> SFNT.GlyphSubstitution {
-        var rules: [SFNT.GlyphSubstitution.Substitution] = (0..<512).map {
+        let singleRules: [SFNT.GlyphSubstitution.Substitution] = (0..<512).map {
             .single(input: UInt16($0), output: UInt16($0))
         }
+        var ligatureRules: [SFNT.GlyphSubstitution.Substitution] = []
         for value in stride(from: 0, to: 128, by: 2) {
-            rules.append(.ligature(
+            ligatureRules.append(.ligature(
                 components: [UInt16(value), UInt16(value + 1)],
                 output: UInt16(1_000 + value / 2)
             ))
@@ -99,10 +100,11 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
                 )
             ],
             features: [
-                .init(tag: 0x6C69_6761, lookupIndices: [0])
+                .init(tag: 0x6C69_6761, lookupIndices: [0, 1])
             ],
             lookups: [
-                .init(index: 0, substitutions: rules)
+                .init(index: 0, substitutions: singleRules),
+                .init(index: 1, substitutions: ligatureRules)
             ]
         )
     }
