@@ -4,7 +4,11 @@
 
 PixlText is one Swift target. Its internals are separated by ownership and responsibility rather than by additional targets.
 
-Current work focuses exclusively on low-level text algorithms and records: decoding, classification, shaping, glyph positioning, line layout, paragraph layout, font data, and atlas generation. High-level convenience APIs, declarative state, delegation, and editing abstractions are deferred.
+Current work focuses exclusively on low-level text algorithms and records: Unicode classification, shaping, glyph positioning, line layout, paragraph layout, and font data access. High-level convenience APIs, declarative state, delegation, editing abstractions, glyph imaging, and presentation are deferred.
+
+`String` is the input boundary. Core algorithms borrow its UTF-8 and Unicode-scalar views; they do not own, decode, or copy source text. A caller-owned temporary source-offset map may be written only where an algorithm needs to map results back to the source string.
+
+The current core ends at shaped glyph positions, line records, and paragraph geometry. Glyph rasterisation, MSDF generation, atlas packing, and all presentation are separate future subsystems in the same target.
 
 The low-level core has no hidden cache ownership or per-call allocation. It operates on explicit inputs and caller-owned reusable storage. Font registries, parsed font ownership, and caches belong above the core algorithms.
 
@@ -12,9 +16,21 @@ Public core records are struct-first. Use copy-on-write backing only where a lar
 
 Font vocabulary is text-engine-native and direct. It does not mirror host UI-framework font names or types.
 
-## Glyph Atlas
+## Fonts
 
-PixlText renders glyphs from an MSDF atlas. MSDF is the only distance-field format initially; alternate coverage and colour-glyph paths remain future decisions.
+`SFNT.Registry` is an explicit stateful support type. It owns registered SFNT bytes and their parsed face records. Registration is a cold path; measurement and shaping read the registry through compact face identities without file access or hidden cache work.
+
+`SFNT.Face` is a registered, parsed, size-independent SFNT file. It exposes its identity, face metrics, glyph count, and table count.
+
+`SFNT.FaceMetrics` scales directly to `SFNT.Metrics` for an explicit positive size. The low-level layer does not define `Font`.
+
+`Font`, `FontQuery`, and `FontDescriptor` are reserved for later higher-level APIs. Directly registered faces need no matching layer initially.
+
+The first SFNT parser supports the metrics needed for real measurement: `head`, `hhea`, `maxp`, `hmtx`, and Unicode `cmap` format 4 or 12 tables. It is validated against the locally installed Zapfino font.
+
+## Deferred Glyph Imaging
+
+The initial glyph-imaging format will be MSDF; alternate coverage and colour-glyph paths remain future decisions.
 
 Atlas generation is dynamic and memory-only. Missing glyphs are generated and packed on first use, then cached for the process lifetime. PixlText has no compile-time asset pipeline or persistent glyph cache initially.
 

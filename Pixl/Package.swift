@@ -149,6 +149,10 @@ let package = Package(
             swiftSettings: defaultNonisolated()
         ),
         .testTarget(
+            name: "PixlTextTests",
+            dependencies: ["PixlText"]
+        ),
+        .testTarget(
             name: "Pixl2DTests",
             dependencies: [
                 "Pixl2D",
