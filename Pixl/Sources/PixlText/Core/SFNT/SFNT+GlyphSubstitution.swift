@@ -75,10 +75,6 @@ extension SFNT {
             let scriptListOffset = Int(try reader.uint16(at: table.offset + 4))
             let featureListOffset = Int(try reader.uint16(at: table.offset + 6))
             let lookupListOffset = Int(try reader.uint16(at: table.offset + 8))
-            let lookupList = table.offset + lookupListOffset
-            try require(table, absoluteOffset: lookupList, count: 2)
-            let lookupCount = Int(try reader.uint16(at: lookupList))
-            try require(table, absoluteOffset: lookupList + 2, count: lookupCount * 2)
 
             let scripts = try parseScripts(
                 table: table,
@@ -90,6 +86,14 @@ extension SFNT {
                 featureListOffset: featureListOffset,
                 reader: reader
             )
+
+            guard lookupListOffset != 0 else {
+                return .init(scripts: scripts, features: features, lookups: [])
+            }
+            let lookupList = table.offset + lookupListOffset
+            try require(table, absoluteOffset: lookupList, count: 2)
+            let lookupCount = Int(try reader.uint16(at: lookupList))
+            try require(table, absoluteOffset: lookupList + 2, count: lookupCount * 2)
 
             var lookups: [Lookup] = []
             for lookupIndex in 0..<lookupCount {

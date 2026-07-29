@@ -1,6 +1,7 @@
 extension SFNT {
     enum Parser {
         private static let trueType: UInt32 = 0x0001_0000
+        private static let appleTrueType: UInt32 = 0x7472_7565 // true
         private static let openType: UInt32 = 0x4F54_544F
         private static let head: UInt32 = 0x6865_6164
         private static let hhea: UInt32 = 0x6868_6561
@@ -28,7 +29,10 @@ extension SFNT {
             let reader = ByteReader(bytes)
             guard bytes.count >= 12 else { throw SFNT.RegistrationError.invalid }
             let scalerType = try reader.uint32(at: 0)
-            guard scalerType == trueType || scalerType == openType else {
+            guard scalerType == trueType
+                    || scalerType == appleTrueType
+                    || scalerType == openType
+            else {
                 throw SFNT.RegistrationError.invalid
             }
             
@@ -105,7 +109,7 @@ extension SFNT {
             }
 
             let trueTypeOutlines: TrueTypeOutlines?
-            if scalerType == trueType {
+            if scalerType == trueType || scalerType == appleTrueType {
                 guard
                     headTable.length >= 54,
                     let locaTable,
