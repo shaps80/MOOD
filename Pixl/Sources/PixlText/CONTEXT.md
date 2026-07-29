@@ -30,6 +30,8 @@ Font vocabulary is text-engine-native and direct. It does not mirror host UI-fra
 
 The first SFNT parser supports the metrics needed for real measurement: `head`, `hhea`, `maxp`, `hmtx`, and Unicode `cmap` format 4 or 12 tables. It is validated against the locally installed Zapfino font.
 
+The first measurement slice maps Unicode scalars to glyph IDs and scaled advances for one unshaped run. A temporary package-only `Font.forEachGlyph(in:_:)` exposes typographic bounds to the playground for visual verification without adding public low-level API.
+
 ## Deferred Glyph Imaging
 
 The initial glyph-imaging format will be MSDF; alternate coverage and colour-glyph paths remain future decisions.

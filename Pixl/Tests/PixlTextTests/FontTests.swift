@@ -23,4 +23,17 @@ struct FontTests {
         #expect(face.metrics.unitsPerEm == 400)
         #expect(face.glyphCount > 0)
     }
+
+    @Test("Package debug API emits unshaped glyph bounds")
+    func glyphDebugging() throws {
+        var glyphs: [Font.GlyphDebugInfo] = []
+        try Font.system(size: 48).forEachGlyph(in: "Hello, world!") {
+            glyphs.append($0)
+        }
+
+        #expect(glyphs.count == 13)
+        #expect(glyphs.first?.scalar == "H")
+        #expect(glyphs.allSatisfy { $0.bounds.height > 0 })
+        #expect(glyphs.dropFirst().allSatisfy { $0.bounds.x > 0 })
+    }
 }
