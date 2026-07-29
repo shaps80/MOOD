@@ -1,9 +1,9 @@
-public extension SFNT {
+extension SFNT {
     struct Face: Hashable, Sendable {
-        public let id: FaceID
-        public let metrics: FaceMetrics
-        public let glyphCount: UInt16
-        public let tableCount: UInt16
+        let id: FaceID
+        let metrics: FaceMetrics
+        let glyphCount: UInt16
+        let tableCount: UInt16
         
         init(
             id: FaceID,

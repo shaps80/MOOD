@@ -1,1 +1,1 @@
-public enum SFNT {}
+enum SFNT {}

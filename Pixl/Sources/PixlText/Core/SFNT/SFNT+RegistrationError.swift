@@ -1,4 +1,4 @@
-public extension SFNT {
+extension SFNT {
     enum RegistrationError: Error, Equatable {
         case invalid
         case malformedTableDirectory

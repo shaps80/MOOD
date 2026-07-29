@@ -1,4 +1,4 @@
-public extension SFNT.FaceMetrics {
+extension SFNT.FaceMetrics {
     func scaled(to size: Float) -> SFNT.Metrics {
         precondition(size > 0)
         let scale = size / Float(unitsPerEm)

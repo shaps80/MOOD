@@ -22,9 +22,11 @@ Font vocabulary is text-engine-native and direct. It does not mirror host UI-fra
 
 `SFNT.Face` is a registered, parsed, size-independent SFNT file. It exposes its identity, face metrics, glyph count, and table count.
 
-`SFNT.FaceMetrics` scales directly to `SFNT.Metrics` for an explicit positive size. The low-level layer does not define `Font`.
+`SFNT.FaceMetrics` scales directly to `SFNT.Metrics` for an explicit positive size.
 
-`Font`, `FontQuery`, and `FontDescriptor` are reserved for later higher-level APIs. Directly registered faces need no matching layer initially.
+`Font` is the public, declarative value. It wraps an internal `Font.Descriptor`, initially containing a source, size, canonical weight, and slant. `Font.system(size:weight:)`, `.italic()`, `.bold()`, and `.weight(_:)` return derived values. An internal process-wide `Font.Registry` owns SFNT registration; its current system source lazily loads the Zapfino probe face once. Resolved values must not create registries or reread font files in hot paths.
+
+`SFNT.Registry` and every other SFNT type are internal implementation details. Any future public font-probing API will use purpose-built higher-level types instead.
 
 The first SFNT parser supports the metrics needed for real measurement: `head`, `hhea`, `maxp`, `hmtx`, and Unicode `cmap` format 4 or 12 tables. It is validated against the locally installed Zapfino font.
 

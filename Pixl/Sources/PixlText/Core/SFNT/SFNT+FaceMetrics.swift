@@ -1,9 +1,9 @@
-public extension SFNT {
+extension SFNT {
     struct FaceMetrics: Hashable, Sendable {
-        public let unitsPerEm: UInt16
-        public let ascender: Int16
-        public let descender: Int16
-        public let lineGap: Int16
+        let unitsPerEm: UInt16
+        let ascender: Int16
+        let descender: Int16
+        let lineGap: Int16
         
         init(
             unitsPerEm: UInt16,
