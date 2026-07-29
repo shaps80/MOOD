@@ -1,7 +1,7 @@
 import Swift
 
 struct _StateIdentity: Hashable {
-    let path: [UInt32]
+    let path: [_ViewIdentity.Component]
     let viewType: ObjectIdentifier
     let field: String
 }
