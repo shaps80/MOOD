@@ -17,4 +17,13 @@ extension Font {
     package static func registerSystemFont(bytes: [UInt8]) throws {
         try Registry.shared.registerSystemFont(bytes: bytes)
     }
+
+    package static func supportsFont(bytes: [UInt8]) -> Bool {
+        do {
+            _ = try SFNT.Registry().register(bytes: bytes)
+            return true
+        } catch {
+            return false
+        }
+    }
 }

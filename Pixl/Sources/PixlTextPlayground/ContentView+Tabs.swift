@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var font: PlaygroundFont = .senilita
+    @State private var fonts: [PlaygroundFont] = PlaygroundFont.initial
 
     var body: some View {
         TabView {
@@ -18,13 +19,23 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("Font", selection: $font) {
-                    ForEach(PlaygroundFont.allCases) { font in
+                    ForEach(fonts) { font in
                         Text(font.name).tag(font)
                     }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
                 .labelsHidden()
-                .fixedSize()
+                .frame(minWidth: 180)
+            }
+        }
+        .task {
+            let installed = await Task.detached(priority: .utility) {
+                PlaygroundFont.installed()
+            }.value
+            guard !installed.isEmpty else { return }
+            fonts = installed
+            if !installed.contains(font) {
+                font = installed[0]
             }
         }
     }

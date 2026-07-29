@@ -27,6 +27,7 @@ The final package name and target boundaries remain open.
 - Hot text work uses contiguous, cache-aligned, data-oriented storage.
 - SFNT parsing, Unicode normalization/script detection, GSUB single/ligature substitution, and GPOS glyph/class pair positioning are implemented in platform-agnostic Swift.
 - Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
+- Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
 ## Open Design Gates
 
@@ -35,6 +36,7 @@ The final package name and target boundaries remain open.
 - Exact low-level shaped-run, line, and paragraph records.
 - Bidirectional and Unicode line-breaking implementation boundaries.
 - Rasterisation and MSDF-generation implementation.
+- Bitmap-strike parsing, pixel-size selection, metrics, and glyph-image extraction.
 - Cache ownership, keys, invalidation, and storage lifetime.
 - Paragraph and run scheduling thresholds.
 - Renderer primitive format, culling contract, and CPU/GPU integration seams.
