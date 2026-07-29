@@ -7,6 +7,8 @@ extension SFNT {
         private static let hmtx: UInt32 = 0x686D_7478
         private static let maxp: UInt32 = 0x6D61_7870
         private static let cmap: UInt32 = 0x636D_6170
+        private static let loca: UInt32 = 0x6C6F_6361
+        private static let glyf: UInt32 = 0x676C_7966
         
         struct ParsedFace {
             let metrics: SFNT.FaceMetrics
@@ -15,6 +17,7 @@ extension SFNT {
             let horizontalMetricsCount: UInt16
             let horizontalMetricsTable: Table
             let characterMap: CharacterMap
+            let trueTypeOutlines: TrueTypeOutlines?
         }
         
         static func parse(bytes: [UInt8]) throws -> ParsedFace {
@@ -36,6 +39,8 @@ extension SFNT {
             var hmtxTable: Table?
             var maxpTable: Table?
             var cmapTable: Table?
+            var locaTable: Table?
+            var glyfTable: Table?
             
             for index in 0..<Int(tableCount) {
                 let record = 12 + index * 16
@@ -53,6 +58,8 @@ extension SFNT {
                 case hmtx: hmtxTable = table
                 case maxp: maxpTable = table
                 case cmap: cmapTable = table
+                case loca: locaTable = table
+                case glyf: glyfTable = table
                 default: break
                 }
             }
@@ -88,6 +95,33 @@ extension SFNT {
             guard hmtxTable.length >= Int(horizontalMetricsCount) * 4 else {
                 throw SFNT.RegistrationError.malformedRequiredTable
             }
+
+            let trueTypeOutlines: TrueTypeOutlines?
+            if scalerType == trueType {
+                guard
+                    headTable.length >= 54,
+                    let locaTable,
+                    let glyfTable
+                else {
+                    throw SFNT.RegistrationError.missingRequiredTable
+                }
+
+                let locationFormat = try reader.int16(at: headTable.offset + 50)
+                guard locationFormat == 0 || locationFormat == 1 else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                let entrySize = locationFormat == 0 ? 2 : 4
+                guard locaTable.length >= (Int(glyphCount) + 1) * entrySize else {
+                    throw SFNT.RegistrationError.malformedRequiredTable
+                }
+                trueTypeOutlines = .init(
+                    locations: locaTable,
+                    glyphs: glyfTable,
+                    locationFormat: locationFormat
+                )
+            } else {
+                trueTypeOutlines = nil
+            }
             
             return .init(
                 metrics: .init(
@@ -100,7 +134,8 @@ extension SFNT {
                 tableCount: tableCount,
                 horizontalMetricsCount: horizontalMetricsCount,
                 horizontalMetricsTable: hmtxTable,
-                characterMap: try characterMap(in: cmapTable, reader: reader)
+                characterMap: try characterMap(in: cmapTable, reader: reader),
+                trueTypeOutlines: trueTypeOutlines
             )
         }
         

@@ -1,5 +1,20 @@
 import PixlUI
 
+enum Theme: Identifiable, CaseIterable {
+    var id: Self { self }
+    case red
+    case green
+    case blue
+
+    var color: Color {
+        switch self {
+        case .red: .red
+        case .green: .green
+        case .blue: .blue
+        }
+    }
+}
+
 public struct Debug: View {
     private let bindings: PlayerBindings = .init()
     @State private var isExpanded: Bool = false
@@ -17,9 +32,13 @@ public struct Debug: View {
                 Circle()
                     .frame(height: 100)
 
-                Image("checked")
-                    .renderingMode(.template)
-                    .tint(.yellow)
+                HStack {
+                    ForEach(Theme.allCases) { theme in
+                        Image("checked")
+                            .renderingMode(.template)
+                            .tint(theme.color)
+                    }
+                }
             }
             .padding(.vertical, 5)
         } label: {

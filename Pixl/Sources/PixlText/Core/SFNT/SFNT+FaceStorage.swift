@@ -8,6 +8,7 @@ extension SFNT {
         private let horizontalMetricsCount: UInt16
         private let horizontalMetricsTable: Table
         private let characterMap: CharacterMap
+        private let trueTypeOutlines: TrueTypeOutlines?
         
         init(bytes: [UInt8]) throws {
             self.bytes = bytes
@@ -18,6 +19,7 @@ extension SFNT {
             horizontalMetricsCount = parsed.horizontalMetricsCount
             horizontalMetricsTable = parsed.horizontalMetricsTable
             characterMap = parsed.characterMap
+            trueTypeOutlines = parsed.trueTypeOutlines
         }
         
         func glyphID(for scalar: Unicode.Scalar) -> GlyphID? {
@@ -32,6 +34,11 @@ extension SFNT {
             let metricIndex = min(glyphIndex, metricCount - 1)
             let offset = horizontalMetricsTable.offset + metricIndex * 4
             return (try? ByteReader(bytes).uint16(at: offset)) ?? 0
+        }
+
+        func renderBounds(for glyph: GlyphID) -> GlyphBounds? {
+            guard Int(glyph.rawValue) < Int(glyphCount) else { return nil }
+            return trueTypeOutlines?.bounds(for: glyph, bytes: bytes)
         }
     }
 }

@@ -29,6 +29,10 @@ extension SFNT {
             let units = storage.advance(for: glyph)
             return Float(units) * size / Float(face.metrics.unitsPerEm)
         }
+
+        func renderBounds(for glyph: GlyphID, in face: Face) -> GlyphBounds? {
+            storage(for: face)?.renderBounds(for: glyph)
+        }
         
         private func storage(for face: Face) -> FaceStorage? {
             let index = Int(face.id.rawValue)

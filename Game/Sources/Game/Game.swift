@@ -9,10 +9,10 @@ struct Game: Pixl.Game {
 
     private let debug = Scene(Debug())
     private var shapeCatalogue: ShapeCatalogue
-    private var gameState: GameStateHandler
+//    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-        self.gameState = try .init(context: context)
+//        self.gameState = try .init(context: context)
         player = try .init(context: context)
         shapeCatalogue = .init(context: context)
     }
@@ -64,7 +64,7 @@ struct Game: Pixl.Game {
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
-        gameState.didEnter(phase, context: context)
+//        gameState.didEnter(phase, context: context)
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
@@ -73,7 +73,7 @@ struct Game: Pixl.Game {
 //
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
-        gameState.update(time, context: context)
+//        gameState.update(time, context: context)
 //        shapeCatalogue.update(time, context: context)
     }
 
