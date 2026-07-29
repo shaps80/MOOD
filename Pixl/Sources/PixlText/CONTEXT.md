@@ -1,5 +1,17 @@
 # PixlText Architecture and Vocabulary
 
+## Target and Scope
+
+PixlText is one Swift target. Its internals are separated by ownership and responsibility rather than by additional targets.
+
+Current work focuses exclusively on low-level text algorithms and records: decoding, classification, shaping, glyph positioning, line layout, paragraph layout, font data, and atlas generation. High-level convenience APIs, declarative state, delegation, and editing abstractions are deferred.
+
+The low-level core has no hidden cache ownership or per-call allocation. It operates on explicit inputs and caller-owned reusable storage. Font registries, parsed font ownership, and caches belong above the core algorithms.
+
+Public core records are struct-first. Use copy-on-write backing only where a large immutable value benefits from shared storage; introduce reference types only when stable identity, mutable ownership, or extension points require them.
+
+Font vocabulary is text-engine-native and direct. It does not mirror host UI-framework font names or types.
+
 ## Glyph Atlas
 
 PixlText renders glyphs from an MSDF atlas. MSDF is the only distance-field format initially; alternate coverage and colour-glyph paths remain future decisions.

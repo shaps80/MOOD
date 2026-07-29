@@ -24,6 +24,10 @@ let package = Package(
             name: "PixlText",
             targets: ["PixlText"]
         ),
+        .executable(
+            name: "PixlTextPlayground",
+            targets: ["PixlTextPlayground"]
+        ),
         .library(
             name: "PixlUI",
             targets: ["PixlUI"]
@@ -134,6 +138,10 @@ let package = Package(
         .target(
             name: "PixlText",
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
+        ),
+        .executableTarget(
+            name: "PixlTextPlayground",
+            dependencies: ["PixlText"]
         ),
         .target(
             name: "PixlUI",
