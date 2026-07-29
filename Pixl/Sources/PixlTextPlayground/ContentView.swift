@@ -11,10 +11,15 @@ struct MeasurementView: View {
 
     private let glyphs: Result<[Font.GlyphDebugInfo], Error>
 
-    init() {
+    init(font: PlaygroundFont) {
         glyphs = Result {
             var output: [Font.GlyphDebugInfo] = []
-            try Font.system(size: 48).forEachGlyph(in: "He\u{301}llo, world!") {
+            let bytes = try font.loadBytes()
+            try Font.system(size: 48).forEachGlyph(
+                in: "He\u{301}llo, world!",
+                fontBytes: bytes,
+                fontID: font.path
+            ) {
                 output.append($0)
             }
             return output

@@ -1,4 +1,4 @@
-import PixlPlatformSynchronization
+import PixlSynchronization
 import Swift
 
 package final class AudioCompletion: Sendable {

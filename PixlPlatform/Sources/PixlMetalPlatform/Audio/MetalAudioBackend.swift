@@ -3,7 +3,7 @@
 @preconcurrency import Dispatch
 @preconcurrency import Foundation
 import PixlPlatform
-import PixlPlatformSynchronization
+import PixlSynchronization
 import Swift
 
 package final class MetalSoundResource: @unchecked Sendable {

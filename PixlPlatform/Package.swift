@@ -12,6 +12,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PixlPlatform", targets: ["PixlPlatform"]),
+        .library(name: "PixlSynchronization", targets: ["PixlSynchronization"]),
         .library(name: "PixlWasmPlatform", targets: ["PixlWasmPlatform"]),
         .library(name: "PixlMetalPlatform", targets: ["PixlMetalPlatform"]),
     ],
@@ -29,12 +30,12 @@ let package = Package(
         .target(
             name: "PixlPlatform",
             dependencies: [
-                "PixlPlatformSynchronization"
+                "PixlSynchronization"
             ],
             swiftSettings: releaseFullCrossModuleOptimization() + defaultNonisolated()
         ),
         .target(
-            name: "PixlPlatformSynchronization",
+            name: "PixlSynchronization",
             dependencies: [
                 .product(name: "Atomics", package: "swift-atomics")
             ],
@@ -53,7 +54,7 @@ let package = Package(
             name: "PixlMetalPlatform",
             dependencies: [
                 "PixlPlatform",
-                "PixlPlatformSynchronization",
+                "PixlSynchronization",
             ],
             resources: [
                 .process("Shaders")

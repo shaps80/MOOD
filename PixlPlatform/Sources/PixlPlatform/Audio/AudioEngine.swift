@@ -1,4 +1,4 @@
-import PixlPlatformSynchronization
+import PixlSynchronization
 import Swift
 
 package final class AudioEngine<Backend: AudioBackend>: AudioDevice, AudioController, @unchecked Sendable {

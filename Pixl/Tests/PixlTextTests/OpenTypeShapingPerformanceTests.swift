@@ -3,8 +3,6 @@ import XCTest
 @testable import PixlText
 
 final class OpenTypeShapingPerformanceTests: XCTestCase {
-    private let glyphCount = 100_000
-
     func testColdPlanCompilationPerformance() {
         let substitutions = makeSubstitutions()
         var checksum = 0
@@ -19,7 +17,15 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
         XCTAssertNotEqual(checksum, 0)
     }
 
-    func testHotShapingPerformance() {
+    func testHotShaping10KPerformance() {
+        measureHotShaping(glyphCount: 10_000)
+    }
+
+    func testHotShaping100KPerformance() {
+        measureHotShaping(glyphCount: 100_000)
+    }
+
+    private func measureHotShaping(glyphCount: Int) {
         let plan = makeSubstitutions().shapingPlan(script: latin)
         let source = makeGlyphs(count: glyphCount)
         var glyphs: [ShapingGlyph] = []
@@ -71,7 +77,7 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
         }
         for value in stride(from: 0, to: 128, by: 2) {
             rules.append(.ligature(
-                components: [UInt16($0), UInt16($0 + 1)],
+                components: [UInt16(value), UInt16(value + 1)],
                 output: UInt16(1_000 + value / 2)
             ))
         }

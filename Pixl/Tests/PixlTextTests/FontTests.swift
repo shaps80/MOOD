@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import PixlText
 
@@ -18,6 +19,7 @@ struct FontTests {
 
     @Test("System font resolves through the shared registry")
     func systemResolution() throws {
+        try registerSystemFont()
         let face = try Font.system(size: 24).resolvedFace
 
         #expect(face.metrics.unitsPerEm == 400)
@@ -26,6 +28,7 @@ struct FontTests {
 
     @Test("Package debug API emits unshaped glyph bounds")
     func glyphDebugging() throws {
+        try registerSystemFont()
         var glyphs: [Font.GlyphDebugInfo] = []
         try Font.system(size: 48).forEachGlyph(in: "Hello, world!") {
             glyphs.append($0)
@@ -40,6 +43,7 @@ struct FontTests {
 
     @Test("Clusters retain UTF-8 source and glyph ranges")
     func clusters() throws {
+        try registerSystemFont()
         var glyphs: [Font.GlyphDebugInfo] = []
         try Font.system(size: 48).forEachGlyph(in: "Ae\u{301}😀") {
             glyphs.append($0)
@@ -47,5 +51,11 @@ struct FontTests {
 
         #expect(glyphs.map(\.cluster.sourceRange) == [0..<1, 1..<4, 4..<8])
         #expect(glyphs.map(\.cluster.glyphRange) == [0..<1, 1..<2, 2..<3])
+    }
+
+    private func registerSystemFont() throws {
+        let path = "/System/Library/Fonts/Supplemental/Zapfino.ttf"
+        let bytes = Array(try Data(contentsOf: URL(filePath: path)))
+        try Font.registerSystemFont(bytes: bytes)
     }
 }

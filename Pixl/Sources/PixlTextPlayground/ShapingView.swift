@@ -8,15 +8,15 @@ struct ShapingView: View {
     }
 
     private static let text = "Hello, world!"
-    private static let fontPath = "/Users/shaps/Library/Fonts/Senilita.otf"
-
     private let rows: Result<[Row], Error>
 
-    init() {
+    init(font: PlaygroundFont) {
         rows = Result {
+            let bytes = try font.loadBytes()
             let information = try Font.system(size: 48).shapingDebugInfo(
                 in: Self.text,
-                fontPath: Self.fontPath
+                fontBytes: bytes,
+                fontID: font.path
             )
             var rows: [Row] = []
             for (index, info) in information.enumerated() {

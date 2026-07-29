@@ -137,6 +137,9 @@ let package = Package(
         ),
         .target(
             name: "PixlText",
+            dependencies: [
+                .product(name: "PixlSynchronization", package: "PixlPlatform")
+            ],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
         ),
         .executableTarget(

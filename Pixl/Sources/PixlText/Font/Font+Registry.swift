@@ -1,31 +1,55 @@
-import Foundation
+import PixlSynchronization
 
 extension Font {
     final class Registry: @unchecked Sendable {
+        private struct State {
+            var systemFace: SFNT.Face?
+            var debugFaces: [String: SFNT.Face] = [:]
+        }
+
+        enum Error: Swift.Error {
+            case systemFontNotRegistered
+        }
+
         static let shared = Registry()
 
-        private static let systemURL = URL(filePath: "/System/Library/Fonts/Supplemental/Zapfino.ttf")
-
-        private let lock = NSLock()
+        private let state = CriticalState(State())
         private let sfnt = SFNT.Registry()
-        private var systemFace: SFNT.Face?
-        private var debugFaces: [String: SFNT.Face] = [:]
 
         private init() {}
 
         func face(for descriptor: Descriptor) throws -> SFNT.Face {
             switch descriptor.source {
             case .system:
-                return try loadSystemFace()
+                return try state.withLock { state in
+                    guard let systemFace = state.systemFace else {
+                        throw Error.systemFontNotRegistered
+                    }
+                    return systemFace
+                }
+            }
+        }
+
+        func registerSystemFont(bytes: [UInt8]) throws {
+            try state.withLock { state in
+                guard state.systemFace == nil else { return }
+                state.systemFace = try sfnt.register(bytes: bytes)
             }
         }
 
         func forEachGlyph(
             in text: String,
             descriptor: Descriptor,
+            fontBytes: [UInt8]?,
+            fontID: String?,
             _ body: (GlyphDebugInfo) -> Void
         ) throws {
-            let face = try face(for: descriptor)
+            let face: SFNT.Face
+            if let fontBytes, let fontID {
+                face = try loadDebugFace(bytes: fontBytes, id: fontID)
+            } else {
+                face = try self.face(for: descriptor)
+            }
             let metrics = face.metrics.scaled(to: descriptor.size)
             var x: Float = 0
             var sourceOffset = 0
@@ -89,9 +113,10 @@ extension Font {
 
         func shapingDebugInfo(
             in text: String,
-            fontPath: String
+            fontBytes: [UInt8],
+            fontID: String
         ) throws -> [ShapingDebugInfo] {
-            let face = try loadDebugFace(at: fontPath)
+            let face = try loadDebugFace(bytes: fontBytes, id: fontID)
             var normalizationBuffer = UnicodeNormalizationBuffer()
             var nominalClusters: [(
                 sourceRange: Range<Int>,
@@ -168,31 +193,15 @@ extension Font {
             }
         }
 
-        private func loadSystemFace() throws -> SFNT.Face {
-            lock.lock()
-            defer { lock.unlock() }
-
-            if let systemFace {
-                return systemFace
-            }
-
-            let bytes = try Array(Data(contentsOf: Self.systemURL))
-            let face = try sfnt.register(bytes: bytes)
-            systemFace = face
-            return face
-        }
-
-        private func loadDebugFace(at path: String) throws -> SFNT.Face {
-            lock.lock()
-            defer { lock.unlock() }
-
-            if let face = debugFaces[path] {
+        private func loadDebugFace(bytes: [UInt8], id: String) throws -> SFNT.Face {
+            try state.withLock { state in
+                if let face = state.debugFaces[id] {
+                    return face
+                }
+                let face = try sfnt.register(bytes: bytes)
+                state.debugFaces[id] = face
                 return face
             }
-            let bytes = try Array(Data(contentsOf: URL(filePath: path)))
-            let face = try sfnt.register(bytes: bytes)
-            debugFaces[path] = face
-            return face
         }
 
         private static func tagString(_ tag: UInt32) -> String {
