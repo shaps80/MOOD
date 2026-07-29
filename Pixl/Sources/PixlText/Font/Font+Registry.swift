@@ -30,55 +30,55 @@ extension Font {
             var sourceOffset = 0
             var glyphIndex = 0
 
-            for scalar in text.unicodeScalars {
-                let sourceRange = sourceOffset..<(sourceOffset + utf8Length(of: scalar))
-                let glyphRange = glyphIndex..<(glyphIndex + 1)
-                let glyph = sfnt.glyphID(for: scalar, in: face) ?? .init(rawValue: 0)
-                let advance = sfnt.advance(
-                    for: glyph,
-                    in: face,
-                    size: descriptor.size
-                ) ?? 0
-                let scale = descriptor.size / Float(face.metrics.unitsPerEm)
-                let rawRenderBounds = sfnt.renderBounds(for: glyph, in: face)
+            var characterIndex = text.startIndex
+            while characterIndex < text.endIndex {
+                let nextCharacterIndex = text.index(after: characterIndex)
+                let character = text[characterIndex..<nextCharacterIndex]
+                let scalars = character.unicodeScalars
+                let sourceRange = sourceOffset..<(sourceOffset + character.utf8.count)
+                let glyphRange = glyphIndex..<(glyphIndex + scalars.count)
 
-                body(
-                    .init(
-                        scalar: scalar,
-                        glyphID: glyph.rawValue,
-                        cluster: .init(
-                            sourceRange: sourceRange,
-                            glyphRange: glyphRange
-                        ),
-                        advance: advance,
-                        typographicBounds: .init(
-                            x: x,
-                            y: -metrics.ascent,
-                            width: advance,
-                            height: metrics.ascent + metrics.descent
-                        ),
-                        renderBounds: rawRenderBounds.map {
-                            .init(
-                                x: x + Float($0.xMin) * scale,
-                                y: -Float($0.yMax) * scale,
-                                width: Float($0.xMax - $0.xMin) * scale,
-                                height: Float($0.yMax - $0.yMin) * scale
-                            )
-                        }
+                for scalar in scalars {
+                    let glyph = sfnt.glyphID(for: scalar, in: face) ?? .init(rawValue: 0)
+                    let advance = sfnt.advance(
+                        for: glyph,
+                        in: face,
+                        size: descriptor.size
+                    ) ?? 0
+                    let scale = descriptor.size / Float(face.metrics.unitsPerEm)
+                    let rawRenderBounds = sfnt.renderBounds(for: glyph, in: face)
+
+                    body(
+                        .init(
+                            scalar: scalar,
+                            glyphID: glyph.rawValue,
+                            cluster: .init(
+                                sourceRange: sourceRange,
+                                glyphRange: glyphRange
+                            ),
+                            advance: advance,
+                            typographicBounds: .init(
+                                x: x,
+                                y: -metrics.ascent,
+                                width: advance,
+                                height: metrics.ascent + metrics.descent
+                            ),
+                            renderBounds: rawRenderBounds.map {
+                                .init(
+                                    x: x + Float($0.xMin) * scale,
+                                    y: -Float($0.yMax) * scale,
+                                    width: Float($0.xMax - $0.xMin) * scale,
+                                    height: Float($0.yMax - $0.yMin) * scale
+                                )
+                            }
+                        )
                     )
-                )
-                x += advance
-                sourceOffset = sourceRange.upperBound
-                glyphIndex = glyphRange.upperBound
-            }
-        }
+                    x += advance
+                    glyphIndex += 1
+                }
 
-        private func utf8Length(of scalar: Unicode.Scalar) -> Int {
-            switch scalar.value {
-            case ...0x7F: 1
-            case ...0x7FF: 2
-            case ...0xFFFF: 3
-            default: 4
+                sourceOffset = sourceRange.upperBound
+                characterIndex = nextCharacterIndex
             }
         }
 

@@ -32,7 +32,7 @@ The first SFNT parser supports the metrics needed for real measurement: `head`, 
 
 The first measurement slice maps Unicode scalars to glyph IDs and scaled advances for one unshaped run. A temporary package-only `Font.forEachGlyph(in:_:)` exposes typographic bounds to the playground for visual verification without adding public low-level API.
 
-Glyph clusters map UTF-8 source ranges to glyph-index ranges. The initial unshaped pass produces one-to-one clusters, while the range-to-range representation supports future one-to-many and many-to-one shaping without changing source identity.
+Glyph clusters map UTF-8 source ranges to glyph-index ranges. The initial unshaped pass forms clusters from Swift extended grapheme clusters, allowing one user-perceived character such as a decomposed accent to own multiple scalar glyphs. The range-to-range representation also supports future many-to-one substitutions without changing source identity.
 
 TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
 

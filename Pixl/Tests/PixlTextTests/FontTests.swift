@@ -41,11 +41,11 @@ struct FontTests {
     @Test("Clusters retain UTF-8 source and glyph ranges")
     func clusters() throws {
         var glyphs: [Font.GlyphDebugInfo] = []
-        try Font.system(size: 48).forEachGlyph(in: "Aé😀") {
+        try Font.system(size: 48).forEachGlyph(in: "Ae\u{301}😀") {
             glyphs.append($0)
         }
 
-        #expect(glyphs.map(\.cluster.sourceRange) == [0..<1, 1..<3, 3..<7])
-        #expect(glyphs.map(\.cluster.glyphRange) == [0..<1, 1..<2, 2..<3])
+        #expect(glyphs.map(\.cluster.sourceRange) == [0..<1, 1..<4, 1..<4, 4..<8])
+        #expect(glyphs.map(\.cluster.glyphRange) == [0..<1, 1..<3, 1..<3, 3..<4])
     }
 }
