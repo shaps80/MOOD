@@ -42,6 +42,10 @@ Script detection uses a generated Unicode 16.0 Script-property range table. GSUB
 
 Shaping separates cold plan compilation from hot run execution. A plan contains flat, immutable, native-endian lookup and rule columns indexed by integer ranges. Run execution scans glyphs per active lookup, binary-searches candidate rules, and compacts shrinking substitutions with read/write cursors; it does not scan every rule across the run, allocate temporary collections, or shift an array suffix per ligature. Plan caching and buffer capacity are implementation concerns hidden above the eventual public text API.
 
+OpenType positioning runs after substitution. The first GPOS slice supports PairPos formats 1 and 2, including glyph-pair and class-pair kerning, plus extension-wrapped pair lookups. Positioning writes font-unit placement and advance deltas directly into the shaping glyph buffer; scaling and final baseline positions remain a later layout step. Parsed pair data and positioning plans are immutable, indexed cold-path data. Hot positioning performs binary searches and direct matrix indexing without allocation.
+
+Shaping workspaces are call-local noncopyable values initially. They own exact contiguous glyph and scratch buffers, grow geometrically when required, and release deterministically. Capacity is never exposed through the eventual public text API. A future document, layout session, or execution lane may retain and reuse the same workspace without changing algorithm inputs or public ownership.
+
 TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
 
 ## Deferred Glyph Imaging

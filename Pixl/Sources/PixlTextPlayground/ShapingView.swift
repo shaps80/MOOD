@@ -36,11 +36,12 @@ struct ShapingView: View {
                         header("Normalized")
                         header("Before")
                         header("After")
+                        header("Position")
                         header("Rule")
                     }
 
                     Divider()
-                        .gridCellColumns(5)
+                        .gridCellColumns(6)
 
                     ForEach(rows, id: \ShapingView.Row.id) { row in
                         ShapingGridRow(info: row.info)
@@ -80,6 +81,9 @@ private struct ShapingGridRow: View {
             Text(glyphs(info.shapedGlyphIDs))
                 .monospacedDigit()
                 .foregroundStyle(info.nominalGlyphIDs == info.shapedGlyphIDs ? Color.gray : Color.yellow)
+            Text(position(info))
+                .monospacedDigit()
+                .foregroundStyle(hasPositioning(info) ? Color.yellow : Color.gray)
             Text(rule(info))
                 .foregroundStyle(info.lookupIndex == nil ? Color.gray : Color.primary)
         }
@@ -97,5 +101,15 @@ private struct ShapingGridRow: View {
     private func rule(_ info: Font.ShapingDebugInfo) -> String {
         guard let feature = info.feature, let lookup = info.lookupIndex else { return "—" }
         return "\(feature) · lookup \(lookup)"
+    }
+
+    private func hasPositioning(_ info: Font.ShapingDebugInfo) -> Bool {
+        info.xPlacement != 0 || info.yPlacement != 0
+            || info.xAdvance != 0 || info.yAdvance != 0
+    }
+
+    private func position(_ info: Font.ShapingDebugInfo) -> String {
+        guard hasPositioning(info) else { return "—" }
+        return "place(\(info.xPlacement), \(info.yPlacement)) advance(\(info.xAdvance), \(info.yAdvance))"
     }
 }

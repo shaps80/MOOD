@@ -10,6 +10,7 @@ extension SFNT {
         private static let loca: UInt32 = 0x6C6F_6361
         private static let glyf: UInt32 = 0x676C_7966
         private static let gsub: UInt32 = 0x4753_5542
+        private static let gpos: UInt32 = 0x4750_4F53
         
         struct ParsedFace {
             let metrics: SFNT.FaceMetrics
@@ -20,6 +21,7 @@ extension SFNT {
             let characterMap: CharacterMap
             let trueTypeOutlines: TrueTypeOutlines?
             let glyphSubstitution: GlyphSubstitution?
+            let glyphPositioning: GlyphPositioning?
         }
         
         static func parse(bytes: [UInt8]) throws -> ParsedFace {
@@ -44,6 +46,7 @@ extension SFNT {
             var locaTable: Table?
             var glyfTable: Table?
             var gsubTable: Table?
+            var gposTable: Table?
             
             for index in 0..<Int(tableCount) {
                 let record = 12 + index * 16
@@ -64,6 +67,7 @@ extension SFNT {
                 case loca: locaTable = table
                 case glyf: glyfTable = table
                 case gsub: gsubTable = table
+                case gpos: gposTable = table
                 default: break
                 }
             }
@@ -130,6 +134,9 @@ extension SFNT {
             let glyphSubstitution = try gsubTable.map {
                 try GlyphSubstitution.parse(table: $0, bytes: bytes)
             }
+            let glyphPositioning = try gposTable.map {
+                try GlyphPositioning.parse(table: $0, bytes: bytes)
+            }
             
             return .init(
                 metrics: .init(
@@ -144,7 +151,8 @@ extension SFNT {
                 horizontalMetricsTable: hmtxTable,
                 characterMap: try characterMap(in: cmapTable, reader: reader),
                 trueTypeOutlines: trueTypeOutlines,
-                glyphSubstitution: glyphSubstitution
+                glyphSubstitution: glyphSubstitution,
+                glyphPositioning: glyphPositioning
             )
         }
         

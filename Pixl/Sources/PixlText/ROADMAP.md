@@ -12,10 +12,10 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Define target boundaries, dependencies, and low-level data ownership.
-2. Map the text pipeline around contiguous, cache-efficient buffers and PixlConcurrency.
-3. Select portable font parsing, shaping, rasterisation, and MSDF-generation backends.
-4. Define the layout result and renderer-primitive boundary without coupling it to Pixl.
+1. Complete the portable OpenType shaping and positioning foundation.
+2. Define shaped-run records and property-based run segmentation.
+3. Add bidirectional resolution and Unicode line-breaking opportunities.
+4. Define line and paragraph layout records over positioned glyph runs.
 
 ## Established Decisions
 
@@ -25,13 +25,16 @@ The final package name and target boundaries remain open.
 - Shaping and layout use font metrics and glyph IDs, never atlas placement.
 - PixlText depends on PixlConcurrency; initial execution is one lane with later lane scaling kept internal.
 - Hot text work uses contiguous, cache-aligned, data-oriented storage.
+- SFNT parsing, Unicode normalization/script detection, GSUB single/ligature substitution, and GPOS glyph/class pair positioning are implemented in platform-agnostic Swift.
+- Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
 
 ## Open Design Gates
 
 - Standalone package/target structure and Pixl/PixlUI adapter boundaries.
-- Portable shaping backend.
-- Font parsing, rasterisation, and MSDF-generation backend.
-- Exact low-level text, run, glyph, layout, and renderer-primitive records.
+- Remaining GSUB/GPOS lookup coverage and feature policy.
+- Exact low-level shaped-run, line, and paragraph records.
+- Bidirectional and Unicode line-breaking implementation boundaries.
+- Rasterisation and MSDF-generation implementation.
 - Cache ownership, keys, invalidation, and storage lifetime.
 - Paragraph and run scheduling thresholds.
 - Renderer primitive format, culling contract, and CPU/GPU integration seams.

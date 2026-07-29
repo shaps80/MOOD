@@ -37,6 +37,10 @@ extension SFNT {
         func glyphSubstitution(in face: Face) -> GlyphSubstitution? {
             storage(for: face)?.glyphSubstitution
         }
+
+        func glyphPositioning(in face: Face) -> GlyphPositioning? {
+            storage(for: face)?.glyphPositioning
+        }
         
         private func storage(for face: Face) -> FaceStorage? {
             let index = Int(face.id.rawValue)

@@ -171,6 +171,15 @@ extension Font {
                     to: &workspace.glyphs
                 )
             }
+            if let positioning = sfnt.glyphPositioning(in: face) {
+                let plan = positioning.positioningPlan(
+                    script: (runScript ?? .common).tag
+                )
+                OpenTypePositioner.apply(
+                    plan,
+                    to: &workspace.glyphs
+                )
+            }
 
             let sourceBytes = Array(text.utf8)
             var result: [ShapingDebugInfo] = []
@@ -190,6 +199,10 @@ extension Font {
                     normalizedScalars: clusters.flatMap(\.scalars),
                     nominalGlyphIDs: clusters.flatMap(\.glyphs),
                     shapedGlyphIDs: [glyph.id.rawValue],
+                    xPlacement: glyph.xPlacement,
+                    yPlacement: glyph.yPlacement,
+                    xAdvance: glyph.xAdvance,
+                    yAdvance: glyph.yAdvance,
                     feature: glyph.feature.map(Self.tagString),
                     lookupIndex: glyph.lookupIndex
                 ))
