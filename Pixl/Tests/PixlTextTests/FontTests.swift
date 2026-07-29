@@ -45,7 +45,7 @@ struct FontTests {
             glyphs.append($0)
         }
 
-        #expect(glyphs.map(\.cluster.sourceRange) == [0..<1, 1..<4, 1..<4, 4..<8])
-        #expect(glyphs.map(\.cluster.glyphRange) == [0..<1, 1..<3, 1..<3, 3..<4])
+        #expect(glyphs.map(\.cluster.sourceRange) == [0..<1, 1..<4, 4..<8])
+        #expect(glyphs.map(\.cluster.glyphRange) == [0..<1, 1..<2, 2..<3])
     }
 }

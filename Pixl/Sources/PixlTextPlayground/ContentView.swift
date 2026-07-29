@@ -25,17 +25,32 @@ struct ContentView: View {
         Canvas { context, size in
             guard case .success(let glyphs) = glyphs else { return }
 
-            for (index, glyph) in glyphs.enumerated() {
+            for (index, glyph) in glyphs.enumerated() where index != hoveredGlyph {
                 context.stroke(
                     Path(typographicRect(for: glyph)),
-                    with: .color(hoveredGlyph == index ? .yellow : .gray),
-                    style: .init(lineWidth: hoveredGlyph == index ? 2 : 1, dash: [5, 4])
+                    with: .color(.gray),
+                    style: .init(lineWidth: 1, dash: [5, 4])
                 )
                 if let renderRect = renderRect(for: glyph) {
                     context.stroke(
                         Path(renderRect),
-                        with: .color(hoveredGlyph == index ? .red : .gray),
-                        lineWidth: hoveredGlyph == index ? 2 : 1
+                        with: .color(.gray),
+                        lineWidth: 1
+                    )
+                }
+            }
+
+            for (index, glyph) in glyphs.enumerated() where hoveredGlyph == index {
+                context.stroke(
+                    Path(typographicRect(for: glyph)),
+                    with: .color(.yellow),
+                    style: .init(lineWidth: 1.5, dash: [5, 4])
+                )
+                if let renderRect = renderRect(for: glyph) {
+                    context.stroke(
+                        Path(renderRect),
+                        with: .color(.red),
+                        lineWidth: 1.5
                     )
                 }
             }

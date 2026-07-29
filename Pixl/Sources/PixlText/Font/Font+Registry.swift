@@ -29,16 +29,20 @@ extension Font {
             var x: Float = 0
             var sourceOffset = 0
             var glyphIndex = 0
+            var normalizationBuffer = UnicodeNormalizationBuffer()
 
             var characterIndex = text.startIndex
             while characterIndex < text.endIndex {
                 let nextCharacterIndex = text.index(after: characterIndex)
                 let character = text[characterIndex..<nextCharacterIndex]
-                let scalars = character.unicodeScalars
                 let sourceRange = sourceOffset..<(sourceOffset + character.utf8.count)
-                let glyphRange = glyphIndex..<(glyphIndex + scalars.count)
+                UnicodeNormalization.normalizeNFC(
+                    character.unicodeScalars,
+                    using: &normalizationBuffer
+                )
+                let glyphRange = glyphIndex..<(glyphIndex + normalizationBuffer.normalized.count)
 
-                for scalar in scalars {
+                for scalar in normalizationBuffer.normalized {
                     let glyph = sfnt.glyphID(for: scalar, in: face) ?? .init(rawValue: 0)
                     let advance = sfnt.advance(
                         for: glyph,
