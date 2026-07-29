@@ -3,7 +3,7 @@ import PixlText
 
 typealias Font = PixlText.Font
 
-struct ContentView: View {
+struct MeasurementView: View {
     private static let origin = CGPoint(x: 40, y: 160)
 
     @State private var isShowing: Bool = true

@@ -9,6 +9,7 @@ extension SFNT {
         private let horizontalMetricsTable: Table
         private let characterMap: CharacterMap
         private let trueTypeOutlines: TrueTypeOutlines?
+        let glyphSubstitution: GlyphSubstitution?
         
         init(bytes: [UInt8]) throws {
             self.bytes = bytes
@@ -20,6 +21,7 @@ extension SFNT {
             horizontalMetricsTable = parsed.horizontalMetricsTable
             characterMap = parsed.characterMap
             trueTypeOutlines = parsed.trueTypeOutlines
+            glyphSubstitution = parsed.glyphSubstitution
         }
         
         func glyphID(for scalar: Unicode.Scalar) -> GlyphID? {

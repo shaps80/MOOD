@@ -36,6 +36,8 @@ Glyph clusters map UTF-8 source ranges to glyph-index ranges. The initial pass f
 
 Canonical normalization precedes font-specific shaping. PixlText implements NFC directly from checked-in Unicode 16.0 tables; it does not depend on Foundation or platform normalization. Tables are generated offline only when intentionally upgrading Unicode, then reused as static read-only runtime data. The algorithm writes into caller-owned reusable buffers and preserves each original grapheme's UTF-8 source range when several source scalars compose into one normalized scalar.
 
+OpenType `GSUB` and `GPOS` are the primary cross-platform shaping formats. Fonts without those tables currently fall back to scalar-to-glyph mapping and advances. Apple AAT (`morx`/`kerx`) and Graphite shaping are unsupported; they are not initial implementation targets. The first GSUB slice parses initially enabled single and ligature substitutions, including extension-wrapped forms, and preserves or merges source ranges as glyphs are replaced.
+
 TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
 
 ## Deferred Glyph Imaging

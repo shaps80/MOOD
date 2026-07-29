@@ -33,6 +33,10 @@ extension SFNT {
         func renderBounds(for glyph: GlyphID, in face: Face) -> GlyphBounds? {
             storage(for: face)?.renderBounds(for: glyph)
         }
+
+        func glyphSubstitution(in face: Face) -> GlyphSubstitution? {
+            storage(for: face)?.glyphSubstitution
+        }
         
         private func storage(for face: Face) -> FaceStorage? {
             let index = Int(face.id.rawValue)
