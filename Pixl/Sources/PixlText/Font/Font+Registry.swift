@@ -123,7 +123,7 @@ extension Font {
                 scalars: [Unicode.Scalar],
                 glyphs: [UInt16]
             )] = []
-            var shapingGlyphs: [ShapingGlyph] = []
+            var workspace = ShapingWorkspace(minimumGlyphCapacity: text.utf8.count)
             var runScript: UnicodeScript?
             var sourceOffset = 0
             var characterIndex = text.startIndex
@@ -150,13 +150,13 @@ extension Font {
                     scalars: scalars,
                     glyphs: glyphs.map(\.rawValue)
                 ))
-                shapingGlyphs += glyphs.map {
-                    .init(
-                        id: $0,
+                for glyph in glyphs {
+                    workspace.glyphs.append(.init(
+                        id: glyph,
                         sourceRange: sourceRange,
                         lookupIndex: nil,
                         feature: nil
-                    )
+                    ))
                 }
                 sourceOffset = sourceRange.upperBound
                 characterIndex = next
@@ -168,17 +168,20 @@ extension Font {
                 )
                 OpenTypeShaper.apply(
                     plan,
-                    to: &shapingGlyphs
+                    to: &workspace.glyphs
                 )
             }
 
             let sourceBytes = Array(text.utf8)
-            return shapingGlyphs.map { glyph in
+            var result: [ShapingDebugInfo] = []
+            result.reserveCapacity(workspace.glyphs.count)
+            for glyphIndex in 0..<workspace.glyphs.count {
+                let glyph = workspace.glyphs[glyphIndex]
                 let clusters = nominalClusters.filter {
                     $0.sourceRange.lowerBound < glyph.sourceRange.upperBound
                         && glyph.sourceRange.lowerBound < $0.sourceRange.upperBound
                 }
-                return .init(
+                result.append(.init(
                     source: String(
                         decoding: sourceBytes[glyph.sourceRange],
                         as: UTF8.self
@@ -189,8 +192,9 @@ extension Font {
                     shapedGlyphIDs: [glyph.id.rawValue],
                     feature: glyph.feature.map(Self.tagString),
                     lookupIndex: glyph.lookupIndex
-                )
+                ))
             }
+            return result
         }
 
         private func loadDebugFace(bytes: [UInt8], id: String) throws -> SFNT.Face {

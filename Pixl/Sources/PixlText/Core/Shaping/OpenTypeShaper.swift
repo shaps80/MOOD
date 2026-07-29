@@ -1,7 +1,7 @@
 enum OpenTypeShaper {
     static func apply(
         _ plan: borrowing OpenTypeShapingPlan,
-        to glyphs: inout [ShapingGlyph]
+        to glyphs: inout GlyphBuffer
     ) {
         for lookup in plan.lookups {
             switch lookup.kind {
@@ -16,9 +16,9 @@ enum OpenTypeShaper {
     private static func applySingle(
         _ lookup: OpenTypeShapingPlan.Lookup,
         plan: borrowing OpenTypeShapingPlan,
-        to glyphs: inout [ShapingGlyph]
+        to glyphs: inout GlyphBuffer
     ) {
-        for index in glyphs.indices {
+        for index in 0..<glyphs.count {
             let id = glyphs[index].id.rawValue
             guard let rule = singleRule(for: id, in: lookup.rules, plan: plan) else {
                 continue
@@ -32,7 +32,7 @@ enum OpenTypeShaper {
     private static func applyLigatures(
         _ lookup: OpenTypeShapingPlan.Lookup,
         plan: borrowing OpenTypeShapingPlan,
-        to glyphs: inout [ShapingGlyph]
+        to glyphs: inout GlyphBuffer
     ) {
         var read = 0
         var write = 0
@@ -102,7 +102,7 @@ enum OpenTypeShaper {
         glyphCount: Int,
         rules: Range<Int>,
         plan: borrowing OpenTypeShapingPlan,
-        glyphs: borrowing [ShapingGlyph]
+        glyphs: borrowing GlyphBuffer
     ) -> OpenTypeShapingPlan.LigatureRule? {
         var lower = rules.lowerBound
         var upper = rules.upperBound

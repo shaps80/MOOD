@@ -28,13 +28,12 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
     private func measureHotShaping(glyphCount: Int) {
         let plan = makeSubstitutions().shapingPlan(script: latin)
         let source = makeGlyphs(count: glyphCount)
-        var glyphs: [ShapingGlyph] = []
-        glyphs.reserveCapacity(source.count)
+        var glyphs = GlyphBuffer(minimumCapacity: source.count)
         var checksum = 0
 
         measure(metrics: metrics, options: manualOptions) {
-            glyphs.removeAll(keepingCapacity: true)
-            glyphs.append(contentsOf: source)
+            glyphs.removeLast(glyphs.count)
+            for glyph in source { glyphs.append(glyph) }
 
             startMeasuring()
             OpenTypeShaper.apply(plan, to: &glyphs)

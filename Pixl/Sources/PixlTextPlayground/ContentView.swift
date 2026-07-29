@@ -65,12 +65,15 @@ struct MeasurementView: View {
             switch phase {
             case .active(let location):
                 guard case .success(let glyphs) = glyphs else { return }
-                hoveredGlyph = glyphs.indices.last {
+                let nextHoveredGlyph = glyphs.indices.last {
                     typographicRect(for: glyphs[$0]).contains(location)
                         || renderRect(for: glyphs[$0])?.contains(location) == true
                 }
+                guard hoveredGlyph != nextHoveredGlyph else { return }
+                hoveredGlyph = nextHoveredGlyph
 
             case .ended:
+                guard hoveredGlyph != nil else { return }
                 hoveredGlyph = nil
             }
         }
