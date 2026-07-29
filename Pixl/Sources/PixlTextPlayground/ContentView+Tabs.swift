@@ -15,6 +15,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Shaping", systemImage: "textformat")
                 }
+
+            RunsView(font: font)
+                .tabItem {
+                    Label("Runs", systemImage: "square.split.2x1")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .principal) {

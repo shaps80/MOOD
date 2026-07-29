@@ -12,10 +12,10 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Define shaped-run records and property-based run segmentation.
-2. Add script-specific shaping stages, feature masks, and explicit language input.
-3. Add bidirectional resolution and Unicode line-breaking opportunities.
-4. Define line and paragraph layout records over positioned glyph runs.
+1. Validate shaped-run boundaries and mixed-font output visually.
+2. Add bidirectional resolution and Unicode line-breaking opportunities.
+3. Define line and paragraph layout records over positioned glyph runs.
+4. Add script-specific shaping stages, feature masks, and explicit language input.
 
 ## Established Decisions
 
@@ -27,6 +27,7 @@ The final package name and target boundaries remain open.
 - Hot text work uses contiguous, cache-aligned, data-oriented storage.
 - Base GSUB lookup types 1–8, GPOS lookup types 1–9, and the GDEF data needed by lookup flags are implemented in platform-agnostic Swift.
 - Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
+- Source `TextRun` records and output `GlyphRun` records are separate. Run execution borrows contiguous run and precompiled-plan columns through call-local spans and writes all results into shared reusable glyph/run buffers.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 

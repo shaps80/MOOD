@@ -223,6 +223,136 @@ extension Font {
             return result
         }
 
+        func runDebugInfo(
+            in text: String,
+            inputs: [RunDebugInfo.Input]
+        ) throws -> RunDebugInfo {
+            var textRuns: [TextRun] = []
+            var substitutionPlans: [OpenTypeShapingPlan] = []
+            var positioningPlans: [OpenTypePositioningPlan] = []
+            textRuns.reserveCapacity(inputs.count)
+            for input in inputs {
+                let face = try loadDebugFace(bytes: input.fontBytes, id: input.fontID)
+                let script = Self.script(in: text, sourceRange: input.sourceRange)
+                let substitutionPlanIndex = sfnt.glyphSubstitution(in: face).map {
+                    let index = substitutionPlans.count
+                    substitutionPlans.append($0.shapingPlan(script: script.tag))
+                    return index
+                }
+                let positioningPlanIndex = sfnt.glyphPositioning(in: face).map {
+                    let index = positioningPlans.count
+                    positioningPlans.append($0.positioningPlan(script: script.tag))
+                    return index
+                }
+                textRuns.append(.init(
+                    sourceRange: input.sourceRange,
+                    face: face,
+                    size: input.font.descriptor.size,
+                    direction: input.direction == .leftToRight ? .leftToRight : .rightToLeft,
+                    script: script,
+                    language: nil,
+                    substitutionPlanIndex: substitutionPlanIndex,
+                    positioningPlanIndex: positioningPlanIndex
+                ))
+            }
+
+            var workspace = RunShapingWorkspace(
+                minimumGlyphCapacity: text.utf8.count,
+                minimumRunCapacity: inputs.count
+            )
+            try textRuns.withUnsafeBufferPointer { buffer in
+                try substitutionPlans.withUnsafeBufferPointer { substitutions in
+                    try positioningPlans.withUnsafeBufferPointer { positioning in
+                        try RunShaper.shape(
+                            text,
+                            runs: unsafe Span(_unsafeElements: buffer),
+                            substitutionPlans: unsafe Span(_unsafeElements: substitutions),
+                            positioningPlans: unsafe Span(_unsafeElements: positioning),
+                            registry: sfnt,
+                            workspace: &workspace
+                        )
+                    }
+                }
+            }
+
+            var debugRuns: [RunDebugInfo.Run] = []
+            let sourceBytes = Array(text.utf8)
+            debugRuns.reserveCapacity(workspace.runs.count)
+            workspace.runs.withSpan { runs in
+                for index in runs.indices {
+                    let run = runs[index]
+                    debugRuns.append(.init(
+                        source: String(decoding: sourceBytes[run.sourceRange], as: UTF8.self),
+                        sourceRange: run.sourceRange,
+                        glyphRange: run.glyphRange,
+                        fontName: inputs[index].fontName,
+                        size: run.size,
+                        direction: run.direction == .leftToRight
+                            ? .leftToRight
+                            : .rightToLeft,
+                        script: Self.tagString(run.script.tag)
+                    ))
+                }
+            }
+
+            var debugGlyphs: [RunDebugInfo.Glyph] = []
+            debugGlyphs.reserveCapacity(workspace.glyphs.count)
+            var x: Float = 0
+            workspace.runs.withSpan { runs in
+                workspace.glyphs.withSpan { glyphs in
+                    for runIndex in runs.indices {
+                        let run = runs[runIndex]
+                        let metrics = run.face.metrics.scaled(to: run.size)
+                        let scale = run.size / Float(run.face.metrics.unitsPerEm)
+                        for glyphIndex in run.glyphRange {
+                            let glyph = glyphs[glyphIndex]
+                            let advance = Float(glyph.nominalXAdvance + glyph.xAdvance) * scale
+                            let rawRenderBounds = sfnt.renderBounds(for: glyph.id, in: run.face)
+                            debugGlyphs.append(.init(
+                                runIndex: runIndex,
+                                glyphID: glyph.id.rawValue,
+                                sourceRange: glyph.sourceRange,
+                                advance: advance,
+                                typographicBounds: .init(
+                                    x: x,
+                                    y: -metrics.ascent,
+                                    width: advance,
+                                    height: metrics.ascent + metrics.descent
+                                ),
+                                renderBounds: rawRenderBounds.map {
+                                    .init(
+                                        x: x + Float(Int32($0.xMin) + glyph.xPlacement) * scale,
+                                        y: -Float(Int32($0.yMax) + glyph.yPlacement) * scale,
+                                        width: Float($0.xMax - $0.xMin) * scale,
+                                        height: Float($0.yMax - $0.yMin) * scale
+                                    )
+                                }
+                            ))
+                            x += advance
+                        }
+                    }
+                }
+            }
+            return .init(runs: debugRuns, glyphs: debugGlyphs)
+        }
+
+        private static func script(
+            in text: String,
+            sourceRange: Range<Int>
+        ) -> UnicodeScript {
+            let utf8 = text.utf8
+            let lowerUTF8 = utf8.index(utf8.startIndex, offsetBy: sourceRange.lowerBound)
+            let upperUTF8 = utf8.index(lowerUTF8, offsetBy: sourceRange.count)
+            guard let lower = lowerUTF8.samePosition(in: text),
+                  let upper = upperUTF8.samePosition(in: text)
+            else {
+                return .common
+            }
+            return text[lower..<upper].unicodeScalars.lazy
+                .map(UnicodeScript.script)
+                .first(where: \.isStrong) ?? .common
+        }
+
         private func loadDebugFace(bytes: [UInt8], id: String) throws -> SFNT.Face {
             try state.withLock { state in
                 if let face = state.debugFaces[id] {

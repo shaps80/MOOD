@@ -50,6 +50,8 @@ OpenType positioning runs after substitution. Positioning writes font-unit place
 
 Shaping workspaces are call-local noncopyable values initially. They own exact contiguous glyph and scratch buffers, grow geometrically when required, and release deterministically. Capacity is never exposed through the eventual public text API. A future document, layout session, or execution lane may retain and reuse the same workspace without changing algorithm inputs or public ownership.
 
+Run shaping separates source and output records. `TextRun` describes one contiguous UTF-8 source range with a resolved face, size, direction, script, language, and indices into precompiled OpenType plans. `GlyphRun` identifies the corresponding range in one shared contiguous glyph buffer. Core execution borrows run and plan columns through call-local `Span` values; spans are never stored. Lookup-plan compilation remains outside the hot run executor.
+
 TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
 
 ## Deferred Glyph Imaging

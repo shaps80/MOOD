@@ -49,6 +49,20 @@ struct GlyphBuffer: ~Copyable {
         }
     }
 
+    mutating func append(contentsOf other: borrowing GlyphBuffer) {
+        ensureCapacity(for: count + other.count)
+        for index in 0..<other.count {
+            append(other[index])
+        }
+    }
+
+    func withSpan<Result: ~Copyable>(
+        _ body: (Span<ShapingGlyph>) throws -> Result
+    ) rethrows -> Result {
+        let buffer = UnsafeBufferPointer(start: storage, count: count)
+        return try body(unsafe Span(_unsafeElements: buffer))
+    }
+
     mutating func replace(
         _ range: Range<Int>,
         with ids: [UInt16],

@@ -140,7 +140,9 @@ let package = Package(
             dependencies: [
                 .product(name: "PixlSynchronization", package: "PixlPlatform")
             ],
-            swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
+            swiftSettings: releaseCrossModuleOptimization()
+                + defaultNonisolated()
+                + [.enableExperimentalFeature("Lifetimes")]
         ),
         .executableTarget(
             name: "PixlTextPlayground",
