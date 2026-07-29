@@ -49,6 +49,7 @@ let package = Package(
             ],
             exclude: ["Shaders"],
             swiftSettings: releaseCrossModuleOptimization() + defaultNonisolated()
+            
         ),
         .target(
             name: "PixlMetalPlatform",

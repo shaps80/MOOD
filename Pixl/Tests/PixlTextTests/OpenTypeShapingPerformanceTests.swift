@@ -7,7 +7,7 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
         let substitutions = makeSubstitutions()
         var checksum = 0
 
-        measure(metrics: metrics, options: options) {
+        measure(metrics: metrics, options: automaticOptions) {
             let plan = substitutions.shapingPlan(script: latin)
             checksum &+= plan.lookups.count
             checksum &+= plan.singleRules.count
@@ -32,7 +32,7 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
         glyphs.reserveCapacity(source.count)
         var checksum = 0
 
-        measure(metrics: metrics, options: options) {
+        measure(metrics: metrics, options: manualOptions) {
             glyphs.removeAll(keepingCapacity: true)
             glyphs.append(contentsOf: source)
 
@@ -51,10 +51,16 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
         [XCTClockMetric(), XCTCPUMetric(), XCTMemoryMetric()]
     }
 
-    private var options: XCTMeasureOptions {
+    private var automaticOptions: XCTMeasureOptions {
         let options = XCTMeasureOptions()
         options.iterationCount = 5
-        options.invocationOptions = [.manuallyStart]
+        return options
+    }
+
+    private var manualOptions: XCTMeasureOptions {
+        let options = XCTMeasureOptions()
+        options.iterationCount = 5
+        options.invocationOptions = [.manuallyStart, .manuallyStop]
         return options
     }
 
