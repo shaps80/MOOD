@@ -35,18 +35,28 @@ extension Font {
                     in: face,
                     size: descriptor.size
                 ) ?? 0
+                let scale = descriptor.size / Float(face.metrics.unitsPerEm)
+                let rawRenderBounds = sfnt.renderBounds(for: glyph, in: face)
 
                 body(
                     .init(
                         scalar: scalar,
                         glyphID: glyph.rawValue,
                         advance: advance,
-                        bounds: .init(
+                        typographicBounds: .init(
                             x: x,
                             y: -metrics.ascent,
                             width: advance,
                             height: metrics.ascent + metrics.descent
-                        )
+                        ),
+                        renderBounds: rawRenderBounds.map {
+                            .init(
+                                x: x + Float($0.xMin) * scale,
+                                y: -Float($0.yMax) * scale,
+                                width: Float($0.xMax - $0.xMin) * scale,
+                                height: Float($0.yMax - $0.yMin) * scale
+                            )
+                        }
                     )
                 )
                 x += advance

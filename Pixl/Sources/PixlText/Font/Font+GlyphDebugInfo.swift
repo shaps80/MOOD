@@ -10,6 +10,7 @@ extension Font {
         package let scalar: Unicode.Scalar
         package let glyphID: UInt16
         package let advance: Float
-        package let bounds: Bounds
+        package let typographicBounds: Bounds
+        package let renderBounds: Bounds?
     }
 }

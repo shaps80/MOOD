@@ -32,6 +32,8 @@ The first SFNT parser supports the metrics needed for real measurement: `head`, 
 
 The first measurement slice maps Unicode scalars to glyph IDs and scaled advances for one unshaped run. A temporary package-only `Font.forEachGlyph(in:_:)` exposes typographic bounds to the playground for visual verification without adding public low-level API.
 
+TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
+
 ## Deferred Glyph Imaging
 
 The initial glyph-imaging format will be MSDF; alternate coverage and colour-glyph paths remain future decisions.

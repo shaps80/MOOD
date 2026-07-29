@@ -33,7 +33,8 @@ struct FontTests {
 
         #expect(glyphs.count == 13)
         #expect(glyphs.first?.scalar == "H")
-        #expect(glyphs.allSatisfy { $0.bounds.height > 0 })
-        #expect(glyphs.dropFirst().allSatisfy { $0.bounds.x > 0 })
+        #expect(glyphs.allSatisfy { $0.typographicBounds.height > 0 })
+        #expect(glyphs.dropFirst().allSatisfy { $0.typographicBounds.x > 0 })
+        #expect(glyphs.first?.renderBounds != nil)
     }
 }

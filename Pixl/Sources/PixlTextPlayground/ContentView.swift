@@ -27,10 +27,17 @@ struct ContentView: View {
 
             for (index, glyph) in glyphs.enumerated() {
                 context.stroke(
-                    Path(rect(for: glyph)),
+                    Path(typographicRect(for: glyph)),
                     with: .color(hoveredGlyph == index ? .yellow : .gray),
-                    lineWidth: hoveredGlyph == index ? 2 : 1
+                    style: .init(lineWidth: hoveredGlyph == index ? 2 : 1, dash: [5, 4])
                 )
+                if let renderRect = renderRect(for: glyph) {
+                    context.stroke(
+                        Path(renderRect),
+                        with: .color(hoveredGlyph == index ? .red : .gray),
+                        lineWidth: hoveredGlyph == index ? 2 : 1
+                    )
+                }
             }
         }
         .contentShape(Rectangle())
@@ -39,7 +46,8 @@ struct ContentView: View {
             case .active(let location):
                 guard case .success(let glyphs) = glyphs else { return }
                 hoveredGlyph = glyphs.indices.last {
-                    rect(for: glyphs[$0]).contains(location)
+                    typographicRect(for: glyphs[$0]).contains(location)
+                        || renderRect(for: glyphs[$0])?.contains(location) == true
                 }
 
             case .ended:
@@ -55,9 +63,10 @@ struct ContentView: View {
                         LabeledContent("Scalar", value: String(glyph.scalar))
                         LabeledContent("Glyph ID", value: glyph.glyphID.description)
                         LabeledContent("Advance", value: glyph.advance.description)
-                        LabeledContent("X", value: glyph.bounds.x.description)
-                        LabeledContent("Width", value: glyph.bounds.width.description)
-                        LabeledContent("Height", value: glyph.bounds.height.description)
+                        LabeledContent("Typographic", value: description(glyph.typographicBounds))
+                        if let renderBounds = glyph.renderBounds {
+                            LabeledContent("Render", value: description(renderBounds))
+                        }
                     } else {
                         Text("Hover over a glyph bound")
                     }
@@ -70,12 +79,24 @@ struct ContentView: View {
         }
     }
 
-    private func rect(for glyph: Font.GlyphDebugInfo) -> CGRect {
+    private func typographicRect(for glyph: Font.GlyphDebugInfo) -> CGRect {
+        rect(for: glyph.typographicBounds)
+    }
+
+    private func renderRect(for glyph: Font.GlyphDebugInfo) -> CGRect? {
+        glyph.renderBounds.map(rect)
+    }
+
+    private func rect(for bounds: Font.GlyphDebugInfo.Bounds) -> CGRect {
         CGRect(
-            x: Self.origin.x + CGFloat(glyph.bounds.x),
-            y: Self.origin.y + CGFloat(glyph.bounds.y),
-            width: CGFloat(glyph.bounds.width),
-            height: CGFloat(glyph.bounds.height)
+            x: Self.origin.x + CGFloat(bounds.x),
+            y: Self.origin.y + CGFloat(bounds.y),
+            width: CGFloat(bounds.width),
+            height: CGFloat(bounds.height)
         )
+    }
+
+    private func description(_ bounds: Font.GlyphDebugInfo.Bounds) -> String {
+        "x: \(bounds.x), y: \(bounds.y), w: \(bounds.width), h: \(bounds.height)"
     }
 }
