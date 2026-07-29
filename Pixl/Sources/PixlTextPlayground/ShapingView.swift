@@ -99,4 +99,3 @@ private struct ShapingGridRow: View {
         return "\(feature) · lookup \(lookup)"
     }
 }
-You 

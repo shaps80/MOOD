@@ -25,3 +25,13 @@ struct UnicodeNormalizationTests {
         return buffer.normalized
     }
 }
+
+@Suite("Unicode scripts")
+struct UnicodeScriptTests {
+    @Test("Script ranges identify strong and neutral scalars")
+    func scripts() {
+        #expect(UnicodeScript.script(for: "H") == .init(tag: 0x6C61_746E)) // latn
+        #expect(UnicodeScript.script(for: "ش") == .init(tag: 0x6172_6162)) // arab
+        #expect(UnicodeScript.script(for: "!") == .common)
+    }
+}

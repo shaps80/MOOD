@@ -2,8 +2,28 @@ extension SFNT {
     struct GlyphSubstitution {
         struct Lookup {
             let index: Int
-            let feature: UInt32
             let substitutions: [Substitution]
+        }
+
+        struct Feature {
+            let tag: UInt32
+            let lookupIndices: [Int]
+        }
+
+        struct LanguageSystem {
+            let requiredFeatureIndex: Int?
+            let featureIndices: [Int]
+        }
+
+        struct Script {
+            let tag: UInt32
+            let defaultLanguage: LanguageSystem?
+            let languages: [(tag: UInt32, system: LanguageSystem)]
+        }
+
+        struct ActiveLookup {
+            let lookup: Lookup
+            let feature: UInt32
         }
 
         enum Substitution {
@@ -11,11 +31,48 @@ extension SFNT {
             case ligature(components: [UInt16], output: UInt16)
         }
 
+        let scripts: [Script]
+        let features: [Feature]
         let lookups: [Lookup]
+
+        func activeLookups(script scriptTag: UInt32, language languageTag: UInt32?) -> [ActiveLookup] {
+            guard let script = scripts.first(where: { $0.tag == scriptTag })
+                ?? scripts.first(where: { $0.tag == 0x4446_4C54 }) // DFLT
+            else {
+                return []
+            }
+            let language = languageTag.flatMap { requested in
+                script.languages.first(where: { $0.tag == requested })?.system
+            } ?? script.defaultLanguage
+            guard let language else { return [] }
+
+            var featureIndices: [Int] = []
+            if let required = language.requiredFeatureIndex {
+                featureIndices.append(required)
+            }
+            featureIndices += language.featureIndices
+
+            var tagsByLookup = Array<UInt32?>(repeating: nil, count: lookups.count)
+            for featureIndex in featureIndices where features.indices.contains(featureIndex) {
+                let feature = features[featureIndex]
+                guard Self.isInitiallyEnabled(feature: feature.tag) else { continue }
+                for lookupIndex in feature.lookupIndices
+                    where tagsByLookup.indices.contains(lookupIndex) && tagsByLookup[lookupIndex] == nil {
+                    tagsByLookup[lookupIndex] = feature.tag
+                }
+            }
+
+            return lookups.compactMap { lookup in
+                tagsByLookup[lookup.index].map {
+                    .init(lookup: lookup, feature: $0)
+                }
+            }
+        }
 
         static func parse(table: Table, bytes: [UInt8]) throws -> Self {
             let reader = ByteReader(bytes)
             try require(table, relativeOffset: 0, count: 10)
+            let scriptListOffset = Int(try reader.uint16(at: table.offset + 4))
             let featureListOffset = Int(try reader.uint16(at: table.offset + 6))
             let lookupListOffset = Int(try reader.uint16(at: table.offset + 8))
             let lookupList = table.offset + lookupListOffset
@@ -23,16 +80,19 @@ extension SFNT {
             let lookupCount = Int(try reader.uint16(at: lookupList))
             try require(table, absoluteOffset: lookupList + 2, count: lookupCount * 2)
 
-            let features = try featureTagsByLookup(
+            let scripts = try parseScripts(
+                table: table,
+                scriptListOffset: scriptListOffset,
+                reader: reader
+            )
+            let features = try parseFeatures(
                 table: table,
                 featureListOffset: featureListOffset,
-                lookupCount: lookupCount,
                 reader: reader
             )
 
             var lookups: [Lookup] = []
             for lookupIndex in 0..<lookupCount {
-                guard let feature = features[lookupIndex] else { continue }
                 let relativeOffset = Int(try reader.uint16(at: lookupList + 2 + lookupIndex * 2))
                 let lookup = lookupList + relativeOffset
                 try require(table, absoluteOffset: lookup, count: 6)
@@ -51,46 +111,89 @@ extension SFNT {
                         reader: reader
                     )
                 }
-                if !substitutions.isEmpty {
-                    lookups.append(.init(
-                        index: lookupIndex,
-                        feature: feature,
-                        substitutions: substitutions
-                    ))
-                }
+                lookups.append(.init(
+                    index: lookupIndex,
+                    substitutions: substitutions
+                ))
             }
-            return .init(lookups: lookups)
+            return .init(scripts: scripts, features: features, lookups: lookups)
         }
 
-        private static func featureTagsByLookup(
+        private static func parseScripts(
+            table: Table,
+            scriptListOffset: Int,
+            reader: ByteReader
+        ) throws -> [Script] {
+            let scriptList = table.offset + scriptListOffset
+            try require(table, absoluteOffset: scriptList, count: 2)
+            let count = Int(try reader.uint16(at: scriptList))
+            try require(table, absoluteOffset: scriptList + 2, count: count * 6)
+            return try (0..<count).map { index in
+                let record = scriptList + 2 + index * 6
+                let tag = try reader.uint32(at: record)
+                let script = scriptList + Int(try reader.uint16(at: record + 4))
+                try require(table, absoluteOffset: script, count: 4)
+                let defaultOffset = Int(try reader.uint16(at: script))
+                let languageCount = Int(try reader.uint16(at: script + 2))
+                try require(table, absoluteOffset: script + 4, count: languageCount * 6)
+                let defaultLanguage = defaultOffset == 0
+                    ? nil
+                    : try parseLanguageSystem(at: script + defaultOffset, table: table, reader: reader)
+                let languages = try (0..<languageCount).map { languageIndex in
+                    let languageRecord = script + 4 + languageIndex * 6
+                    return (
+                        tag: try reader.uint32(at: languageRecord),
+                        system: try parseLanguageSystem(
+                            at: script + Int(try reader.uint16(at: languageRecord + 4)),
+                            table: table,
+                            reader: reader
+                        )
+                    )
+                }
+                return .init(tag: tag, defaultLanguage: defaultLanguage, languages: languages)
+            }
+        }
+
+        private static func parseLanguageSystem(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> LanguageSystem {
+            try require(table, absoluteOffset: offset, count: 6)
+            let required = try reader.uint16(at: offset + 2)
+            let count = Int(try reader.uint16(at: offset + 4))
+            try require(table, absoluteOffset: offset + 6, count: count * 2)
+            return .init(
+                requiredFeatureIndex: required == 0xFFFF ? nil : Int(required),
+                featureIndices: try (0..<count).map {
+                    Int(try reader.uint16(at: offset + 6 + $0 * 2))
+                }
+            )
+        }
+
+        private static func parseFeatures(
             table: Table,
             featureListOffset: Int,
-            lookupCount: Int,
             reader: ByteReader
-        ) throws -> [UInt32?] {
+        ) throws -> [Feature] {
             let featureList = table.offset + featureListOffset
             try require(table, absoluteOffset: featureList, count: 2)
             let featureCount = Int(try reader.uint16(at: featureList))
             try require(table, absoluteOffset: featureList + 2, count: featureCount * 6)
-            var result = Array<UInt32?>(repeating: nil, count: lookupCount)
-
-            for index in 0..<featureCount {
+            return try (0..<featureCount).map { index in
                 let record = featureList + 2 + index * 6
                 let tag = try reader.uint32(at: record)
-                guard isInitiallyEnabled(feature: tag) else { continue }
                 let feature = featureList + Int(try reader.uint16(at: record + 4))
                 try require(table, absoluteOffset: feature, count: 4)
                 let count = Int(try reader.uint16(at: feature + 2))
                 try require(table, absoluteOffset: feature + 4, count: count * 2)
-                for lookupIndex in 0..<count {
-                    let value = Int(try reader.uint16(at: feature + 4 + lookupIndex * 2))
-                    guard result.indices.contains(value) else { continue }
-                    if result[value] == nil {
-                        result[value] = tag
+                return .init(
+                    tag: tag,
+                    lookupIndices: try (0..<count).map {
+                        Int(try reader.uint16(at: feature + 4 + $0 * 2))
                     }
-                }
+                )
             }
-            return result
         }
 
         private static func parseSubtable(

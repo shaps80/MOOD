@@ -38,6 +38,8 @@ Canonical normalization precedes font-specific shaping. PixlText implements NFC 
 
 OpenType `GSUB` and `GPOS` are the primary cross-platform shaping formats. Fonts without those tables currently fall back to scalar-to-glyph mapping and advances. Apple AAT (`morx`/`kerx`) and Graphite shaping are unsupported; they are not initial implementation targets. The first GSUB slice parses initially enabled single and ligature substitutions, including extension-wrapped forms, and preserves or merges source ranges as glyphs are replaced.
 
+Script detection uses a generated Unicode 16.0 Script-property range table. GSUB selection resolves the matching OpenType Script table, its requested or default language system, enabled features, and ordered lookups. Language cannot be inferred reliably from scalar content; the current pipeline uses each script's default language system until language metadata is supplied explicitly by a future run input.
+
 TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
 
 ## Deferred Glyph Imaging

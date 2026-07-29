@@ -99,6 +99,7 @@ extension Font {
                 glyphs: [UInt16]
             )] = []
             var shapingGlyphs: [ShapingGlyph] = []
+            var runScript: UnicodeScript?
             var sourceOffset = 0
             var characterIndex = text.startIndex
 
@@ -111,6 +112,11 @@ extension Font {
                     using: &normalizationBuffer
                 )
                 let scalars = normalizationBuffer.normalized
+                if runScript == nil {
+                    runScript = scalars.lazy
+                        .map(UnicodeScript.script)
+                        .first(where: \.isStrong)
+                }
                 let glyphs = scalars.map {
                     sfnt.glyphID(for: $0, in: face) ?? .init(rawValue: 0)
                 }
@@ -132,7 +138,11 @@ extension Font {
             }
 
             if let substitutions = sfnt.glyphSubstitution(in: face) {
-                OpenTypeShaper.apply(substitutions, to: &shapingGlyphs)
+                OpenTypeShaper.apply(
+                    substitutions,
+                    to: &shapingGlyphs,
+                    script: runScript ?? .common
+                )
             }
 
             let sourceBytes = Array(text.utf8)
