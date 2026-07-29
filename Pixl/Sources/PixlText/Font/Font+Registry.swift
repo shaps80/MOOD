@@ -138,10 +138,12 @@ extension Font {
             }
 
             if let substitutions = sfnt.glyphSubstitution(in: face) {
+                let plan = substitutions.shapingPlan(
+                    script: (runScript ?? .common).tag
+                )
                 OpenTypeShaper.apply(
-                    substitutions,
-                    to: &shapingGlyphs,
-                    script: runScript ?? .common
+                    plan,
+                    to: &shapingGlyphs
                 )
             }
 

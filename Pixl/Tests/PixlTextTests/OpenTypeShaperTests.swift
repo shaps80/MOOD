@@ -6,13 +6,10 @@ struct OpenTypeShaperTests {
     @Test("Single substitution preserves its source cluster")
     func singleSubstitution() {
         var glyphs = [glyph(12, sourceRange: 3..<4)]
-        OpenTypeShaper.apply(
-            substitutions([
+        let plan = substitutions([
                 .single(input: 12, output: 40)
-            ]),
-            to: &glyphs,
-            script: .init(tag: 0x6C61_746E)
-        )
+            ]).shapingPlan(script: 0x6C61_746E)
+        OpenTypeShaper.apply(plan, to: &glyphs)
 
         #expect(glyphs.map(\.id.rawValue) == [40])
         #expect(glyphs.map(\.sourceRange) == [3..<4])
@@ -22,11 +19,9 @@ struct OpenTypeShaperTests {
     @Test("A lookup is not applied to a different script")
     func scriptSelection() {
         var glyphs = [glyph(12, sourceRange: 0..<1)]
-        OpenTypeShaper.apply(
-            substitutions([.single(input: 12, output: 40)]),
-            to: &glyphs,
-            script: .init(tag: 0x6172_6162) // arab
-        )
+        let plan = substitutions([.single(input: 12, output: 40)])
+            .shapingPlan(script: 0x6172_6162) // arab
+        OpenTypeShaper.apply(plan, to: &glyphs)
 
         #expect(glyphs.map(\.id.rawValue) == [12])
         #expect(glyphs[0].lookupIndex == nil)
@@ -38,13 +33,10 @@ struct OpenTypeShaperTests {
             glyph(12, sourceRange: 2..<3),
             glyph(13, sourceRange: 3..<4)
         ]
-        OpenTypeShaper.apply(
-            substitutions([
+        let plan = substitutions([
                 .ligature(components: [12, 13], output: 99)
-            ]),
-            to: &glyphs,
-            script: .init(tag: 0x6C61_746E)
-        )
+            ]).shapingPlan(script: 0x6C61_746E)
+        OpenTypeShaper.apply(plan, to: &glyphs)
 
         #expect(glyphs.map(\.id.rawValue) == [99])
         #expect(glyphs.map(\.sourceRange) == [2..<4])

@@ -40,6 +40,8 @@ OpenType `GSUB` and `GPOS` are the primary cross-platform shaping formats. Fonts
 
 Script detection uses a generated Unicode 16.0 Script-property range table. GSUB selection resolves the matching OpenType Script table, its requested or default language system, enabled features, and ordered lookups. Language cannot be inferred reliably from scalar content; the current pipeline uses each script's default language system until language metadata is supplied explicitly by a future run input.
 
+Shaping separates cold plan compilation from hot run execution. A plan contains flat, immutable, native-endian lookup and rule columns indexed by integer ranges. Run execution scans glyphs per active lookup, binary-searches candidate rules, and compacts shrinking substitutions with read/write cursors; it does not scan every rule across the run, allocate temporary collections, or shift an array suffix per ligature. Plan caching and buffer capacity are implementation concerns hidden above the eventual public text API.
+
 TrueType render bounds come from `loca` and `glyf` headers. They remain distinct from typographic bounds and are scaled relative to each glyph's baseline origin.
 
 ## Deferred Glyph Imaging
