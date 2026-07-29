@@ -27,8 +27,12 @@ extension Font {
             let face = try face(for: descriptor)
             let metrics = face.metrics.scaled(to: descriptor.size)
             var x: Float = 0
+            var sourceOffset = 0
+            var glyphIndex = 0
 
             for scalar in text.unicodeScalars {
+                let sourceRange = sourceOffset..<(sourceOffset + utf8Length(of: scalar))
+                let glyphRange = glyphIndex..<(glyphIndex + 1)
                 let glyph = sfnt.glyphID(for: scalar, in: face) ?? .init(rawValue: 0)
                 let advance = sfnt.advance(
                     for: glyph,
@@ -42,6 +46,10 @@ extension Font {
                     .init(
                         scalar: scalar,
                         glyphID: glyph.rawValue,
+                        cluster: .init(
+                            sourceRange: sourceRange,
+                            glyphRange: glyphRange
+                        ),
                         advance: advance,
                         typographicBounds: .init(
                             x: x,
@@ -60,6 +68,17 @@ extension Font {
                     )
                 )
                 x += advance
+                sourceOffset = sourceRange.upperBound
+                glyphIndex = glyphRange.upperBound
+            }
+        }
+
+        private func utf8Length(of scalar: Unicode.Scalar) -> Int {
+            switch scalar.value {
+            case ...0x7F: 1
+            case ...0x7FF: 2
+            case ...0xFFFF: 3
+            default: 4
             }
         }
 

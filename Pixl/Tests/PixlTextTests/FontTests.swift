@@ -37,4 +37,15 @@ struct FontTests {
         #expect(glyphs.dropFirst().allSatisfy { $0.typographicBounds.x > 0 })
         #expect(glyphs.first?.renderBounds != nil)
     }
+
+    @Test("Clusters retain UTF-8 source and glyph ranges")
+    func clusters() throws {
+        var glyphs: [Font.GlyphDebugInfo] = []
+        try Font.system(size: 48).forEachGlyph(in: "Aé😀") {
+            glyphs.append($0)
+        }
+
+        #expect(glyphs.map(\.cluster.sourceRange) == [0..<1, 1..<3, 3..<7])
+        #expect(glyphs.map(\.cluster.glyphRange) == [0..<1, 1..<2, 2..<3])
+    }
 }

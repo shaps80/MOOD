@@ -14,7 +14,7 @@ struct ContentView: View {
     init() {
         glyphs = Result {
             var output: [Font.GlyphDebugInfo] = []
-            try Font.system(size: 48).forEachGlyph(in: "Hello, world!") {
+            try Font.system(size: 48).forEachGlyph(in: "He\u{301}llo, world!") {
                 output.append($0)
             }
             return output
@@ -62,6 +62,8 @@ struct ContentView: View {
                         let glyph = glyphs[hoveredGlyph]
                         LabeledContent("Scalar", value: String(glyph.scalar))
                         LabeledContent("Glyph ID", value: glyph.glyphID.description)
+                        LabeledContent("Source UTF-8", value: description(glyph.cluster.sourceRange))
+                        LabeledContent("Glyph range", value: description(glyph.cluster.glyphRange))
                         LabeledContent("Advance", value: glyph.advance.description)
                         LabeledContent("Typographic", value: description(glyph.typographicBounds))
                         if let renderBounds = glyph.renderBounds {
@@ -98,5 +100,9 @@ struct ContentView: View {
 
     private func description(_ bounds: Font.GlyphDebugInfo.Bounds) -> String {
         "x: \(bounds.x), y: \(bounds.y), w: \(bounds.width), h: \(bounds.height)"
+    }
+
+    private func description(_ range: Range<Int>) -> String {
+        "\(range.lowerBound)..<\(range.upperBound)"
     }
 }
