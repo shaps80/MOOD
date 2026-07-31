@@ -64,22 +64,22 @@ extension Font {
                     descriptor: input.font.descriptor
                 )
                 let script = Self.script(in: text, sourceRange: sourceRange)
-                let substitutionPlanIndex = sfnt.glyphSubstitution(in: face).map {
-                    let index = session.substitutionPlans.count
-                    session.substitutionPlans.append($0.shapingPlan(
-                        script: script.tag,
-                        coordinates: face.normalizedCoordinates
-                    ))
-                    return index
+                let substitutionPlanIndex = sfnt.glyphSubstitution(in: face).map { source in
+                    session.substitutionPlanIndex(
+                        for: face,
+                        script: script,
+                        language: nil,
+                        source: source
+                    )
                 }
-                let positioningPlanIndex = sfnt.glyphPositioning(in: face).map {
-                    let index = session.positioningPlans.count
-                    session.positioningPlans.append($0.positioningPlan(
-                        script: script.tag,
-                        coordinates: face.normalizedCoordinates,
+                let positioningPlanIndex = sfnt.glyphPositioning(in: face).map { source in
+                    session.positioningPlanIndex(
+                        for: face,
+                        script: script,
+                        language: nil,
+                        source: source,
                         variationStore: sfnt.glyphDefinition(in: face)?.itemVariationStore
-                    ))
-                    return index
+                    )
                 }
                 session.shaping.inputRuns.append(.init(
                     sourceRange: sourceRange,
@@ -92,7 +92,6 @@ extension Font {
                     positioningPlanIndex: positioningPlanIndex
                 ))
             }
-
             try session.substitutionPlans.withUnsafeBufferPointer { substitutions in
                 try session.positioningPlans.withUnsafeBufferPointer { positioning in
                     try RunShaper.shape(
@@ -104,7 +103,6 @@ extension Font {
                     )
                 }
             }
-
             paragraphStyles.withUnsafeBufferPointer { styles in
                 LineBreaker.findOpportunities(
                     in: text,
@@ -172,7 +170,6 @@ extension Font {
                     ))
                 }
             }
-
             return .init(
                 runs: debugRuns,
                 paragraphs: debugParagraphs,

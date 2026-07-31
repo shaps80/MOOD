@@ -13,11 +13,13 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 - `SFNT.*` is internal. Registration parses and retains font bytes once; hot measurement/shaping uses compact face identities.
 - Implemented metrics/tables include Unicode cmap, horizontal metrics, TrueType render bounds, GSUB 1–8, GPOS 1–9, and required GDEF data.
 - OpenType plans are flat immutable native-endian columns. Hot shaping uses indexed scans, binary search, read/write compaction, and reusable buffers.
+- Layout sessions flatten GSUB/GPOS topology once per face. Per-layout plans share those columns, select only script/language/coordinate-dependent execution lists, and resolve GPOS variation deltas only for rules that match actual glyphs.
 - NFC normalization and Unicode Script use checked-in Unicode 16 tables. No Foundation/platform normalization.
 - `TextRun` describes source/font/direction/script/language/plans. `GlyphRun` references output in one shared glyph buffer.
 - Supported TrueType variable fonts expose `fvar` axes/named instances and resolve descriptor coordinates through `avar`. Semantic weight/italic modifiers select matching `wght`/`ital`/`slnt` axes unless explicitly overridden.
 - Variable instances apply `gvar` interpolation to simple and composite outlines, HVAR/VVAR advance deltas, MVAR global metrics, GSUB/GPOS FeatureVariations, and GDEF/GPOS VariationIndex adjustments. San Francisco validates that extreme weights change both advances and geometry.
 - Default-axis instances retain the static fast path. Non-default render bounds are resolved once while shaping and reused by composition/debug output. CFF/CFF2 outline imaging remains outside the currently supported TrueType outline path.
+- Shaping resolves each final glyph advance once and reuses repeated-glyph render bounds within a run, avoiding duplicate HVAR and `gvar` work without retaining coordinate-dependent face caches.
 - Script-specific preprocessing, bidi, language policy, AAT, and Graphite remain later work.
 - Embedded bitmap fonts are required eventually; bitmap-strike parsing/extraction is not implemented.
 

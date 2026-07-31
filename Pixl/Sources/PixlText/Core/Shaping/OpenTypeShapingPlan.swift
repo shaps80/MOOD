@@ -44,7 +44,7 @@ struct OpenTypeShapingPlan {
         let outputs: Range<Int>
     }
 
-    let executions: [Execution]
+    var executions: [Execution]
     let lookups: [Lookup]
     let singleRules: [SingleRule]
     let multipleRules: [SequenceRule]
@@ -65,11 +65,18 @@ extension SFNT.GlyphSubstitution {
         language languageTag: UInt32? = nil,
         coordinates: [Float] = []
     ) -> OpenTypeShapingPlan {
-        let active = activeLookups(
+        var plan = shapingPlan()
+        plan.executions = activeLookups(
             script: scriptTag,
             language: languageTag,
             coordinates: coordinates
-        )
+        ).map {
+            .init(lookupIndex: $0.lookup.index, feature: $0.feature)
+        }
+        return plan
+    }
+
+    func shapingPlan() -> OpenTypeShapingPlan {
         var plannedLookups: [OpenTypeShapingPlan.Lookup] = []
         var singleRules: [OpenTypeShapingPlan.SingleRule] = []
         var multipleRules: [OpenTypeShapingPlan.SequenceRule] = []
@@ -207,9 +214,7 @@ extension SFNT.GlyphSubstitution {
         }
 
         return .init(
-            executions: active.map {
-                .init(lookupIndex: $0.lookup.index, feature: $0.feature)
-            },
+            executions: [],
             lookups: plannedLookups,
             singleRules: singleRules,
             multipleRules: multipleRules,

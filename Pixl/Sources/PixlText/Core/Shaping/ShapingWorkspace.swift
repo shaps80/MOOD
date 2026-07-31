@@ -23,6 +23,7 @@ struct ShapingWorkspace: ~Copyable {
     mutating func removeOutput(keepingCapacity: Bool = true) {
         scratch.glyphs.removeAll(keepingCapacity: keepingCapacity)
         scratch.scratch.removeAll(keepingCapacity: keepingCapacity)
+        scratch.removeRenderBoundsCache()
         glyphs.removeAll(keepingCapacity: keepingCapacity)
         insertionGlyphs.removeAll(keepingCapacity: keepingCapacity)
         runs.removeAll(keepingCapacity: keepingCapacity)

@@ -17,6 +17,7 @@ enum RunShaper {
 
             workspace.scratch.glyphs.removeAll()
             workspace.scratch.scratch.removeAll()
+            workspace.scratch.removeRenderBoundsCache()
             var sourceOffset = input.sourceRange.lowerBound
 
             var characterIndex = source.startIndex
@@ -36,10 +37,7 @@ enum RunShaper {
                         id: glyph,
                         sourceRange: sourceRange,
                         lookupIndex: nil,
-                        feature: nil,
-                        nominalXAdvance: Int32(
-                            registry.advanceInFontUnits(for: glyph, in: input.face) ?? 0
-                        )
+                        feature: nil
                     ))
                 }
                 sourceOffset = sourceRange.upperBound
@@ -74,10 +72,13 @@ enum RunShaper {
             }
             for glyphIndex in 0..<workspace.scratch.glyphs.count {
                 let glyph = workspace.scratch.glyphs[glyphIndex].id
-                workspace.scratch.glyphs[glyphIndex].renderBounds = registry.renderBounds(
+                let bounds = renderBounds(
                     for: glyph,
-                    in: input.face
+                    face: input.face,
+                    registry: registry,
+                    scratch: &workspace.scratch
                 )
+                workspace.scratch.glyphs[glyphIndex].renderBounds = bounds
             }
 
             let glyphStart = workspace.glyphs.count
@@ -172,15 +173,36 @@ enum RunShaper {
         }
         for glyphIndex in 0..<workspace.scratch.glyphs.count {
             let glyph = workspace.scratch.glyphs[glyphIndex].id
-            workspace.scratch.glyphs[glyphIndex].renderBounds = registry.renderBounds(
+            let bounds = renderBounds(
                 for: glyph,
-                in: input.face
+                face: input.face,
+                registry: registry,
+                scratch: &workspace.scratch
             )
+            workspace.scratch.glyphs[glyphIndex].renderBounds = bounds
         }
 
         let start = workspace.insertionGlyphs.count
         workspace.insertionGlyphs.append(contentsOf: workspace.scratch.glyphs)
         return start..<workspace.insertionGlyphs.count
+    }
+
+    private static func renderBounds(
+        for glyph: GlyphID,
+        face: SFNT.Face,
+        registry: borrowing SFNT.Registry,
+        scratch: inout ShapingScratch
+    ) -> SFNT.GlyphBounds? {
+        for index in scratch.renderBoundsGlyphs.indices
+            where scratch.renderBoundsGlyphs[index] == glyph {
+            return scratch.renderBoundsValues[index]
+        }
+        let bounds = registry.renderBounds(for: glyph, in: face)
+        if scratch.renderBoundsGlyphs.count < ShapingScratch.renderBoundsCapacity {
+            scratch.renderBoundsGlyphs.append(glyph)
+            scratch.renderBoundsValues.append(bounds)
+        }
+        return bounds
     }
 
     private static func validate(

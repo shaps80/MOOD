@@ -70,7 +70,7 @@ struct OpenTypePositioningPlan {
         let classCount: Int
     }
 
-    let executions: [Execution]
+    var executions: [Execution]
     let lookups: [Lookup]
     let subtables: [Subtable]
     let singleRules: [SingleRule]
@@ -85,6 +85,8 @@ struct OpenTypePositioningPlan {
     let ligatureComponents: [LigatureComponent]
     let markLigatureTables: [MarkLigatureTable]
     let context: OpenTypeContextPlan
+    let variationStore: SFNT.ItemVariationStore?
+    var coordinates: [Float]
 }
 
 extension SFNT.GlyphPositioning {
@@ -94,11 +96,21 @@ extension SFNT.GlyphPositioning {
         coordinates: [Float] = [],
         variationStore: SFNT.ItemVariationStore? = nil
     ) -> OpenTypePositioningPlan {
-        let active = activeLookups(
+        var plan = positioningPlan(variationStore: variationStore)
+        plan.executions = activeLookups(
             script: scriptTag,
             language: languageTag,
             coordinates: coordinates
-        )
+        ).map {
+            .init(lookupIndex: $0.lookup.index, feature: $0.feature)
+        }
+        plan.coordinates = coordinates
+        return plan
+    }
+
+    func positioningPlan(
+        variationStore: SFNT.ItemVariationStore? = nil
+    ) -> OpenTypePositioningPlan {
         var plannedLookups: [OpenTypePositioningPlan.Lookup] = []
         var subtables: [OpenTypePositioningPlan.Subtable] = []
         var singleRules: [OpenTypePositioningPlan.SingleRule] = []
@@ -113,13 +125,6 @@ extension SFNT.GlyphPositioning {
         var ligatureComponents: [OpenTypePositioningPlan.LigatureComponent] = []
         var markLigatureTables: [OpenTypePositioningPlan.MarkLigatureTable] = []
         var contextBuilder = OpenTypeContextPlanBuilder()
-        func resolved(_ value: ValueAdjustment) -> ValueAdjustment {
-            value.resolved(store: variationStore, coordinates: coordinates)
-        }
-        func resolved(_ anchor: SFNT.OpenTypeLayout.Anchor) -> SFNT.OpenTypeLayout.Anchor {
-            anchor.resolved(store: variationStore, coordinates: coordinates)
-        }
-
         plannedLookups.reserveCapacity(lookups.count)
         for lookup in lookups {
             let lower = subtables.count
@@ -128,7 +133,7 @@ extension SFNT.GlyphPositioning {
                 case .single(let rules):
                     let ruleLower = singleRules.count
                     singleRules.append(contentsOf: rules.map {
-                        .init(glyph: $0.glyph, adjustment: resolved($0.adjustment))
+                        .init(glyph: $0.glyph, adjustment: $0.adjustment)
                     }.sorted { $0.glyph < $1.glyph })
                     subtables.append(.single(ruleLower..<singleRules.count))
 
@@ -137,8 +142,8 @@ extension SFNT.GlyphPositioning {
                     pairRules.append(contentsOf: rules.map {
                         .init(
                             key: UInt32($0.first) << 16 | UInt32($0.second),
-                            first: resolved($0.firstAdjustment),
-                            second: resolved($0.secondAdjustment)
+                            first: $0.firstAdjustment,
+                            second: $0.secondAdjustment
                         )
                     }.sorted { $0.key < $1.key })
                     subtables.append(.glyphPairs(ruleLower..<pairRules.count))
@@ -151,8 +156,8 @@ extension SFNT.GlyphPositioning {
                         secondClasses: table.secondClasses,
                         firstClassCount: table.firstClassCount,
                         secondClassCount: table.secondClassCount,
-                        firstAdjustments: table.firstAdjustments.map(resolved),
-                        secondAdjustments: table.secondAdjustments.map(resolved)
+                        firstAdjustments: table.firstAdjustments,
+                        secondAdjustments: table.secondAdjustments
                     ))
                     subtables.append(.classPairs(index))
 
@@ -161,8 +166,8 @@ extension SFNT.GlyphPositioning {
                     cursiveRules.append(contentsOf: records.map {
                         .init(
                             glyph: $0.glyph,
-                            entry: $0.entry.map(resolved),
-                            exit: $0.exit.map(resolved)
+                            entry: $0.entry,
+                            exit: $0.exit
                         )
                     }.sorted { $0.glyph < $1.glyph })
                     subtables.append(.cursive(ruleLower..<cursiveRules.count))
@@ -173,8 +178,7 @@ extension SFNT.GlyphPositioning {
                         markRules: &markRules,
                         baseRules: &baseRules,
                         anchors: &anchors,
-                        tables: &markBaseTables,
-                        resolveAnchor: resolved
+                        tables: &markBaseTables
                     )))
 
                 case .markToMark(let table):
@@ -183,22 +187,20 @@ extension SFNT.GlyphPositioning {
                         markRules: &markRules,
                         baseRules: &baseRules,
                         anchors: &anchors,
-                        tables: &markBaseTables,
-                        resolveAnchor: resolved
+                        tables: &markBaseTables
                     )))
 
                 case .markToLigature(let table):
                     let markLower = appendMarks(
                         table.marks,
-                        to: &markRules,
-                        resolveAnchor: resolved
+                        to: &markRules
                     )
                     let ligatureLower = ligatureRules.count
                     for ligature in table.ligatures {
                         let componentLower = ligatureComponents.count
                         for component in ligature.components {
                             let anchorLower = anchors.count
-                            anchors.append(contentsOf: component.map { $0.map(resolved) })
+                            anchors.append(contentsOf: component)
                             ligatureComponents.append(.init(
                                 anchors: anchorLower..<anchors.count
                             ))
@@ -229,9 +231,7 @@ extension SFNT.GlyphPositioning {
         }
 
         return .init(
-            executions: active.map {
-                .init(lookupIndex: $0.lookup.index, feature: $0.feature)
-            },
+            executions: [],
             lookups: plannedLookups,
             subtables: subtables,
             singleRules: singleRules,
@@ -245,21 +245,22 @@ extension SFNT.GlyphPositioning {
             ligatureRules: ligatureRules,
             ligatureComponents: ligatureComponents,
             markLigatureTables: markLigatureTables,
-            context: contextBuilder.build()
+            context: contextBuilder.build(),
+            variationStore: variationStore,
+            coordinates: []
         )
     }
 
     private func appendMarks(
         _ source: [MarkRecord],
-        to rules: inout [OpenTypePositioningPlan.MarkRule],
-        resolveAnchor: (SFNT.OpenTypeLayout.Anchor) -> SFNT.OpenTypeLayout.Anchor
+        to rules: inout [OpenTypePositioningPlan.MarkRule]
     ) -> Range<Int> {
         let lower = rules.count
         rules.append(contentsOf: source.map {
             .init(
                 glyph: $0.glyph,
                 markClass: Int($0.markClass),
-                anchor: resolveAnchor($0.anchor)
+                anchor: $0.anchor
             )
         }.sorted { $0.glyph < $1.glyph })
         return lower..<rules.count
@@ -270,18 +271,16 @@ extension SFNT.GlyphPositioning {
         markRules: inout [OpenTypePositioningPlan.MarkRule],
         baseRules: inout [OpenTypePositioningPlan.BaseRule],
         anchors: inout [SFNT.OpenTypeLayout.Anchor?],
-        tables: inout [OpenTypePositioningPlan.MarkBaseTable],
-        resolveAnchor: (SFNT.OpenTypeLayout.Anchor) -> SFNT.OpenTypeLayout.Anchor
+        tables: inout [OpenTypePositioningPlan.MarkBaseTable]
     ) -> Int {
         let marks = appendMarks(
             source.marks,
-            to: &markRules,
-            resolveAnchor: resolveAnchor
+            to: &markRules
         )
         let baseLower = baseRules.count
         for base in source.bases {
             let anchorLower = anchors.count
-            anchors.append(contentsOf: base.anchors.map { $0.map(resolveAnchor) })
+            anchors.append(contentsOf: base.anchors)
             baseRules.append(.init(
                 glyph: base.glyph,
                 anchors: anchorLower..<anchors.count

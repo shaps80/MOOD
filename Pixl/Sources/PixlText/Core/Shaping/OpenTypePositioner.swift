@@ -54,7 +54,7 @@ enum OpenTypePositioner {
                     rules: rules,
                     plan: plan
                 ) else { continue }
-                apply(rule.adjustment, to: &glyphs[glyphIndex])
+                apply(resolved(rule.adjustment, plan: plan), to: &glyphs[glyphIndex])
                 mark(&glyphs[glyphIndex], lookup: lookup, feature: feature)
                 return true
 
@@ -70,10 +70,12 @@ enum OpenTypePositioner {
                     subtable: plan.subtables[subtableIndex],
                     plan: plan
                 ) else { continue }
-                apply(pair.0, to: &glyphs[glyphIndex])
-                apply(pair.1, to: &glyphs[secondIndex])
+                let firstAdjustment = resolved(pair.0, plan: plan)
+                let secondAdjustment = resolved(pair.1, plan: plan)
+                apply(firstAdjustment, to: &glyphs[glyphIndex])
+                apply(secondAdjustment, to: &glyphs[secondIndex])
                 mark(&glyphs[glyphIndex], lookup: lookup, feature: feature)
-                if !pair.1.isZero {
+                if !secondAdjustment.isZero {
                     mark(&glyphs[secondIndex], lookup: lookup, feature: feature)
                 }
                 return true
@@ -228,16 +230,26 @@ enum OpenTypePositioner {
               let entry = second.entry
         else { return false }
 
+        let resolvedExit = exit.resolved(
+            store: plan.variationStore,
+            coordinates: plan.coordinates
+        )
+        let resolvedEntry = entry.resolved(
+            store: plan.variationStore,
+            coordinates: plan.coordinates
+        )
         if lookup.flags.isRightToLeft {
             let advance = totalXAdvance(glyphs[secondIndex])
-            glyphs[secondIndex].xAdvance += Int32(entry.x) - Int32(exit.x) - advance
+            glyphs[secondIndex].xAdvance += Int32(resolvedEntry.x)
+                - Int32(resolvedExit.x) - advance
             glyphs[firstIndex].yPlacement = glyphs[secondIndex].yPlacement
-                + Int32(entry.y) - Int32(exit.y)
+                + Int32(resolvedEntry.y) - Int32(resolvedExit.y)
         } else {
             let advance = totalXAdvance(glyphs[firstIndex])
-            glyphs[firstIndex].xAdvance += Int32(exit.x) - Int32(entry.x) - advance
+            glyphs[firstIndex].xAdvance += Int32(resolvedExit.x)
+                - Int32(resolvedEntry.x) - advance
             glyphs[secondIndex].yPlacement = glyphs[firstIndex].yPlacement
-                + Int32(exit.y) - Int32(entry.y)
+                + Int32(resolvedExit.y) - Int32(resolvedEntry.y)
         }
         mark(&glyphs[firstIndex], lookup: lookup, feature: feature)
         mark(&glyphs[secondIndex], lookup: lookup, feature: feature)
@@ -280,6 +292,7 @@ enum OpenTypePositioner {
                 baseIndex: candidate,
                 markAnchor: mark.anchor,
                 baseAnchor: baseAnchor,
+                plan: plan,
                 glyphs: &glyphs
             )
             markGlyph(&glyphs[markIndex], lookup: lookup, feature: feature)
@@ -328,6 +341,7 @@ enum OpenTypePositioner {
                 baseIndex: candidate,
                 markAnchor: mark.anchor,
                 baseAnchor: baseAnchor,
+                plan: plan,
                 glyphs: &glyphs
             )
             markGlyph(&glyphs[markIndex], lookup: lookup, feature: feature)
@@ -341,8 +355,17 @@ enum OpenTypePositioner {
         baseIndex: Int,
         markAnchor: SFNT.OpenTypeLayout.Anchor,
         baseAnchor: SFNT.OpenTypeLayout.Anchor,
+        plan: borrowing OpenTypePositioningPlan,
         glyphs: inout GlyphBuffer
     ) {
+        let markAnchor = markAnchor.resolved(
+            store: plan.variationStore,
+            coordinates: plan.coordinates
+        )
+        let baseAnchor = baseAnchor.resolved(
+            store: plan.variationStore,
+            coordinates: plan.coordinates
+        )
         var interveningAdvance: Int32 = 0
         if baseIndex < markIndex {
             for index in baseIndex..<markIndex {
@@ -568,6 +591,16 @@ enum OpenTypePositioner {
         glyph.yPlacement += Int32(adjustment.yPlacement)
         glyph.xAdvance += Int32(adjustment.xAdvance)
         glyph.yAdvance += Int32(adjustment.yAdvance)
+    }
+
+    private static func resolved(
+        _ adjustment: SFNT.GlyphPositioning.ValueAdjustment,
+        plan: borrowing OpenTypePositioningPlan
+    ) -> SFNT.GlyphPositioning.ValueAdjustment {
+        adjustment.resolved(
+            store: plan.variationStore,
+            coordinates: plan.coordinates
+        )
     }
 
     private static func totalXAdvance(_ glyph: ShapingGlyph) -> Int32 {
