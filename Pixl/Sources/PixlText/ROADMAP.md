@@ -12,9 +12,9 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Visually validate Unicode line-breaking opportunities.
-2. Define a single positioned line record that selects opportunities against width.
-3. Add wrapping and paragraph layout over positioned lines.
+1. Define a single positioned line record that selects opportunities against width.
+2. Add wrapping across multiple positioned lines.
+3. Define paragraph layout over positioned lines.
 4. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
@@ -29,6 +29,7 @@ The final package name and target boundaries remain open.
 - Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
 - Source `TextRun` records and output `GlyphRun` records are separate. Run execution borrows contiguous run and precompiled-plan columns through call-local spans and writes all results into shared reusable glyph/run buffers.
 - Unicode 16.0 line-breaking classification writes sparse allowed/mandatory UTF-8 offsets into reusable caller-owned storage; prohibited boundaries are implicit.
+- Line-breaking opportunities are visually validated with long text and an explicit mandatory break in the playground.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
@@ -39,7 +40,7 @@ The final package name and target boundaries remain open.
 - Variable-font FeatureVariations/ItemVariationStore evaluation and size-specific Device adjustments.
 - Optional future AAT `morx`/`kerx` support for fonts whose advanced shaping is not expressed through OpenType Layout.
 - Exact low-level line and paragraph records.
-- Bidirectional and Unicode line-breaking implementation boundaries.
+- Bidirectional implementation boundary.
 - Rasterisation and MSDF-generation implementation.
 - Bitmap-strike parsing, pixel-size selection, metrics, and glyph-image extraction.
 - Cache ownership, keys, invalidation, and storage lifetime.

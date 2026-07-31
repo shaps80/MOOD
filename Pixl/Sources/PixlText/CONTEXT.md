@@ -48,7 +48,7 @@ Shaping separates cold plan compilation from hot run execution. A plan contains 
 
 OpenType positioning runs after substitution. Positioning writes font-unit placement and advance deltas directly into the shaping glyph buffer; scaling and final baseline positions remain a later layout step. Parsed positioning data and plans are immutable, indexed cold-path data. Hot positioning performs binary searches, direct matrix indexing, and sequential buffer traversal without allocation.
 
-Line-breaking opportunities follow Unicode 16.0 UAX #14 over the logical source text, independently of font and shaping-run boundaries. The classifier writes only allowed and mandatory UTF-8 source offsets into caller-owned reusable storage; prohibited boundaries remain implicit. Width-based selection of those opportunities belongs to line layout.
+Line-breaking opportunities follow Unicode 16.0 UAX #14 over the logical source text, independently of font and shaping-run boundaries. Compact generated property pages are immutable process data. The classifier writes only allowed and mandatory UTF-8 source offsets into caller-owned reusable storage; prohibited boundaries remain implicit. Width-based selection of those opportunities belongs to line layout.
 
 Shaping workspaces are call-local noncopyable values initially. They own exact contiguous glyph and scratch buffers, grow geometrically when required, and release deterministically. Capacity is never exposed through the eventual public text API. A future document, layout session, or execution lane may retain and reuse the same workspace without changing algorithm inputs or public ownership.
 
