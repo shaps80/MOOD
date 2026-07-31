@@ -226,7 +226,8 @@ extension Font {
         func runDebugInfo(
             in text: String,
             inputs: [RunDebugInfo.Input],
-            maximumLineWidth: Float
+            maximumLineWidth: Float,
+            lineHeight debugLineHeight: RunDebugInfo.LineHeight
         ) throws -> RunDebugInfo {
             var textRuns: [TextRun] = []
             var substitutionPlans: [OpenTypeShapingPlan] = []
@@ -321,6 +322,12 @@ extension Font {
             var lineWorkspace = LineLayoutWorkspace(
                 minimumGlyphCapacity: workspace.glyphs.count
             )
+            let lineHeight: LineHeight = switch debugLineHeight {
+            case .natural: .natural
+            case .multiple(let value): .multiple(value)
+            case .atLeast(let value): .atLeast(value)
+            case .exactly(let value): .exactly(value)
+            }
             let positionedLine = try workspace.runs.withSpan { runs in
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
@@ -328,6 +335,7 @@ extension Font {
                             try LineComposer.positionFirstLine(
                                 sourceUTF8Count: text.utf8.count,
                                 maximumWidth: maximumLineWidth,
+                                lineHeight: lineHeight,
                                 glyphs: glyphs,
                                 runs: runs,
                                 opportunities: opportunities,
@@ -400,12 +408,20 @@ extension Font {
                 ascent: positionedLine.ascent,
                 descent: positionedLine.descent,
                 leading: positionedLine.leading,
+                naturalAbove: positionedLine.naturalAbove,
+                naturalBelow: positionedLine.naturalBelow,
                 baselineOffset: positionedLine.baselineOffset,
                 typographicBounds: .init(
                     x: positionedLine.typographicBounds.x,
                     y: positionedLine.typographicBounds.y,
                     width: positionedLine.typographicBounds.width,
                     height: positionedLine.typographicBounds.height
+                ),
+                lineBounds: .init(
+                    x: positionedLine.lineBounds.x,
+                    y: positionedLine.lineBounds.y,
+                    width: positionedLine.lineBounds.width,
+                    height: positionedLine.lineBounds.height
                 ),
                 renderBounds: positionedLine.renderBounds.map {
                     .init(x: $0.x, y: $0.y, width: $0.width, height: $0.height)

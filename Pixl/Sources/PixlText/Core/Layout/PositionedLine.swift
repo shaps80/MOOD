@@ -14,7 +14,10 @@ struct PositionedLine: Hashable, Sendable {
     let ascent: Float
     let descent: Float
     let leading: Float
+    let naturalAbove: Float
+    let naturalBelow: Float
     let baselineOffset: Float
     let typographicBounds: Bounds
+    let lineBounds: Bounds
     let renderBounds: Bounds?
 }

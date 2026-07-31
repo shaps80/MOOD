@@ -39,7 +39,8 @@ struct RunsView: View {
                         fontName: secondFont.name
                     )
                 ],
-                maximumLineWidth: Self.lineWidth
+                maximumLineWidth: Self.lineWidth,
+                lineHeight: .multiple(1.35)
             )
         }
     }
@@ -50,7 +51,8 @@ struct RunsView: View {
 
             Canvas { context, _ in
                 guard case .success(let information) = information else { return }
-                let lineFrame = rect(for: information.line.typographicBounds)
+                let contentFrame = rect(for: information.line.typographicBounds)
+                let lineFrame = rect(for: information.line.lineBounds)
                 let availableFrame = CGRect(
                     x: Self.origin.x,
                     y: lineFrame.minY,
@@ -66,6 +68,11 @@ struct RunsView: View {
                     Path(lineFrame),
                     with: .color(.yellow),
                     lineWidth: 2
+                )
+                context.stroke(
+                    Path(contentFrame),
+                    with: .color(.green),
+                    style: .init(lineWidth: 1, dash: [4, 3])
                 )
                 for (index, glyph) in information.glyphs.enumerated() {
                     let color = Self.colors[glyph.runIndex % Self.colors.count]
@@ -183,6 +190,10 @@ struct RunsView: View {
                 LabeledContent("Ascent", value: information.line.ascent.description)
                 LabeledContent("Descent", value: information.line.descent.description)
                 LabeledContent("Leading", value: information.line.leading.description)
+                LabeledContent("Natural above", value: information.line.naturalAbove.description)
+                LabeledContent("Natural below", value: information.line.naturalBelow.description)
+                LabeledContent("Baseline offset", value: information.line.baselineOffset.description)
+                LabeledContent("Line height", value: information.line.lineBounds.height.description)
             }
         case .failure(let error):
             Text(error.localizedDescription)

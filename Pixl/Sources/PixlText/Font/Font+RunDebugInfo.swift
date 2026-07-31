@@ -1,5 +1,12 @@
 extension Font {
     package struct RunDebugInfo: Sendable {
+        package enum LineHeight: Hashable, Sendable {
+            case natural
+            case multiple(Float)
+            case atLeast(Float)
+            case exactly(Float)
+        }
+
         package enum Direction: String, Hashable, Sendable {
             case leftToRight = "Left to right"
             case rightToLeft = "Right to left"
@@ -70,8 +77,11 @@ extension Font {
             package let ascent: Float
             package let descent: Float
             package let leading: Float
+            package let naturalAbove: Float
+            package let naturalBelow: Float
             package let baselineOffset: Float
             package let typographicBounds: GlyphDebugInfo.Bounds
+            package let lineBounds: GlyphDebugInfo.Bounds
             package let renderBounds: GlyphDebugInfo.Bounds?
         }
 

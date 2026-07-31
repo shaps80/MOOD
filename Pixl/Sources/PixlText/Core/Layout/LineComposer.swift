@@ -2,6 +2,7 @@ enum LineComposer {
     static func positionFirstLine(
         sourceUTF8Count: Int,
         maximumWidth: Float,
+        lineHeight: LineHeight,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>,
@@ -13,6 +14,7 @@ enum LineComposer {
         try validate(
             sourceUTF8Count: sourceUTF8Count,
             maximumWidth: maximumWidth,
+            lineHeight: lineHeight,
             glyphs: glyphs,
             runs: runs,
             opportunities: opportunities
@@ -28,8 +30,11 @@ enum LineComposer {
                 ascent: 0,
                 descent: 0,
                 leading: 0,
+                naturalAbove: 0,
+                naturalBelow: 0,
                 baselineOffset: 0,
                 typographicBounds: .init(x: 0, y: 0, width: 0, height: 0),
+                lineBounds: .init(x: 0, y: 0, width: 0, height: 0),
                 renderBounds: nil
             )
         }
@@ -40,8 +45,11 @@ enum LineComposer {
         var ascent: Float = 0
         var descent: Float = 0
         var leading: Float = 0
+        var naturalAbove: Float = 0
+        var naturalBelow: Float = 0
         var renderBounds: PositionedLine.Bounds?
         var runIndex = 0
+        var measuredRunIndex: Int?
         var unitIndex = 0
         var opportunityIndex = 0
         var glyphIndex = 0
@@ -79,10 +87,16 @@ enum LineComposer {
                 let run = runs[runIndex]
                 let glyph = glyphs[index]
                 let scale = run.size / Float(run.face.metrics.unitsPerEm)
-                let metrics = run.face.metrics.scaled(to: run.size)
-                ascent = max(ascent, metrics.ascent)
-                descent = max(descent, metrics.descent)
-                leading = max(leading, metrics.leading)
+                if measuredRunIndex != runIndex {
+                    let metrics = run.face.metrics.scaled(to: run.size)
+                    let halfLeading = max(0, metrics.leading) * 0.5
+                    ascent = max(ascent, metrics.ascent)
+                    descent = max(descent, metrics.descent)
+                    naturalAbove = max(naturalAbove, metrics.ascent + halfLeading)
+                    naturalBelow = max(naturalBelow, metrics.descent + halfLeading)
+                    leading = max(0, naturalAbove + naturalBelow - ascent - descent)
+                    measuredRunIndex = runIndex
+                }
 
                 let position = PositionedGlyph(
                     x: penX + Float(glyph.xPlacement) * scale,
@@ -127,14 +141,20 @@ enum LineComposer {
                     ascent: ascent,
                     descent: descent,
                     leading: leading,
+                    naturalAbove: naturalAbove,
+                    naturalBelow: naturalBelow,
                     renderBounds: renderBounds
                 )
 
                 if candidate.advance > maximumWidth {
-                    return finish(lastFittingCandidate ?? candidate, workspace: &workspace)
+                    return finish(
+                        lastFittingCandidate ?? candidate,
+                        lineHeight: lineHeight,
+                        workspace: &workspace
+                    )
                 }
                 if opportunity.kind == .mandatory {
-                    return finish(candidate, workspace: &workspace)
+                    return finish(candidate, lineHeight: lineHeight, workspace: &workspace)
                 }
                 lastFittingCandidate = candidate
                 opportunityIndex += 1
@@ -146,7 +166,7 @@ enum LineComposer {
         guard let candidate = lastFittingCandidate else {
             throw LineLayoutError.invalidInput
         }
-        return finish(candidate, workspace: &workspace)
+        return finish(candidate, lineHeight: lineHeight, workspace: &workspace)
     }
 
     private struct Candidate {
@@ -158,6 +178,8 @@ enum LineComposer {
         let ascent: Float
         let descent: Float
         let leading: Float
+        let naturalAbove: Float
+        let naturalBelow: Float
         let renderBounds: PositionedLine.Bounds?
     }
 
@@ -196,10 +218,16 @@ enum LineComposer {
 
     private static func finish(
         _ candidate: Candidate,
+        lineHeight: LineHeight,
         workspace: inout LineLayoutWorkspace
     ) -> PositionedLine {
         let excess = workspace.positions.count - candidate.glyphEnd
         workspace.positions.removeLast(excess)
+        let naturalHeight = candidate.naturalAbove + candidate.naturalBelow
+        let resolvedHeight = lineHeight.resolve(natural: naturalHeight)
+        let halfAdjustment = (resolvedHeight - naturalHeight) * 0.5
+        let resolvedAbove = candidate.naturalAbove + halfAdjustment
+        let resolvedBelow = candidate.naturalBelow + halfAdjustment
         return .init(
             consumedSourceRange: 0..<candidate.sourceEnd,
             consumedGlyphRange: 0..<candidate.glyphEnd,
@@ -209,12 +237,20 @@ enum LineComposer {
             ascent: candidate.ascent,
             descent: candidate.descent,
             leading: candidate.leading,
-            baselineOffset: candidate.ascent,
+            naturalAbove: candidate.naturalAbove,
+            naturalBelow: candidate.naturalBelow,
+            baselineOffset: resolvedAbove,
             typographicBounds: .init(
                 x: 0,
                 y: -candidate.ascent,
                 width: candidate.advance,
                 height: candidate.ascent + candidate.descent
+            ),
+            lineBounds: .init(
+                x: 0,
+                y: -resolvedAbove,
+                width: candidate.advance,
+                height: resolvedAbove + resolvedBelow
             ),
             renderBounds: candidate.renderBounds
         )
@@ -235,6 +271,7 @@ enum LineComposer {
     private static func validate(
         sourceUTF8Count: Int,
         maximumWidth: Float,
+        lineHeight: LineHeight,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>
@@ -242,6 +279,7 @@ enum LineComposer {
         guard sourceUTF8Count >= 0,
               maximumWidth >= 0,
               maximumWidth.isFinite,
+              lineHeight.isValid,
               !opportunities.isEmpty,
               opportunities[opportunities.count - 1].sourceOffset == sourceUTF8Count,
               opportunities[opportunities.count - 1].kind == .mandatory
