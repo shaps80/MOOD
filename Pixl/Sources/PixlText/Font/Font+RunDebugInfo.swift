@@ -94,10 +94,21 @@ extension Font {
             package let renderBounds: GlyphDebugInfo.Bounds?
         }
 
+        package struct Paragraph: Hashable, Sendable {
+            package let source: String
+            package let sourceRange: Range<Int>
+            package let lineRange: Range<Int>
+            package let bounds: GlyphDebugInfo.Bounds
+            package let renderBounds: GlyphDebugInfo.Bounds?
+            package let firstBaselineY: Float
+            package let lastBaselineY: Float
+        }
+
         package let runs: [Run]
         package let glyphs: [Glyph]
         package let words: [Word]
         package let breaks: [Break]
         package let lines: [Line]
+        package let paragraphs: [Paragraph]
     }
 }

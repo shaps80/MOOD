@@ -1,47 +1,4 @@
 enum LineComposer {
-    static func positionLines(
-        sourceUTF8Count: Int,
-        maximumWidth: Float,
-        lineHeight: LineHeight,
-        lineSpacing: Float,
-        glyphs: Span<ShapingGlyph>,
-        runs: Span<GlyphRun>,
-        opportunities: Span<LineBreakOpportunity>,
-        units: Span<LineBreakUnit>,
-        registry: borrowing SFNT.Registry,
-        workspace: inout LineLayoutWorkspace
-    ) throws {
-        guard lineSpacing >= 0, lineSpacing.isFinite else {
-            throw LineLayoutError.invalidInput
-        }
-        workspace.removeAll()
-        var next: LineStart? = try start(
-            sourceUTF8Count: sourceUTF8Count,
-            glyphs: glyphs,
-            runs: runs,
-            opportunities: opportunities
-        )
-        var lineTop: Float = 0
-        while let lineStart = next {
-            let composition = try positionLine(
-                from: lineStart,
-                lineTop: lineTop,
-                sourceUTF8Count: sourceUTF8Count,
-                maximumWidth: maximumWidth,
-                lineHeight: lineHeight,
-                glyphs: glyphs,
-                runs: runs,
-                opportunities: opportunities,
-                units: units,
-                registry: registry,
-                workspace: &workspace
-            )
-            lineTop += composition.line.lineBounds.height + lineSpacing
-            workspace.lines.append(composition.line)
-            next = composition.next
-        }
-    }
-
     static func start(
         sourceUTF8Count: Int,
         glyphs: Span<ShapingGlyph>,

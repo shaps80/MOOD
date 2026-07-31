@@ -12,10 +12,9 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Define the low-level paragraph input and output records over positioned lines.
-2. Establish paragraph boundaries, spacing, and geometry without changing line-local positioning.
-3. Validate multiple paragraphs visually using the existing full-layout playground.
-4. Add bidirectional resolution and script-specific shaping stages later.
+1. Validate multiple paragraph boundaries, spacing, bounds, and baselines visually in the playground.
+2. Define the next low-level content/layout slice after paragraph validation.
+3. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
 
@@ -39,6 +38,7 @@ The final package name and target boundaries remain open.
 - The playground validates consecutive resumed-line boundaries with baseline-local glyph geometry. Consumed trailing break whitespace and glyph render overhang remain visible as distinct geometry outside the yellow visible-advance line box; neither changes wrapping width.
 - Full composition runs until source exhaustion with no implicit line cap. `LineLayoutWorkspace` retains positioned glyphs and line records as two reusable contiguous columns; each line references its position range and stores its document-space baseline.
 - Explicit line spacing affects only vertical stacking. It does not mutate baseline-local glyph positions, natural metrics, or resolved line height.
+- Paragraph composition groups positioned lines at mandatory source breaks. Compact paragraph records reference source and line ranges, retain document-space bounds plus first/last baselines, and append to the existing line-layout workspace without duplicating glyph or line data. Paragraph spacing applies only between paragraphs.
 - PixlText now has exactly three stage workspaces: shaping, line breaking, and line layout. Typed buffers remain single contiguous columns; per-run shaping temporaries are `ShapingScratch`, while `Storage` remains reserved for long-lived retained identity.
 - Future API vocabulary treats `Element` as a source-addressable content unit, `Paragraph` as the standard text element, and `Line` as derived layout referencing positioned glyph ranges. These abstractions retain efficient direct access to contiguous glyph/range data instead of fully hiding glyphs as TextKit 2 does. Line-break segments are not elements; attachments remain uncommitted.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.

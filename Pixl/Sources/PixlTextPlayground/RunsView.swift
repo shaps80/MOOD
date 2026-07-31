@@ -4,13 +4,15 @@ import PixlText
 struct RunsView: View {
     private static let text = """
     Hello, world! Line breaking finds every legal opportunity before layout chooses which words fit. Explicit newlines remain mandatory.
-    A second paragraph gives us enough text to exercise wrapping across several future lines.
+    A second paragraph has enough text to wrap independently. Its lines share paragraph geometry while retaining direct glyph ranges.
+    The final paragraph makes paragraph spacing and first and last baselines easy to inspect without introducing any presentation rules.
     """
     private static let origin = CGPoint(x: 40, y: 170)
     private static let lineWidth: Float = 520
 
     @State private var isShowing: Bool = true
     @State private var hoveredWord: Int?
+    @State private var hoveredParagraph: Int?
 
     private let information: Result<Font.RunDebugInfo, Error>
 
@@ -19,8 +21,8 @@ struct RunsView: View {
             let secondFont = font.path == PlaygroundFont.zapfino.path
                 ? PlaygroundFont.senilita
                 : PlaygroundFont.zapfino
-            let primarySize: Float = font.path == PlaygroundFont.zapfino.path ? 18 : 32
-            let secondarySize: Float = secondFont.path == PlaygroundFont.zapfino.path ? 18 : 32
+            let primarySize: Float = font.path == PlaygroundFont.zapfino.path ? 12 : 24
+            let secondarySize: Float = secondFont.path == PlaygroundFont.zapfino.path ? 12 : 24
             let split = "Hello, world! Line breaking finds every legal opportunity ".utf8.count
             return try Font.runDebugInfo(
                 in: Self.text,
@@ -42,7 +44,8 @@ struct RunsView: View {
                 ],
                 maximumLineWidth: Self.lineWidth,
                 lineHeight: .multiple(1.35),
-                lineSpacing: 8
+                lineSpacing: 8,
+                paragraphSpacing: 28
             )
         }
     }
@@ -53,6 +56,16 @@ struct RunsView: View {
 
             Canvas { context, _ in
                 guard case .success(let information) = information else { return }
+                for (index, paragraph) in information.paragraphs.enumerated() {
+                    context.stroke(
+                        Path(rect(for: paragraph.bounds)),
+                        with: .color(index == hoveredParagraph ? .purple : .purple.opacity(0.55)),
+                        style: .init(
+                            lineWidth: index == hoveredParagraph ? 3 : 2,
+                            dash: [10, 5]
+                        )
+                    )
+                }
                 for (lineIndex, line) in information.lines.enumerated() {
                     let contentFrame = rect(
                         for: line.typographicBounds,
@@ -114,11 +127,18 @@ struct RunsView: View {
                             information: information
                         ).contains(location)
                     }
-                    guard hoveredWord != nextHoveredWord else { return }
+                    let nextHoveredParagraph = information.paragraphs.indices.last {
+                        rect(for: information.paragraphs[$0].bounds).contains(location)
+                    }
+                    guard hoveredWord != nextHoveredWord
+                            || hoveredParagraph != nextHoveredParagraph
+                    else { return }
                     hoveredWord = nextHoveredWord
+                    hoveredParagraph = nextHoveredParagraph
                 case .ended:
-                    guard hoveredWord != nil else { return }
+                    guard hoveredWord != nil || hoveredParagraph != nil else { return }
                     hoveredWord = nil
+                    hoveredParagraph = nil
                 }
             }
         }
@@ -184,6 +204,14 @@ struct RunsView: View {
                 LabeledContent("Line", value: (word.lineIndex + 1).description)
                 LabeledContent("Source UTF-8", value: description(word.sourceRange))
                 LabeledContent("Width", value: word.bounds.width.description)
+            } else if let hoveredParagraph {
+                let paragraph = information.paragraphs[hoveredParagraph]
+                Text(paragraph.source)
+                LabeledContent("Paragraph", value: (hoveredParagraph + 1).description)
+                LabeledContent("Source UTF-8", value: description(paragraph.sourceRange))
+                LabeledContent("Lines", value: description(paragraph.lineRange))
+                LabeledContent("First baseline", value: paragraph.firstBaselineY.description)
+                LabeledContent("Last baseline", value: paragraph.lastBaselineY.description)
             } else {
                 ForEach(information.lines.indices, id: \.self) { index in
                     let line = information.lines[index]
@@ -214,6 +242,15 @@ struct RunsView: View {
             y: Self.origin.y
                 + CGFloat(information.lines[lineIndex].baselineY)
                 + CGFloat(bounds.y),
+            width: CGFloat(bounds.width),
+            height: CGFloat(bounds.height)
+        )
+    }
+
+    private func rect(for bounds: Font.GlyphDebugInfo.Bounds) -> CGRect {
+        CGRect(
+            x: Self.origin.x + CGFloat(bounds.x),
+            y: Self.origin.y + CGFloat(bounds.y),
             width: CGFloat(bounds.width),
             height: CGFloat(bounds.height)
         )

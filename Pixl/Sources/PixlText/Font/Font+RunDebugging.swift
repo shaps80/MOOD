@@ -4,14 +4,16 @@ extension Font {
         runs: [RunDebugInfo.Input],
         maximumLineWidth: Float,
         lineHeight: RunDebugInfo.LineHeight,
-        lineSpacing: Float
+        lineSpacing: Float,
+        paragraphSpacing: Float
     ) throws -> RunDebugInfo {
         try Registry.shared.runDebugInfo(
             in: text,
             inputs: runs,
             maximumLineWidth: maximumLineWidth,
             lineHeight: lineHeight,
-            lineSpacing: lineSpacing
+            lineSpacing: lineSpacing,
+            paragraphSpacing: paragraphSpacing
         )
     }
 }

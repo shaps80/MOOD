@@ -228,7 +228,8 @@ extension Font {
             inputs: [RunDebugInfo.Input],
             maximumLineWidth: Float,
             lineHeight debugLineHeight: RunDebugInfo.LineHeight,
-            lineSpacing: Float
+            lineSpacing: Float,
+            paragraphSpacing: Float
         ) throws -> RunDebugInfo {
             var textRuns: [TextRun] = []
             var substitutionPlans: [OpenTypeShapingPlan] = []
@@ -331,15 +332,17 @@ extension Font {
             }
             var debugGlyphs: [RunDebugInfo.Glyph] = []
             var debugLines: [RunDebugInfo.Line] = []
+            var debugParagraphs: [RunDebugInfo.Paragraph] = []
             try workspace.runs.withSpan { runs in
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
                         try lineBreakWorkspace.units.withSpan { units in
-                            try LineComposer.positionLines(
+                            try ParagraphComposer.positionParagraphs(
                                 sourceUTF8Count: text.utf8.count,
                                 maximumWidth: maximumLineWidth,
                                 lineHeight: lineHeight,
                                 lineSpacing: lineSpacing,
+                                paragraphSpacing: paragraphSpacing,
                                 glyphs: glyphs,
                                 runs: runs,
                                 opportunities: opportunities,
@@ -407,6 +410,36 @@ extension Font {
                                     }
                                 }
                             }
+                            lineWorkspace.paragraphs.withSpan { paragraphs in
+                                debugParagraphs.reserveCapacity(paragraphs.count)
+                                for index in paragraphs.indices {
+                                    let paragraph = paragraphs[index]
+                                    debugParagraphs.append(.init(
+                                        source: String(
+                                            decoding: sourceBytes[paragraph.consumedSourceRange],
+                                            as: UTF8.self
+                                        ),
+                                        sourceRange: paragraph.consumedSourceRange,
+                                        lineRange: paragraph.lineRange,
+                                        bounds: .init(
+                                            x: paragraph.bounds.x,
+                                            y: paragraph.bounds.y,
+                                            width: paragraph.bounds.width,
+                                            height: paragraph.bounds.height
+                                        ),
+                                        renderBounds: paragraph.renderBounds.map {
+                                            .init(
+                                                x: $0.x,
+                                                y: $0.y,
+                                                width: $0.width,
+                                                height: $0.height
+                                            )
+                                        },
+                                        firstBaselineY: paragraph.firstBaselineY,
+                                        lastBaselineY: paragraph.lastBaselineY
+                                    ))
+                                }
+                            }
                         }
                     }
                 }
@@ -422,7 +455,8 @@ extension Font {
                 glyphs: debugGlyphs,
                 words: debugWords,
                 breaks: debugBreaks,
-                lines: debugLines
+                lines: debugLines,
+                paragraphs: debugParagraphs
             )
         }
 
