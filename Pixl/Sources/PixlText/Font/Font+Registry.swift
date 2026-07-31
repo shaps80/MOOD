@@ -226,7 +226,7 @@ extension Font {
         func runDebugInfo(
             in text: String,
             inputs: [RunDebugInfo.Input],
-            maximumLineWidth: Float,
+            constraints: LayoutConstraints,
             lineHeight debugLineHeight: RunDebugInfo.LineHeight,
             paragraphStyles: [ParagraphStyle]
         ) throws -> RunDebugInfo {
@@ -332,14 +332,15 @@ extension Font {
             var debugGlyphs: [RunDebugInfo.Glyph] = []
             var debugLines: [RunDebugInfo.Line] = []
             var debugParagraphs: [RunDebugInfo.Paragraph] = []
+            var layoutStatus = LayoutStatus.complete
             try workspace.runs.withSpan { runs in
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
                         try lineBreakWorkspace.units.withSpan { units in
                             try paragraphStyles.withUnsafeBufferPointer { styles in
-                                try ParagraphComposer.positionParagraphs(
+                                layoutStatus = try ParagraphComposer.positionParagraphs(
                                     sourceUTF8Count: text.utf8.count,
-                                    maximumWidth: maximumLineWidth,
+                                    constraints: constraints,
                                     lineHeight: lineHeight,
                                     styles: unsafe Span(_unsafeElements: styles),
                                     glyphs: glyphs,
@@ -414,7 +415,7 @@ extension Font {
                                         debugLines.append(Self.debugLine(
                                             positionedLine,
                                             maximumWidth: Self.availableWidth(
-                                                maximumLineWidth,
+                                                constraints.width,
                                                 style: paragraphStyles[paragraphIndex],
                                                 isFirstLine: lineIndex
                                                     == lineWorkspace.paragraphs[paragraphIndex]
@@ -476,7 +477,8 @@ extension Font {
                 words: debugWords,
                 breaks: debugBreaks,
                 lines: debugLines,
-                paragraphs: debugParagraphs
+                paragraphs: debugParagraphs,
+                status: layoutStatus
             )
         }
 

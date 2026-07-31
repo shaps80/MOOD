@@ -2,9 +2,9 @@
 
 ## Current Slice
 
-1. Visually validate per-paragraph alignment, indentation, spacing, font, and size.
-2. Add `LayoutConstraints`, `LineLimit`, and `Overflow` values.
-3. Implement uncapped/limited composition and reserved minimum-line height.
+1. Visually validate unlimited/capped layout and complete/overflow status.
+2. Implement reserved minimum-line height.
+3. Implement cluster-safe trailing ellipsis with reserved shaped-token advance.
 
 ## Completed Foundation
 
@@ -17,12 +17,13 @@
 - Paragraph grouping, spacing, source/line ranges, bounds, render bounds, and first/last baselines.
 - One borrowed `ParagraphStyle` per source paragraph, with leading/center/trailing alignment, logical-edge first-line indentation, leading/trailing indentation, and before/after/line spacing.
 - Alignment retains baseline-local glyph positions and stores one horizontal origin per line.
+- `LayoutConstraints`, `LineLimit`, and `Overflow` values; maximum line count stops composition cleanly and returns complete/overflow status.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
 - Playground validation for shaping, break opportunities, words, lines, multiple paragraphs, and tap-selected per-paragraph styling.
 
 ## Next Core Work
 
-- `Overflow` implementation including cluster-safe head/middle/tail truncation.
+- First `Overflow` implementation after reserved minimum-line height: cluster-safe trailing ellipsis with reserved shaped-token advance.
 - Reserved minimum-line height without synthetic line records.
 - Automatic language-aware hyphenation; explicit no-wrap/no-hyphen source ranges.
 - Bidirectional resolution and script-specific shaping/reordering/feature masks.
@@ -30,6 +31,7 @@
 
 ## Later Systems
 
+- Head and middle truncation modes.
 - Embedded bitmap-strike parsing, selection, metrics, and extraction.
 - Rasterisation/MSDF generation, dynamic atlas packing, cache ownership and lifetime.
 - Low-level paragraph/content records evolving into `Element`, `Paragraph`, and `Line` APIs.

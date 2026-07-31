@@ -33,6 +33,8 @@ struct RunsView: View {
     @State private var hoveredWord: Int?
     @State private var hoveredParagraph: Int?
     @State private var selectedParagraph = 0
+    @State private var maximumLines: UInt = 0
+    @State private var overflow = PixlText.Overflow.visible
     @State private var configurations: [ParagraphConfiguration]
     @State private var information: Result<Font.RunDebugInfo, Error>
 
@@ -51,7 +53,11 @@ struct RunsView: View {
             )
         }
         _configurations = State(initialValue: configurations)
-        _information = State(initialValue: Self.makeInformation(configurations))
+        _information = State(initialValue: Self.makeInformation(
+            configurations,
+            maximumLines: 0,
+            overflow: .visible
+        ))
     }
 
     var body: some View {
@@ -167,7 +173,25 @@ struct RunsView: View {
             details
         }
         .onChange(of: configurations) { _, configurations in
-            information = Self.makeInformation(configurations)
+            information = Self.makeInformation(
+                configurations,
+                maximumLines: maximumLines,
+                overflow: overflow
+            )
+        }
+        .onChange(of: maximumLines) { _, maximumLines in
+            information = Self.makeInformation(
+                configurations,
+                maximumLines: maximumLines,
+                overflow: overflow
+            )
+        }
+        .onChange(of: overflow) { _, overflow in
+            information = Self.makeInformation(
+                configurations,
+                maximumLines: maximumLines,
+                overflow: overflow
+            )
         }
     }
 
@@ -221,9 +245,33 @@ struct RunsView: View {
     private var details: some View {
         switch information {
         case .success(let information):
+            Section("Layout") {
+                Stepper(
+                    maximumLines == 0
+                        ? "Maximum lines: Unlimited"
+                        : "Maximum lines: \(maximumLines)",
+                    value: $maximumLines,
+                    in: 0...20
+                )
+                Picker("Overflow", selection: $overflow) {
+                    Text("Visible").tag(PixlText.Overflow.visible)
+                    Text("Clip").tag(PixlText.Overflow.clip)
+                    Text("Trailing ellipsis").tag(PixlText.Overflow.trailingEllipsis)
+                }
+                LabeledContent(
+                    "Status",
+                    value: information.status == .complete ? "Complete" : "Overflow"
+                )
+                if overflow != .visible {
+                    Text("Selected mode is carried by constraints; its presentation behavior is the next slice.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Paragraph") {
                 Picker("Selection", selection: $selectedParagraph) {
-                    ForEach(information.paragraphs.indices, id: \.self) { index in
+                    ForEach(configurations.indices, id: \.self) { index in
                         Text("Paragraph \(index + 1)").tag(index)
                     }
                 }
@@ -284,13 +332,18 @@ struct RunsView: View {
                 }
             }
 
-            let paragraph = information.paragraphs[selectedParagraph]
             Section("Geometry") {
-                Text(paragraph.source)
-                LabeledContent("Source UTF-8", value: description(paragraph.sourceRange))
-                LabeledContent("Lines", value: description(paragraph.lineRange))
-                LabeledContent("First baseline", value: paragraph.firstBaselineY.description)
-                LabeledContent("Last baseline", value: paragraph.lastBaselineY.description)
+                if information.paragraphs.indices.contains(selectedParagraph) {
+                    let paragraph = information.paragraphs[selectedParagraph]
+                    Text(paragraph.source)
+                    LabeledContent("Source UTF-8", value: description(paragraph.sourceRange))
+                    LabeledContent("Lines", value: description(paragraph.lineRange))
+                    LabeledContent("First baseline", value: paragraph.firstBaselineY.description)
+                    LabeledContent("Last baseline", value: paragraph.lastBaselineY.description)
+                } else {
+                    Text("Paragraph is outside the current line limit.")
+                        .foregroundStyle(.secondary)
+                }
             }
         case .failure(let error):
             Text(error.localizedDescription)
@@ -366,7 +419,9 @@ struct RunsView: View {
     }
 
     private static func makeInformation(
-        _ configurations: [ParagraphConfiguration]
+        _ configurations: [ParagraphConfiguration],
+        maximumLines: UInt,
+        overflow: PixlText.Overflow
     ) -> Result<Font.RunDebugInfo, Error> {
         Result {
             let runs = try zip(paragraphRanges, configurations).map { range, configuration in
@@ -381,7 +436,11 @@ struct RunsView: View {
             return try Font.runDebugInfo(
                 in: text,
                 runs: runs,
-                maximumLineWidth: lineWidth,
+                constraints: .init(
+                    width: lineWidth,
+                    lines: .init(maximum: maximumLines),
+                    overflow: overflow
+                ),
                 lineHeight: .multiple(1.35),
                 paragraphStyles: configurations.map(\.style)
             )

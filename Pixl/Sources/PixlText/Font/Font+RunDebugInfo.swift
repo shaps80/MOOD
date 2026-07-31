@@ -111,5 +111,6 @@ extension Font {
         package let breaks: [Break]
         package let lines: [Line]
         package let paragraphs: [Paragraph]
+        package let status: LayoutStatus
     }
 }

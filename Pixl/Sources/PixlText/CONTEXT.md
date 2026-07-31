@@ -27,6 +27,7 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 - Glyph positions remain baseline-local. Each positioned line stores one document-space baseline and references shared position/glyph ranges.
 - Composition borrows one `ParagraphStyle` per source paragraph. Alignment stores a horizontal line origin rather than rewriting every glyph position.
 - Full composition continues until source exhaustion; line limits are explicit constraints, never an implicit cap.
+- `LayoutConstraints` applies to the whole layout. A zero maximum line count is unlimited; a reached nonzero maximum returns overflow status while retaining valid visible line/paragraph records.
 - Mandatory breaks group lines into compact `PositionedParagraph` records containing source/line ranges, document bounds, render bounds, and first/last baselines.
 - Paragraph records share `LineLayoutWorkspace`; they duplicate no glyph or line data. Line spacing applies within paragraphs; paragraph spacing applies between them.
 
@@ -68,7 +69,7 @@ struct LineLimit {
 }
 ```
 
-Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow. Leading/trailing follow resolved writing direction. Reserved minimum lines affect overall layout height without fabricating empty line records. Truncation/hyphen insertion must occur only at legal cluster boundaries.
+Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow. Leading/trailing follow resolved writing direction. Reserved minimum lines affect overall layout height without fabricating empty line records. Initial truncation supports a trailing ellipsis only; head/middle remain future modes. Truncation/hyphen insertion must occur only at legal cluster boundaries.
 
 First-line indentation applies inward from the aligned logical edge for leading and trailing alignment, and is ignored for centered text. Bidi resolution will later map those logical edges to physical left/right for each paragraph.
 

@@ -1,7 +1,7 @@
 enum ParagraphComposer {
     static func positionParagraphs(
         sourceUTF8Count: Int,
-        maximumWidth: Float,
+        constraints: LayoutConstraints,
         lineHeight: LineHeight,
         styles: Span<ParagraphStyle>,
         glyphs: Span<ShapingGlyph>,
@@ -10,8 +10,8 @@ enum ParagraphComposer {
         units: Span<LineBreakUnit>,
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
-    ) throws {
-        guard maximumWidth >= 0, maximumWidth.isFinite, !styles.isEmpty else {
+    ) throws -> LayoutStatus {
+        guard constraints.isValid, !styles.isEmpty else {
             throw LineLayoutError.invalidInput
         }
 
@@ -54,7 +54,7 @@ enum ParagraphComposer {
             }
             let availableWidth = max(
                 0,
-                maximumWidth - leading - trailing
+                constraints.width - leading - trailing
             )
             let composition = try LineComposer.positionLine(
                 from: lineStart,
@@ -109,6 +109,24 @@ enum ParagraphComposer {
                 isFirstLine = false
             }
 
+            let reachedLineLimit = constraints.lines.maximum != 0
+                && UInt(workspace.lines.count) >= constraints.lines.maximum
+            if reachedLineLimit, next != nil {
+                if !endsParagraph {
+                    workspace.paragraphs.append(.init(
+                        lineRange: paragraphLineStart..<(lineIndex + 1),
+                        consumedSourceRange: (
+                            paragraphSourceStart..<line.consumedSourceRange.upperBound
+                        ),
+                        bounds: paragraphBounds!,
+                        renderBounds: paragraphRenderBounds,
+                        firstBaselineY: firstBaselineY,
+                        lastBaselineY: line.baselineY
+                    ))
+                }
+                return .overflow
+            }
+
             guard next != nil else { break }
             lineTop += line.lineBounds.height
             lineTop += endsParagraph
@@ -118,6 +136,7 @@ enum ParagraphComposer {
         guard paragraphIndex == styles.count else {
             throw LineLayoutError.invalidInput
         }
+        return .complete
     }
 
     private static func documentBounds(
