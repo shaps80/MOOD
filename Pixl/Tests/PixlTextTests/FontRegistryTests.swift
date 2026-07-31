@@ -22,4 +22,58 @@ struct SFNTRegistryTests {
         let advance = try #require(registry.advance(for: glyph, in: face, size: 24))
         #expect(advance > 0)
     }
+
+    @Test("San Francisco variable instances interpolate metrics and outlines")
+    func sanFranciscoVariations() throws {
+        let path = "/System/Library/Fonts/SFNS.ttf"
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        let bytes = Array(try Data(contentsOf: URL(filePath: path)))
+        let registry = SFNT.Registry()
+        let base = try registry.register(bytes: bytes)
+        let axes = registry.variationAxes(in: base)
+        let weight = try #require(axes.first(where: { $0.tag == 0x7767_6874 }))
+        let light = try #require(registry.instance(
+            of: base,
+            settings: [(weight.tag, weight.minimum)]
+        ))
+        let heavy = try #require(registry.instance(
+            of: base,
+            settings: [(weight.tag, weight.maximum)]
+        ))
+
+        let glyph = try #require(registry.glyphID(for: "A", in: base))
+        let lightAdvance = try #require(registry.advanceInFontUnits(for: glyph, in: light))
+        let heavyAdvance = try #require(registry.advanceInFontUnits(for: glyph, in: heavy))
+        let lightBounds = try #require(registry.renderBounds(for: glyph, in: light))
+        let heavyBounds = try #require(registry.renderBounds(for: glyph, in: heavy))
+
+        #expect(lightAdvance != heavyAdvance)
+        #expect(lightBounds != heavyBounds)
+    }
+
+    @Test("San Francisco composite glyphs inherit variation geometry")
+    func sanFranciscoCompositeVariations() throws {
+        let path = "/System/Library/Fonts/SFNS.ttf"
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        let bytes = Array(try Data(contentsOf: URL(filePath: path)))
+        let registry = SFNT.Registry()
+        let base = try registry.register(bytes: bytes)
+        let weight = try #require(
+            registry.variationAxes(in: base).first(where: { $0.tag == 0x7767_6874 })
+        )
+        let light = try #require(registry.instance(
+            of: base,
+            settings: [(weight.tag, weight.minimum)]
+        ))
+        let heavy = try #require(registry.instance(
+            of: base,
+            settings: [(weight.tag, weight.maximum)]
+        ))
+        let glyph = try #require(registry.glyphID(for: "é", in: base))
+
+        #expect(
+            registry.renderBounds(for: glyph, in: light)
+                != registry.renderBounds(for: glyph, in: heavy)
+        )
+    }
 }

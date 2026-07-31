@@ -199,8 +199,7 @@ enum LineComposer {
                 )
                 workspace.positions.append(position)
 
-                if attributes.isVisible,
-                   let rawBounds = registry.renderBounds(for: glyph.id, in: run.face) {
+                if attributes.isVisible, let rawBounds = glyph.renderBounds {
                     let bounds = PositionedLine.Bounds(
                         x: position.x + Float(rawBounds.xMin) * scale,
                         y: position.y - Float(rawBounds.yMax) * scale,
@@ -457,7 +456,7 @@ enum LineComposer {
                     y: -Float(glyph.yPlacement) * scale
                 )
                 let glyphAdvance = Float(glyph.nominalXAdvance + glyph.xAdvance) * scale
-                let bounds = registry.renderBounds(for: glyph.id, in: insertionToken.face).map {
+                let bounds = glyph.renderBounds.map {
                     PositionedLine.Bounds(
                         x: position.x + Float($0.xMin) * scale,
                         y: position.y - Float($0.yMax) * scale,

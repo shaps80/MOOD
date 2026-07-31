@@ -22,12 +22,13 @@ extension Font {
         func face(for descriptor: Descriptor) throws -> SFNT.Face {
             switch descriptor.source {
             case .system:
-                return try state.withLock { state in
+                let base = try state.withLock { state in
                     guard let systemFace = state.systemFace else {
                         throw Error.systemFontNotRegistered
                     }
                     return systemFace
                 }
+                return resolvedFace(base, descriptor: descriptor)
             }
         }
 
@@ -47,7 +48,10 @@ extension Font {
         ) throws {
             let face: SFNT.Face
             if let fontBytes, let fontID {
-                face = try loadDebugFace(bytes: fontBytes, id: fontID)
+                face = resolvedFace(
+                    try loadDebugFace(bytes: fontBytes, id: fontID),
+                    descriptor: descriptor
+                )
             } else {
                 face = try self.face(for: descriptor)
             }
@@ -232,7 +236,10 @@ extension Font {
             lineHeight debugLineHeight: RunDebugInfo.LineHeight,
             paragraphStyles: [ParagraphStyle]
         ) throws -> RunDebugInfo {
-            let baseFace = try loadDebugFace(bytes: font.fontBytes, id: font.fontID)
+            let baseFace = resolvedFace(
+                try loadDebugFace(bytes: font.fontBytes, id: font.fontID),
+                descriptor: font.font.descriptor
+            )
             let baseMetrics = baseFace.metrics.scaled(to: font.font.descriptor.size)
             var substitutionPlans: [OpenTypeShapingPlan] = []
             var positioningPlans: [OpenTypePositioningPlan] = []
@@ -245,19 +252,26 @@ extension Font {
                 font: font,
                 overrides: overrides
             ) { sourceRange, input in
-                let face = try loadDebugFace(
-                    bytes: input.fontBytes,
-                    id: input.fontID
+                let face = resolvedFace(
+                    try loadDebugFace(bytes: input.fontBytes, id: input.fontID),
+                    descriptor: input.font.descriptor
                 )
                 let script = Self.script(in: text, sourceRange: sourceRange)
                 let substitutionPlanIndex = sfnt.glyphSubstitution(in: face).map {
                     let index = substitutionPlans.count
-                    substitutionPlans.append($0.shapingPlan(script: script.tag))
+                    substitutionPlans.append($0.shapingPlan(
+                        script: script.tag,
+                        coordinates: face.normalizedCoordinates
+                    ))
                     return index
                 }
                 let positioningPlanIndex = sfnt.glyphPositioning(in: face).map {
                     let index = positioningPlans.count
-                    positioningPlans.append($0.positioningPlan(script: script.tag))
+                    positioningPlans.append($0.positioningPlan(
+                        script: script.tag,
+                        coordinates: face.normalizedCoordinates,
+                        variationStore: sfnt.glyphDefinition(in: face)?.itemVariationStore
+                    ))
                     return index
                 }
                 workspace.inputRuns.append(.init(
@@ -408,10 +422,7 @@ extension Font {
                                             let advance = Float(
                                                 glyph.nominalXAdvance + glyph.xAdvance
                                             ) * scale
-                                            let rawRenderBounds = sfnt.renderBounds(
-                                                for: glyph.id,
-                                                in: run.face
-                                            )
+                                            let rawRenderBounds = glyph.renderBounds
                                             debugGlyphs.append(.init(
                                                 lineIndex: lineIndex,
                                                 runIndex: runIndex,
@@ -758,6 +769,62 @@ extension Font {
                 let face = try sfnt.register(bytes: bytes)
                 state.debugFaces[id] = face
                 return face
+            }
+        }
+
+        func variationAxes(fontBytes: [UInt8], fontID: String) throws -> [Axis] {
+            let face = try loadDebugFace(bytes: fontBytes, id: fontID)
+            return sfnt.variationAxes(in: face).map {
+                .init(
+                    tag: Self.tagString($0.tag),
+                    minimum: $0.minimum,
+                    defaultValue: $0.defaultValue,
+                    maximum: $0.maximum
+                )
+            }
+        }
+
+        func namedVariationInstances(
+            fontBytes: [UInt8],
+            fontID: String
+        ) throws -> [NamedInstance] {
+            let face = try loadDebugFace(bytes: fontBytes, id: fontID)
+            return sfnt.namedVariationInstances(in: face).map {
+                .init(nameID: $0.nameID, coordinates: $0.coordinates)
+            }
+        }
+
+        private func resolvedFace(_ base: SFNT.Face, descriptor: Descriptor) -> SFNT.Face {
+            let axes = sfnt.variationAxes(in: base)
+            guard !axes.isEmpty else { return base }
+            var settings = descriptor.variations.map { ($0.tag, $0.value) }
+            if axes.contains(where: { $0.tag == 0x7767_6874 }),
+               !settings.contains(where: { $0.0 == 0x7767_6874 }) {
+                settings.append((0x7767_6874, Self.weightValue(descriptor.weight)))
+            }
+            if descriptor.slant == .italic {
+                if axes.contains(where: { $0.tag == 0x6974_616C }),
+                   !settings.contains(where: { $0.0 == 0x6974_616C }) {
+                    settings.append((0x6974_616C, 1))
+                } else if let slant = axes.first(where: { $0.tag == 0x736C_6E74 }),
+                          !settings.contains(where: { $0.0 == 0x736C_6E74 }) {
+                    settings.append((0x736C_6E74, slant.minimum))
+                }
+            }
+            return sfnt.instance(of: base, settings: settings) ?? base
+        }
+
+        private static func weightValue(_ weight: Weight) -> Float {
+            switch weight {
+            case .ultraLight: 100
+            case .thin: 200
+            case .light: 300
+            case .regular: 400
+            case .medium: 500
+            case .semibold: 600
+            case .bold: 700
+            case .heavy: 800
+            case .black: 900
             }
         }
 

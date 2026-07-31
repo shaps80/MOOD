@@ -72,6 +72,13 @@ enum RunShaper {
                     to: &workspace.scratch.glyphs
                 )
             }
+            for glyphIndex in 0..<workspace.scratch.glyphs.count {
+                let glyph = workspace.scratch.glyphs[glyphIndex].id
+                workspace.scratch.glyphs[glyphIndex].renderBounds = registry.renderBounds(
+                    for: glyph,
+                    in: input.face
+                )
+            }
 
             let glyphStart = workspace.glyphs.count
             workspace.glyphs.append(contentsOf: workspace.scratch.glyphs)
@@ -161,6 +168,13 @@ enum RunShaper {
                 positioningPlans[planIndex],
                 glyphDefinition: registry.glyphDefinition(in: input.face),
                 to: &workspace.scratch.glyphs
+            )
+        }
+        for glyphIndex in 0..<workspace.scratch.glyphs.count {
+            let glyph = workspace.scratch.glyphs[glyphIndex].id
+            workspace.scratch.glyphs[glyphIndex].renderBounds = registry.renderBounds(
+                for: glyph,
+                in: input.face
             )
         }
 

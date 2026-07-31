@@ -145,7 +145,8 @@ struct OpenTypeShaperTests {
                 .init(glyphs: 30...30, value: 3)
             ]),
             markAttachmentClasses: nil,
-            markGlyphSets: []
+            markGlyphSets: [],
+            itemVariationStore: nil
         )
         var workspace = workspace([
             glyph(10, sourceRange: 0..<1),
@@ -183,7 +184,8 @@ struct OpenTypeShaperTests {
         let definition = SFNT.GlyphDefinition(
             glyphClasses: nil,
             markAttachmentClasses: nil,
-            markGlyphSets: [.init(glyphs: [30])]
+            markGlyphSets: [.init(glyphs: [30])],
+            itemVariationStore: nil
         )
 
         #expect(throws: SFNT.RegistrationError.malformedRequiredTable) {
@@ -256,7 +258,8 @@ struct OpenTypeShaperTests {
             features: [
                 .init(tag: 0x6C69_6761, lookupIndices: activeLookupIndices)
             ],
-            lookups: lookups
+            lookups: lookups,
+            featureVariations: nil
         )
     }
 }

@@ -17,7 +17,12 @@ struct PlaygroundFont: Hashable, Identifiable, Sendable {
         path: "/Users/shaps/Library/Fonts/Senilita.otf"
     )
 
-    static let initial = [senilita, zapfino]
+    static let sfPro = Self(
+        name: "SF Pro Variable",
+        path: "/Library/Fonts/SF-Pro.ttf"
+    )
+
+    static let initial = [sfPro, senilita, zapfino]
 
     func loadBytes() throws -> [UInt8] {
         Array(try Data(contentsOf: URL(filePath: path)))

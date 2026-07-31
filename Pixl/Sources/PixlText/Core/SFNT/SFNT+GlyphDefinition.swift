@@ -11,6 +11,7 @@ extension SFNT {
         let glyphClasses: OpenTypeLayout.ClassDefinition?
         let markAttachmentClasses: OpenTypeLayout.ClassDefinition?
         let markGlyphSets: [OpenTypeLayout.Coverage]
+        let itemVariationStore: ItemVariationStore?
 
         static func validate(
             flags: OpenTypeLayout.LookupFlags,
@@ -86,10 +87,23 @@ extension SFNT {
                 markGlyphSets = []
             }
 
+            let itemVariationStore: ItemVariationStore?
+            if minor >= 3 {
+                let storeOffset = Int(try reader.uint32(at: table.offset + 14))
+                itemVariationStore = storeOffset == 0 ? nil : try ItemVariationStore.parse(
+                    at: table.offset + storeOffset,
+                    table: table,
+                    reader: reader
+                )
+            } else {
+                itemVariationStore = nil
+            }
+
             return .init(
                 glyphClasses: glyphClasses,
                 markAttachmentClasses: markAttachmentClasses,
-                markGlyphSets: markGlyphSets
+                markGlyphSets: markGlyphSets,
+                itemVariationStore: itemVariationStore
             )
         }
 

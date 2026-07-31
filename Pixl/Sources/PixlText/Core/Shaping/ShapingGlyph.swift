@@ -11,4 +11,5 @@ struct ShapingGlyph {
     var yPlacement: Int32 = 0
     var xAdvance: Int32 = 0
     var yAdvance: Int32 = 0
+    var renderBounds: SFNT.GlyphBounds?
 }

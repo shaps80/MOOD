@@ -190,7 +190,8 @@ struct OpenTypePositionerTests {
                 )
             ],
             features: [.init(tag: kern, lookupIndices: activeLookupIndices)],
-            lookups: lookups
+            lookups: lookups,
+            featureVariations: nil
         )
     }
 }

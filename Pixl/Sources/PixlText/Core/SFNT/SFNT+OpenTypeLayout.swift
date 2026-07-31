@@ -1,5 +1,9 @@
 extension SFNT {
     enum OpenTypeLayout {
+        struct VariationIndex: Equatable {
+            let outer: Int
+            let inner: Int
+        }
         struct Coverage: Hashable {
             let glyphs: [UInt16]
         }
@@ -45,8 +49,45 @@ extension SFNT {
         }
 
         struct Anchor: Equatable {
-            let x: Int16
-            let y: Int16
+            let x: Int32
+            let y: Int32
+            let xVariation: VariationIndex?
+            let yVariation: VariationIndex?
+
+            init(
+                x: Int32,
+                y: Int32,
+                xVariation: VariationIndex? = nil,
+                yVariation: VariationIndex? = nil
+            ) {
+                self.x = x
+                self.y = y
+                self.xVariation = xVariation
+                self.yVariation = yVariation
+            }
+
+            func resolved(store: ItemVariationStore?, coordinates: [Float]) -> Self {
+                guard let store else { return self }
+                return .init(
+                    x: x + delta(xVariation, store: store, coordinates: coordinates),
+                    y: y + delta(yVariation, store: store, coordinates: coordinates),
+                    xVariation: nil,
+                    yVariation: nil
+                )
+            }
+
+            private func delta(
+                _ index: VariationIndex?,
+                store: ItemVariationStore,
+                coordinates: [Float]
+            ) -> Int32 {
+                guard let index else { return 0 }
+                return Int32(store.delta(
+                    outer: index.outer,
+                    inner: index.inner,
+                    coordinates: coordinates
+                ).rounded())
+            }
         }
 
         static func coverage(
@@ -55,7 +96,8 @@ extension SFNT {
             reader: ByteReader
         ) throws -> Coverage {
             try require(table, at: offset, count: 4)
-            switch try reader.uint16(at: offset) {
+            let format = try reader.uint16(at: offset)
+            switch format {
             case 1:
                 let count = Int(try reader.uint16(at: offset + 2))
                 try require(table, at: offset + 4, count: try byteCount(count, 2))
@@ -228,7 +270,8 @@ extension SFNT {
             reader: ByteReader
         ) throws -> Anchor {
             try require(table, at: offset, count: 6)
-            switch try reader.uint16(at: offset) {
+            let format = try reader.uint16(at: offset)
+            switch format {
             case 1:
                 break
             case 2:
@@ -238,9 +281,44 @@ extension SFNT {
             default:
                 throw RegistrationError.malformedRequiredTable
             }
+            var xVariation: VariationIndex?
+            var yVariation: VariationIndex?
+            if format == 3 {
+                let xOffset = Int(try reader.uint16(at: offset + 6))
+                let yOffset = Int(try reader.uint16(at: offset + 8))
+                if xOffset != 0 {
+                    xVariation = try variationIndex(
+                        at: offset + xOffset,
+                        table: table,
+                        reader: reader
+                    )
+                }
+                if yOffset != 0 {
+                    yVariation = try variationIndex(
+                        at: offset + yOffset,
+                        table: table,
+                        reader: reader
+                    )
+                }
+            }
             return .init(
-                x: try reader.int16(at: offset + 2),
-                y: try reader.int16(at: offset + 4)
+                x: Int32(try reader.int16(at: offset + 2)),
+                y: Int32(try reader.int16(at: offset + 4)),
+                xVariation: xVariation,
+                yVariation: yVariation
+            )
+        }
+
+        static func variationIndex(
+            at offset: Int,
+            table: Table,
+            reader: ByteReader
+        ) throws -> VariationIndex? {
+            try require(table, at: offset, count: 6)
+            guard try reader.uint16(at: offset + 4) == 0x8000 else { return nil }
+            return .init(
+                outer: Int(try reader.uint16(at: offset)),
+                inner: Int(try reader.uint16(at: offset + 2))
             )
         }
 

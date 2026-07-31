@@ -5,10 +5,44 @@ extension SFNT {
         typealias LanguageSystem = GlyphSubstitution.LanguageSystem
 
         struct ValueAdjustment: Equatable {
-            var xPlacement: Int16 = 0
-            var yPlacement: Int16 = 0
-            var xAdvance: Int16 = 0
-            var yAdvance: Int16 = 0
+            var xPlacement: Int32 = 0
+            var yPlacement: Int32 = 0
+            var xAdvance: Int32 = 0
+            var yAdvance: Int32 = 0
+            var xPlacementVariation: OpenTypeLayout.VariationIndex?
+            var yPlacementVariation: OpenTypeLayout.VariationIndex?
+            var xAdvanceVariation: OpenTypeLayout.VariationIndex?
+            var yAdvanceVariation: OpenTypeLayout.VariationIndex?
+
+            func resolved(
+                store: ItemVariationStore?,
+                coordinates: [Float]
+            ) -> Self {
+                guard let store else { return self }
+                var result = self
+                result.xPlacement += delta(xPlacementVariation, store, coordinates)
+                result.yPlacement += delta(yPlacementVariation, store, coordinates)
+                result.xAdvance += delta(xAdvanceVariation, store, coordinates)
+                result.yAdvance += delta(yAdvanceVariation, store, coordinates)
+                result.xPlacementVariation = nil
+                result.yPlacementVariation = nil
+                result.xAdvanceVariation = nil
+                result.yAdvanceVariation = nil
+                return result
+            }
+
+            private func delta(
+                _ index: OpenTypeLayout.VariationIndex?,
+                _ store: ItemVariationStore,
+                _ coordinates: [Float]
+            ) -> Int32 {
+                guard let index else { return 0 }
+                return Int32(store.delta(
+                    outer: index.outer,
+                    inner: index.inner,
+                    coordinates: coordinates
+                ).rounded())
+            }
         }
 
         struct PairRule {
@@ -118,8 +152,13 @@ extension SFNT {
         let scripts: [Script]
         let features: [Feature]
         let lookups: [Lookup]
+        let featureVariations: OpenTypeFeatureVariations?
 
-        func activeLookups(script scriptTag: UInt32, language languageTag: UInt32?) -> [ActiveLookup] {
+        func activeLookups(
+            script scriptTag: UInt32,
+            language languageTag: UInt32?,
+            coordinates: [Float]
+        ) -> [ActiveLookup] {
             guard let script = scripts.first(where: { $0.tag == scriptTag })
                     ?? scripts.first(where: { $0.tag == 0x4446_4C54 })
             else { return [] }
@@ -131,11 +170,14 @@ extension SFNT {
             var featureIndices: [Int] = []
             if let required = language.requiredFeatureIndex { featureIndices.append(required) }
             featureIndices += language.featureIndices
+            let substitutions = featureVariations?.substitutions(coordinates: coordinates) ?? []
             var tagsByLookup = Array<UInt32?>(repeating: nil, count: lookups.count)
             for featureIndex in featureIndices where features.indices.contains(featureIndex) {
                 let feature = features[featureIndex]
                 guard Self.isInitiallyEnabled(feature: feature.tag) else { continue }
-                for lookupIndex in feature.lookupIndices
+                let alternate = substitutions
+                    .first(where: { $0.featureIndex == featureIndex })?.lookupIndices
+                for lookupIndex in alternate ?? feature.lookupIndices
                     where tagsByLookup.indices.contains(lookupIndex) && tagsByLookup[lookupIndex] == nil {
                     tagsByLookup[lookupIndex] = feature.tag
                 }
@@ -153,25 +195,36 @@ extension SFNT {
             guard majorVersion == 1, minorVersion == 0 || minorVersion == 1 else {
                 throw SFNT.RegistrationError.malformedRequiredTable
             }
+            var featureVariationsOffset = 0
             if minorVersion == 1 {
                 try require(table, at: table.offset, count: 14)
-                let variationsOffset = Int(try reader.uint32(at: table.offset + 10))
-                if variationsOffset != 0 {
-                    try require(table, at: table.offset + variationsOffset, count: 8)
-                }
+                featureVariationsOffset = Int(try reader.uint32(at: table.offset + 10))
             }
             let scriptListOffset = Int(try reader.uint16(at: table.offset + 4))
             let featureListOffset = Int(try reader.uint16(at: table.offset + 6))
             let lookupListOffset = Int(try reader.uint16(at: table.offset + 8))
             let scripts = try parseScripts(at: table.offset + scriptListOffset, table: table, reader: reader)
             let features = try parseFeatures(at: table.offset + featureListOffset, table: table, reader: reader)
+            let featureVariations = featureVariationsOffset == 0 ? nil
+                : try OpenTypeFeatureVariations.parse(
+                    at: table.offset + featureVariationsOffset,
+                    table: table,
+                    featureCount: features.count,
+                    reader: reader
+                )
             guard lookupListOffset != 0 else {
                 try OpenTypeLayout.validateReferences(
                     scripts: scripts,
                     features: features,
                     lookupCount: 0
                 )
-                return .init(scripts: scripts, features: features, lookups: [])
+                try featureVariations?.validate(lookupCount: 0)
+                return .init(
+                    scripts: scripts,
+                    features: features,
+                    lookups: [],
+                    featureVariations: featureVariations
+                )
             }
             let lookupList = table.offset + lookupListOffset
             try require(table, at: lookupList, count: 2)
@@ -220,7 +273,13 @@ extension SFNT {
                 features: features,
                 lookupCount: lookups.count
             )
-            return .init(scripts: scripts, features: features, lookups: lookups)
+            try featureVariations?.validate(lookupCount: lookups.count)
+            return .init(
+                scripts: scripts,
+                features: features,
+                lookups: lookups,
+                featureVariations: featureVariations
+            )
         }
 
         private static func parseSubtable(
@@ -314,7 +373,13 @@ extension SFNT {
             case 1:
                 try require(table, at: offset + 6, count: valueSize(valueFormat))
                 var cursor = offset + 6
-                let adjustment = try value(at: &cursor, format: valueFormat, reader: reader)
+                let adjustment = try value(
+                    at: &cursor,
+                    format: valueFormat,
+                    base: offset,
+                    table: table,
+                    reader: reader
+                )
                 return glyphs.map { .init(glyph: $0, adjustment: adjustment) }
             case 2:
                 try require(table, at: offset, count: 8)
@@ -330,7 +395,13 @@ extension SFNT {
                 return try glyphs.map {
                     .init(
                         glyph: $0,
-                        adjustment: try value(at: &cursor, format: valueFormat, reader: reader)
+                        adjustment: try value(
+                            at: &cursor,
+                            format: valueFormat,
+                            base: offset,
+                            table: table,
+                            reader: reader
+                        )
                     )
                 }
             default:
@@ -652,8 +723,12 @@ extension SFNT {
                     try require(table, at: cursor, count: 2 + valueSize(firstFormat) + valueSize(secondFormat))
                     let second = try reader.uint16(at: cursor)
                     cursor += 2
-                    let firstAdjustment = try value(at: &cursor, format: firstFormat, reader: reader)
-                    let secondAdjustment = try value(at: &cursor, format: secondFormat, reader: reader)
+                    let firstAdjustment = try value(
+                        at: &cursor, format: firstFormat, base: offset, table: table, reader: reader
+                    )
+                    let secondAdjustment = try value(
+                        at: &cursor, format: secondFormat, base: offset, table: table, reader: reader
+                    )
                     rules.append(.init(
                         first: coverage[setIndex],
                         second: second,
@@ -713,8 +788,12 @@ extension SFNT {
             firstAdjustments.reserveCapacity(recordCount)
             secondAdjustments.reserveCapacity(recordCount)
             for _ in 0..<recordCount {
-                firstAdjustments.append(try value(at: &cursor, format: firstFormat, reader: reader))
-                secondAdjustments.append(try value(at: &cursor, format: secondFormat, reader: reader))
+                firstAdjustments.append(try value(
+                    at: &cursor, format: firstFormat, base: offset, table: table, reader: reader
+                ))
+                secondAdjustments.append(try value(
+                    at: &cursor, format: secondFormat, base: offset, table: table, reader: reader
+                ))
             }
             return .classes(.init(
                 coverage: coverage,
@@ -730,16 +809,30 @@ extension SFNT {
         private static func value(
             at cursor: inout Int,
             format: UInt16,
+            base: Int,
+            table: Table,
             reader: ByteReader
         ) throws -> ValueAdjustment {
             var result = ValueAdjustment()
-            if format & 0x0001 != 0 { result.xPlacement = try reader.int16(at: cursor); cursor += 2 }
-            if format & 0x0002 != 0 { result.yPlacement = try reader.int16(at: cursor); cursor += 2 }
-            if format & 0x0004 != 0 { result.xAdvance = try reader.int16(at: cursor); cursor += 2 }
-            if format & 0x0008 != 0 { result.yAdvance = try reader.int16(at: cursor); cursor += 2 }
-            for bit in [UInt16(0x0010), 0x0020, 0x0040, 0x0080] where format & bit != 0 {
-                _ = try reader.uint16(at: cursor)
+            if format & 0x0001 != 0 { result.xPlacement = Int32(try reader.int16(at: cursor)); cursor += 2 }
+            if format & 0x0002 != 0 { result.yPlacement = Int32(try reader.int16(at: cursor)); cursor += 2 }
+            if format & 0x0004 != 0 { result.xAdvance = Int32(try reader.int16(at: cursor)); cursor += 2 }
+            if format & 0x0008 != 0 { result.yAdvance = Int32(try reader.int16(at: cursor)); cursor += 2 }
+            for (bit, keyPath) in [
+                (UInt16(0x0010), \ValueAdjustment.xPlacementVariation),
+                (0x0020, \ValueAdjustment.yPlacementVariation),
+                (0x0040, \ValueAdjustment.xAdvanceVariation),
+                (0x0080, \ValueAdjustment.yAdvanceVariation)
+            ] where format & bit != 0 {
+                let relativeOffset = Int(try reader.uint16(at: cursor))
                 cursor += 2
+                if relativeOffset != 0 {
+                    result[keyPath: keyPath] = try OpenTypeLayout.variationIndex(
+                        at: base + relativeOffset,
+                        table: table,
+                        reader: reader
+                    )
+                }
             }
             return result
         }

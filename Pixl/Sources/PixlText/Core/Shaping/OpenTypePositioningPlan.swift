@@ -90,9 +90,15 @@ struct OpenTypePositioningPlan {
 extension SFNT.GlyphPositioning {
     func positioningPlan(
         script scriptTag: UInt32,
-        language languageTag: UInt32? = nil
+        language languageTag: UInt32? = nil,
+        coordinates: [Float] = [],
+        variationStore: SFNT.ItemVariationStore? = nil
     ) -> OpenTypePositioningPlan {
-        let active = activeLookups(script: scriptTag, language: languageTag)
+        let active = activeLookups(
+            script: scriptTag,
+            language: languageTag,
+            coordinates: coordinates
+        )
         var plannedLookups: [OpenTypePositioningPlan.Lookup] = []
         var subtables: [OpenTypePositioningPlan.Subtable] = []
         var singleRules: [OpenTypePositioningPlan.SingleRule] = []
@@ -107,6 +113,12 @@ extension SFNT.GlyphPositioning {
         var ligatureComponents: [OpenTypePositioningPlan.LigatureComponent] = []
         var markLigatureTables: [OpenTypePositioningPlan.MarkLigatureTable] = []
         var contextBuilder = OpenTypeContextPlanBuilder()
+        func resolved(_ value: ValueAdjustment) -> ValueAdjustment {
+            value.resolved(store: variationStore, coordinates: coordinates)
+        }
+        func resolved(_ anchor: SFNT.OpenTypeLayout.Anchor) -> SFNT.OpenTypeLayout.Anchor {
+            anchor.resolved(store: variationStore, coordinates: coordinates)
+        }
 
         plannedLookups.reserveCapacity(lookups.count)
         for lookup in lookups {
@@ -116,7 +128,7 @@ extension SFNT.GlyphPositioning {
                 case .single(let rules):
                     let ruleLower = singleRules.count
                     singleRules.append(contentsOf: rules.map {
-                        .init(glyph: $0.glyph, adjustment: $0.adjustment)
+                        .init(glyph: $0.glyph, adjustment: resolved($0.adjustment))
                     }.sorted { $0.glyph < $1.glyph })
                     subtables.append(.single(ruleLower..<singleRules.count))
 
@@ -125,21 +137,33 @@ extension SFNT.GlyphPositioning {
                     pairRules.append(contentsOf: rules.map {
                         .init(
                             key: UInt32($0.first) << 16 | UInt32($0.second),
-                            first: $0.firstAdjustment,
-                            second: $0.secondAdjustment
+                            first: resolved($0.firstAdjustment),
+                            second: resolved($0.secondAdjustment)
                         )
                     }.sorted { $0.key < $1.key })
                     subtables.append(.glyphPairs(ruleLower..<pairRules.count))
 
                 case .pair(.classes(let table)):
                     let index = classTables.count
-                    classTables.append(table)
+                    classTables.append(.init(
+                        coverage: table.coverage,
+                        firstClasses: table.firstClasses,
+                        secondClasses: table.secondClasses,
+                        firstClassCount: table.firstClassCount,
+                        secondClassCount: table.secondClassCount,
+                        firstAdjustments: table.firstAdjustments.map(resolved),
+                        secondAdjustments: table.secondAdjustments.map(resolved)
+                    ))
                     subtables.append(.classPairs(index))
 
                 case .cursive(let records):
                     let ruleLower = cursiveRules.count
                     cursiveRules.append(contentsOf: records.map {
-                        .init(glyph: $0.glyph, entry: $0.entry, exit: $0.exit)
+                        .init(
+                            glyph: $0.glyph,
+                            entry: $0.entry.map(resolved),
+                            exit: $0.exit.map(resolved)
+                        )
                     }.sorted { $0.glyph < $1.glyph })
                     subtables.append(.cursive(ruleLower..<cursiveRules.count))
 
@@ -149,7 +173,8 @@ extension SFNT.GlyphPositioning {
                         markRules: &markRules,
                         baseRules: &baseRules,
                         anchors: &anchors,
-                        tables: &markBaseTables
+                        tables: &markBaseTables,
+                        resolveAnchor: resolved
                     )))
 
                 case .markToMark(let table):
@@ -158,17 +183,22 @@ extension SFNT.GlyphPositioning {
                         markRules: &markRules,
                         baseRules: &baseRules,
                         anchors: &anchors,
-                        tables: &markBaseTables
+                        tables: &markBaseTables,
+                        resolveAnchor: resolved
                     )))
 
                 case .markToLigature(let table):
-                    let markLower = appendMarks(table.marks, to: &markRules)
+                    let markLower = appendMarks(
+                        table.marks,
+                        to: &markRules,
+                        resolveAnchor: resolved
+                    )
                     let ligatureLower = ligatureRules.count
                     for ligature in table.ligatures {
                         let componentLower = ligatureComponents.count
                         for component in ligature.components {
                             let anchorLower = anchors.count
-                            anchors.append(contentsOf: component)
+                            anchors.append(contentsOf: component.map { $0.map(resolved) })
                             ligatureComponents.append(.init(
                                 anchors: anchorLower..<anchors.count
                             ))
@@ -221,11 +251,16 @@ extension SFNT.GlyphPositioning {
 
     private func appendMarks(
         _ source: [MarkRecord],
-        to rules: inout [OpenTypePositioningPlan.MarkRule]
+        to rules: inout [OpenTypePositioningPlan.MarkRule],
+        resolveAnchor: (SFNT.OpenTypeLayout.Anchor) -> SFNT.OpenTypeLayout.Anchor
     ) -> Range<Int> {
         let lower = rules.count
         rules.append(contentsOf: source.map {
-            .init(glyph: $0.glyph, markClass: Int($0.markClass), anchor: $0.anchor)
+            .init(
+                glyph: $0.glyph,
+                markClass: Int($0.markClass),
+                anchor: resolveAnchor($0.anchor)
+            )
         }.sorted { $0.glyph < $1.glyph })
         return lower..<rules.count
     }
@@ -235,13 +270,18 @@ extension SFNT.GlyphPositioning {
         markRules: inout [OpenTypePositioningPlan.MarkRule],
         baseRules: inout [OpenTypePositioningPlan.BaseRule],
         anchors: inout [SFNT.OpenTypeLayout.Anchor?],
-        tables: inout [OpenTypePositioningPlan.MarkBaseTable]
+        tables: inout [OpenTypePositioningPlan.MarkBaseTable],
+        resolveAnchor: (SFNT.OpenTypeLayout.Anchor) -> SFNT.OpenTypeLayout.Anchor
     ) -> Int {
-        let marks = appendMarks(source.marks, to: &markRules)
+        let marks = appendMarks(
+            source.marks,
+            to: &markRules,
+            resolveAnchor: resolveAnchor
+        )
         let baseLower = baseRules.count
         for base in source.bases {
             let anchorLower = anchors.count
-            anchors.append(contentsOf: base.anchors)
+            anchors.append(contentsOf: base.anchors.map { $0.map(resolveAnchor) })
             baseRules.append(.init(
                 glyph: base.glyph,
                 anchors: anchorLower..<anchors.count

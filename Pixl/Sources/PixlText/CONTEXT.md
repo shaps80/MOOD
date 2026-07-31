@@ -15,7 +15,9 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 - OpenType plans are flat immutable native-endian columns. Hot shaping uses indexed scans, binary search, read/write compaction, and reusable buffers.
 - NFC normalization and Unicode Script use checked-in Unicode 16 tables. No Foundation/platform normalization.
 - `TextRun` describes source/font/direction/script/language/plans. `GlyphRun` references output in one shared glyph buffer.
-- Variable-font files currently resolve only their default instance. Axis discovery/selection, interpolated outlines and metrics, FeatureVariations, ItemVariationStore, and Device adjustments are scheduled before viewport work and will be validated against installed San Francisco variable fonts.
+- Supported TrueType variable fonts expose `fvar` axes/named instances and resolve descriptor coordinates through `avar`. Semantic weight/italic modifiers select matching `wght`/`ital`/`slnt` axes unless explicitly overridden.
+- Variable instances apply `gvar` interpolation to simple and composite outlines, HVAR/VVAR advance deltas, MVAR global metrics, GSUB/GPOS FeatureVariations, and GDEF/GPOS VariationIndex adjustments. San Francisco validates that extreme weights change both advances and geometry.
+- Default-axis instances retain the static fast path. Non-default render bounds are resolved once while shaping and reused by composition/debug output. CFF/CFF2 outline imaging remains outside the currently supported TrueType outline path.
 - Script-specific preprocessing, bidi, language policy, AAT, and Graphite remain later work.
 - Embedded bitmap fonts are required eventually; bitmap-strike parsing/extraction is not implemented.
 

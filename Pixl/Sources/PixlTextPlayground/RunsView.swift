@@ -5,6 +5,7 @@ struct RunsView: View {
     private struct ParagraphConfiguration: Hashable {
         var font: PlaygroundFont
         var fontSize: Float
+        var variations: [String: Float]
         var style: ParagraphStyle
     }
 
@@ -38,6 +39,7 @@ struct RunsView: View {
     @State private var overflow = PixlText.Overflow.visible
     @State private var defaultLineMetrics = PixlText.DefaultLineMetrics.automatic
     @State private var configurations: [ParagraphConfiguration]
+    @State private var axesByFont: [PlaygroundFont: [Font.Axis]]
     @State private var information: Result<Font.RunDebugInfo, Error>
 
     init(font: Binding<PlaygroundFont>, fonts: [PlaygroundFont]) {
@@ -51,10 +53,14 @@ struct RunsView: View {
             ParagraphConfiguration(
                 font: font,
                 fontSize: font.path == PlaygroundFont.zapfino.path ? 12 : 24,
+                variations: [:],
                 style: .init(spacing: .init(lineSpacing: 8, paragraphAfter: 28))
             )
         }
         _configurations = State(initialValue: configurations)
+        _axesByFont = State(initialValue: Dictionary(
+            uniqueKeysWithValues: Set(configurations.map(\.font)).map { ($0, Self.axes(for: $0)) }
+        ))
         _information = State(initialValue: Self.makeInformation(
             configurations,
             minimumLines: 0,
@@ -358,6 +364,22 @@ struct RunsView: View {
                 )
             }
 
+            if !selectedAxes.isEmpty {
+                Section("Variations") {
+                    ForEach(selectedAxes) { axis in
+                        let value = configurations[selectedParagraph].variations[axis.tag]
+                            ?? axis.defaultValue
+                        VStack(alignment: .leading) {
+                            LabeledContent(axis.tag, value: value.formatted())
+                            Slider(
+                                value: variationBinding(axis),
+                                in: axis.minimum...axis.maximum
+                            )
+                        }
+                    }
+                }
+            }
+
             Section("Alignment") {
                 Picker("Alignment", selection: configurationBinding(\.style.alignment)) {
                     ForEach(PixlText.TextAlignment.allCases, id: \.self) { alignment in
@@ -449,8 +471,30 @@ struct RunsView: View {
             get: { configurations[selectedParagraph].font },
             set: { value in
                 configurations[selectedParagraph].font = value
+                configurations[selectedParagraph].variations = [:]
+                if axesByFont[value] == nil {
+                    axesByFont[value] = Self.axes(for: value)
+                }
                 font = value
             }
+        )
+    }
+
+    private var selectedAxes: [Font.Axis] {
+        axesByFont[configurations[selectedParagraph].font] ?? []
+    }
+
+    private static func axes(for font: PlaygroundFont) -> [Font.Axis] {
+        guard let bytes = try? font.loadBytes() else { return [] }
+        return (try? Font.variationAxes(fontBytes: bytes, fontID: font.path)) ?? []
+    }
+
+    private func variationBinding(_ axis: Font.Axis) -> Binding<Float> {
+        .init(
+            get: {
+                configurations[selectedParagraph].variations[axis.tag] ?? axis.defaultValue
+            },
+            set: { configurations[selectedParagraph].variations[axis.tag] = $0 }
         )
     }
 
@@ -517,7 +561,7 @@ struct RunsView: View {
         Result {
             let baseConfiguration = configurations[0]
             let baseFont = Font.RunDebugInfo.FontInput(
-                font: .system(size: baseConfiguration.fontSize),
+                font: configuredFont(baseConfiguration),
                 fontBytes: try baseConfiguration.font.loadBytes(),
                 fontID: baseConfiguration.font.path,
                 fontName: baseConfiguration.font.name
@@ -529,13 +573,14 @@ struct RunsView: View {
                 range, configuration in
                 guard configuration.font != baseConfiguration.font
                     || configuration.fontSize != baseConfiguration.fontSize
+                    || configuration.variations != baseConfiguration.variations
                 else {
                     return nil
                 }
                 return Font.RunDebugInfo.Input(
                     sourceRange: range,
                     font: .init(
-                        font: .system(size: configuration.fontSize),
+                        font: configuredFont(configuration),
                         fontBytes: try configuration.font.loadBytes(),
                         fontID: configuration.font.path,
                         fontName: configuration.font.name
@@ -555,6 +600,12 @@ struct RunsView: View {
                 lineHeight: .multiple(1.35),
                 paragraphStyles: configurations.map(\.style)
             )
+        }
+    }
+
+    private static func configuredFont(_ configuration: ParagraphConfiguration) -> Font {
+        configuration.variations.reduce(Font.system(size: configuration.fontSize)) {
+            $0.variation($1.key, value: $1.value)
         }
     }
 }

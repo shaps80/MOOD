@@ -62,9 +62,14 @@ struct OpenTypeShapingPlan {
 extension SFNT.GlyphSubstitution {
     func shapingPlan(
         script scriptTag: UInt32,
-        language languageTag: UInt32? = nil
+        language languageTag: UInt32? = nil,
+        coordinates: [Float] = []
     ) -> OpenTypeShapingPlan {
-        let active = activeLookups(script: scriptTag, language: languageTag)
+        let active = activeLookups(
+            script: scriptTag,
+            language: languageTag,
+            coordinates: coordinates
+        )
         var plannedLookups: [OpenTypeShapingPlan.Lookup] = []
         var singleRules: [OpenTypeShapingPlan.SingleRule] = []
         var multipleRules: [OpenTypeShapingPlan.SequenceRule] = []

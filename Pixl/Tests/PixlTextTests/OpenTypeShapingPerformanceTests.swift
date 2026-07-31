@@ -105,7 +105,8 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
             lookups: [
                 .init(index: 0, substitutions: singleRules),
                 .init(index: 1, substitutions: ligatureRules)
-            ]
+            ],
+            featureVariations: nil
         )
     }
 }

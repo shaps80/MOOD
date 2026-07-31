@@ -22,6 +22,23 @@ extension SFNT {
             | UInt32(bytes[offset + 2]) << 8
             | UInt32(bytes[offset + 3])
         }
+
+        func int32(at offset: Int) throws -> Int32 {
+            Int32(bitPattern: try uint32(at: offset))
+        }
+
+        func uint8(at offset: Int) throws -> UInt8 {
+            try require(offset, count: 1)
+            return bytes[offset]
+        }
+
+        func fixed16_16(at offset: Int) throws -> Float {
+            Float(try int32(at: offset)) / 65_536
+        }
+
+        func f2dot14(at offset: Int) throws -> Float {
+            Float(try int16(at: offset)) / 16_384
+        }
         
         func require(_ offset: Int, count: Int) throws {
             guard offset >= 0, count >= 0, offset <= bytes.count - count else {

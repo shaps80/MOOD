@@ -13,6 +13,12 @@ extension SFNT {
         private static let gsub: UInt32 = 0x4753_5542
         private static let gpos: UInt32 = 0x4750_4F53
         private static let gdef: UInt32 = 0x4744_4546
+        private static let fvar: UInt32 = 0x6676_6172
+        private static let avar: UInt32 = 0x6176_6172
+        private static let gvar: UInt32 = 0x6776_6172
+        private static let hvar: UInt32 = 0x4856_4152
+        private static let vvar: UInt32 = 0x5656_4152
+        private static let mvar: UInt32 = 0x4D56_4152
         
         struct ParsedFace {
             let metrics: SFNT.FaceMetrics
@@ -25,6 +31,9 @@ extension SFNT {
             let glyphSubstitution: GlyphSubstitution?
             let glyphPositioning: GlyphPositioning?
             let glyphDefinition: GlyphDefinition?
+            let variations: Variations?
+            let metricsVariations: MetricsVariations?
+            let glyphVariations: GlyphVariations?
         }
         
         static func parse(bytes: [UInt8]) throws -> ParsedFace {
@@ -54,6 +63,12 @@ extension SFNT {
             var gsubTable: Table?
             var gposTable: Table?
             var gdefTable: Table?
+            var fvarTable: Table?
+            var avarTable: Table?
+            var gvarTable: Table?
+            var hvarTable: Table?
+            var vvarTable: Table?
+            var mvarTable: Table?
             
             for index in 0..<Int(tableCount) {
                 let record = 12 + index * 16
@@ -76,6 +91,12 @@ extension SFNT {
                 case gsub: gsubTable = table
                 case gpos: gposTable = table
                 case gdef: gdefTable = table
+                case fvar: fvarTable = table
+                case avar: avarTable = table
+                case gvar: gvarTable = table
+                case hvar: hvarTable = table
+                case vvar: vvarTable = table
+                case mvar: mvarTable = table
                 default: break
                 }
             }
@@ -148,6 +169,26 @@ extension SFNT {
             let glyphDefinition = try gdefTable.map {
                 try GlyphDefinition.parse(table: $0, bytes: bytes)
             }
+            let variations = try Variations.parse(
+                fvar: fvarTable,
+                avar: avarTable,
+                bytes: bytes
+            )
+            if gvarTable != nil, variations == nil {
+                throw SFNT.RegistrationError.malformedRequiredTable
+            }
+            let metricsVariations = try MetricsVariations.parse(
+                hvar: hvarTable,
+                vvar: vvarTable,
+                mvar: mvarTable,
+                bytes: bytes
+            )
+            let glyphVariations = try GlyphVariations.parse(
+                table: gvarTable,
+                expectedAxisCount: variations?.axes.count ?? 0,
+                glyphCount: Int(glyphCount),
+                bytes: bytes
+            )
             if let glyphSubstitution {
                 for lookup in glyphSubstitution.lookups {
                     try GlyphDefinition.validate(
@@ -180,7 +221,10 @@ extension SFNT {
                 trueTypeOutlines: trueTypeOutlines,
                 glyphSubstitution: glyphSubstitution,
                 glyphPositioning: glyphPositioning,
-                glyphDefinition: glyphDefinition
+                glyphDefinition: glyphDefinition,
+                variations: variations,
+                metricsVariations: metricsVariations,
+                glyphVariations: glyphVariations
             )
         }
         

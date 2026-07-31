@@ -56,8 +56,13 @@ extension SFNT {
         let scripts: [Script]
         let features: [Feature]
         let lookups: [Lookup]
+        let featureVariations: OpenTypeFeatureVariations?
 
-        func activeLookups(script scriptTag: UInt32, language languageTag: UInt32?) -> [ActiveLookup] {
+        func activeLookups(
+            script scriptTag: UInt32,
+            language languageTag: UInt32?,
+            coordinates: [Float]
+        ) -> [ActiveLookup] {
             guard let script = scripts.first(where: { $0.tag == scriptTag })
                 ?? scripts.first(where: { $0.tag == 0x4446_4C54 }) // DFLT
             else {
@@ -74,11 +79,14 @@ extension SFNT {
             }
             featureIndices += language.featureIndices
 
+            let substitutions = featureVariations?.substitutions(coordinates: coordinates) ?? []
             var tagsByLookup = Array<UInt32?>(repeating: nil, count: lookups.count)
             for featureIndex in featureIndices where features.indices.contains(featureIndex) {
                 let feature = features[featureIndex]
                 guard Self.isInitiallyEnabled(feature: feature.tag) else { continue }
-                for lookupIndex in feature.lookupIndices
+                let alternate = substitutions
+                    .first(where: { $0.featureIndex == featureIndex })?.lookupIndices
+                for lookupIndex in alternate ?? feature.lookupIndices
                     where tagsByLookup.indices.contains(lookupIndex) && tagsByLookup[lookupIndex] == nil {
                     tagsByLookup[lookupIndex] = feature.tag
                 }
@@ -99,12 +107,10 @@ extension SFNT {
             guard majorVersion == 1, minorVersion == 0 || minorVersion == 1 else {
                 throw SFNT.RegistrationError.malformedRequiredTable
             }
+            var featureVariationsOffset = 0
             if minorVersion == 1 {
                 try require(table, relativeOffset: 0, count: 14)
-                let variationsOffset = Int(try reader.uint32(at: table.offset + 10))
-                if variationsOffset != 0 {
-                    try require(table, relativeOffset: variationsOffset, count: 8)
-                }
+                featureVariationsOffset = Int(try reader.uint32(at: table.offset + 10))
             }
             let scriptListOffset = Int(try reader.uint16(at: table.offset + 4))
             let featureListOffset = Int(try reader.uint16(at: table.offset + 6))
@@ -120,6 +126,13 @@ extension SFNT {
                 featureListOffset: featureListOffset,
                 reader: reader
             )
+            let featureVariations = featureVariationsOffset == 0 ? nil
+                : try OpenTypeFeatureVariations.parse(
+                    at: table.offset + featureVariationsOffset,
+                    table: table,
+                    featureCount: features.count,
+                    reader: reader
+                )
 
             guard lookupListOffset != 0 else {
                 try OpenTypeLayout.validateReferences(
@@ -127,7 +140,13 @@ extension SFNT {
                     features: features,
                     lookupCount: 0
                 )
-                return .init(scripts: scripts, features: features, lookups: [])
+                try featureVariations?.validate(lookupCount: 0)
+                return .init(
+                    scripts: scripts,
+                    features: features,
+                    lookups: [],
+                    featureVariations: featureVariations
+                )
             }
             let lookupList = table.offset + lookupListOffset
             try require(table, absoluteOffset: lookupList, count: 2)
@@ -189,7 +208,13 @@ extension SFNT {
                 features: features,
                 lookupCount: lookups.count
             )
-            return .init(scripts: scripts, features: features, lookups: lookups)
+            try featureVariations?.validate(lookupCount: lookups.count)
+            return .init(
+                scripts: scripts,
+                features: features,
+                lookups: lookups,
+                featureVariations: featureVariations
+            )
         }
 
         private static func parseScripts(

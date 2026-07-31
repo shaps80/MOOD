@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var font: PlaygroundFont = .senilita
+    @State private var font: PlaygroundFont = .sfPro
     @State private var fonts: [PlaygroundFont] = PlaygroundFont.initial
     @State private var selection: String = "runs"
 

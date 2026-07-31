@@ -2,8 +2,8 @@
 
 ## Current Slice
 
-1. Implement variable-font axes and instance selection.
-2. Validate interpolated metrics/outlines and OpenType variations against installed San Francisco variable fonts.
+1. Introduce viewport-driven non-contiguous paragraph layout.
+2. Add overscan, estimated offscreen geometry, and reuse of unchanged paragraph results.
 
 ## Completed Foundation
 
@@ -24,11 +24,13 @@
 - Soft and automatic English hyphenation insert shaped hyphen glyphs only when their chosen break is used. Portable checked-in pattern/exception data requires no platform dependency.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
 - Playground validation for shaping, break opportunities, words, lines, paragraphs, generated insertions, per-paragraph styling, capped/unlimited layout, safe line-limit clamping, minimum-line geometry, and automatic/inherited default metrics.
+- TrueType variable-font axes and named instances, clamped/normalized/`avar`-remapped coordinates, and descriptor axis selection.
+- `gvar` interpolation for simple and composite outlines; HVAR/VVAR/MVAR metrics; GSUB/GPOS FeatureVariations; GDEF/GPOS VariationIndex adjustments.
+- San Francisco variable-font validation across extreme weights, including changed advances and render geometry. Playground axis sliders drive each paragraph independently.
 
 ## Next Core Work
 
 - Additional language hyphenation policy/data and explicit no-wrap/no-hyphen source ranges.
-- Variable-font axes, interpolated outlines/metrics, FeatureVariations, ItemVariationStore, and Device adjustments; validate against installed San Francisco variable fonts.
 - Viewport-driven non-contiguous paragraph layout with overscan, estimated offscreen geometry, and reuse of unchanged paragraph results.
 - Promote the stable low-level records into public `Element`, `Paragraph`, and `Line` APIs without hiding contiguous glyph/range access.
 - Rasterisation/MSDF generation, dynamic atlas packing, cache ownership and lifetime.
@@ -37,6 +39,7 @@
 ## Later Systems
 
 - Head and middle truncation modes.
+- CFF/CFF2 outline parsing and variable outline imaging; the current outline path is TrueType `glyf`/`gvar`.
 - Embedded bitmap-strike parsing, selection, metrics, and extraction.
 - Bidirectional resolution and script-specific shaping/reordering/feature masks.
 - Higher-level editing/navigation APIs, including glyph-aware source selections, caret geometry, and hit testing.
