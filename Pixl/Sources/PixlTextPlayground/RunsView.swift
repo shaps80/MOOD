@@ -51,33 +51,47 @@ struct RunsView: View {
 
             Canvas { context, _ in
                 guard case .success(let information) = information else { return }
-                let contentFrame = rect(for: information.line.typographicBounds)
-                let lineFrame = rect(for: information.line.lineBounds)
-                let availableFrame = CGRect(
-                    x: Self.origin.x,
-                    y: lineFrame.minY,
-                    width: CGFloat(information.line.maximumWidth),
-                    height: lineFrame.height
-                )
-                context.stroke(
-                    Path(availableFrame),
-                    with: .color(.white.opacity(0.35)),
-                    style: .init(lineWidth: 1, dash: [8, 5])
-                )
-                context.stroke(
-                    Path(lineFrame),
-                    with: .color(.yellow),
-                    lineWidth: 2
-                )
-                context.stroke(
-                    Path(contentFrame),
-                    with: .color(.green),
-                    style: .init(lineWidth: 1, dash: [4, 3])
-                )
+                for (lineIndex, line) in information.lines.enumerated() {
+                    let contentFrame = rect(
+                        for: line.typographicBounds,
+                        lineIndex: lineIndex,
+                        information: information
+                    )
+                    let lineFrame = rect(
+                        for: line.lineBounds,
+                        lineIndex: lineIndex,
+                        information: information
+                    )
+                    let availableFrame = CGRect(
+                        x: Self.origin.x,
+                        y: lineFrame.minY,
+                        width: CGFloat(line.maximumWidth),
+                        height: lineFrame.height
+                    )
+                    context.stroke(
+                        Path(availableFrame),
+                        with: .color(.white.opacity(0.35)),
+                        style: .init(lineWidth: 1, dash: [8, 5])
+                    )
+                    context.stroke(
+                        Path(lineFrame),
+                        with: .color(.yellow),
+                        lineWidth: 2
+                    )
+                    context.stroke(
+                        Path(contentFrame),
+                        with: .color(.green),
+                        style: .init(lineWidth: 1, dash: [4, 3])
+                    )
+                }
                 for (index, glyph) in information.glyphs.enumerated() {
                     let color = Self.colors[glyph.runIndex % Self.colors.count]
                     context.stroke(
-                        Path(rect(for: glyph.typographicBounds)),
+                        Path(rect(
+                            for: glyph.typographicBounds,
+                            lineIndex: glyph.lineIndex,
+                            information: information
+                        )),
                         with: .color(color.opacity(index == hoveredGlyph ? 1 : 0.55)),
                         style: .init(
                             lineWidth: index == hoveredGlyph ? 2 : 1,
@@ -86,7 +100,11 @@ struct RunsView: View {
                     )
                     if let renderBounds = glyph.renderBounds {
                         context.stroke(
-                            Path(rect(for: renderBounds)),
+                            Path(rect(
+                                for: renderBounds,
+                                lineIndex: glyph.lineIndex,
+                                information: information
+                            )),
                             with: .color(color.opacity(index == hoveredGlyph ? 1 : 0.55)),
                             lineWidth: index == hoveredGlyph ? 2 : 1
                         )
@@ -99,9 +117,18 @@ struct RunsView: View {
                 case .active(let location):
                     guard case .success(let information) = information else { return }
                     let nextHoveredGlyph = information.glyphs.indices.last {
-                        rect(for: information.glyphs[$0].typographicBounds).contains(location)
+                        let glyph = information.glyphs[$0]
+                        return rect(
+                            for: glyph.typographicBounds,
+                            lineIndex: glyph.lineIndex,
+                            information: information
+                        ).contains(location)
                             || information.glyphs[$0].renderBounds.map {
-                                rect(for: $0).contains(location)
+                                rect(
+                                    for: $0,
+                                    lineIndex: glyph.lineIndex,
+                                    information: information
+                                ).contains(location)
                             } == true
                     }
                     guard hoveredGlyph != nextHoveredGlyph else { return }
@@ -181,19 +208,18 @@ struct RunsView: View {
                 LabeledContent("Glyph ID", value: glyph.glyphID.description)
                 LabeledContent("Advance", value: glyph.advance.description)
             } else {
-                LabeledContent("Consumed source", value: description(information.line.consumedSourceRange))
-                LabeledContent("Consumed glyphs", value: description(information.line.consumedGlyphRange))
-                LabeledContent("Visible glyphs", value: description(information.line.visibleGlyphRange))
-                LabeledContent("Break", value: information.line.breakKind.rawValue)
-                LabeledContent("Available", value: information.line.maximumWidth.description)
-                LabeledContent("Advance", value: information.line.advance.description)
-                LabeledContent("Ascent", value: information.line.ascent.description)
-                LabeledContent("Descent", value: information.line.descent.description)
-                LabeledContent("Leading", value: information.line.leading.description)
-                LabeledContent("Natural above", value: information.line.naturalAbove.description)
-                LabeledContent("Natural below", value: information.line.naturalBelow.description)
-                LabeledContent("Baseline offset", value: information.line.baselineOffset.description)
-                LabeledContent("Line height", value: information.line.lineBounds.height.description)
+                ForEach(information.lines.indices, id: \.self) { index in
+                    let line = information.lines[index]
+                    Section("Line \(index + 1)") {
+                        LabeledContent("Consumed source", value: description(line.consumedSourceRange))
+                        LabeledContent("Consumed glyphs", value: description(line.consumedGlyphRange))
+                        LabeledContent("Visible glyphs", value: description(line.visibleGlyphRange))
+                        LabeledContent("Break", value: line.breakKind.rawValue)
+                        LabeledContent("Advance", value: line.advance.description)
+                        LabeledContent("Baseline offset", value: line.baselineOffset.description)
+                        LabeledContent("Line height", value: line.lineBounds.height.description)
+                    }
+                }
             }
         case .failure(let error):
             Text(error.localizedDescription)
@@ -201,13 +227,34 @@ struct RunsView: View {
         }
     }
 
-    private func rect(for bounds: Font.GlyphDebugInfo.Bounds) -> CGRect {
+    private func rect(
+        for bounds: Font.GlyphDebugInfo.Bounds,
+        lineIndex: Int,
+        information: Font.RunDebugInfo
+    ) -> CGRect {
         CGRect(
             x: Self.origin.x + CGFloat(bounds.x),
-            y: Self.origin.y + CGFloat(bounds.y),
+            y: baselineY(for: lineIndex, information: information) + CGFloat(bounds.y),
             width: CGFloat(bounds.width),
             height: CGFloat(bounds.height)
         )
+    }
+
+    private func baselineY(
+        for lineIndex: Int,
+        information: Font.RunDebugInfo
+    ) -> CGFloat {
+        var baseline = Self.origin.y
+        guard lineIndex > 0 else { return baseline }
+        for index in 1...lineIndex {
+            let previous = information.lines[index - 1]
+            let current = information.lines[index]
+            baseline += CGFloat(
+                previous.lineBounds.height - previous.baselineOffset
+                    + current.baselineOffset
+            )
+        }
+        return baseline
     }
 
     private func description(_ range: Range<Int>) -> String {

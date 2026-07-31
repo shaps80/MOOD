@@ -48,6 +48,7 @@ extension Font {
         }
 
         package struct Glyph: Hashable, Sendable {
+            package let lineIndex: Int
             package let runIndex: Int
             package let glyphID: UInt16
             package let sourceRange: Range<Int>
@@ -88,6 +89,6 @@ extension Font {
         package let runs: [Run]
         package let glyphs: [Glyph]
         package let breaks: [Break]
-        package let line: Line
+        package let lines: [Line]
     }
 }

@@ -1,5 +1,27 @@
 enum LineComposer {
-    static func positionFirstLine(
+    static func start(
+        sourceUTF8Count: Int,
+        glyphs: Span<ShapingGlyph>,
+        runs: Span<GlyphRun>,
+        opportunities: Span<LineBreakOpportunity>
+    ) throws -> LineStart {
+        try validate(
+            sourceUTF8Count: sourceUTF8Count,
+            glyphs: glyphs,
+            runs: runs,
+            opportunities: opportunities
+        )
+        return .init(
+            sourceOffset: 0,
+            glyphIndex: 0,
+            runIndex: 0,
+            opportunityIndex: 0,
+            unitIndex: 0
+        )
+    }
+
+    static func positionLine(
+        from start: LineStart,
         sourceUTF8Count: Int,
         maximumWidth: Float,
         lineHeight: LineHeight,
@@ -9,19 +31,27 @@ enum LineComposer {
         units: Span<LineBreakUnit>,
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
-    ) throws -> PositionedLine {
+    ) throws -> LineComposition {
         workspace.removeAll()
-        try validate(
-            sourceUTF8Count: sourceUTF8Count,
-            maximumWidth: maximumWidth,
-            lineHeight: lineHeight,
-            glyphs: glyphs,
-            runs: runs,
-            opportunities: opportunities
-        )
+        guard maximumWidth >= 0,
+              maximumWidth.isFinite,
+              lineHeight.isValid,
+              start.sourceOffset >= 0,
+              start.sourceOffset <= sourceUTF8Count,
+              start.glyphIndex >= 0,
+              start.glyphIndex <= glyphs.count,
+              start.runIndex >= 0,
+              start.runIndex <= runs.count,
+              start.opportunityIndex >= 0,
+              start.opportunityIndex <= opportunities.count,
+              start.unitIndex >= 0,
+              start.unitIndex <= units.count
+        else {
+            throw LineLayoutError.invalidInput
+        }
 
         if glyphs.isEmpty {
-            return .init(
+            let line = PositionedLine(
                 consumedSourceRange: 0..<0,
                 consumedGlyphRange: 0..<0,
                 visibleGlyphRange: 0..<0,
@@ -37,22 +67,32 @@ enum LineComposer {
                 lineBounds: .init(x: 0, y: 0, width: 0, height: 0),
                 renderBounds: nil
             )
+            return .init(line: line, next: nil)
+        }
+
+        guard start.glyphIndex < glyphs.count,
+              start.runIndex < runs.count,
+              start.opportunityIndex < opportunities.count,
+              start.unitIndex < units.count,
+              glyphs[start.glyphIndex].sourceRange.lowerBound == start.sourceOffset
+        else {
+            throw LineLayoutError.invalidInput
         }
 
         var penX: Float = 0
         var visibleAdvance: Float = 0
-        var visibleGlyphEnd = 0
+        var visibleGlyphEnd = start.glyphIndex
         var ascent: Float = 0
         var descent: Float = 0
         var leading: Float = 0
         var naturalAbove: Float = 0
         var naturalBelow: Float = 0
         var renderBounds: PositionedLine.Bounds?
-        var runIndex = 0
+        var runIndex = start.runIndex
         var measuredRunIndex: Int?
-        var unitIndex = 0
-        var opportunityIndex = 0
-        var glyphIndex = 0
+        var unitIndex = start.unitIndex
+        var opportunityIndex = start.opportunityIndex
+        var glyphIndex = start.glyphIndex
         var lastFittingCandidate: Candidate?
 
         while glyphIndex < glyphs.count {
@@ -67,11 +107,12 @@ enum LineComposer {
                   units[unitIndex].sourceOffset < clusterRange.lowerBound {
                 unitIndex += 1
             }
-            let attributes = clusterAttributes(
+            let cluster = clusterAttributes(
                 sourceRange: clusterRange,
                 startingAt: unitIndex,
                 units: units
             )
+            let attributes = cluster.attributes
 
             for index in glyphIndex..<clusterEnd {
                 while runIndex < runs.count,
@@ -125,6 +166,12 @@ enum LineComposer {
                 visibleAdvance = penX
             }
 
+            var nextRunIndex = runIndex
+            while nextRunIndex < runs.count,
+                  clusterEnd >= runs[nextRunIndex].glyphRange.upperBound {
+                nextRunIndex += 1
+            }
+
             while opportunityIndex < opportunities.count,
                   opportunities[opportunityIndex].sourceOffset < clusterRange.upperBound {
                 opportunityIndex += 1
@@ -132,10 +179,12 @@ enum LineComposer {
             while opportunityIndex < opportunities.count,
                   opportunities[opportunityIndex].sourceOffset == clusterRange.upperBound {
                 let opportunity = opportunities[opportunityIndex]
+                let nextOpportunityIndex = opportunityIndex + 1
                 let candidate = Candidate(
                     sourceEnd: opportunity.sourceOffset,
                     glyphEnd: clusterEnd,
                     visibleGlyphEnd: visibleGlyphEnd,
+                    positionCount: clusterEnd - start.glyphIndex,
                     breakKind: opportunity.kind,
                     advance: visibleAdvance,
                     ascent: ascent,
@@ -143,36 +192,58 @@ enum LineComposer {
                     leading: leading,
                     naturalAbove: naturalAbove,
                     naturalBelow: naturalBelow,
-                    renderBounds: renderBounds
+                    renderBounds: renderBounds,
+                    nextRunIndex: nextRunIndex,
+                    nextOpportunityIndex: nextOpportunityIndex,
+                    nextUnitIndex: cluster.nextUnitIndex
                 )
 
                 if candidate.advance > maximumWidth {
                     return finish(
                         lastFittingCandidate ?? candidate,
+                        start: start,
+                        sourceUTF8Count: sourceUTF8Count,
+                        glyphCount: glyphs.count,
                         lineHeight: lineHeight,
                         workspace: &workspace
                     )
                 }
                 if opportunity.kind == .mandatory {
-                    return finish(candidate, lineHeight: lineHeight, workspace: &workspace)
+                    return finish(
+                        candidate,
+                        start: start,
+                        sourceUTF8Count: sourceUTF8Count,
+                        glyphCount: glyphs.count,
+                        lineHeight: lineHeight,
+                        workspace: &workspace
+                    )
                 }
                 lastFittingCandidate = candidate
-                opportunityIndex += 1
+                opportunityIndex = nextOpportunityIndex
             }
 
+            unitIndex = cluster.nextUnitIndex
             glyphIndex = clusterEnd
         }
 
         guard let candidate = lastFittingCandidate else {
             throw LineLayoutError.invalidInput
         }
-        return finish(candidate, lineHeight: lineHeight, workspace: &workspace)
+        return finish(
+            candidate,
+            start: start,
+            sourceUTF8Count: sourceUTF8Count,
+            glyphCount: glyphs.count,
+            lineHeight: lineHeight,
+            workspace: &workspace
+        )
     }
 
     private struct Candidate {
         let sourceEnd: Int
         let glyphEnd: Int
         let visibleGlyphEnd: Int
+        let positionCount: Int
         let breakKind: LineBreakKind
         let advance: Float
         let ascent: Float
@@ -181,6 +252,9 @@ enum LineComposer {
         let naturalAbove: Float
         let naturalBelow: Float
         let renderBounds: PositionedLine.Bounds?
+        let nextRunIndex: Int
+        let nextOpportunityIndex: Int
+        let nextUnitIndex: Int
     }
 
     private struct ClusterAttributes {
@@ -188,11 +262,16 @@ enum LineComposer {
         let consumesAdvance: Bool
     }
 
+    private struct Cluster {
+        let attributes: ClusterAttributes
+        let nextUnitIndex: Int
+    }
+
     private static func clusterAttributes(
         sourceRange: Range<Int>,
         startingAt start: Int,
         units: Span<LineBreakUnit>
-    ) -> ClusterAttributes {
+    ) -> Cluster {
         var index = start
         var hasVisibleScalar = false
         var hasSpace = false
@@ -206,8 +285,11 @@ enum LineComposer {
             index += 1
         }
         return .init(
-            isVisible: hasVisibleScalar,
-            consumesAdvance: hasVisibleScalar || hasSpace
+            attributes: .init(
+                isVisible: hasVisibleScalar,
+                consumesAdvance: hasVisibleScalar || hasSpace
+            ),
+            nextUnitIndex: index
         )
     }
 
@@ -218,20 +300,23 @@ enum LineComposer {
 
     private static func finish(
         _ candidate: Candidate,
+        start: LineStart,
+        sourceUTF8Count: Int,
+        glyphCount: Int,
         lineHeight: LineHeight,
         workspace: inout LineLayoutWorkspace
-    ) -> PositionedLine {
-        let excess = workspace.positions.count - candidate.glyphEnd
+    ) -> LineComposition {
+        let excess = workspace.positions.count - candidate.positionCount
         workspace.positions.removeLast(excess)
         let naturalHeight = candidate.naturalAbove + candidate.naturalBelow
         let resolvedHeight = lineHeight.resolve(natural: naturalHeight)
         let halfAdjustment = (resolvedHeight - naturalHeight) * 0.5
         let resolvedAbove = candidate.naturalAbove + halfAdjustment
         let resolvedBelow = candidate.naturalBelow + halfAdjustment
-        return .init(
-            consumedSourceRange: 0..<candidate.sourceEnd,
-            consumedGlyphRange: 0..<candidate.glyphEnd,
-            visibleGlyphRange: 0..<candidate.visibleGlyphEnd,
+        let line = PositionedLine(
+            consumedSourceRange: start.sourceOffset..<candidate.sourceEnd,
+            consumedGlyphRange: start.glyphIndex..<candidate.glyphEnd,
+            visibleGlyphRange: start.glyphIndex..<candidate.visibleGlyphEnd,
             breakKind: candidate.breakKind,
             advance: candidate.advance,
             ascent: candidate.ascent,
@@ -254,6 +339,16 @@ enum LineComposer {
             ),
             renderBounds: candidate.renderBounds
         )
+        let isComplete = candidate.sourceEnd == sourceUTF8Count
+            && candidate.glyphEnd == glyphCount
+        let next: LineStart? = isComplete ? nil : .init(
+            sourceOffset: candidate.sourceEnd,
+            glyphIndex: candidate.glyphEnd,
+            runIndex: candidate.nextRunIndex,
+            opportunityIndex: candidate.nextOpportunityIndex,
+            unitIndex: candidate.nextUnitIndex
+        )
+        return .init(line: line, next: next)
     }
 
     private static func union(
@@ -270,16 +365,11 @@ enum LineComposer {
 
     private static func validate(
         sourceUTF8Count: Int,
-        maximumWidth: Float,
-        lineHeight: LineHeight,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>
     ) throws {
         guard sourceUTF8Count >= 0,
-              maximumWidth >= 0,
-              maximumWidth.isFinite,
-              lineHeight.isValid,
               !opportunities.isEmpty,
               opportunities[opportunities.count - 1].sourceOffset == sourceUTF8Count,
               opportunities[opportunities.count - 1].kind == .mandatory
