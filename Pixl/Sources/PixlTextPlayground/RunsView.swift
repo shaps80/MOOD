@@ -7,6 +7,7 @@ struct RunsView: View {
     A second paragraph gives us enough text to exercise wrapping across several future lines.
     """
     private static let origin = CGPoint(x: 40, y: 170)
+    private static let lineWidth: Float = 520
     private static let colors: [Color] = [.cyan, .orange]
 
     @State private var isShowing: Bool = true
@@ -37,7 +38,8 @@ struct RunsView: View {
                         fontID: secondFont.path,
                         fontName: secondFont.name
                     )
-                ]
+                ],
+                maximumLineWidth: Self.lineWidth
             )
         }
     }
@@ -48,6 +50,23 @@ struct RunsView: View {
 
             Canvas { context, _ in
                 guard case .success(let information) = information else { return }
+                let lineFrame = rect(for: information.line.typographicBounds)
+                let availableFrame = CGRect(
+                    x: Self.origin.x,
+                    y: lineFrame.minY,
+                    width: CGFloat(information.line.maximumWidth),
+                    height: lineFrame.height
+                )
+                context.stroke(
+                    Path(availableFrame),
+                    with: .color(.white.opacity(0.35)),
+                    style: .init(lineWidth: 1, dash: [8, 5])
+                )
+                context.stroke(
+                    Path(lineFrame),
+                    with: .color(.yellow),
+                    lineWidth: 2
+                )
                 for (index, glyph) in information.glyphs.enumerated() {
                     let color = Self.colors[glyph.runIndex % Self.colors.count]
                     context.stroke(
@@ -119,8 +138,19 @@ struct RunsView: View {
                 decoding: bytes[lowerBound..<opportunity.sourceOffset],
                 as: UTF8.self
             )
-            let marker = opportunity.kind == .mandatory ? "↵" : "│"
-            let color: Color = opportunity.kind == .mandatory ? .red : .yellow
+            let marker: String
+            let color: Color
+            switch opportunity.kind {
+            case .allowed:
+                marker = "│"
+                color = .yellow
+            case .softHyphen:
+                marker = "‐"
+                color = .orange
+            case .mandatory:
+                marker = "↵"
+                color = .red
+            }
             result = result + Text(segment) + Text(marker).foregroundColor(color)
             lowerBound = opportunity.sourceOffset
         }
@@ -144,7 +174,15 @@ struct RunsView: View {
                 LabeledContent("Glyph ID", value: glyph.glyphID.description)
                 LabeledContent("Advance", value: glyph.advance.description)
             } else {
-                Text("Hover over a glyph bound")
+                LabeledContent("Consumed source", value: description(information.line.consumedSourceRange))
+                LabeledContent("Consumed glyphs", value: description(information.line.consumedGlyphRange))
+                LabeledContent("Visible glyphs", value: description(information.line.visibleGlyphRange))
+                LabeledContent("Break", value: information.line.breakKind.rawValue)
+                LabeledContent("Available", value: information.line.maximumWidth.description)
+                LabeledContent("Advance", value: information.line.advance.description)
+                LabeledContent("Ascent", value: information.line.ascent.description)
+                LabeledContent("Descent", value: information.line.descent.description)
+                LabeledContent("Leading", value: information.line.leading.description)
             }
         case .failure(let error):
             Text(error.localizedDescription)

@@ -1,17 +1,5 @@
-struct LineBreakUnit: Sendable {
-    let scalar: UInt32
-    let sourceOffset: Int
-    let raw: UnicodeLineBreakProperty
-    let resolved: UnicodeLineBreakProperty
-    let isAttached: Bool
-    let isEastAsian: Bool
-    let isInitialPunctuation: Bool
-    let isFinalPunctuation: Bool
-    let isExtendedPictographic: Bool
-}
-
-struct LineBreakUnitBuffer: ~Copyable {
-    private var storage: UnsafeMutablePointer<LineBreakUnit>?
+struct PositionedGlyphBuffer: ~Copyable {
+    private var storage: UnsafeMutablePointer<PositionedGlyph>?
     private(set) var count: Int
     private(set) var capacity: Int
 
@@ -27,15 +15,22 @@ struct LineBreakUnitBuffer: ~Copyable {
         storage?.deallocate()
     }
 
-    subscript(index: Int) -> LineBreakUnit {
+    subscript(index: Int) -> PositionedGlyph {
         precondition(index >= 0 && index < count)
         return storage![index]
     }
 
-    mutating func append(_ unit: consuming LineBreakUnit) {
+    mutating func append(_ position: consuming PositionedGlyph) {
         ensureCapacity(for: count + 1)
-        storage!.advanced(by: count).initialize(to: unit)
+        storage!.advanced(by: count).initialize(to: position)
         count += 1
+    }
+
+    mutating func removeLast(_ amount: Int) {
+        precondition(amount >= 0 && amount <= count)
+        guard amount > 0 else { return }
+        storage!.advanced(by: count - amount).deinitialize(count: amount)
+        count -= amount
     }
 
     mutating func removeAll(keepingCapacity: Bool = true) {
@@ -49,7 +44,7 @@ struct LineBreakUnitBuffer: ~Copyable {
     }
 
     func withSpan<Result: ~Copyable>(
-        _ body: (Span<LineBreakUnit>) throws -> Result
+        _ body: (Span<PositionedGlyph>) throws -> Result
     ) rethrows -> Result {
         let buffer = UnsafeBufferPointer(start: storage, count: count)
         return try body(unsafe Span(_unsafeElements: buffer))
@@ -58,7 +53,7 @@ struct LineBreakUnitBuffer: ~Copyable {
     private mutating func ensureCapacity(for required: Int) {
         guard required > capacity else { return }
         let newCapacity = max(required, max(16, capacity * 2))
-        let newStorage = UnsafeMutablePointer<LineBreakUnit>.allocate(capacity: newCapacity)
+        let newStorage = UnsafeMutablePointer<PositionedGlyph>.allocate(capacity: newCapacity)
         if let storage, count > 0 {
             newStorage.moveInitialize(from: storage, count: count)
             storage.deallocate()

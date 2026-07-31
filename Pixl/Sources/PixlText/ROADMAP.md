@@ -12,10 +12,9 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Define a single positioned line record that selects opportunities against width.
-2. Add wrapping across multiple positioned lines.
-3. Define paragraph layout over positioned lines.
-4. Add bidirectional resolution and script-specific shaping stages later.
+1. Add wrapping across multiple positioned lines.
+2. Define paragraph layout over positioned lines.
+3. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
 
@@ -29,7 +28,10 @@ The final package name and target boundaries remain open.
 - Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
 - Source `TextRun` records and output `GlyphRun` records are separate. Run execution borrows contiguous run and precompiled-plan columns through call-local spans and writes all results into shared reusable glyph/run buffers.
 - Unicode 16.0 line-breaking classification writes sparse allowed/mandatory UTF-8 offsets into reusable caller-owned storage; prohibited boundaries are implicit.
+- Unicode no-break controls are authoritative: word joiner, non-breaking space, and non-breaking hyphen suppress opportunities across their protected boundaries. Future automatic hyphenation must preserve them.
 - Line-breaking opportunities are visually validated with long text and an explicit mandatory break in the playground.
+- Single-line composition selects the last fitting legal opportunity without splitting glyph clusters. Its compact record separates consumed and visible ranges, references reusable contiguous position storage, preserves unbreakable overflow, and reports line metrics plus typographic and render bounds.
+- Single-line composition is visually validated across shaped text: trailing whitespace is consumed but excluded from visible width, and the selected line remains within the available width.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
@@ -40,6 +42,7 @@ The final package name and target boundaries remain open.
 - Variable-font FeatureVariations/ItemVariationStore evaluation and size-specific Device adjustments.
 - Optional future AAT `morx`/`kerx` support for fonts whose advanced shaping is not expressed through OpenType Layout.
 - Exact low-level line and paragraph records.
+- Language-aware automatic hyphenation, discretionary break insertion, and explicit no-wrap/no-hyphenation source ranges.
 - Bidirectional implementation boundary.
 - Rasterisation and MSDF-generation implementation.
 - Bitmap-strike parsing, pixel-size selection, metrics, and glyph-image extraction.

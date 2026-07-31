@@ -52,6 +52,7 @@ extension Font {
         package struct Break: Hashable, Sendable {
             package enum Kind: String, Hashable, Sendable {
                 case allowed = "Allowed"
+                case softHyphen = "Soft hyphen"
                 case mandatory = "Mandatory"
             }
 
@@ -59,8 +60,24 @@ extension Font {
             package let kind: Kind
         }
 
+        package struct Line: Hashable, Sendable {
+            package let maximumWidth: Float
+            package let consumedSourceRange: Range<Int>
+            package let consumedGlyphRange: Range<Int>
+            package let visibleGlyphRange: Range<Int>
+            package let breakKind: Break.Kind
+            package let advance: Float
+            package let ascent: Float
+            package let descent: Float
+            package let leading: Float
+            package let baselineOffset: Float
+            package let typographicBounds: GlyphDebugInfo.Bounds
+            package let renderBounds: GlyphDebugInfo.Bounds?
+        }
+
         package let runs: [Run]
         package let glyphs: [Glyph]
         package let breaks: [Break]
+        package let line: Line
     }
 }

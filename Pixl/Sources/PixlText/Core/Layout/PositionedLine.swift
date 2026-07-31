@@ -1,0 +1,20 @@
+struct PositionedLine: Hashable, Sendable {
+    struct Bounds: Hashable, Sendable {
+        let x: Float
+        let y: Float
+        let width: Float
+        let height: Float
+    }
+
+    let consumedSourceRange: Range<Int>
+    let consumedGlyphRange: Range<Int>
+    let visibleGlyphRange: Range<Int>
+    let breakKind: LineBreakKind
+    let advance: Float
+    let ascent: Float
+    let descent: Float
+    let leading: Float
+    let baselineOffset: Float
+    let typographicBounds: Bounds
+    let renderBounds: Bounds?
+}

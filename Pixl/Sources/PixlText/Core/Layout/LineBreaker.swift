@@ -12,8 +12,10 @@ enum LineBreaker {
         }
 
         for boundary in 1...workspace.units.count {
-            let kind = breakKind(at: boundary, in: workspace.units)
-            if let kind {
+            if var kind = breakKind(at: boundary, in: workspace.units) {
+                if kind == .allowed, workspace.units[boundary - 1].scalar == 0x00AD {
+                    kind = .softHyphen
+                }
                 let offset = boundary == workspace.units.count
                     ? text.utf8.count
                     : workspace.units[boundary].sourceOffset
