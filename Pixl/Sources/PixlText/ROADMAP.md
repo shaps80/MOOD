@@ -2,9 +2,8 @@
 
 ## Current Slice
 
-1. Visually validate unlimited/capped layout and complete/overflow status.
-2. Visually validate minimum-line reservation and empty-source base-font geometry.
-3. Implement cluster-safe trailing ellipsis with reserved shaped-token advance.
+1. Implement cluster-safe trailing ellipsis with reserved shaped-token advance.
+2. Validate truncation across mixed-font runs and narrow widths.
 
 ## Completed Foundation
 
@@ -20,13 +19,13 @@
 - Alignment retains baseline-local glyph positions and stores one horizontal origin per line.
 - `LayoutConstraints`, `LineLimit`, and `Overflow` values; maximum line count stops composition cleanly and returns complete/overflow status.
 - Minimum-line reservation derives overall geometry from base-font metrics without synthetic content or line records; empty source retains one base-font insertion line.
+- `DefaultLineMetrics` selects automatic base-font or inherited final-line geometry for otherwise metric-less lines.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
-- Playground validation for shaping, break opportunities, words, lines, multiple paragraphs, and tap-selected per-paragraph styling.
+- Playground validation for shaping, break opportunities, words, lines, paragraphs, per-paragraph styling, capped/unlimited layout, safe line-limit clamping, minimum-line geometry, and automatic/inherited default metrics.
 
 ## Next Core Work
 
-- First `Overflow` implementation after reserved minimum-line height: cluster-safe trailing ellipsis with reserved shaped-token advance.
-- Reserved minimum-line height without synthetic line records.
+- Cluster-safe trailing ellipsis with reserved shaped-token advance.
 - Automatic language-aware hyphenation; explicit no-wrap/no-hyphen source ranges.
 - Bidirectional resolution and script-specific shaping/reordering/feature masks.
 - Variable-font FeatureVariations/ItemVariationStore and Device adjustments.

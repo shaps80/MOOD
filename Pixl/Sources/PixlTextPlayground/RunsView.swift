@@ -36,6 +36,7 @@ struct RunsView: View {
     @State private var minimumLines: UInt = 0
     @State private var maximumLines: UInt = 0
     @State private var overflow = PixlText.Overflow.visible
+    @State private var defaultLineMetrics = PixlText.DefaultLineMetrics.automatic
     @State private var configurations: [ParagraphConfiguration]
     @State private var information: Result<Font.RunDebugInfo, Error>
 
@@ -58,7 +59,8 @@ struct RunsView: View {
             configurations,
             minimumLines: 0,
             maximumLines: 0,
-            overflow: .visible
+            overflow: .visible,
+            defaultLineMetrics: .automatic
         ))
     }
 
@@ -184,7 +186,8 @@ struct RunsView: View {
                 configurations,
                 minimumLines: minimumLines,
                 maximumLines: maximumLines,
-                overflow: overflow
+                overflow: overflow,
+                defaultLineMetrics: defaultLineMetrics
             )
         }
         .onChange(of: minimumLines) { _, minimumLines in
@@ -192,7 +195,8 @@ struct RunsView: View {
                 configurations,
                 minimumLines: minimumLines,
                 maximumLines: maximumLines,
-                overflow: overflow
+                overflow: overflow,
+                defaultLineMetrics: defaultLineMetrics
             )
         }
         .onChange(of: maximumLines) { _, maximumLines in
@@ -200,7 +204,8 @@ struct RunsView: View {
                 configurations,
                 minimumLines: minimumLines,
                 maximumLines: maximumLines,
-                overflow: overflow
+                overflow: overflow,
+                defaultLineMetrics: defaultLineMetrics
             )
         }
         .onChange(of: overflow) { _, overflow in
@@ -208,7 +213,17 @@ struct RunsView: View {
                 configurations,
                 minimumLines: minimumLines,
                 maximumLines: maximumLines,
-                overflow: overflow
+                overflow: overflow,
+                defaultLineMetrics: defaultLineMetrics
+            )
+        }
+        .onChange(of: defaultLineMetrics) { _, defaultLineMetrics in
+            information = Self.makeInformation(
+                configurations,
+                minimumLines: minimumLines,
+                maximumLines: maximumLines,
+                overflow: overflow,
+                defaultLineMetrics: defaultLineMetrics
             )
         }
     }
@@ -280,6 +295,10 @@ struct RunsView: View {
                     Text("Visible").tag(PixlText.Overflow.visible)
                     Text("Clip").tag(PixlText.Overflow.clip)
                     Text("Trailing ellipsis").tag(PixlText.Overflow.trailingEllipsis)
+                }
+                Picker("Default line metrics", selection: $defaultLineMetrics) {
+                    Text("Automatic").tag(PixlText.DefaultLineMetrics.automatic)
+                    Text("Inherited").tag(PixlText.DefaultLineMetrics.inherited)
                 }
                 LabeledContent(
                     "Status",
@@ -473,7 +492,8 @@ struct RunsView: View {
         _ configurations: [ParagraphConfiguration],
         minimumLines: UInt,
         maximumLines: UInt,
-        overflow: PixlText.Overflow
+        overflow: PixlText.Overflow,
+        defaultLineMetrics: PixlText.DefaultLineMetrics
     ) -> Result<Font.RunDebugInfo, Error> {
         Result {
             let baseConfiguration = configurations[0]
@@ -510,7 +530,8 @@ struct RunsView: View {
                 constraints: .init(
                     width: lineWidth,
                     lines: .init(minimum: minimumLines, maximum: maximumLines),
-                    overflow: overflow
+                    overflow: overflow,
+                    defaultLineMetrics: defaultLineMetrics
                 ),
                 lineHeight: .multiple(1.35),
                 paragraphStyles: configurations.map(\.style)

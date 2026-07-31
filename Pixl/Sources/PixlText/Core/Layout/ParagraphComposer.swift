@@ -175,7 +175,15 @@ enum ParagraphComposer {
         let naturalBaseHeight = baseMetrics.ascent
             + baseMetrics.descent
             + max(0, baseMetrics.leading)
-        let reservedLineHeight = lineHeight.resolve(natural: naturalBaseHeight)
+        let baseLineHeight = lineHeight.resolve(natural: naturalBaseHeight)
+        let defaultLineHeight: Float = switch constraints.defaultLineMetrics {
+        case .automatic:
+            baseLineHeight
+        case .inherited:
+            workspace.lines.count > 0
+                ? workspace.lines[workspace.lines.count - 1].lineBounds.height
+                : baseLineHeight
+        }
         let contentHeight: Float
         if workspace.paragraphs.count > 0 {
             let bounds = workspace.paragraphs[workspace.paragraphs.count - 1].bounds
@@ -189,7 +197,7 @@ enum ParagraphComposer {
                 x: 0,
                 y: 0,
                 width: constraints.width,
-                height: contentHeight + Float(reservedLineCount) * reservedLineHeight
+                height: contentHeight + Float(reservedLineCount) * defaultLineHeight
             ),
             reservedLineCount: reservedLineCount
         )
