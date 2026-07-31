@@ -12,6 +12,7 @@
 - Platform-independent Unicode 16 NFC, Script data, and UAX #14 line opportunities.
 - Data-oriented shaping with flat indexed GSUB/GPOS/GDEF plans and reusable caller-owned buffers.
 - Source/glyph cluster mapping, mixed-font runs, positioning, typographic/render bounds.
+- Required base-font layout input with internally resolved sparse range overrides.
 - Resumable single-line composition and uncapped full multi-line composition.
 - Natural/custom line height, independent line spacing, baseline-local positions, document baselines.
 - Paragraph grouping, spacing, source/line ranges, bounds, render bounds, and first/last baselines.

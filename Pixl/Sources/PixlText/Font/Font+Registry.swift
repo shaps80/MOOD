@@ -9,6 +9,7 @@ extension Font {
 
         enum Error: Swift.Error {
             case systemFontNotRegistered
+            case invalidFontOverrideRanges
         }
 
         static let shared = Registry()
@@ -225,18 +226,28 @@ extension Font {
 
         func runDebugInfo(
             in text: String,
-            inputs: [RunDebugInfo.Input],
+            font: RunDebugInfo.FontInput,
+            overrides: [RunDebugInfo.Input],
             constraints: LayoutConstraints,
             lineHeight debugLineHeight: RunDebugInfo.LineHeight,
             paragraphStyles: [ParagraphStyle]
         ) throws -> RunDebugInfo {
-            var textRuns: [TextRun] = []
             var substitutionPlans: [OpenTypeShapingPlan] = []
             var positioningPlans: [OpenTypePositioningPlan] = []
-            textRuns.reserveCapacity(inputs.count)
-            for input in inputs {
-                let face = try loadDebugFace(bytes: input.fontBytes, id: input.fontID)
-                let script = Self.script(in: text, sourceRange: input.sourceRange)
+            var workspace = ShapingWorkspace(
+                minimumGlyphCapacity: text.utf8.count,
+                minimumRunCapacity: overrides.count * 2 + 1
+            )
+            try forEachResolvedRunInput(
+                sourceCount: text.utf8.count,
+                font: font,
+                overrides: overrides
+            ) { sourceRange, input in
+                let face = try loadDebugFace(
+                    bytes: input.fontBytes,
+                    id: input.fontID
+                )
+                let script = Self.script(in: text, sourceRange: sourceRange)
                 let substitutionPlanIndex = sfnt.glyphSubstitution(in: face).map {
                     let index = substitutionPlans.count
                     substitutionPlans.append($0.shapingPlan(script: script.tag))
@@ -247,11 +258,13 @@ extension Font {
                     positioningPlans.append($0.positioningPlan(script: script.tag))
                     return index
                 }
-                textRuns.append(.init(
-                    sourceRange: input.sourceRange,
+                workspace.inputRuns.append(.init(
+                    sourceRange: sourceRange,
                     face: face,
                     size: input.font.descriptor.size,
-                    direction: input.direction == .leftToRight ? .leftToRight : .rightToLeft,
+                    direction: input.direction == .leftToRight
+                        ? .leftToRight
+                        : .rightToLeft,
                     script: script,
                     language: nil,
                     substitutionPlanIndex: substitutionPlanIndex,
@@ -259,22 +272,15 @@ extension Font {
                 ))
             }
 
-            var workspace = ShapingWorkspace(
-                minimumGlyphCapacity: text.utf8.count,
-                minimumRunCapacity: inputs.count
-            )
-            try textRuns.withUnsafeBufferPointer { buffer in
-                try substitutionPlans.withUnsafeBufferPointer { substitutions in
-                    try positioningPlans.withUnsafeBufferPointer { positioning in
-                        try RunShaper.shape(
-                            text,
-                            runs: unsafe Span(_unsafeElements: buffer),
-                            substitutionPlans: unsafe Span(_unsafeElements: substitutions),
-                            positioningPlans: unsafe Span(_unsafeElements: positioning),
-                            registry: sfnt,
-                            workspace: &workspace
-                        )
-                    }
+            try substitutionPlans.withUnsafeBufferPointer { substitutions in
+                try positioningPlans.withUnsafeBufferPointer { positioning in
+                    try RunShaper.shape(
+                        text,
+                        substitutionPlans: unsafe Span(_unsafeElements: substitutions),
+                        positioningPlans: unsafe Span(_unsafeElements: positioning),
+                        registry: sfnt,
+                        workspace: &workspace
+                    )
                 }
             }
 
@@ -288,7 +294,11 @@ extension Font {
                         source: String(decoding: sourceBytes[run.sourceRange], as: UTF8.self),
                         sourceRange: run.sourceRange,
                         glyphRange: run.glyphRange,
-                        fontName: inputs[index].fontName,
+                        fontName: Self.fontInput(
+                            at: run.sourceRange.lowerBound,
+                            font: font,
+                            overrides: overrides
+                        ).fontName,
                         size: run.size,
                         direction: run.direction == .leftToRight
                             ? .leftToRight
@@ -480,6 +490,48 @@ extension Font {
                 paragraphs: debugParagraphs,
                 status: layoutStatus
             )
+        }
+
+        private func forEachResolvedRunInput(
+            sourceCount: Int,
+            font: RunDebugInfo.FontInput,
+            overrides: [RunDebugInfo.Input],
+            _ body: (Range<Int>, RunDebugInfo.FontInput) throws -> Void
+        ) throws {
+            guard sourceCount > 0 else {
+                guard overrides.isEmpty else { throw Error.invalidFontOverrideRanges }
+                return
+            }
+
+            var sourceOffset = 0
+            for override in overrides {
+                let range = override.sourceRange
+                guard !range.isEmpty,
+                      range.lowerBound >= sourceOffset,
+                      range.upperBound <= sourceCount
+                else {
+                    throw Error.invalidFontOverrideRanges
+                }
+                if sourceOffset < range.lowerBound {
+                    try body(sourceOffset..<range.lowerBound, font)
+                }
+                try body(range, override.font)
+                sourceOffset = range.upperBound
+            }
+            if sourceOffset < sourceCount {
+                try body(sourceOffset..<sourceCount, font)
+            }
+        }
+
+        private static func fontInput(
+            at sourceOffset: Int,
+            font: RunDebugInfo.FontInput,
+            overrides: [RunDebugInfo.Input]
+        ) -> RunDebugInfo.FontInput {
+            for override in overrides where override.sourceRange.contains(sourceOffset) {
+                return override.font
+            }
+            return font
         }
 
         private static func debugWords(

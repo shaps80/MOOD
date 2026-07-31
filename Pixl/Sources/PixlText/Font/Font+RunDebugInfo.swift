@@ -12,8 +12,7 @@ extension Font {
             case rightToLeft = "Right to left"
         }
 
-        package struct Input: Sendable {
-            package let sourceRange: Range<Int>
+        package struct FontInput: Sendable {
             package let font: Font
             package let fontBytes: [UInt8]
             package let fontID: String
@@ -21,19 +20,27 @@ extension Font {
             package let direction: Direction
 
             package init(
-                sourceRange: Range<Int>,
                 font: Font,
                 fontBytes: [UInt8],
                 fontID: String,
                 fontName: String,
                 direction: Direction = .leftToRight
             ) {
-                self.sourceRange = sourceRange
                 self.font = font
                 self.fontBytes = fontBytes
                 self.fontID = fontID
                 self.fontName = fontName
                 self.direction = direction
+            }
+        }
+
+        package struct Input: Sendable {
+            package let sourceRange: Range<Int>
+            package let font: FontInput
+
+            package init(sourceRange: Range<Int>, font: FontInput) {
+                self.sourceRange = sourceRange
+                self.font = font
             }
         }
 

@@ -1,17 +1,16 @@
 enum RunShaper {
     static func shape(
         _ text: String,
-        runs inputRuns: Span<TextRun>,
         substitutionPlans: Span<OpenTypeShapingPlan>,
         positioningPlans: Span<OpenTypePositioningPlan>,
         registry: borrowing SFNT.Registry,
         workspace: inout ShapingWorkspace
     ) throws {
-        workspace.removeAll()
-        try validate(inputRuns, sourceCount: text.utf8.count)
+        workspace.removeOutput()
+        try validate(workspace.inputRuns, sourceCount: text.utf8.count)
 
-        for runIndex in inputRuns.indices {
-            let input = inputRuns[runIndex]
+        for runIndex in 0..<workspace.inputRuns.count {
+            let input = workspace.inputRuns[runIndex]
             guard let source = substring(of: text, in: input.sourceRange) else {
                 throw RunShapingError.invalidSourceBoundary
             }
@@ -89,15 +88,15 @@ enum RunShaper {
     }
 
     private static func validate(
-        _ runs: Span<TextRun>,
+        _ runs: borrowing TextRunBuffer,
         sourceCount: Int
     ) throws {
-        if runs.isEmpty {
+        if runs.count == 0 {
             guard sourceCount == 0 else { throw RunShapingError.invalidRunRanges }
             return
         }
         var expectedLowerBound = 0
-        for index in runs.indices {
+        for index in 0..<runs.count {
             let range = runs[index].sourceRange
             guard range.lowerBound == expectedLowerBound,
                   !range.isEmpty,

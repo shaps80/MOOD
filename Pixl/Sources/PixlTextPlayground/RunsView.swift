@@ -424,18 +424,37 @@ struct RunsView: View {
         overflow: PixlText.Overflow
     ) -> Result<Font.RunDebugInfo, Error> {
         Result {
-            let runs = try zip(paragraphRanges, configurations).map { range, configuration in
-                Font.RunDebugInfo.Input(
+            let baseConfiguration = configurations[0]
+            let baseFont = Font.RunDebugInfo.FontInput(
+                font: .system(size: baseConfiguration.fontSize),
+                fontBytes: try baseConfiguration.font.loadBytes(),
+                fontID: baseConfiguration.font.path,
+                fontName: baseConfiguration.font.name
+            )
+            let overrides: [Font.RunDebugInfo.Input] = try zip(
+                paragraphRanges,
+                configurations
+            ).compactMap {
+                range, configuration in
+                guard configuration.font != baseConfiguration.font
+                    || configuration.fontSize != baseConfiguration.fontSize
+                else {
+                    return nil
+                }
+                return Font.RunDebugInfo.Input(
                     sourceRange: range,
-                    font: .system(size: configuration.fontSize),
-                    fontBytes: try configuration.font.loadBytes(),
-                    fontID: configuration.font.path,
-                    fontName: configuration.font.name
+                    font: .init(
+                        font: .system(size: configuration.fontSize),
+                        fontBytes: try configuration.font.loadBytes(),
+                        fontID: configuration.font.path,
+                        fontName: configuration.font.name
+                    )
                 )
             }
             return try Font.runDebugInfo(
                 in: text,
-                runs: runs,
+                font: baseFont,
+                overrides: overrides,
                 constraints: .init(
                     width: lineWidth,
                     lines: .init(maximum: maximumLines),

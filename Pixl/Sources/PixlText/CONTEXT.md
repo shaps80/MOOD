@@ -9,6 +9,7 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 ## Fonts and Shaping
 
 - `Font` is the public declarative value over an internal descriptor and process registry.
+- Layout requires one base font covering the entire source. Sparse range overrides describe mixed fonts; callers never need to manufacture complete font-run coverage. Empty source therefore still has deterministic font metrics.
 - `SFNT.*` is internal. Registration parses and retains font bytes once; hot measurement/shaping uses compact face identities.
 - Implemented metrics/tables include Unicode cmap, horizontal metrics, TrueType render bounds, GSUB 1–8, GPOS 1–9, and required GDEF data.
 - OpenType plans are flat immutable native-endian columns. Hot shaping uses indexed scans, binary search, read/write compaction, and reusable buffers.
