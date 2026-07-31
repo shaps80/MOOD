@@ -119,5 +119,7 @@ extension Font {
         package let lines: [Line]
         package let paragraphs: [Paragraph]
         package let status: LayoutStatus
+        package let bounds: GlyphDebugInfo.Bounds
+        package let reservedLineCount: UInt
     }
 }

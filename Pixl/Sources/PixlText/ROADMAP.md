@@ -3,7 +3,7 @@
 ## Current Slice
 
 1. Visually validate unlimited/capped layout and complete/overflow status.
-2. Implement reserved minimum-line height.
+2. Visually validate minimum-line reservation and empty-source base-font geometry.
 3. Implement cluster-safe trailing ellipsis with reserved shaped-token advance.
 
 ## Completed Foundation
@@ -19,6 +19,7 @@
 - One borrowed `ParagraphStyle` per source paragraph, with leading/center/trailing alignment, logical-edge first-line indentation, leading/trailing indentation, and before/after/line spacing.
 - Alignment retains baseline-local glyph positions and stores one horizontal origin per line.
 - `LayoutConstraints`, `LineLimit`, and `Overflow` values; maximum line count stops composition cleanly and returns complete/overflow status.
+- Minimum-line reservation derives overall geometry from base-font metrics without synthetic content or line records; empty source retains one base-font insertion line.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
 - Playground validation for shaping, break opportunities, words, lines, multiple paragraphs, and tap-selected per-paragraph styling.
 

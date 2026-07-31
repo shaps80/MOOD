@@ -232,6 +232,8 @@ extension Font {
             lineHeight debugLineHeight: RunDebugInfo.LineHeight,
             paragraphStyles: [ParagraphStyle]
         ) throws -> RunDebugInfo {
+            let baseFace = try loadDebugFace(bytes: font.fontBytes, id: font.fontID)
+            let baseMetrics = baseFace.metrics.scaled(to: font.font.descriptor.size)
             var substitutionPlans: [OpenTypeShapingPlan] = []
             var positioningPlans: [OpenTypePositioningPlan] = []
             var workspace = ShapingWorkspace(
@@ -342,16 +344,17 @@ extension Font {
             var debugGlyphs: [RunDebugInfo.Glyph] = []
             var debugLines: [RunDebugInfo.Line] = []
             var debugParagraphs: [RunDebugInfo.Paragraph] = []
-            var layoutStatus = LayoutStatus.complete
+            var positionedLayout: PositionedLayout?
             try workspace.runs.withSpan { runs in
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
                         try lineBreakWorkspace.units.withSpan { units in
                             try paragraphStyles.withUnsafeBufferPointer { styles in
-                                layoutStatus = try ParagraphComposer.positionParagraphs(
+                                positionedLayout = try ParagraphComposer.positionParagraphs(
                                     sourceUTF8Count: text.utf8.count,
                                     constraints: constraints,
                                     lineHeight: lineHeight,
+                                    baseMetrics: baseMetrics,
                                     styles: unsafe Span(_unsafeElements: styles),
                                     glyphs: glyphs,
                                     runs: runs,
@@ -481,6 +484,9 @@ extension Font {
                 lines: debugLines,
                 breaks: debugBreaks
             )
+            guard let positionedLayout else {
+                throw LineLayoutError.invalidInput
+            }
             return .init(
                 runs: debugRuns,
                 glyphs: debugGlyphs,
@@ -488,7 +494,14 @@ extension Font {
                 breaks: debugBreaks,
                 lines: debugLines,
                 paragraphs: debugParagraphs,
-                status: layoutStatus
+                status: positionedLayout.status,
+                bounds: .init(
+                    x: positionedLayout.bounds.x,
+                    y: positionedLayout.bounds.y,
+                    width: positionedLayout.bounds.width,
+                    height: positionedLayout.bounds.height
+                ),
+                reservedLineCount: positionedLayout.reservedLineCount
             )
         }
 

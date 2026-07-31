@@ -70,7 +70,7 @@ struct LineLimit {
 }
 ```
 
-Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow. Leading/trailing follow resolved writing direction. Reserved minimum lines affect overall layout height without fabricating empty line records. Initial truncation supports a trailing ellipsis only; head/middle remain future modes. Truncation/hyphen insertion must occur only at legal cluster boundaries.
+Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow. Leading/trailing follow resolved writing direction. Minimum lines affect only overall geometry; they create no source, glyph, line, paragraph, or selection records. Empty source still has one insertion line using base-font metrics even when the minimum is zero. Initial truncation supports a trailing ellipsis only; head/middle remain future modes. Truncation/hyphen insertion must occur only at legal cluster boundaries.
 
 First-line indentation applies inward from the aligned logical edge for leading and trailing alignment, and is ignored for centered text. Bidi resolution will later map those logical edges to physical left/right for each paragraph.
 

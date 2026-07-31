@@ -33,6 +33,7 @@ struct RunsView: View {
     @State private var hoveredWord: Int?
     @State private var hoveredParagraph: Int?
     @State private var selectedParagraph = 0
+    @State private var minimumLines: UInt = 0
     @State private var maximumLines: UInt = 0
     @State private var overflow = PixlText.Overflow.visible
     @State private var configurations: [ParagraphConfiguration]
@@ -55,6 +56,7 @@ struct RunsView: View {
         _configurations = State(initialValue: configurations)
         _information = State(initialValue: Self.makeInformation(
             configurations,
+            minimumLines: 0,
             maximumLines: 0,
             overflow: .visible
         ))
@@ -66,6 +68,11 @@ struct RunsView: View {
 
             Canvas { context, _ in
                 guard case .success(let information) = information else { return }
+                context.stroke(
+                    Path(rect(for: information.bounds)),
+                    with: .color(.blue.opacity(0.7)),
+                    style: .init(lineWidth: 2, dash: [12, 6])
+                )
                 for (index, paragraph) in information.paragraphs.enumerated() {
                     let isSelected = index == selectedParagraph
                     let isHovered = index == hoveredParagraph
@@ -175,6 +182,15 @@ struct RunsView: View {
         .onChange(of: configurations) { _, configurations in
             information = Self.makeInformation(
                 configurations,
+                minimumLines: minimumLines,
+                maximumLines: maximumLines,
+                overflow: overflow
+            )
+        }
+        .onChange(of: minimumLines) { _, minimumLines in
+            information = Self.makeInformation(
+                configurations,
+                minimumLines: minimumLines,
                 maximumLines: maximumLines,
                 overflow: overflow
             )
@@ -182,6 +198,7 @@ struct RunsView: View {
         .onChange(of: maximumLines) { _, maximumLines in
             information = Self.makeInformation(
                 configurations,
+                minimumLines: minimumLines,
                 maximumLines: maximumLines,
                 overflow: overflow
             )
@@ -189,6 +206,7 @@ struct RunsView: View {
         .onChange(of: overflow) { _, overflow in
             information = Self.makeInformation(
                 configurations,
+                minimumLines: minimumLines,
                 maximumLines: maximumLines,
                 overflow: overflow
             )
@@ -247,10 +265,15 @@ struct RunsView: View {
         case .success(let information):
             Section("Layout") {
                 Stepper(
+                    "Minimum lines: \(minimumLines)",
+                    value: minimumLinesBinding,
+                    in: 0...20
+                )
+                Stepper(
                     maximumLines == 0
                         ? "Maximum lines: Unlimited"
                         : "Maximum lines: \(maximumLines)",
-                    value: $maximumLines,
+                    value: maximumLinesBinding,
                     in: 0...20
                 )
                 Picker("Overflow", selection: $overflow) {
@@ -261,6 +284,10 @@ struct RunsView: View {
                 LabeledContent(
                     "Status",
                     value: information.status == .complete ? "Complete" : "Overflow"
+                )
+                LabeledContent(
+                    "Reserved lines",
+                    value: information.reservedLineCount.description
                 )
                 if overflow != .visible {
                     Text("Selected mode is carried by constraints; its presentation behavior is the next slice.")
@@ -389,6 +416,30 @@ struct RunsView: View {
         )
     }
 
+    private var minimumLinesBinding: Binding<UInt> {
+        .init(
+            get: { minimumLines },
+            set: { value in
+                if maximumLines != 0, maximumLines < value {
+                    maximumLines = value
+                }
+                minimumLines = value
+            }
+        )
+    }
+
+    private var maximumLinesBinding: Binding<UInt> {
+        .init(
+            get: { maximumLines },
+            set: { value in
+                if value != 0, minimumLines > value {
+                    minimumLines = value
+                }
+                maximumLines = value
+            }
+        )
+    }
+
     private func configurationBinding<Value>(
         _ keyPath: WritableKeyPath<ParagraphConfiguration, Value>
     ) -> Binding<Value> {
@@ -420,6 +471,7 @@ struct RunsView: View {
 
     private static func makeInformation(
         _ configurations: [ParagraphConfiguration],
+        minimumLines: UInt,
         maximumLines: UInt,
         overflow: PixlText.Overflow
     ) -> Result<Font.RunDebugInfo, Error> {
@@ -457,7 +509,7 @@ struct RunsView: View {
                 overrides: overrides,
                 constraints: .init(
                     width: lineWidth,
-                    lines: .init(maximum: maximumLines),
+                    lines: .init(minimum: minimumLines, maximum: maximumLines),
                     overflow: overflow
                 ),
                 lineHeight: .multiple(1.35),

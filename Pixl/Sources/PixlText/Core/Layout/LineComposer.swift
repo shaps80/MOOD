@@ -28,6 +28,7 @@ enum LineComposer {
         horizontalOrigin: Float,
         alignment: TextAlignment,
         lineHeight: LineHeight,
+        emptyLineMetrics: SFNT.Metrics,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>,
@@ -56,6 +57,14 @@ enum LineComposer {
 
         if glyphs.isEmpty {
             let positionStart = workspace.positions.count
+            let halfLeading = max(0, emptyLineMetrics.leading) * 0.5
+            let naturalAbove = emptyLineMetrics.ascent + halfLeading
+            let naturalBelow = emptyLineMetrics.descent + halfLeading
+            let naturalHeight = naturalAbove + naturalBelow
+            let resolvedHeight = lineHeight.resolve(natural: naturalHeight)
+            let halfAdjustment = (resolvedHeight - naturalHeight) * 0.5
+            let resolvedAbove = naturalAbove + halfAdjustment
+            let resolvedBelow = naturalBelow + halfAdjustment
             let line = PositionedLine(
                 positionRange: positionStart..<positionStart,
                 consumedSourceRange: 0..<0,
@@ -63,16 +72,26 @@ enum LineComposer {
                 visibleGlyphRange: 0..<0,
                 breakKind: .mandatory,
                 advance: 0,
-                ascent: 0,
-                descent: 0,
-                leading: 0,
-                naturalAbove: 0,
-                naturalBelow: 0,
+                ascent: emptyLineMetrics.ascent,
+                descent: emptyLineMetrics.descent,
+                leading: max(0, emptyLineMetrics.leading),
+                naturalAbove: naturalAbove,
+                naturalBelow: naturalBelow,
                 originX: horizontalOrigin,
-                baselineY: lineTop,
-                baselineOffset: 0,
-                typographicBounds: .init(x: horizontalOrigin, y: 0, width: 0, height: 0),
-                lineBounds: .init(x: horizontalOrigin, y: 0, width: 0, height: 0),
+                baselineY: lineTop + resolvedAbove,
+                baselineOffset: resolvedAbove,
+                typographicBounds: .init(
+                    x: horizontalOrigin,
+                    y: -emptyLineMetrics.ascent,
+                    width: 0,
+                    height: emptyLineMetrics.ascent + emptyLineMetrics.descent
+                ),
+                lineBounds: .init(
+                    x: horizontalOrigin,
+                    y: -resolvedAbove,
+                    width: 0,
+                    height: resolvedAbove + resolvedBelow
+                ),
                 renderBounds: nil
             )
             return .init(line: line, next: nil)

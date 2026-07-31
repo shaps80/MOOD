@@ -3,6 +3,7 @@ enum ParagraphComposer {
         sourceUTF8Count: Int,
         constraints: LayoutConstraints,
         lineHeight: LineHeight,
+        baseMetrics: SFNT.Metrics,
         styles: Span<ParagraphStyle>,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
@@ -10,8 +11,16 @@ enum ParagraphComposer {
         units: Span<LineBreakUnit>,
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
-    ) throws -> LayoutStatus {
-        guard constraints.isValid, !styles.isEmpty else {
+    ) throws -> PositionedLayout {
+        guard constraints.isValid,
+              lineHeight.isValid,
+              baseMetrics.ascent >= 0,
+              baseMetrics.ascent.isFinite,
+              baseMetrics.descent >= 0,
+              baseMetrics.descent.isFinite,
+              baseMetrics.leading.isFinite,
+              !styles.isEmpty
+        else {
             throw LineLayoutError.invalidInput
         }
 
@@ -64,6 +73,7 @@ enum ParagraphComposer {
                 horizontalOrigin: leading,
                 alignment: style.alignment,
                 lineHeight: lineHeight,
+                emptyLineMetrics: baseMetrics,
                 glyphs: glyphs,
                 runs: runs,
                 opportunities: opportunities,
@@ -124,7 +134,13 @@ enum ParagraphComposer {
                         lastBaselineY: line.baselineY
                     ))
                 }
-                return .overflow
+                return positionedLayout(
+                    status: .overflow,
+                    constraints: constraints,
+                    lineHeight: lineHeight,
+                    baseMetrics: baseMetrics,
+                    workspace: workspace
+                )
             }
 
             guard next != nil else { break }
@@ -136,7 +152,47 @@ enum ParagraphComposer {
         guard paragraphIndex == styles.count else {
             throw LineLayoutError.invalidInput
         }
-        return .complete
+        return positionedLayout(
+            status: .complete,
+            constraints: constraints,
+            lineHeight: lineHeight,
+            baseMetrics: baseMetrics,
+            workspace: workspace
+        )
+    }
+
+    private static func positionedLayout(
+        status: LayoutStatus,
+        constraints: LayoutConstraints,
+        lineHeight: LineHeight,
+        baseMetrics: SFNT.Metrics,
+        workspace: borrowing LineLayoutWorkspace
+    ) -> PositionedLayout {
+        let lineCount = UInt(workspace.lines.count)
+        let reservedLineCount = constraints.lines.minimum > lineCount
+            ? constraints.lines.minimum - lineCount
+            : 0
+        let naturalBaseHeight = baseMetrics.ascent
+            + baseMetrics.descent
+            + max(0, baseMetrics.leading)
+        let reservedLineHeight = lineHeight.resolve(natural: naturalBaseHeight)
+        let contentHeight: Float
+        if workspace.paragraphs.count > 0 {
+            let bounds = workspace.paragraphs[workspace.paragraphs.count - 1].bounds
+            contentHeight = bounds.y + bounds.height
+        } else {
+            contentHeight = 0
+        }
+        return .init(
+            status: status,
+            bounds: .init(
+                x: 0,
+                y: 0,
+                width: constraints.width,
+                height: contentHeight + Float(reservedLineCount) * reservedLineHeight
+            ),
+            reservedLineCount: reservedLineCount
+        )
     }
 
     private static func documentBounds(
