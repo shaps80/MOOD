@@ -12,9 +12,9 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Append multiple positioned lines and their glyph positions into reusable contiguous storage.
-2. Vertically stack those lines from baseline-local geometry and explicit line spacing.
-3. Define paragraph layout over positioned lines.
+1. Define the low-level paragraph input and output records over positioned lines.
+2. Establish paragraph boundaries, spacing, and geometry without changing line-local positioning.
+3. Validate multiple paragraphs visually using the existing full-layout playground.
 4. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
@@ -36,7 +36,11 @@ The final package name and target boundaries remain open.
 - Mixed-run natural line geometry takes the maximum per-run above/below contribution during the existing scan. Associated-value line-height policies resolve a separate line box symmetrically around those natural extents; line spacing remains external.
 - A `1.35×` line-height policy is visually validated: natural height `30.4`, resolved height `41.04`, and baseline offset `29.32` confirm equal half-leading distribution.
 - Line composition resumes through a compact value containing source, glyph, run, opportunity, and unit indices. Shared shaped input is validated once; each later line starts directly at the prior line's returned indices without rescanning earlier content.
-- The playground displays two consecutively resumed lines with baseline-local glyph geometry. Consumed trailing break whitespace and glyph render overhang remain visible as distinct geometry outside the yellow visible-advance line box; neither changes wrapping width.
+- The playground validates consecutive resumed-line boundaries with baseline-local glyph geometry. Consumed trailing break whitespace and glyph render overhang remain visible as distinct geometry outside the yellow visible-advance line box; neither changes wrapping width.
+- Full composition runs until source exhaustion with no implicit line cap. `LineLayoutWorkspace` retains positioned glyphs and line records as two reusable contiguous columns; each line references its position range and stores its document-space baseline.
+- Explicit line spacing affects only vertical stacking. It does not mutate baseline-local glyph positions, natural metrics, or resolved line height.
+- PixlText now has exactly three stage workspaces: shaping, line breaking, and line layout. Typed buffers remain single contiguous columns; per-run shaping temporaries are `ShapingScratch`, while `Storage` remains reserved for long-lived retained identity.
+- Future API vocabulary treats `Element` as a source-addressable content unit, `Paragraph` as the standard text element, and `Line` as derived layout referencing positioned glyph ranges. These abstractions retain efficient direct access to contiguous glyph/range data instead of fully hiding glyphs as TextKit 2 does. Line-break segments are not elements; attachments remain uncommitted.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 

@@ -60,9 +60,13 @@ Composition may speculatively position through the next opportunity, then trunca
 
 Line composition is resumable. Full shaped-input validation happens once when creating an initial compact `LineStart`; each completed line returns the next source, glyph, run, break-opportunity, and line-break-unit indices. Subsequent lines continue directly from those indices without rescanning earlier text or reallocating the caller-owned line workspace.
 
+Complete line layout repeatedly resumes until the source is exhausted; line limits are not an implicit engine constraint. Every positioned glyph appends to one contiguous position column and every `PositionedLine` appends to one contiguous line column in `LineLayoutWorkspace`. A line references its exact position range and records its document-space baseline while glyph positions remain baseline-local. Explicit line spacing advances subsequent line tops without altering any line's internal geometry.
+
 The resolved line-box width follows visible typographic advance, not glyph render bounds. Trailing break whitespace belongs to the consumed line but is excluded from its visible advance, and glyph outlines may naturally overhang their advance cells. Wrapping and alignment therefore remain stable while independent render bounds retain the complete area needed for later clipping, culling, and invalidation.
 
 Shaping workspaces are call-local noncopyable values initially. They own exact contiguous glyph and scratch buffers, grow geometrically when required, and release deterministically. Capacity is never exposed through the eventual public text API. A future document, layout session, or execution lane may retain and reuse the same workspace without changing algorithm inputs or public ownership.
+
+Workspace vocabulary is stage-oriented and consistent. `ShapingWorkspace`, `LineBreakWorkspace`, and `LineLayoutWorkspace` each own the reusable typed columns required by one processing stage; their outputs remain valid until that workspace is reused. Leaf `Buffer` types each own one contiguous data-oriented column. `Storage` is reserved for long-lived retained identity such as `SFNT.FaceStorage`. Per-run shaping temporaries live in `ShapingScratch`, not another stage workspace.
 
 Run shaping separates source and output records. `TextRun` describes one contiguous UTF-8 source range with a resolved face, size, direction, script, language, and indices into precompiled OpenType plans. `GlyphRun` identifies the corresponding range in one shared contiguous glyph buffer. Core execution borrows run and plan columns through call-local `Span` values; spans are never stored. Lookup-plan compilation remains outside the hot run executor.
 
@@ -95,3 +99,7 @@ PixlText depends on PixlConcurrency. Text processing uses its lane and storage m
 The initial implementation uses one lane. Increasing the lane count later must not require restructuring text storage or processing stages.
 
 Data-oriented design is a primary constraint. Hot processing operates over contiguous, cache-aligned buffers suitable for bulk classification, scanning, and SIMD where the work permits it. Concurrency remains an internal implementation detail rather than part of PixlText's public API.
+
+## Deferred Content API Vocabulary
+
+The future content API will use `Element` for a source-addressable document/content unit. `Paragraph` is the standard text element. A paragraph produces derived `Line` values, and each line references positioned glyph ranges from shared layout storage. Unlike TextKit 2's high-level API, these approachable abstractions must retain efficient direct access to contiguous glyph and range data rather than completely abstracting glyphs away. Words or Unicode line-break segments are temporary layout information, not elements. Other element kinds remain an open design question; attachments are not currently a requirement or commitment.
