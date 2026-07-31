@@ -40,6 +40,8 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 
 Exactly three stage workspaces exist: `ShapingWorkspace`, `LineBreakWorkspace`, and `LineLayoutWorkspace`. Outputs remain valid until reuse. A `Buffer` is one typed contiguous column. `Storage` is long-lived retained identity such as `SFNT.FaceStorage`. `ShapingScratch` holds per-run temporaries.
 
+The temporary Playground bridge retains those same three workspaces across adjustments and materializes only run, paragraph, and overall layout bounds. It does not scan installed fonts or expose glyph/word/line debug records.
+
 ## Paragraph Style
 
 ```swift

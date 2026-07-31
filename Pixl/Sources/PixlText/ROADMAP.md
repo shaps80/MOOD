@@ -7,7 +7,7 @@
 
 ## Completed Foundation
 
-- Real SFNT registration, metrics, cmap, glyph advances, TrueType bounds, and installed-font probing.
+- Real SFNT registration, metrics, cmap, glyph advances, and TrueType bounds.
 - Platform-independent Unicode 16 NFC, Script data, and UAX #14 line opportunities.
 - Data-oriented shaping with flat indexed GSUB/GPOS/GDEF plans and reusable caller-owned buffers.
 - Source/glyph cluster mapping, mixed-font runs, positioning, typographic/render bounds.
@@ -23,10 +23,10 @@
 - Cluster-safe trailing ellipsis reserves its exact shaped advance, supports narrow widths, and emits generated insertion records without changing source ranges.
 - Soft and automatic English hyphenation insert shaped hyphen glyphs only when their chosen break is used. Portable checked-in pattern/exception data requires no platform dependency.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
-- Playground validation for shaping, break opportunities, words, lines, paragraphs, generated insertions, per-paragraph styling, capped/unlimited layout, safe line-limit clamping, minimum-line geometry, and automatic/inherited default metrics.
+- Focused Playground validation for run, paragraph, and overall layout bounds, with tappable per-paragraph styling and layout constraints.
 - TrueType variable-font axes and named instances, clamped/normalized/`avar`-remapped coordinates, and descriptor axis selection.
 - `gvar` interpolation for simple and composite outlines; HVAR/VVAR/MVAR metrics; GSUB/GPOS FeatureVariations; GDEF/GPOS VariationIndex adjustments.
-- San Francisco variable-font validation across extreme weights, including changed advances and render geometry. Playground axis sliders drive each paragraph independently.
+- San Francisco variable-font validation across extreme weights, including changed advances and render geometry. Playground axis sliders drive each paragraph independently without installed-font scanning.
 
 ## Next Core Work
 

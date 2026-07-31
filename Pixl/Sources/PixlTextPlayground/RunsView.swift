@@ -1,315 +1,137 @@
-import SwiftUI
+import Foundation
 import PixlText
+import SwiftUI
 
 struct RunsView: View {
     private struct ParagraphConfiguration: Hashable {
-        var font: PlaygroundFont
         var fontSize: Float
         var variations: [String: Float]
         var style: ParagraphStyle
     }
 
-    private static let paragraphTexts = [
+    private struct FontResource {
+        let bytes: [UInt8]
+        let axes: [PixlText.Font.Axis]
+    }
+
+    private static let paragraphs = [
         "Hello, world! Line breaking finds every legal opportunity before layout chooses which words fit. Explicit newlines remain mandatory.",
         "A second paragraph has enough text to wrap independently. Its lines share paragraph geometry while retaining direct glyph ranges.",
         "The final paragraph makes paragraph spacing and first and last baselines easy to inspect without introducing any presentation rules."
     ]
-    private static let text = paragraphTexts.joined(separator: "\n")
+    private static let text = paragraphs.joined(separator: "\n")
     private static let paragraphRanges: [Range<Int>] = {
         var offset = 0
-        return paragraphTexts.indices.map { index in
+        return paragraphs.indices.map { index in
             let upperBound = offset
-                + paragraphTexts[index].utf8.count
-                + (index + 1 < paragraphTexts.count ? 1 : 0)
+                + paragraphs[index].utf8.count
+                + (index + 1 < paragraphs.count ? 1 : 0)
             defer { offset = upperBound }
             return offset..<upperBound
         }
     }()
-    private static let origin = CGPoint(x: 40, y: 170)
+    private static let fontID = "/Library/Fonts/SF-Pro.ttf"
+    private static let fontResource: Result<FontResource, Error> = Result {
+        let bytes = Array(try Data(contentsOf: URL(filePath: fontID)))
+        let axes = try PixlText.Font.variationAxes(fontBytes: bytes, fontID: fontID)
+        return FontResource(bytes: bytes, axes: axes)
+    }
+    private static let origin = CGPoint(x: 40, y: 40)
     private static let lineWidth: Float = 520
 
-    @Binding private var font: PlaygroundFont
-    private let fonts: [PlaygroundFont]
-    @State private var isShowing: Bool = true
-    @State private var hoveredWord: Int?
-    @State private var hoveredParagraph: Int?
+    @State private var isShowingSidebar = true
     @State private var selectedParagraph = 0
     @State private var minimumLines: UInt = 0
     @State private var maximumLines: UInt = 0
     @State private var overflow = PixlText.Overflow.visible
     @State private var defaultLineMetrics = PixlText.DefaultLineMetrics.automatic
     @State private var configurations: [ParagraphConfiguration]
-    @State private var axesByFont: [PlaygroundFont: [Font.Axis]]
-    @State private var information: Result<Font.RunDebugInfo, Error>
+    @State private var session: PixlText.Font.LayoutDebugSession
+    @State private var information: Result<PixlText.Font.LayoutDebugInfo, Error>
 
-    init(font: Binding<PlaygroundFont>, fonts: [PlaygroundFont]) {
-        _font = font
-        self.fonts = fonts
-        let primary = font.wrappedValue
-        let secondary = primary.path == PlaygroundFont.zapfino.path
-            ? PlaygroundFont.senilita
-            : PlaygroundFont.zapfino
-        let configurations = [primary, secondary, primary].map { font in
+    init() {
+        let configurations = [
             ParagraphConfiguration(
-                font: font,
-                fontSize: font.path == PlaygroundFont.zapfino.path ? 12 : 24,
+                fontSize: 24,
+                variations: [:],
+                style: .init(spacing: .init(lineSpacing: 8, paragraphAfter: 28))
+            ),
+            ParagraphConfiguration(
+                fontSize: 20,
+                variations: [:],
+                style: .init(spacing: .init(lineSpacing: 8, paragraphAfter: 28))
+            ),
+            ParagraphConfiguration(
+                fontSize: 22,
                 variations: [:],
                 style: .init(spacing: .init(lineSpacing: 8, paragraphAfter: 28))
             )
-        }
+        ]
+        let session = PixlText.Font.LayoutDebugSession()
         _configurations = State(initialValue: configurations)
-        _axesByFont = State(initialValue: Dictionary(
-            uniqueKeysWithValues: Set(configurations.map(\.font)).map { ($0, Self.axes(for: $0)) }
-        ))
+        _session = State(initialValue: session)
         _information = State(initialValue: Self.makeInformation(
             configurations,
             minimumLines: 0,
             maximumLines: 0,
             overflow: .visible,
-            defaultLineMetrics: .automatic
+            defaultLineMetrics: .automatic,
+            session: session
         ))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            breakLegend
-
-            Canvas { context, _ in
-                guard case .success(let information) = information else { return }
-                context.stroke(
-                    Path(rect(for: information.bounds)),
-                    with: .color(.blue.opacity(0.7)),
-                    style: .init(lineWidth: 2, dash: [12, 6])
-                )
-                for (index, paragraph) in information.paragraphs.enumerated() {
-                    let isSelected = index == selectedParagraph
-                    let isHovered = index == hoveredParagraph
-                    context.stroke(
-                        Path(rect(for: paragraph.bounds)),
-                        with: .color(
-                            isSelected
-                                ? .purple
-                                : (isHovered ? .purple.opacity(0.8) : .purple.opacity(0.4))
-                        ),
-                        style: .init(
-                            lineWidth: isSelected ? 3 : (isHovered ? 2.5 : 1.5),
-                            dash: [10, 5]
-                        )
-                    )
-                }
-                for (lineIndex, line) in information.lines.enumerated() {
-                    let contentFrame = rect(
-                        for: line.typographicBounds,
-                        lineIndex: lineIndex,
-                        information: information
-                    )
-                    let lineFrame = rect(
-                        for: line.lineBounds,
-                        lineIndex: lineIndex,
-                        information: information
-                    )
-                    let availableFrame = CGRect(
-                        x: Self.origin.x + CGFloat(line.availableX),
-                        y: lineFrame.minY,
-                        width: CGFloat(line.maximumWidth),
-                        height: lineFrame.height
-                    )
-                    context.stroke(
-                        Path(availableFrame),
-                        with: .color(.white.opacity(0.35)),
-                        style: .init(lineWidth: 1, dash: [8, 5])
-                    )
-                    context.stroke(
-                        Path(lineFrame),
-                        with: .color(.yellow),
-                        lineWidth: 2
-                    )
-                    context.stroke(
-                        Path(contentFrame),
-                        with: .color(.green),
-                        style: .init(lineWidth: 1, dash: [4, 3])
-                    )
-                }
-                for (index, word) in information.words.enumerated() {
-                    context.stroke(
-                        Path(rect(
-                            for: word.bounds,
-                            lineIndex: word.lineIndex,
-                            information: information
-                        )),
-                        with: .color(index == hoveredWord ? .yellow : .gray),
-                        style: .init(
-                            lineWidth: index == hoveredWord ? 2 : 1,
-                            dash: [5, 4]
-                        )
-                    )
-                }
-                for insertion in information.insertions {
-                    let typographicFrame = rect(
-                        for: insertion.typographicBounds,
-                        lineIndex: insertion.lineIndex,
-                        information: information
-                    )
-                    context.stroke(
-                        Path(typographicFrame),
-                        with: .color(.pink),
-                        style: .init(lineWidth: 2, dash: [5, 3])
-                    )
-                    if let bounds = insertion.renderBounds {
-                        context.stroke(
-                            Path(rect(
-                                for: bounds,
-                                lineIndex: insertion.lineIndex,
-                                information: information
-                            )),
-                            with: .color(.pink),
-                            lineWidth: 2
-                        )
-                    }
-                }
-            }
-            .contentShape(Rectangle())
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    guard case .success(let information) = information else { return }
-                    let nextHoveredWord = information.words.indices.last {
-                        let word = information.words[$0]
-                        return rect(
-                            for: word.bounds,
-                            lineIndex: word.lineIndex,
-                            information: information
-                        ).contains(location)
-                    }
-                    let nextHoveredParagraph = information.paragraphs.indices.last {
-                        rect(for: information.paragraphs[$0].bounds).contains(location)
-                    }
-                    guard hoveredWord != nextHoveredWord
-                            || hoveredParagraph != nextHoveredParagraph
-                    else { return }
-                    hoveredWord = nextHoveredWord
-                    hoveredParagraph = nextHoveredParagraph
-                case .ended:
-                    guard hoveredWord != nil || hoveredParagraph != nil else { return }
-                    hoveredWord = nil
-                    hoveredParagraph = nil
-                }
-            }
-            .simultaneousGesture(
-                SpatialTapGesture()
-                    .onEnded { event in
-                        guard case .success(let information) = information else { return }
-                        guard let paragraph = information.paragraphs.indices.last(where: {
-                            rect(for: information.paragraphs[$0].bounds).contains(event.location)
-                        }) else { return }
-                        selectedParagraph = paragraph
-                    }
+        Canvas { context, _ in
+            guard case .success(let information) = information else { return }
+            context.stroke(
+                Path(rect(for: information.bounds)),
+                with: .color(.blue),
+                style: .init(lineWidth: 2, dash: [10, 6])
             )
+            for run in information.runs {
+                context.stroke(
+                    Path(rect(for: run.bounds)),
+                    with: .color(.gray),
+                    lineWidth: 1
+                )
+            }
+            for (index, paragraph) in information.paragraphs.enumerated() {
+                context.stroke(
+                    Path(rect(for: paragraph.bounds)),
+                    with: .color(index == selectedParagraph ? .purple : .purple.opacity(0.45)),
+                    style: .init(
+                        lineWidth: index == selectedParagraph ? 3 : 1.5,
+                        dash: [8, 5]
+                    )
+                )
+            }
         }
+        .contentShape(Rectangle())
+        .gesture(
+            SpatialTapGesture().onEnded { event in
+                guard case .success(let information) = information,
+                      let paragraph = information.paragraphs.indices.last(where: {
+                          rect(for: information.paragraphs[$0].bounds).contains(event.location)
+                      })
+                else { return }
+                selectedParagraph = paragraph
+            }
+        )
         .padding(24)
-        .sidebar(isPresented: $isShowing) {
+        .sidebar(isPresented: $isShowingSidebar) {
             details
         }
-        .onChange(of: configurations) { _, configurations in
-            information = Self.makeInformation(
-                configurations,
-                minimumLines: minimumLines,
-                maximumLines: maximumLines,
-                overflow: overflow,
-                defaultLineMetrics: defaultLineMetrics
-            )
-        }
-        .onChange(of: minimumLines) { _, minimumLines in
-            information = Self.makeInformation(
-                configurations,
-                minimumLines: minimumLines,
-                maximumLines: maximumLines,
-                overflow: overflow,
-                defaultLineMetrics: defaultLineMetrics
-            )
-        }
-        .onChange(of: maximumLines) { _, maximumLines in
-            information = Self.makeInformation(
-                configurations,
-                minimumLines: minimumLines,
-                maximumLines: maximumLines,
-                overflow: overflow,
-                defaultLineMetrics: defaultLineMetrics
-            )
-        }
-        .onChange(of: overflow) { _, overflow in
-            information = Self.makeInformation(
-                configurations,
-                minimumLines: minimumLines,
-                maximumLines: maximumLines,
-                overflow: overflow,
-                defaultLineMetrics: defaultLineMetrics
-            )
-        }
-        .onChange(of: defaultLineMetrics) { _, defaultLineMetrics in
-            information = Self.makeInformation(
-                configurations,
-                minimumLines: minimumLines,
-                maximumLines: maximumLines,
-                overflow: overflow,
-                defaultLineMetrics: defaultLineMetrics
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var breakLegend: some View {
-        switch information {
-        case .success(let information):
-            breakText(information)
-                .font(.title3)
-                .lineSpacing(6)
-                .frame(maxWidth: 760, alignment: .leading)
-        case .failure(let error):
-            ContentUnavailableView(
-                "Run shaping failed",
-                systemImage: "exclamationmark.triangle",
-                description: Text(error.localizedDescription)
-            )
-            .foregroundStyle(.red)
-        }
-    }
-
-    private func breakText(_ information: Font.RunDebugInfo) -> Text {
-        let bytes = Array(Self.text.utf8)
-        var lowerBound = 0
-        var result = Text("")
-        for opportunity in information.breaks {
-            let segment = String(
-                decoding: bytes[lowerBound..<opportunity.sourceOffset],
-                as: UTF8.self
-            )
-            let marker: String
-            let color: Color
-            switch opportunity.kind {
-            case .allowed:
-                marker = "│"
-                color = .yellow
-            case .softHyphen:
-                marker = "‐"
-                color = .orange
-            case .automaticHyphen:
-                marker = "‐"
-                color = .pink
-            case .mandatory:
-                marker = "↵"
-                color = .red
-            }
-            result = result + Text(segment) + Text(marker).foregroundColor(color)
-            lowerBound = opportunity.sourceOffset
-        }
-        return result
+        .onChange(of: configurations) { _, _ in refresh() }
+        .onChange(of: minimumLines) { _, _ in refresh() }
+        .onChange(of: maximumLines) { _, _ in refresh() }
+        .onChange(of: overflow) { _, _ in refresh() }
+        .onChange(of: defaultLineMetrics) { _, _ in refresh() }
     }
 
     @ViewBuilder
     private var details: some View {
         switch information {
-        case .success(let information):
+        case .success:
             Section("Layout") {
                 Stepper(
                     "Minimum lines: \(minimumLines)",
@@ -332,15 +154,6 @@ struct RunsView: View {
                     Text("Automatic").tag(PixlText.DefaultLineMetrics.automatic)
                     Text("Inherited").tag(PixlText.DefaultLineMetrics.inherited)
                 }
-                LabeledContent(
-                    "Status",
-                    value: information.status == .complete ? "Complete" : "Overflow"
-                )
-                LabeledContent(
-                    "Reserved lines",
-                    value: information.reservedLineCount.description
-                )
-                LabeledContent("Insertions", value: information.insertions.count.description)
             }
 
             Section("Paragraph") {
@@ -349,13 +162,6 @@ struct RunsView: View {
                         Text("Paragraph \(index + 1)").tag(index)
                     }
                 }
-
-                Picker("Font", selection: fontBinding) {
-                    ForEach(fonts) { font in
-                        Text(font.name).tag(font)
-                    }
-                }
-
                 Stepper(
                     "Font size \(configurations[selectedParagraph].fontSize, format: .number)",
                     value: configurationBinding(\.fontSize),
@@ -364,17 +170,14 @@ struct RunsView: View {
                 )
             }
 
-            if !selectedAxes.isEmpty {
+            if !variationAxes.isEmpty {
                 Section("Variations") {
-                    ForEach(selectedAxes) { axis in
+                    ForEach(variationAxes) { axis in
                         let value = configurations[selectedParagraph].variations[axis.tag]
                             ?? axis.defaultValue
                         VStack(alignment: .leading) {
                             LabeledContent(axis.tag, value: value.formatted())
-                            Slider(
-                                value: variationBinding(axis),
-                                in: axis.minimum...axis.maximum
-                            )
+                            Slider(value: variationBinding(axis), in: axis.minimum...axis.maximum)
                         }
                     }
                 }
@@ -408,92 +211,24 @@ struct RunsView: View {
                     Text("Automatic").tag(PixlText.Hyphenation.automatic)
                 }
             }
-
-            if let hoveredWord {
-                let word = information.words[hoveredWord]
-                Section("Hover") {
-                    LabeledContent("Word", value: word.source)
-                    LabeledContent("Line", value: (word.lineIndex + 1).description)
-                    LabeledContent("Source UTF-8", value: description(word.sourceRange))
-                    LabeledContent("Width", value: word.bounds.width.description)
-                }
-            }
-
-            Section("Geometry") {
-                if information.paragraphs.indices.contains(selectedParagraph) {
-                    let paragraph = information.paragraphs[selectedParagraph]
-                    Text(paragraph.source)
-                    LabeledContent("Source UTF-8", value: description(paragraph.sourceRange))
-                    LabeledContent("Lines", value: description(paragraph.lineRange))
-                    LabeledContent("First baseline", value: paragraph.firstBaselineY.description)
-                    LabeledContent("Last baseline", value: paragraph.lastBaselineY.description)
-                } else {
-                    Text("Paragraph is outside the current line limit.")
-                        .foregroundStyle(.secondary)
-                }
-            }
         case .failure(let error):
-            Text(error.localizedDescription)
-                .foregroundStyle(.red)
+            ContentUnavailableView(
+                "Layout failed",
+                systemImage: "exclamationmark.triangle",
+                description: Text(error.localizedDescription)
+            )
+            .foregroundStyle(.red)
         }
     }
 
-    private func rect(
-        for bounds: Font.GlyphDebugInfo.Bounds,
-        lineIndex: Int,
-        information: Font.RunDebugInfo
-    ) -> CGRect {
-        CGRect(
-            x: Self.origin.x + CGFloat(bounds.x),
-            y: Self.origin.y
-                + CGFloat(information.lines[lineIndex].baselineY)
-                + CGFloat(bounds.y),
-            width: CGFloat(bounds.width),
-            height: CGFloat(bounds.height)
-        )
+    private var variationAxes: [PixlText.Font.Axis] {
+        guard case .success(let resource) = Self.fontResource else { return [] }
+        return resource.axes
     }
 
-    private func rect(for bounds: Font.GlyphDebugInfo.Bounds) -> CGRect {
-        CGRect(
-            x: Self.origin.x + CGFloat(bounds.x),
-            y: Self.origin.y + CGFloat(bounds.y),
-            width: CGFloat(bounds.width),
-            height: CGFloat(bounds.height)
-        )
-    }
-
-    private func description(_ range: Range<Int>) -> String {
-        "\(range.lowerBound)..<\(range.upperBound)"
-    }
-
-    private var fontBinding: Binding<PlaygroundFont> {
+    private func variationBinding(_ axis: PixlText.Font.Axis) -> Binding<Float> {
         .init(
-            get: { configurations[selectedParagraph].font },
-            set: { value in
-                configurations[selectedParagraph].font = value
-                configurations[selectedParagraph].variations = [:]
-                if axesByFont[value] == nil {
-                    axesByFont[value] = Self.axes(for: value)
-                }
-                font = value
-            }
-        )
-    }
-
-    private var selectedAxes: [Font.Axis] {
-        axesByFont[configurations[selectedParagraph].font] ?? []
-    }
-
-    private static func axes(for font: PlaygroundFont) -> [Font.Axis] {
-        guard let bytes = try? font.loadBytes() else { return [] }
-        return (try? Font.variationAxes(fontBytes: bytes, fontID: font.path)) ?? []
-    }
-
-    private func variationBinding(_ axis: Font.Axis) -> Binding<Float> {
-        .init(
-            get: {
-                configurations[selectedParagraph].variations[axis.tag] ?? axis.defaultValue
-            },
+            get: { configurations[selectedParagraph].variations[axis.tag] ?? axis.defaultValue },
             set: { configurations[selectedParagraph].variations[axis.tag] = $0 }
         )
     }
@@ -502,9 +237,7 @@ struct RunsView: View {
         .init(
             get: { minimumLines },
             set: { value in
-                if maximumLines != 0, maximumLines < value {
-                    maximumLines = value
-                }
+                if maximumLines != 0, maximumLines < value { maximumLines = value }
                 minimumLines = value
             }
         )
@@ -514,9 +247,7 @@ struct RunsView: View {
         .init(
             get: { maximumLines },
             set: { value in
-                if value != 0, minimumLines > value {
-                    minimumLines = value
-                }
+                if value != 0, minimumLines > value { minimumLines = value }
                 maximumLines = value
             }
         )
@@ -551,44 +282,49 @@ struct RunsView: View {
         }
     }
 
+    private func refresh() {
+        information = Self.makeInformation(
+            configurations,
+            minimumLines: minimumLines,
+            maximumLines: maximumLines,
+            overflow: overflow,
+            defaultLineMetrics: defaultLineMetrics,
+            session: session
+        )
+    }
+
     private static func makeInformation(
         _ configurations: [ParagraphConfiguration],
         minimumLines: UInt,
         maximumLines: UInt,
         overflow: PixlText.Overflow,
-        defaultLineMetrics: PixlText.DefaultLineMetrics
-    ) -> Result<Font.RunDebugInfo, Error> {
+        defaultLineMetrics: PixlText.DefaultLineMetrics,
+        session: PixlText.Font.LayoutDebugSession
+    ) -> Result<PixlText.Font.LayoutDebugInfo, Error> {
         Result {
+            let resource = try fontResource.get()
             let baseConfiguration = configurations[0]
-            let baseFont = Font.RunDebugInfo.FontInput(
+            let baseFont = PixlText.Font.LayoutDebugInfo.FontInput(
                 font: configuredFont(baseConfiguration),
-                fontBytes: try baseConfiguration.font.loadBytes(),
-                fontID: baseConfiguration.font.path,
-                fontName: baseConfiguration.font.name
+                fontBytes: resource.bytes,
+                fontID: fontID
             )
-            let overrides: [Font.RunDebugInfo.Input] = try zip(
-                paragraphRanges,
-                configurations
-            ).compactMap {
-                range, configuration in
-                guard configuration.font != baseConfiguration.font
-                    || configuration.fontSize != baseConfiguration.fontSize
+            let overrides = zip(paragraphRanges, configurations).compactMap {
+                range, configuration -> PixlText.Font.LayoutDebugInfo.Input? in
+                guard configuration.fontSize != baseConfiguration.fontSize
                     || configuration.variations != baseConfiguration.variations
-                else {
-                    return nil
-                }
-                return Font.RunDebugInfo.Input(
+                else { return nil }
+                return .init(
                     sourceRange: range,
                     font: .init(
                         font: configuredFont(configuration),
-                        fontBytes: try configuration.font.loadBytes(),
-                        fontID: configuration.font.path,
-                        fontName: configuration.font.name
+                        fontBytes: resource.bytes,
+                        fontID: fontID
                     )
                 )
             }
-            return try Font.runDebugInfo(
-                in: text,
+            return try session.layout(
+                text,
                 font: baseFont,
                 overrides: overrides,
                 constraints: .init(
@@ -603,9 +339,18 @@ struct RunsView: View {
         }
     }
 
-    private static func configuredFont(_ configuration: ParagraphConfiguration) -> Font {
-        configuration.variations.reduce(Font.system(size: configuration.fontSize)) {
+    private static func configuredFont(_ configuration: ParagraphConfiguration) -> PixlText.Font {
+        configuration.variations.reduce(PixlText.Font.system(size: configuration.fontSize)) {
             $0.variation($1.key, value: $1.value)
         }
+    }
+
+    private func rect(for bounds: PixlText.Font.LayoutDebugInfo.Bounds) -> CGRect {
+        CGRect(
+            x: Self.origin.x + CGFloat(bounds.x),
+            y: Self.origin.y + CGFloat(bounds.y),
+            width: CGFloat(bounds.width),
+            height: CGFloat(bounds.height)
+        )
     }
 }
