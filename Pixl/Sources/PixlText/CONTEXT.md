@@ -58,6 +58,10 @@ Line height and line spacing are separate. Line height resolves the line box aro
 
 Composition may speculatively position through the next opportunity, then truncate reusable position storage to the selected candidate without copying glyphs. Once workspace capacity stabilises, single-line composition performs no allocation. Positioned glyphs remain baseline-local so later vertical stacking needs only one document-space baseline per line; it does not rewrite glyph positions when line spacing changes.
 
+Line composition is resumable. Full shaped-input validation happens once when creating an initial compact `LineStart`; each completed line returns the next source, glyph, run, break-opportunity, and line-break-unit indices. Subsequent lines continue directly from those indices without rescanning earlier text or reallocating the caller-owned line workspace.
+
+The resolved line-box width follows visible typographic advance, not glyph render bounds. Trailing break whitespace belongs to the consumed line but is excluded from its visible advance, and glyph outlines may naturally overhang their advance cells. Wrapping and alignment therefore remain stable while independent render bounds retain the complete area needed for later clipping, culling, and invalidation.
+
 Shaping workspaces are call-local noncopyable values initially. They own exact contiguous glyph and scratch buffers, grow geometrically when required, and release deterministically. Capacity is never exposed through the eventual public text API. A future document, layout session, or execution lane may retain and reuse the same workspace without changing algorithm inputs or public ownership.
 
 Run shaping separates source and output records. `TextRun` describes one contiguous UTF-8 source range with a resolved face, size, direction, script, language, and indices into precompiled OpenType plans. `GlyphRun` identifies the corresponding range in one shared contiguous glyph buffer. Core execution borrows run and plan columns through call-local `Span` values; spans are never stored. Lookup-plan compilation remains outside the hot run executor.

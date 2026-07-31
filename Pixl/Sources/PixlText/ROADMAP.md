@@ -12,11 +12,10 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Make single-line composition resumable from compact source/glyph/run/opportunity/unit indices.
-2. Validate that a second line resumes exactly where the first line ended.
-3. Append and vertically stack multiple positioned lines in reusable contiguous storage.
-4. Define paragraph layout over positioned lines.
-5. Add bidirectional resolution and script-specific shaping stages later.
+1. Append multiple positioned lines and their glyph positions into reusable contiguous storage.
+2. Vertically stack those lines from baseline-local geometry and explicit line spacing.
+3. Define paragraph layout over positioned lines.
+4. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
 
@@ -36,6 +35,8 @@ The final package name and target boundaries remain open.
 - Single-line composition is visually validated across shaped text: trailing whitespace is consumed but excluded from visible width, and the selected line remains within the available width.
 - Mixed-run natural line geometry takes the maximum per-run above/below contribution during the existing scan. Associated-value line-height policies resolve a separate line box symmetrically around those natural extents; line spacing remains external.
 - A `1.35×` line-height policy is visually validated: natural height `30.4`, resolved height `41.04`, and baseline offset `29.32` confirm equal half-leading distribution.
+- Line composition resumes through a compact value containing source, glyph, run, opportunity, and unit indices. Shared shaped input is validated once; each later line starts directly at the prior line's returned indices without rescanning earlier content.
+- The playground displays two consecutively resumed lines with baseline-local glyph geometry. Consumed trailing break whitespace and glyph render overhang remain visible as distinct geometry outside the yellow visible-advance line box; neither changes wrapping width.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
