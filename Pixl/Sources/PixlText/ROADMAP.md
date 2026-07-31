@@ -12,9 +12,11 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Add wrapping across multiple positioned lines.
-2. Define paragraph layout over positioned lines.
-3. Add bidirectional resolution and script-specific shaping stages later.
+1. Make single-line composition resumable from compact source/glyph/run/opportunity/unit indices.
+2. Validate that a second line resumes exactly where the first line ended.
+3. Append and vertically stack multiple positioned lines in reusable contiguous storage.
+4. Define paragraph layout over positioned lines.
+5. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
 
@@ -32,6 +34,8 @@ The final package name and target boundaries remain open.
 - Line-breaking opportunities are visually validated with long text and an explicit mandatory break in the playground.
 - Single-line composition selects the last fitting legal opportunity without splitting glyph clusters. Its compact record separates consumed and visible ranges, references reusable contiguous position storage, preserves unbreakable overflow, and reports line metrics plus typographic and render bounds.
 - Single-line composition is visually validated across shaped text: trailing whitespace is consumed but excluded from visible width, and the selected line remains within the available width.
+- Mixed-run natural line geometry takes the maximum per-run above/below contribution during the existing scan. Associated-value line-height policies resolve a separate line box symmetrically around those natural extents; line spacing remains external.
+- A `1.35×` line-height policy is visually validated: natural height `30.4`, resolved height `41.04`, and baseline offset `29.32` confirm equal half-leading distribution.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
