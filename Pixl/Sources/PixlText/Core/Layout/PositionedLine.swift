@@ -6,6 +6,7 @@ struct PositionedLine: Hashable, Sendable {
         let height: Float
     }
 
+    let positionRange: Range<Int>
     let consumedSourceRange: Range<Int>
     let consumedGlyphRange: Range<Int>
     let visibleGlyphRange: Range<Int>
@@ -16,6 +17,7 @@ struct PositionedLine: Hashable, Sendable {
     let leading: Float
     let naturalAbove: Float
     let naturalBelow: Float
+    let baselineY: Float
     let baselineOffset: Float
     let typographicBounds: Bounds
     let lineBounds: Bounds

@@ -5,7 +5,7 @@ enum RunShaper {
         substitutionPlans: Span<OpenTypeShapingPlan>,
         positioningPlans: Span<OpenTypePositioningPlan>,
         registry: borrowing SFNT.Registry,
-        workspace: inout RunShapingWorkspace
+        workspace: inout ShapingWorkspace
     ) throws {
         workspace.removeAll()
         try validate(inputRuns, sourceCount: text.utf8.count)
@@ -16,8 +16,8 @@ enum RunShaper {
                 throw RunShapingError.invalidSourceBoundary
             }
 
-            workspace.run.glyphs.removeAll()
-            workspace.run.scratch.removeAll()
+            workspace.scratch.glyphs.removeAll()
+            workspace.scratch.scratch.removeAll()
             var sourceOffset = input.sourceRange.lowerBound
 
             var characterIndex = source.startIndex
@@ -33,7 +33,7 @@ enum RunShaper {
                 for scalar in workspace.normalization.normalized {
                     let glyph = registry.glyphID(for: scalar, in: input.face)
                         ?? .init(rawValue: 0)
-                    workspace.run.glyphs.append(.init(
+                    workspace.scratch.glyphs.append(.init(
                         id: glyph,
                         sourceRange: sourceRange,
                         lookupIndex: nil,
@@ -54,12 +54,12 @@ enum RunShaper {
                 OpenTypeShaper.apply(
                     substitutionPlans[planIndex],
                     glyphDefinition: registry.glyphDefinition(in: input.face),
-                    workspace: &workspace.run
+                    workspace: &workspace.scratch
                 )
             }
-            for glyphIndex in 0..<workspace.run.glyphs.count {
-                let glyph = workspace.run.glyphs[glyphIndex].id
-                workspace.run.glyphs[glyphIndex].nominalXAdvance = Int32(
+            for glyphIndex in 0..<workspace.scratch.glyphs.count {
+                let glyph = workspace.scratch.glyphs[glyphIndex].id
+                workspace.scratch.glyphs[glyphIndex].nominalXAdvance = Int32(
                     registry.advanceInFontUnits(for: glyph, in: input.face) ?? 0
                 )
             }
@@ -70,12 +70,12 @@ enum RunShaper {
                 OpenTypePositioner.apply(
                     positioningPlans[planIndex],
                     glyphDefinition: registry.glyphDefinition(in: input.face),
-                    to: &workspace.run.glyphs
+                    to: &workspace.scratch.glyphs
                 )
             }
 
             let glyphStart = workspace.glyphs.count
-            workspace.glyphs.append(contentsOf: workspace.run.glyphs)
+            workspace.glyphs.append(contentsOf: workspace.scratch.glyphs)
             workspace.runs.append(.init(
                 sourceRange: input.sourceRange,
                 glyphRange: glyphStart..<workspace.glyphs.count,

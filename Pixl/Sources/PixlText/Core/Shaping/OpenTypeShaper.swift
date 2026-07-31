@@ -4,7 +4,7 @@ enum OpenTypeShaper {
     static func apply(
         _ plan: borrowing OpenTypeShapingPlan,
         glyphDefinition: borrowing SFNT.GlyphDefinition? = nil,
-        workspace: inout ShapingWorkspace
+        workspace: inout ShapingScratch
     ) {
         for execution in plan.executions where plan.lookups.indices.contains(execution.lookupIndex) {
             applyTopLevelLookup(
@@ -22,7 +22,7 @@ enum OpenTypeShaper {
         feature: UInt32,
         plan: borrowing OpenTypeShapingPlan,
         glyphDefinition: borrowing SFNT.GlyphDefinition?,
-        workspace: inout ShapingWorkspace
+        workspace: inout ShapingScratch
     ) {
         let lookup = plan.lookups[lookupIndex]
         switch lookup.kind {
@@ -106,7 +106,7 @@ enum OpenTypeShaper {
         feature: UInt32,
         plan: borrowing OpenTypeShapingPlan,
         glyphDefinition: borrowing SFNT.GlyphDefinition?,
-        workspace: inout ShapingWorkspace
+        workspace: inout ShapingScratch
     ) {
         workspace.scratch.removeAll()
         for index in 0..<workspace.glyphs.count {
@@ -164,7 +164,7 @@ enum OpenTypeShaper {
         feature: UInt32,
         plan: borrowing OpenTypeShapingPlan,
         glyphDefinition: borrowing SFNT.GlyphDefinition?,
-        workspace: inout ShapingWorkspace
+        workspace: inout ShapingScratch
     ) {
         var read = 0
         workspace.scratch.removeAll()

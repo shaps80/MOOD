@@ -3,13 +3,15 @@ extension Font {
         in text: String,
         runs: [RunDebugInfo.Input],
         maximumLineWidth: Float,
-        lineHeight: RunDebugInfo.LineHeight
+        lineHeight: RunDebugInfo.LineHeight,
+        lineSpacing: Float
     ) throws -> RunDebugInfo {
         try Registry.shared.runDebugInfo(
             in: text,
             inputs: runs,
             maximumLineWidth: maximumLineWidth,
-            lineHeight: lineHeight
+            lineHeight: lineHeight,
+            lineSpacing: lineSpacing
         )
     }
 }

@@ -123,7 +123,7 @@ extension Font {
                 scalars: [Unicode.Scalar],
                 glyphs: [UInt16]
             )] = []
-            var workspace = ShapingWorkspace(minimumGlyphCapacity: text.utf8.count)
+            var workspace = ShapingScratch(minimumGlyphCapacity: text.utf8.count)
             var runScript: UnicodeScript?
             var sourceOffset = 0
             var characterIndex = text.startIndex
@@ -227,7 +227,8 @@ extension Font {
             in text: String,
             inputs: [RunDebugInfo.Input],
             maximumLineWidth: Float,
-            lineHeight debugLineHeight: RunDebugInfo.LineHeight
+            lineHeight debugLineHeight: RunDebugInfo.LineHeight,
+            lineSpacing: Float
         ) throws -> RunDebugInfo {
             var textRuns: [TextRun] = []
             var substitutionPlans: [OpenTypeShapingPlan] = []
@@ -258,7 +259,7 @@ extension Font {
                 ))
             }
 
-            var workspace = RunShapingWorkspace(
+            var workspace = ShapingWorkspace(
                 minimumGlyphCapacity: text.utf8.count,
                 minimumRunCapacity: inputs.count
             )
@@ -334,87 +335,163 @@ extension Font {
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
                         try lineBreakWorkspace.units.withSpan { units in
-                            var next: LineStart? = try LineComposer.start(
+                            try LineComposer.positionLines(
                                 sourceUTF8Count: text.utf8.count,
+                                maximumWidth: maximumLineWidth,
+                                lineHeight: lineHeight,
+                                lineSpacing: lineSpacing,
                                 glyphs: glyphs,
                                 runs: runs,
-                                opportunities: opportunities
+                                opportunities: opportunities,
+                                units: units,
+                                registry: sfnt,
+                                workspace: &lineWorkspace
                             )
-                            while let start = next, debugLines.count < 2 {
-                                let composition = try LineComposer.positionLine(
-                                    from: start,
-                                    sourceUTF8Count: text.utf8.count,
-                                    maximumWidth: maximumLineWidth,
-                                    lineHeight: lineHeight,
-                                    glyphs: glyphs,
-                                    runs: runs,
-                                    opportunities: opportunities,
-                                    units: units,
-                                    registry: sfnt,
-                                    workspace: &lineWorkspace
-                                )
-                                let positionedLine = composition.line
-                                let lineIndex = debugLines.count
-                                var runIndex = start.runIndex
+                            lineWorkspace.lines.withSpan { lines in
                                 lineWorkspace.positions.withSpan { positions in
-                                    for glyphIndex in positionedLine.consumedGlyphRange {
+                                    for lineIndex in lines.indices {
+                                        let positionedLine = lines[lineIndex]
+                                        var runIndex = 0
                                         while runIndex < runs.count,
-                                              glyphIndex >= runs[runIndex].glyphRange.upperBound {
+                                              positionedLine.consumedGlyphRange.lowerBound
+                                                >= runs[runIndex].glyphRange.upperBound {
                                             runIndex += 1
                                         }
-                                        let run = runs[runIndex]
-                                        let glyph = glyphs[glyphIndex]
-                                        let position = positions[
-                                            glyphIndex - positionedLine.consumedGlyphRange.lowerBound
-                                        ]
-                                        let metrics = run.face.metrics.scaled(to: run.size)
-                                        let scale = run.size / Float(run.face.metrics.unitsPerEm)
-                                        let advance = Float(
-                                            glyph.nominalXAdvance + glyph.xAdvance
-                                        ) * scale
-                                        let rawRenderBounds = sfnt.renderBounds(
-                                            for: glyph.id,
-                                            in: run.face
-                                        )
-                                        debugGlyphs.append(.init(
-                                            lineIndex: lineIndex,
-                                            runIndex: runIndex,
-                                            glyphID: glyph.id.rawValue,
-                                            sourceRange: glyph.sourceRange,
-                                            advance: advance,
-                                            typographicBounds: .init(
-                                                x: position.x,
-                                                y: -metrics.ascent,
-                                                width: advance,
-                                                height: metrics.ascent + metrics.descent
-                                            ),
-                                            renderBounds: rawRenderBounds.map {
-                                                .init(
-                                                    x: position.x + Float($0.xMin) * scale,
-                                                    y: position.y - Float($0.yMax) * scale,
-                                                    width: Float($0.xMax - $0.xMin) * scale,
-                                                    height: Float($0.yMax - $0.yMin) * scale
-                                                )
+                                        for glyphIndex in positionedLine.consumedGlyphRange {
+                                            while runIndex < runs.count,
+                                                  glyphIndex >= runs[runIndex].glyphRange.upperBound {
+                                                runIndex += 1
                                             }
+                                            let run = runs[runIndex]
+                                            let glyph = glyphs[glyphIndex]
+                                            let position = positions[
+                                                positionedLine.positionRange.lowerBound
+                                                    + glyphIndex
+                                                    - positionedLine.consumedGlyphRange.lowerBound
+                                            ]
+                                            let metrics = run.face.metrics.scaled(to: run.size)
+                                            let scale = run.size / Float(run.face.metrics.unitsPerEm)
+                                            let advance = Float(
+                                                glyph.nominalXAdvance + glyph.xAdvance
+                                            ) * scale
+                                            let rawRenderBounds = sfnt.renderBounds(
+                                                for: glyph.id,
+                                                in: run.face
+                                            )
+                                            debugGlyphs.append(.init(
+                                                lineIndex: lineIndex,
+                                                runIndex: runIndex,
+                                                glyphID: glyph.id.rawValue,
+                                                sourceRange: glyph.sourceRange,
+                                                advance: advance,
+                                                typographicBounds: .init(
+                                                    x: position.x,
+                                                    y: -metrics.ascent,
+                                                    width: advance,
+                                                    height: metrics.ascent + metrics.descent
+                                                ),
+                                                renderBounds: rawRenderBounds.map {
+                                                    .init(
+                                                        x: position.x + Float($0.xMin) * scale,
+                                                        y: position.y - Float($0.yMax) * scale,
+                                                        width: Float($0.xMax - $0.xMin) * scale,
+                                                        height: Float($0.yMax - $0.yMin) * scale
+                                                    )
+                                                }
+                                            ))
+                                        }
+                                        debugLines.append(Self.debugLine(
+                                            positionedLine,
+                                            maximumWidth: maximumLineWidth
                                         ))
                                     }
                                 }
-                                debugLines.append(Self.debugLine(
-                                    positionedLine,
-                                    maximumWidth: maximumLineWidth
-                                ))
-                                next = composition.next
                             }
                         }
                     }
                 }
             }
+            let debugWords = Self.debugWords(
+                sourceBytes: sourceBytes,
+                glyphs: debugGlyphs,
+                lines: debugLines,
+                breaks: debugBreaks
+            )
             return .init(
                 runs: debugRuns,
                 glyphs: debugGlyphs,
+                words: debugWords,
                 breaks: debugBreaks,
                 lines: debugLines
             )
+        }
+
+        private static func debugWords(
+            sourceBytes: [UInt8],
+            glyphs: [RunDebugInfo.Glyph],
+            lines: [RunDebugInfo.Line],
+            breaks: [RunDebugInfo.Break]
+        ) -> [RunDebugInfo.Word] {
+            var result: [RunDebugInfo.Word] = []
+            var breakIndex = 0
+            var glyphIndex = 0
+            for lineIndex in lines.indices {
+                let line = lines[lineIndex]
+                var sourceStart = line.consumedSourceRange.lowerBound
+                while breakIndex < breaks.count,
+                      breaks[breakIndex].sourceOffset <= sourceStart {
+                    breakIndex += 1
+                }
+                while breakIndex < breaks.count,
+                      breaks[breakIndex].sourceOffset <= line.consumedSourceRange.upperBound {
+                    let sourceEnd = breaks[breakIndex].sourceOffset
+                    var visibleEnd = sourceEnd
+                    while visibleEnd > sourceStart,
+                          isDebugWhitespace(sourceBytes[visibleEnd - 1]) {
+                        visibleEnd -= 1
+                    }
+                    if visibleEnd > sourceStart {
+                        while glyphIndex < glyphs.count,
+                              glyphs[glyphIndex].sourceRange.upperBound <= sourceStart {
+                            glyphIndex += 1
+                        }
+                        var scan = glyphIndex
+                        var minX = Float.greatestFiniteMagnitude
+                        var maxX = -Float.greatestFiniteMagnitude
+                        while scan < glyphs.count,
+                              glyphs[scan].lineIndex == lineIndex,
+                              glyphs[scan].sourceRange.lowerBound < visibleEnd {
+                            let bounds = glyphs[scan].typographicBounds
+                            minX = min(minX, bounds.x)
+                            maxX = max(maxX, bounds.x + bounds.width)
+                            scan += 1
+                        }
+                        if minX <= maxX {
+                            result.append(.init(
+                                lineIndex: lineIndex,
+                                source: String(
+                                    decoding: sourceBytes[sourceStart..<visibleEnd],
+                                    as: UTF8.self
+                                ),
+                                sourceRange: sourceStart..<visibleEnd,
+                                bounds: .init(
+                                    x: minX,
+                                    y: line.typographicBounds.y,
+                                    width: maxX - minX,
+                                    height: line.typographicBounds.height
+                                )
+                            ))
+                        }
+                    }
+                    sourceStart = sourceEnd
+                    breakIndex += 1
+                }
+            }
+            return result
+        }
+
+        private static func isDebugWhitespace(_ byte: UInt8) -> Bool {
+            byte == 0x20 || byte == 0x09 || byte == 0x0A || byte == 0x0D
         }
 
         private static func debugLine(
@@ -438,6 +515,7 @@ extension Font {
                 leading: line.leading,
                 naturalAbove: line.naturalAbove,
                 naturalBelow: line.naturalBelow,
+                baselineY: line.baselineY,
                 baselineOffset: line.baselineOffset,
                 typographicBounds: .init(
                     x: line.typographicBounds.x,

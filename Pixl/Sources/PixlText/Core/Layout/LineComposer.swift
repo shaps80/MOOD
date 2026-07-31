@@ -1,4 +1,47 @@
 enum LineComposer {
+    static func positionLines(
+        sourceUTF8Count: Int,
+        maximumWidth: Float,
+        lineHeight: LineHeight,
+        lineSpacing: Float,
+        glyphs: Span<ShapingGlyph>,
+        runs: Span<GlyphRun>,
+        opportunities: Span<LineBreakOpportunity>,
+        units: Span<LineBreakUnit>,
+        registry: borrowing SFNT.Registry,
+        workspace: inout LineLayoutWorkspace
+    ) throws {
+        guard lineSpacing >= 0, lineSpacing.isFinite else {
+            throw LineLayoutError.invalidInput
+        }
+        workspace.removeAll()
+        var next: LineStart? = try start(
+            sourceUTF8Count: sourceUTF8Count,
+            glyphs: glyphs,
+            runs: runs,
+            opportunities: opportunities
+        )
+        var lineTop: Float = 0
+        while let lineStart = next {
+            let composition = try positionLine(
+                from: lineStart,
+                lineTop: lineTop,
+                sourceUTF8Count: sourceUTF8Count,
+                maximumWidth: maximumWidth,
+                lineHeight: lineHeight,
+                glyphs: glyphs,
+                runs: runs,
+                opportunities: opportunities,
+                units: units,
+                registry: registry,
+                workspace: &workspace
+            )
+            lineTop += composition.line.lineBounds.height + lineSpacing
+            workspace.lines.append(composition.line)
+            next = composition.next
+        }
+    }
+
     static func start(
         sourceUTF8Count: Int,
         glyphs: Span<ShapingGlyph>,
@@ -22,6 +65,7 @@ enum LineComposer {
 
     static func positionLine(
         from start: LineStart,
+        lineTop: Float,
         sourceUTF8Count: Int,
         maximumWidth: Float,
         lineHeight: LineHeight,
@@ -32,9 +76,9 @@ enum LineComposer {
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
     ) throws -> LineComposition {
-        workspace.removeAll()
         guard maximumWidth >= 0,
               maximumWidth.isFinite,
+              lineTop.isFinite,
               lineHeight.isValid,
               start.sourceOffset >= 0,
               start.sourceOffset <= sourceUTF8Count,
@@ -51,7 +95,9 @@ enum LineComposer {
         }
 
         if glyphs.isEmpty {
+            let positionStart = workspace.positions.count
             let line = PositionedLine(
+                positionRange: positionStart..<positionStart,
                 consumedSourceRange: 0..<0,
                 consumedGlyphRange: 0..<0,
                 visibleGlyphRange: 0..<0,
@@ -62,6 +108,7 @@ enum LineComposer {
                 leading: 0,
                 naturalAbove: 0,
                 naturalBelow: 0,
+                baselineY: lineTop,
                 baselineOffset: 0,
                 typographicBounds: .init(x: 0, y: 0, width: 0, height: 0),
                 lineBounds: .init(x: 0, y: 0, width: 0, height: 0),
@@ -94,6 +141,7 @@ enum LineComposer {
         var opportunityIndex = start.opportunityIndex
         var glyphIndex = start.glyphIndex
         var lastFittingCandidate: Candidate?
+        let positionStart = workspace.positions.count
 
         while glyphIndex < glyphs.count {
             let clusterRange = glyphs[glyphIndex].sourceRange
@@ -202,6 +250,8 @@ enum LineComposer {
                     return finish(
                         lastFittingCandidate ?? candidate,
                         start: start,
+                        positionStart: positionStart,
+                        lineTop: lineTop,
                         sourceUTF8Count: sourceUTF8Count,
                         glyphCount: glyphs.count,
                         lineHeight: lineHeight,
@@ -212,6 +262,8 @@ enum LineComposer {
                     return finish(
                         candidate,
                         start: start,
+                        positionStart: positionStart,
+                        lineTop: lineTop,
                         sourceUTF8Count: sourceUTF8Count,
                         glyphCount: glyphs.count,
                         lineHeight: lineHeight,
@@ -232,6 +284,8 @@ enum LineComposer {
         return finish(
             candidate,
             start: start,
+            positionStart: positionStart,
+            lineTop: lineTop,
             sourceUTF8Count: sourceUTF8Count,
             glyphCount: glyphs.count,
             lineHeight: lineHeight,
@@ -301,12 +355,15 @@ enum LineComposer {
     private static func finish(
         _ candidate: Candidate,
         start: LineStart,
+        positionStart: Int,
+        lineTop: Float,
         sourceUTF8Count: Int,
         glyphCount: Int,
         lineHeight: LineHeight,
         workspace: inout LineLayoutWorkspace
     ) -> LineComposition {
-        let excess = workspace.positions.count - candidate.positionCount
+        let positionEnd = positionStart + candidate.positionCount
+        let excess = workspace.positions.count - positionEnd
         workspace.positions.removeLast(excess)
         let naturalHeight = candidate.naturalAbove + candidate.naturalBelow
         let resolvedHeight = lineHeight.resolve(natural: naturalHeight)
@@ -314,6 +371,7 @@ enum LineComposer {
         let resolvedAbove = candidate.naturalAbove + halfAdjustment
         let resolvedBelow = candidate.naturalBelow + halfAdjustment
         let line = PositionedLine(
+            positionRange: positionStart..<positionEnd,
             consumedSourceRange: start.sourceOffset..<candidate.sourceEnd,
             consumedGlyphRange: start.glyphIndex..<candidate.glyphEnd,
             visibleGlyphRange: start.glyphIndex..<candidate.visibleGlyphEnd,
@@ -324,6 +382,7 @@ enum LineComposer {
             leading: candidate.leading,
             naturalAbove: candidate.naturalAbove,
             naturalBelow: candidate.naturalBelow,
+            baselineY: lineTop + resolvedAbove,
             baselineOffset: resolvedAbove,
             typographicBounds: .init(
                 x: 0,

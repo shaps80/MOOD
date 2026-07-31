@@ -218,8 +218,8 @@ struct OpenTypeShaperTests {
         .init(id: .init(rawValue: id), sourceRange: sourceRange, lookupIndex: nil, feature: nil)
     }
 
-    private func workspace(_ glyphs: [ShapingGlyph]) -> ShapingWorkspace {
-        var result = ShapingWorkspace(minimumGlyphCapacity: glyphs.count)
+    private func workspace(_ glyphs: [ShapingGlyph]) -> ShapingScratch {
+        var result = ShapingScratch(minimumGlyphCapacity: glyphs.count)
         for glyph in glyphs { result.glyphs.append(glyph) }
         return result
     }

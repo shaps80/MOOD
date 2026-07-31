@@ -8,10 +8,9 @@ struct RunsView: View {
     """
     private static let origin = CGPoint(x: 40, y: 170)
     private static let lineWidth: Float = 520
-    private static let colors: [Color] = [.cyan, .orange]
 
     @State private var isShowing: Bool = true
-    @State private var hoveredGlyph: Int?
+    @State private var hoveredWord: Int?
 
     private let information: Result<Font.RunDebugInfo, Error>
 
@@ -20,27 +19,30 @@ struct RunsView: View {
             let secondFont = font.path == PlaygroundFont.zapfino.path
                 ? PlaygroundFont.senilita
                 : PlaygroundFont.zapfino
+            let primarySize: Float = font.path == PlaygroundFont.zapfino.path ? 18 : 32
+            let secondarySize: Float = secondFont.path == PlaygroundFont.zapfino.path ? 18 : 32
             let split = "Hello, world! Line breaking finds every legal opportunity ".utf8.count
             return try Font.runDebugInfo(
                 in: Self.text,
                 runs: [
                     .init(
                         sourceRange: 0..<split,
-                        font: .system(size: 32),
+                        font: .system(size: primarySize),
                         fontBytes: try font.loadBytes(),
                         fontID: font.path,
                         fontName: font.name
                     ),
                     .init(
                         sourceRange: split..<Self.text.utf8.count,
-                        font: .system(size: 36),
+                        font: .system(size: secondarySize),
                         fontBytes: try secondFont.loadBytes(),
                         fontID: secondFont.path,
                         fontName: secondFont.name
                     )
                 ],
                 maximumLineWidth: Self.lineWidth,
-                lineHeight: .multiple(1.35)
+                lineHeight: .multiple(1.35),
+                lineSpacing: 8
             )
         }
     }
@@ -84,31 +86,19 @@ struct RunsView: View {
                         style: .init(lineWidth: 1, dash: [4, 3])
                     )
                 }
-                for (index, glyph) in information.glyphs.enumerated() {
-                    let color = Self.colors[glyph.runIndex % Self.colors.count]
+                for (index, word) in information.words.enumerated() {
                     context.stroke(
                         Path(rect(
-                            for: glyph.typographicBounds,
-                            lineIndex: glyph.lineIndex,
+                            for: word.bounds,
+                            lineIndex: word.lineIndex,
                             information: information
                         )),
-                        with: .color(color.opacity(index == hoveredGlyph ? 1 : 0.55)),
+                        with: .color(index == hoveredWord ? .yellow : .gray),
                         style: .init(
-                            lineWidth: index == hoveredGlyph ? 2 : 1,
+                            lineWidth: index == hoveredWord ? 2 : 1,
                             dash: [5, 4]
                         )
                     )
-                    if let renderBounds = glyph.renderBounds {
-                        context.stroke(
-                            Path(rect(
-                                for: renderBounds,
-                                lineIndex: glyph.lineIndex,
-                                information: information
-                            )),
-                            with: .color(color.opacity(index == hoveredGlyph ? 1 : 0.55)),
-                            lineWidth: index == hoveredGlyph ? 2 : 1
-                        )
-                    }
                 }
             }
             .contentShape(Rectangle())
@@ -116,26 +106,19 @@ struct RunsView: View {
                 switch phase {
                 case .active(let location):
                     guard case .success(let information) = information else { return }
-                    let nextHoveredGlyph = information.glyphs.indices.last {
-                        let glyph = information.glyphs[$0]
+                    let nextHoveredWord = information.words.indices.last {
+                        let word = information.words[$0]
                         return rect(
-                            for: glyph.typographicBounds,
-                            lineIndex: glyph.lineIndex,
+                            for: word.bounds,
+                            lineIndex: word.lineIndex,
                             information: information
                         ).contains(location)
-                            || information.glyphs[$0].renderBounds.map {
-                                rect(
-                                    for: $0,
-                                    lineIndex: glyph.lineIndex,
-                                    information: information
-                                ).contains(location)
-                            } == true
                     }
-                    guard hoveredGlyph != nextHoveredGlyph else { return }
-                    hoveredGlyph = nextHoveredGlyph
+                    guard hoveredWord != nextHoveredWord else { return }
+                    hoveredWord = nextHoveredWord
                 case .ended:
-                    guard hoveredGlyph != nil else { return }
-                    hoveredGlyph = nil
+                    guard hoveredWord != nil else { return }
+                    hoveredWord = nil
                 }
             }
         }
@@ -195,18 +178,12 @@ struct RunsView: View {
     private var details: some View {
         switch information {
         case .success(let information):
-            if let hoveredGlyph {
-                let glyph = information.glyphs[hoveredGlyph]
-                let run = information.runs[glyph.runIndex]
-                LabeledContent("Source", value: run.source)
-                LabeledContent("Source UTF-8", value: description(run.sourceRange))
-                LabeledContent("Glyph range", value: description(run.glyphRange))
-                LabeledContent("Font", value: run.fontName)
-                LabeledContent("Size", value: run.size.description)
-                LabeledContent("Direction", value: run.direction.rawValue)
-                LabeledContent("Script", value: run.script)
-                LabeledContent("Glyph ID", value: glyph.glyphID.description)
-                LabeledContent("Advance", value: glyph.advance.description)
+            if let hoveredWord {
+                let word = information.words[hoveredWord]
+                LabeledContent("Word", value: word.source)
+                LabeledContent("Line", value: (word.lineIndex + 1).description)
+                LabeledContent("Source UTF-8", value: description(word.sourceRange))
+                LabeledContent("Width", value: word.bounds.width.description)
             } else {
                 ForEach(information.lines.indices, id: \.self) { index in
                     let line = information.lines[index]
@@ -234,27 +211,12 @@ struct RunsView: View {
     ) -> CGRect {
         CGRect(
             x: Self.origin.x + CGFloat(bounds.x),
-            y: baselineY(for: lineIndex, information: information) + CGFloat(bounds.y),
+            y: Self.origin.y
+                + CGFloat(information.lines[lineIndex].baselineY)
+                + CGFloat(bounds.y),
             width: CGFloat(bounds.width),
             height: CGFloat(bounds.height)
         )
-    }
-
-    private func baselineY(
-        for lineIndex: Int,
-        information: Font.RunDebugInfo
-    ) -> CGFloat {
-        var baseline = Self.origin.y
-        guard lineIndex > 0 else { return baseline }
-        for index in 1...lineIndex {
-            let previous = information.lines[index - 1]
-            let current = information.lines[index]
-            baseline += CGFloat(
-                previous.lineBounds.height - previous.baselineOffset
-                    + current.baselineOffset
-            )
-        }
-        return baseline
     }
 
     private func description(_ range: Range<Int>) -> String {

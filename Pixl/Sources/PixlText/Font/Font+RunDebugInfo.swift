@@ -68,6 +68,13 @@ extension Font {
             package let kind: Kind
         }
 
+        package struct Word: Hashable, Sendable {
+            package let lineIndex: Int
+            package let source: String
+            package let sourceRange: Range<Int>
+            package let bounds: GlyphDebugInfo.Bounds
+        }
+
         package struct Line: Hashable, Sendable {
             package let maximumWidth: Float
             package let consumedSourceRange: Range<Int>
@@ -80,6 +87,7 @@ extension Font {
             package let leading: Float
             package let naturalAbove: Float
             package let naturalBelow: Float
+            package let baselineY: Float
             package let baselineOffset: Float
             package let typographicBounds: GlyphDebugInfo.Bounds
             package let lineBounds: GlyphDebugInfo.Bounds
@@ -88,6 +96,7 @@ extension Font {
 
         package let runs: [Run]
         package let glyphs: [Glyph]
+        package let words: [Word]
         package let breaks: [Break]
         package let lines: [Line]
     }

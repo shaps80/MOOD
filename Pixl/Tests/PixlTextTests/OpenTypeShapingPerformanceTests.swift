@@ -28,7 +28,7 @@ final class OpenTypeShapingPerformanceTests: XCTestCase {
     private func measureHotShaping(glyphCount: Int) {
         let plan = makeSubstitutions().shapingPlan(script: latin)
         let source = makeGlyphs(count: glyphCount)
-        var workspace = ShapingWorkspace(minimumGlyphCapacity: source.count)
+        var workspace = ShapingScratch(minimumGlyphCapacity: source.count)
         var checksum = 0
 
         measure(metrics: metrics, options: manualOptions) {
