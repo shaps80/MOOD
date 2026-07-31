@@ -44,6 +44,16 @@ Exactly three stage workspaces exist: `ShapingWorkspace`, `LineBreakWorkspace`, 
 
 The temporary Playground bridge retains those same three workspaces across adjustments and materializes only run, paragraph, and overall layout bounds. It does not scan installed fonts or expose glyph/word/line debug records.
 
+## Performance Invariants
+
+- The retained-session Playground workload is the interactive regression gate: three SF Pro paragraphs, mixed sizes/styles, a 520-point width, and repeated font or paragraph changes. Its Debug median must remain below one 16.667 ms frame. Accepted medians are approximately 8.5 ms for unchanged, alignment, and size changes and 12 ms for continuously changing `wght`; Release remains below 0.5 ms. Full methodology and reference results live in the repository `PERF.md`.
+- These are hot retained-session measurements. Font-byte loading, first face registration, SwiftUI event handling, drawing, and presentation are separate costs and must not be folded into comparisons with this baseline.
+- Never rebuild or re-sort complete GSUB/GPOS topology per layout or per run. Face/session-owned templates retain the flat columns; each layout selects only the small script/language/coordinate-dependent execution list. Equivalent runs share one selected plan.
+- Never resolve every GPOS VariationIndex while selecting a variable instance. Preserve unresolved adjustments/anchors in the template and resolve only rules that match positioned glyphs.
+- Resolve nominal advances only after substitution has produced final glyph IDs. Do not perform a speculative pre-substitution HVAR pass followed by another final pass.
+- Repeated glyphs within one run must not repeat TrueType/`gvar` outline interpolation. The bounded parallel render-bounds columns in `ShapingScratch` are reusable per-run scratch, not a hidden process cache; keep their lookup bounded so high-diversity runs cannot become quadratic.
+- Performance coverage must drive the same `Font.LayoutDebugSession` API used by the Playground, vary paragraph alignment/font size/variable weight, preserve output geometry checks, and retain the 16.667 ms median assertion. Synthetic OpenType-only benchmarks are supplementary, not a substitute for the complete layout gate.
+
 ## Paragraph Style
 
 ```swift

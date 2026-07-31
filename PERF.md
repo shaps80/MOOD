@@ -6,6 +6,33 @@ These are reference measurements for detecting material performance regressions 
 
 This document contains separate profiling records for specific low-level components. It does not describe whole-backend, rendering, GPU, frame-time, or game performance.
 
+## PixlText layout — arm64 macOS
+
+Recorded on 2026-07-31 after removing repeated GSUB/GPOS plan construction and duplicate variable-font work from the retained layout path.
+
+### Methodology
+
+- Swift 6.4, arm64 macOS; exact SoC was not recorded.
+- Exact three-paragraph `PixlTextPlayground` workload using `/Library/Fonts/SF-Pro.ttf`, a 520-point layout width, three font sizes, paragraph spacing, and a retained `Font.LayoutDebugSession`.
+- Twenty baseline iterations before the changes; 25 iterations after the changes, following one discarded warm-up layout.
+- Whole measured calls include font declaration/override construction, shaping, line breaking, paragraph composition, and debug bounds materialization.
+- Variable-weight samples continuously change the selected paragraph's `wght` coordinate from 250 through 850 in steps of 25.
+- Font-byte loading, initial face registration, SwiftUI state/event handling, Canvas drawing, and presentation are excluded.
+- The retained regression harness enforces a 16.667 ms median budget in Debug and also verifies that variable-weight extremes produce different run geometry.
+
+Harness: `Pixl/Sources/PixlText/PerformanceTests/PixlTextLayoutPerformanceTests.swift`.
+
+### Results
+
+| Workload | Debug before | Debug after | Release after |
+| --- | ---: | ---: | ---: |
+| Unchanged layout | 301 ms | 8.48 ms | 0.39 ms |
+| Paragraph alignment | 302 ms | 8.59 ms | 0.32 ms |
+| Font size | 302 ms | 8.58 ms | 0.45 ms |
+| Variable weight | 315 ms | 11.99 ms | 0.42 ms |
+
+The dominant regression was rebuilding and sorting complete GSUB/GPOS plans for every run and every layout. The accepted implementation retains immutable plan topology per face/session, shares equivalent selected plans, resolves GPOS variation deltas only for matched rules, resolves final advances once, and reuses repeated-glyph render bounds through bounded caller-owned scratch storage.
+
 ## Render pipeline prototype — arm64 macOS
 
 Recorded on 2026-07-20 from the isolated `Pixl/Prototypes/RenderPipelinePrototype` Xcode application after validating the intended single-threaded CPU data flow. This is a retained architecture prototype, not an implementation or performance baseline for Pixl, PixlFoundation, PixlPlatform, Metal rendering, WebGPU rendering, or a complete game frame. Keep it as a directional reference while porting the design into Pixl; establish new accepted Pixl baselines after the real implementation exists.
