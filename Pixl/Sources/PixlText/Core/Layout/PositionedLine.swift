@@ -17,6 +17,7 @@ struct PositionedLine: Hashable, Sendable {
     let leading: Float
     let naturalAbove: Float
     let naturalBelow: Float
+    let originX: Float
     let baselineY: Float
     let baselineOffset: Float
     let typographicBounds: Bounds

@@ -25,6 +25,8 @@ enum LineComposer {
         lineTop: Float,
         sourceUTF8Count: Int,
         maximumWidth: Float,
+        horizontalOrigin: Float,
+        alignment: TextAlignment,
         lineHeight: LineHeight,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
@@ -35,6 +37,7 @@ enum LineComposer {
     ) throws -> LineComposition {
         guard maximumWidth >= 0,
               maximumWidth.isFinite,
+              horizontalOrigin.isFinite,
               lineTop.isFinite,
               lineHeight.isValid,
               start.sourceOffset >= 0,
@@ -65,10 +68,11 @@ enum LineComposer {
                 leading: 0,
                 naturalAbove: 0,
                 naturalBelow: 0,
+                originX: horizontalOrigin,
                 baselineY: lineTop,
                 baselineOffset: 0,
-                typographicBounds: .init(x: 0, y: 0, width: 0, height: 0),
-                lineBounds: .init(x: 0, y: 0, width: 0, height: 0),
+                typographicBounds: .init(x: horizontalOrigin, y: 0, width: 0, height: 0),
+                lineBounds: .init(x: horizontalOrigin, y: 0, width: 0, height: 0),
                 renderBounds: nil
             )
             return .init(line: line, next: nil)
@@ -209,6 +213,9 @@ enum LineComposer {
                         start: start,
                         positionStart: positionStart,
                         lineTop: lineTop,
+                        horizontalOrigin: horizontalOrigin,
+                        maximumWidth: maximumWidth,
+                        alignment: alignment,
                         sourceUTF8Count: sourceUTF8Count,
                         glyphCount: glyphs.count,
                         lineHeight: lineHeight,
@@ -221,6 +228,9 @@ enum LineComposer {
                         start: start,
                         positionStart: positionStart,
                         lineTop: lineTop,
+                        horizontalOrigin: horizontalOrigin,
+                        maximumWidth: maximumWidth,
+                        alignment: alignment,
                         sourceUTF8Count: sourceUTF8Count,
                         glyphCount: glyphs.count,
                         lineHeight: lineHeight,
@@ -243,6 +253,9 @@ enum LineComposer {
             start: start,
             positionStart: positionStart,
             lineTop: lineTop,
+            horizontalOrigin: horizontalOrigin,
+            maximumWidth: maximumWidth,
+            alignment: alignment,
             sourceUTF8Count: sourceUTF8Count,
             glyphCount: glyphs.count,
             lineHeight: lineHeight,
@@ -314,6 +327,9 @@ enum LineComposer {
         start: LineStart,
         positionStart: Int,
         lineTop: Float,
+        horizontalOrigin: Float,
+        maximumWidth: Float,
+        alignment: TextAlignment,
         sourceUTF8Count: Int,
         glyphCount: Int,
         lineHeight: LineHeight,
@@ -327,6 +343,13 @@ enum LineComposer {
         let halfAdjustment = (resolvedHeight - naturalHeight) * 0.5
         let resolvedAbove = candidate.naturalAbove + halfAdjustment
         let resolvedBelow = candidate.naturalBelow + halfAdjustment
+        let remainingWidth = max(0, maximumWidth - candidate.advance)
+        let alignmentOffset: Float = switch alignment {
+        case .leading: 0
+        case .center: remainingWidth * 0.5
+        case .trailing: remainingWidth
+        }
+        let offsetX = horizontalOrigin + alignmentOffset
         let line = PositionedLine(
             positionRange: positionStart..<positionEnd,
             consumedSourceRange: start.sourceOffset..<candidate.sourceEnd,
@@ -339,21 +362,29 @@ enum LineComposer {
             leading: candidate.leading,
             naturalAbove: candidate.naturalAbove,
             naturalBelow: candidate.naturalBelow,
+            originX: offsetX,
             baselineY: lineTop + resolvedAbove,
             baselineOffset: resolvedAbove,
             typographicBounds: .init(
-                x: 0,
+                x: offsetX,
                 y: -candidate.ascent,
                 width: candidate.advance,
                 height: candidate.ascent + candidate.descent
             ),
             lineBounds: .init(
-                x: 0,
+                x: offsetX,
                 y: -resolvedAbove,
                 width: candidate.advance,
                 height: resolvedAbove + resolvedBelow
             ),
-            renderBounds: candidate.renderBounds
+            renderBounds: candidate.renderBounds.map {
+                .init(
+                    x: $0.x + offsetX,
+                    y: $0.y,
+                    width: $0.width,
+                    height: $0.height
+                )
+            }
         )
         let isComplete = candidate.sourceEnd == sourceUTF8Count
             && candidate.glyphEnd == glyphCount

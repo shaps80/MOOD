@@ -76,6 +76,7 @@ extension Font {
         }
 
         package struct Line: Hashable, Sendable {
+            package let availableX: Float
             package let maximumWidth: Float
             package let consumedSourceRange: Range<Int>
             package let consumedGlyphRange: Range<Int>

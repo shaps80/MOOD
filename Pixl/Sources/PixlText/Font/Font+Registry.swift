@@ -228,8 +228,7 @@ extension Font {
             inputs: [RunDebugInfo.Input],
             maximumLineWidth: Float,
             lineHeight debugLineHeight: RunDebugInfo.LineHeight,
-            lineSpacing: Float,
-            paragraphSpacing: Float
+            paragraphStyles: [ParagraphStyle]
         ) throws -> RunDebugInfo {
             var textRuns: [TextRun] = []
             var substitutionPlans: [OpenTypeShapingPlan] = []
@@ -337,23 +336,30 @@ extension Font {
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
                         try lineBreakWorkspace.units.withSpan { units in
-                            try ParagraphComposer.positionParagraphs(
-                                sourceUTF8Count: text.utf8.count,
-                                maximumWidth: maximumLineWidth,
-                                lineHeight: lineHeight,
-                                lineSpacing: lineSpacing,
-                                paragraphSpacing: paragraphSpacing,
-                                glyphs: glyphs,
-                                runs: runs,
-                                opportunities: opportunities,
-                                units: units,
-                                registry: sfnt,
-                                workspace: &lineWorkspace
-                            )
+                            try paragraphStyles.withUnsafeBufferPointer { styles in
+                                try ParagraphComposer.positionParagraphs(
+                                    sourceUTF8Count: text.utf8.count,
+                                    maximumWidth: maximumLineWidth,
+                                    lineHeight: lineHeight,
+                                    styles: unsafe Span(_unsafeElements: styles),
+                                    glyphs: glyphs,
+                                    runs: runs,
+                                    opportunities: opportunities,
+                                    units: units,
+                                    registry: sfnt,
+                                    workspace: &lineWorkspace
+                                )
+                            }
                             lineWorkspace.lines.withSpan { lines in
                                 lineWorkspace.positions.withSpan { positions in
+                                    var paragraphIndex = 0
                                     for lineIndex in lines.indices {
                                         let positionedLine = lines[lineIndex]
+                                        while paragraphIndex + 1 < lineWorkspace.paragraphs.count,
+                                              lineIndex >= lineWorkspace.paragraphs[paragraphIndex]
+                                                .lineRange.upperBound {
+                                            paragraphIndex += 1
+                                        }
                                         var runIndex = 0
                                         while runIndex < runs.count,
                                               positionedLine.consumedGlyphRange.lowerBound
@@ -388,14 +394,16 @@ extension Font {
                                                 sourceRange: glyph.sourceRange,
                                                 advance: advance,
                                                 typographicBounds: .init(
-                                                    x: position.x,
+                                                    x: positionedLine.originX + position.x,
                                                     y: -metrics.ascent,
                                                     width: advance,
                                                     height: metrics.ascent + metrics.descent
                                                 ),
                                                 renderBounds: rawRenderBounds.map {
                                                     .init(
-                                                        x: position.x + Float($0.xMin) * scale,
+                                                        x: positionedLine.originX
+                                                            + position.x
+                                                            + Float($0.xMin) * scale,
                                                         y: position.y - Float($0.yMax) * scale,
                                                         width: Float($0.xMax - $0.xMin) * scale,
                                                         height: Float($0.yMax - $0.yMin) * scale
@@ -405,7 +413,19 @@ extension Font {
                                         }
                                         debugLines.append(Self.debugLine(
                                             positionedLine,
-                                            maximumWidth: maximumLineWidth
+                                            maximumWidth: Self.availableWidth(
+                                                maximumLineWidth,
+                                                style: paragraphStyles[paragraphIndex],
+                                                isFirstLine: lineIndex
+                                                    == lineWorkspace.paragraphs[paragraphIndex]
+                                                        .lineRange.lowerBound
+                                            ),
+                                            availableX: Self.availableX(
+                                                style: paragraphStyles[paragraphIndex],
+                                                isFirstLine: lineIndex
+                                                    == lineWorkspace.paragraphs[paragraphIndex]
+                                                        .lineRange.lowerBound
+                                            )
                                         ))
                                     }
                                 }
@@ -530,7 +550,8 @@ extension Font {
 
         private static func debugLine(
             _ line: PositionedLine,
-            maximumWidth: Float
+            maximumWidth: Float,
+            availableX: Float
         ) -> RunDebugInfo.Line {
             let breakKind: RunDebugInfo.Break.Kind = switch line.breakKind {
             case .allowed: .allowed
@@ -538,6 +559,7 @@ extension Font {
             case .mandatory: .mandatory
             }
             return .init(
+                availableX: availableX,
                 maximumWidth: maximumWidth,
                 consumedSourceRange: line.consumedSourceRange,
                 consumedGlyphRange: line.consumedGlyphRange,
@@ -566,6 +588,32 @@ extension Font {
                 renderBounds: line.renderBounds.map {
                     .init(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
                 }
+            )
+        }
+
+        private static func availableX(
+            style: ParagraphStyle,
+            isFirstLine: Bool
+        ) -> Float {
+            style.indentation.leading
+                + (isFirstLine && style.alignment == .leading
+                    ? style.indentation.firstLine
+                    : 0)
+        }
+
+        private static func availableWidth(
+            _ maximumWidth: Float,
+            style: ParagraphStyle,
+            isFirstLine: Bool
+        ) -> Float {
+            max(
+                0,
+                maximumWidth
+                    - availableX(style: style, isFirstLine: isFirstLine)
+                    - style.indentation.trailing
+                    - (isFirstLine && style.alignment == .trailing
+                        ? style.indentation.firstLine
+                        : 0)
             )
         }
 

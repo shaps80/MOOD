@@ -25,6 +25,7 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 - Typographic advance controls wrapping. Render bounds remain independent and may overhang.
 - Mixed-run natural geometry takes maximum above/below contributions during the existing scan. `LineHeight` supports natural, multiple, minimum, and exact resolution.
 - Glyph positions remain baseline-local. Each positioned line stores one document-space baseline and references shared position/glyph ranges.
+- Composition borrows one `ParagraphStyle` per source paragraph. Alignment stores a horizontal line origin rather than rewriting every glyph position.
 - Full composition continues until source exhaustion; line limits are explicit constraints, never an implicit cap.
 - Mandatory breaks group lines into compact `PositionedParagraph` records containing source/line ranges, document bounds, render bounds, and first/last baselines.
 - Paragraph records share `LineLayoutWorkspace`; they duplicate no glyph or line data. Line spacing applies within paragraphs; paragraph spacing applies between them.
@@ -33,7 +34,7 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 
 Exactly three stage workspaces exist: `ShapingWorkspace`, `LineBreakWorkspace`, and `LineLayoutWorkspace`. Outputs remain valid until reuse. A `Buffer` is one typed contiguous column. `Storage` is long-lived retained identity such as `SFNT.FaceStorage`. `ShapingScratch` holds per-run temporaries.
 
-## Agreed Style Direction
+## Paragraph Style
 
 ```swift
 struct ParagraphStyle {
@@ -46,7 +47,7 @@ struct ParagraphStyle {
 struct Indentation {
     var leading: Float
     var trailing: Float
-    var firstLine: Float // additional leading indentation
+    var firstLine: Float
 }
 
 struct Spacing {
@@ -68,6 +69,10 @@ struct LineLimit {
 ```
 
 Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow. Leading/trailing follow resolved writing direction. Reserved minimum lines affect overall layout height without fabricating empty line records. Truncation/hyphen insertion must occur only at legal cluster boundaries.
+
+First-line indentation applies inward from the aligned logical edge for leading and trailing alignment, and is ignored for centered text. Bidi resolution will later map those logical edges to physical left/right for each paragraph.
+
+`ParagraphStyle`, `TextAlignment`, `Indentation`, `Spacing`, and `Hyphenation` now exist as value types. Alignment, indentation, and spacing affect composition. Automatic hyphen insertion remains future work; the value is already carried per paragraph.
 
 ## Future Content API
 

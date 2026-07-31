@@ -2,9 +2,9 @@
 
 ## Current Slice
 
-1. Add `ParagraphStyle` value types: `TextAlignment`, `Indentation`, `Spacing`, and `Hyphenation`.
-2. Apply alignment and indentation while preserving baseline-local glyph positions.
-3. Expose paragraph-style geometry in the playground for visual validation.
+1. Visually validate per-paragraph alignment, indentation, spacing, font, and size.
+2. Add `LayoutConstraints`, `LineLimit`, and `Overflow` values.
+3. Implement uncapped/limited composition and reserved minimum-line height.
 
 ## Completed Foundation
 
@@ -15,12 +15,14 @@
 - Resumable single-line composition and uncapped full multi-line composition.
 - Natural/custom line height, independent line spacing, baseline-local positions, document baselines.
 - Paragraph grouping, spacing, source/line ranges, bounds, render bounds, and first/last baselines.
+- One borrowed `ParagraphStyle` per source paragraph, with leading/center/trailing alignment, logical-edge first-line indentation, leading/trailing indentation, and before/after/line spacing.
+- Alignment retains baseline-local glyph positions and stores one horizontal origin per line.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
-- Playground validation for shaping, break opportunities, words, lines, and multiple paragraphs.
+- Playground validation for shaping, break opportunities, words, lines, multiple paragraphs, and tap-selected per-paragraph styling.
 
 ## Next Core Work
 
-- `LayoutConstraints`, `LineLimit`, and `Overflow` including cluster-safe head/middle/tail truncation.
+- `Overflow` implementation including cluster-safe head/middle/tail truncation.
 - Reserved minimum-line height without synthetic line records.
 - Automatic language-aware hyphenation; explicit no-wrap/no-hyphen source ranges.
 - Bidirectional resolution and script-specific shaping/reordering/feature masks.

@@ -19,7 +19,7 @@ struct ContentView: View {
                 }
                 .tag("shaping")
 
-            RunsView(font: font)
+            RunsView(font: $font, fonts: fonts)
                 .tabItem {
                     Label("Runs", systemImage: "square.split.2x1")
                 }
@@ -27,14 +27,16 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("Font", selection: $font) {
-                    ForEach(fonts) { font in
-                        Text(font.name).tag(font)
+                if selection != "runs" {
+                    Picker("Font", selection: $font) {
+                        ForEach(fonts) { font in
+                            Text(font.name).tag(font)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(minWidth: 180)
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(minWidth: 180)
             }
         }
         .task {

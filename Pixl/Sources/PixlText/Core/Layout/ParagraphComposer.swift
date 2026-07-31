@@ -3,8 +3,7 @@ enum ParagraphComposer {
         sourceUTF8Count: Int,
         maximumWidth: Float,
         lineHeight: LineHeight,
-        lineSpacing: Float,
-        paragraphSpacing: Float,
+        styles: Span<ParagraphStyle>,
         glyphs: Span<ShapingGlyph>,
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>,
@@ -12,11 +11,7 @@ enum ParagraphComposer {
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
     ) throws {
-        guard lineSpacing >= 0,
-              lineSpacing.isFinite,
-              paragraphSpacing >= 0,
-              paragraphSpacing.isFinite
-        else {
+        guard maximumWidth >= 0, maximumWidth.isFinite, !styles.isEmpty else {
             throw LineLayoutError.invalidInput
         }
 
@@ -33,13 +28,41 @@ enum ParagraphComposer {
         var paragraphBounds: PositionedLine.Bounds?
         var paragraphRenderBounds: PositionedLine.Bounds?
         var firstBaselineY: Float = 0
+        var paragraphIndex = 0
+        var isFirstLine = true
 
         while let lineStart = next {
+            guard paragraphIndex < styles.count else {
+                throw LineLayoutError.invalidInput
+            }
+            let style = styles[paragraphIndex]
+            guard style.isValid else { throw LineLayoutError.invalidInput }
+            if isFirstLine {
+                lineTop += style.spacing.paragraphBefore
+            }
+            var leading = style.indentation.leading
+            var trailing = style.indentation.trailing
+            if isFirstLine {
+                switch style.alignment {
+                case .leading:
+                    leading += style.indentation.firstLine
+                case .center:
+                    break
+                case .trailing:
+                    trailing += style.indentation.firstLine
+                }
+            }
+            let availableWidth = max(
+                0,
+                maximumWidth - leading - trailing
+            )
             let composition = try LineComposer.positionLine(
                 from: lineStart,
                 lineTop: lineTop,
                 sourceUTF8Count: sourceUTF8Count,
-                maximumWidth: maximumWidth,
+                maximumWidth: availableWidth,
+                horizontalOrigin: leading,
+                alignment: style.alignment,
                 lineHeight: lineHeight,
                 glyphs: glyphs,
                 runs: runs,
@@ -80,11 +103,20 @@ enum ParagraphComposer {
                 paragraphSourceStart = line.consumedSourceRange.upperBound
                 paragraphBounds = nil
                 paragraphRenderBounds = nil
+                paragraphIndex += 1
+                isFirstLine = true
+            } else {
+                isFirstLine = false
             }
 
             guard next != nil else { break }
             lineTop += line.lineBounds.height
-            lineTop += endsParagraph ? paragraphSpacing : lineSpacing
+            lineTop += endsParagraph
+                ? style.spacing.paragraphAfter
+                : style.spacing.lineSpacing
+        }
+        guard paragraphIndex == styles.count else {
+            throw LineLayoutError.invalidInput
         }
     }
 
