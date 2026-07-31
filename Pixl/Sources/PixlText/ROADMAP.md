@@ -27,16 +27,18 @@
 
 - Cluster-safe trailing ellipsis with reserved shaped-token advance.
 - Automatic language-aware hyphenation; explicit no-wrap/no-hyphen source ranges.
-- Bidirectional resolution and script-specific shaping/reordering/feature masks.
-- Variable-font FeatureVariations/ItemVariationStore and Device adjustments.
+- Variable-font axes, interpolated outlines/metrics, FeatureVariations, ItemVariationStore, and Device adjustments; validate against installed San Francisco variable fonts.
+- Viewport-driven non-contiguous paragraph layout with overscan, estimated offscreen geometry, and reuse of unchanged paragraph results.
+- Promote the stable low-level records into public `Element`, `Paragraph`, and `Line` APIs without hiding contiguous glyph/range access.
+- Rasterisation/MSDF generation, dynamic atlas packing, cache ownership and lifetime.
+- Ordered renderer-neutral primitives containing pre-culled positioned glyph data and atlas references.
 
 ## Later Systems
 
 - Head and middle truncation modes.
 - Embedded bitmap-strike parsing, selection, metrics, and extraction.
-- Rasterisation/MSDF generation, dynamic atlas packing, cache ownership and lifetime.
-- Low-level paragraph/content records evolving into `Element`, `Paragraph`, and `Line` APIs.
-- Ordered renderer-neutral primitives, viewport layout/culling, and higher-level editing/navigation APIs.
+- Bidirectional resolution and script-specific shaping/reordering/feature masks.
+- Higher-level editing/navigation APIs, including glyph-aware source selections, caret geometry, and hit testing.
 
 ## Open Gates
 
