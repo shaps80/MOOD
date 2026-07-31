@@ -1,26 +1,94 @@
 enum LineBreaker {
     static func findOpportunities(
         in text: String,
+        styles: Span<ParagraphStyle>,
         workspace: inout LineBreakWorkspace
     ) {
         workspace.removeAll()
         classify(text, into: &workspace.units)
+        findAutomaticHyphenation(
+            styles: styles,
+            units: workspace.units,
+            scores: &workspace.hyphenationScores,
+            output: &workspace.hyphenationOpportunities
+        )
 
         guard workspace.units.count > 0 else {
             workspace.opportunities.append(.init(sourceOffset: 0, kind: .mandatory))
             return
         }
 
+        var hyphenationIndex = 0
         for boundary in 1...workspace.units.count {
-            if var kind = breakKind(at: boundary, in: workspace.units) {
+            let offset = boundary == workspace.units.count
+                ? text.utf8.count
+                : workspace.units[boundary].sourceOffset
+            while hyphenationIndex < workspace.hyphenationOpportunities.count,
+                  workspace.hyphenationOpportunities[hyphenationIndex].sourceOffset < offset {
+                hyphenationIndex += 1
+            }
+            var kind = breakKind(at: boundary, in: workspace.units)
+            if kind == nil,
+               hyphenationIndex < workspace.hyphenationOpportunities.count,
+               workspace.hyphenationOpportunities[hyphenationIndex].sourceOffset == offset {
+                kind = .automaticHyphen
+            }
+            if var kind {
                 if kind == .allowed, workspace.units[boundary - 1].scalar == 0x00AD {
                     kind = .softHyphen
                 }
-                let offset = boundary == workspace.units.count
-                    ? text.utf8.count
-                    : workspace.units[boundary].sourceOffset
                 workspace.opportunities.append(.init(sourceOffset: offset, kind: kind))
             }
+        }
+    }
+
+    private static func findAutomaticHyphenation(
+        styles: Span<ParagraphStyle>,
+        units: borrowing LineBreakUnitBuffer,
+        scores: inout HyphenationScoreBuffer,
+        output: inout LineBreakOpportunityBuffer
+    ) {
+        guard !styles.isEmpty else { return }
+        var paragraphIndex = 0
+        var index = 0
+        while index < units.count {
+            let scalar = units[index].scalar
+            if isASCIILetter(scalar) {
+                let start = index
+                repeat {
+                    index += 1
+                } while index < units.count && isASCIILetter(units[index].scalar)
+                if paragraphIndex < styles.count,
+                   styles[paragraphIndex].hyphenation == .automatic {
+                    EnglishHyphenator.appendOpportunities(
+                        wordRange: start..<index,
+                        units: units,
+                        scores: &scores,
+                        output: &output
+                    )
+                }
+                continue
+            }
+            if endsParagraph(at: index, units: units) { paragraphIndex += 1 }
+            index += 1
+        }
+    }
+
+    private static func isASCIILetter(_ scalar: UInt32) -> Bool {
+        (scalar >= 65 && scalar <= 90) || (scalar >= 97 && scalar <= 122)
+    }
+
+    private static func endsParagraph(
+        at index: Int,
+        units: borrowing LineBreakUnitBuffer
+    ) -> Bool {
+        switch units[index].raw {
+        case .bk, .lf, .nl:
+            return true
+        case .cr:
+            return index + 1 >= units.count || units[index + 1].raw != .lf
+        default:
+            return false
         }
     }
 

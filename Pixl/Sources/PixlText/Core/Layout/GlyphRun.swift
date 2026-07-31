@@ -6,4 +6,6 @@ struct GlyphRun: Hashable, Sendable {
     let direction: TextDirection
     let script: UnicodeScript
     let language: UInt32?
+    let ellipsisGlyphRange: Range<Int>
+    let hyphenGlyphRange: Range<Int>
 }

@@ -314,7 +314,13 @@ extension Font {
                 minimumScalarCapacity: text.unicodeScalars.count,
                 minimumOpportunityCapacity: text.utf8.count / 4
             )
-            LineBreaker.findOpportunities(in: text, workspace: &lineBreakWorkspace)
+            paragraphStyles.withUnsafeBufferPointer { styles in
+                LineBreaker.findOpportunities(
+                    in: text,
+                    styles: unsafe Span(_unsafeElements: styles),
+                    workspace: &lineBreakWorkspace
+                )
+            }
             var debugBreaks: [RunDebugInfo.Break] = []
             debugBreaks.reserveCapacity(lineBreakWorkspace.opportunities.count)
             lineBreakWorkspace.opportunities.withSpan { opportunities in
@@ -323,6 +329,7 @@ extension Font {
                     let kind: RunDebugInfo.Break.Kind = switch opportunity.kind {
                     case .allowed: .allowed
                     case .softHyphen: .softHyphen
+                    case .automaticHyphen: .automaticHyphen
                     case .mandatory: .mandatory
                     }
                     debugBreaks.append(.init(
@@ -342,6 +349,7 @@ extension Font {
             case .exactly(let value): .exactly(value)
             }
             var debugGlyphs: [RunDebugInfo.Glyph] = []
+            var debugInsertions: [RunDebugInfo.Insertion] = []
             var debugLines: [RunDebugInfo.Line] = []
             var debugParagraphs: [RunDebugInfo.Paragraph] = []
             var positionedLayout: PositionedLayout?
@@ -349,20 +357,23 @@ extension Font {
                 try workspace.glyphs.withSpan { glyphs in
                     try lineBreakWorkspace.opportunities.withSpan { opportunities in
                         try lineBreakWorkspace.units.withSpan { units in
-                            try paragraphStyles.withUnsafeBufferPointer { styles in
-                                positionedLayout = try ParagraphComposer.positionParagraphs(
-                                    sourceUTF8Count: text.utf8.count,
-                                    constraints: constraints,
-                                    lineHeight: lineHeight,
-                                    baseMetrics: baseMetrics,
-                                    styles: unsafe Span(_unsafeElements: styles),
-                                    glyphs: glyphs,
-                                    runs: runs,
-                                    opportunities: opportunities,
-                                    units: units,
-                                    registry: sfnt,
-                                    workspace: &lineWorkspace
-                                )
+                            try workspace.insertionGlyphs.withSpan { insertionGlyphs in
+                                try paragraphStyles.withUnsafeBufferPointer { styles in
+                                    positionedLayout = try ParagraphComposer.positionParagraphs(
+                                        sourceUTF8Count: text.utf8.count,
+                                        constraints: constraints,
+                                        lineHeight: lineHeight,
+                                        baseMetrics: baseMetrics,
+                                        styles: unsafe Span(_unsafeElements: styles),
+                                        glyphs: glyphs,
+                                        runs: runs,
+                                        opportunities: opportunities,
+                                        units: units,
+                                        insertionGlyphs: insertionGlyphs,
+                                        registry: sfnt,
+                                        workspace: &lineWorkspace
+                                    )
+                                }
                             }
                             lineWorkspace.lines.withSpan { lines in
                                 lineWorkspace.positions.withSpan { positions in
@@ -474,6 +485,42 @@ extension Font {
                                     ))
                                 }
                             }
+                            lineWorkspace.lines.withSpan { lines in
+                                lineWorkspace.insertions.withSpan { insertions in
+                                    debugInsertions.reserveCapacity(insertions.count)
+                                    for lineIndex in lines.indices {
+                                        let line = lines[lineIndex]
+                                        for index in line.insertionRange {
+                                            let insertion = insertions[index]
+                                            let metrics = insertion.face.metrics.scaled(
+                                                to: insertion.size
+                                            )
+                                            debugInsertions.append(.init(
+                                                lineIndex: lineIndex,
+                                                kind: insertion.kind == .ellipsis
+                                                    ? .ellipsis
+                                                    : .hyphen,
+                                                glyphID: insertion.glyphID.rawValue,
+                                                sourceOffset: insertion.sourceOffset,
+                                                typographicBounds: .init(
+                                                    x: line.originX + insertion.position.x,
+                                                    y: -metrics.ascent,
+                                                    width: insertion.advance,
+                                                    height: metrics.ascent + metrics.descent
+                                                ),
+                                                renderBounds: insertion.renderBounds.map {
+                                                    .init(
+                                                        x: line.originX + $0.x,
+                                                        y: $0.y,
+                                                        width: $0.width,
+                                                        height: $0.height
+                                                    )
+                                                }
+                                            ))
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -490,6 +537,7 @@ extension Font {
             return .init(
                 runs: debugRuns,
                 glyphs: debugGlyphs,
+                insertions: debugInsertions,
                 words: debugWords,
                 breaks: debugBreaks,
                 lines: debugLines,
@@ -623,6 +671,7 @@ extension Font {
             let breakKind: RunDebugInfo.Break.Kind = switch line.breakKind {
             case .allowed: .allowed
             case .softHyphen: .softHyphen
+            case .automaticHyphen: .automaticHyphen
             case .mandatory: .mandatory
             }
             return .init(

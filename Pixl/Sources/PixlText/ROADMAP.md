@@ -2,8 +2,8 @@
 
 ## Current Slice
 
-1. Implement cluster-safe trailing ellipsis with reserved shaped-token advance.
-2. Validate truncation across mixed-font runs and narrow widths.
+1. Implement variable-font axes and instance selection.
+2. Validate interpolated metrics/outlines and OpenType variations against installed San Francisco variable fonts.
 
 ## Completed Foundation
 
@@ -20,13 +20,14 @@
 - `LayoutConstraints`, `LineLimit`, and `Overflow` values; maximum line count stops composition cleanly and returns complete/overflow status.
 - Minimum-line reservation derives overall geometry from base-font metrics without synthetic content or line records; empty source retains one base-font insertion line.
 - `DefaultLineMetrics` selects automatic base-font or inherited final-line geometry for otherwise metric-less lines.
+- Cluster-safe trailing ellipsis reserves its exact shaped advance, supports narrow widths, and emits generated insertion records without changing source ranges.
+- Soft and automatic English hyphenation insert shaped hyphen glyphs only when their chosen break is used. Portable checked-in pattern/exception data requires no platform dependency.
 - Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
-- Playground validation for shaping, break opportunities, words, lines, paragraphs, per-paragraph styling, capped/unlimited layout, safe line-limit clamping, minimum-line geometry, and automatic/inherited default metrics.
+- Playground validation for shaping, break opportunities, words, lines, paragraphs, generated insertions, per-paragraph styling, capped/unlimited layout, safe line-limit clamping, minimum-line geometry, and automatic/inherited default metrics.
 
 ## Next Core Work
 
-- Cluster-safe trailing ellipsis with reserved shaped-token advance.
-- Automatic language-aware hyphenation; explicit no-wrap/no-hyphen source ranges.
+- Additional language hyphenation policy/data and explicit no-wrap/no-hyphen source ranges.
 - Variable-font axes, interpolated outlines/metrics, FeatureVariations, ItemVariationStore, and Device adjustments; validate against installed San Francisco variable fonts.
 - Viewport-driven non-contiguous paragraph layout with overscan, estimated offscreen geometry, and reuse of unchanged paragraph results.
 - Promote the stable low-level records into public `Element`, `Paragraph`, and `Line` APIs without hiding contiguous glyph/range access.
@@ -43,7 +44,7 @@
 ## Open Gates
 
 - Exact bidi and script-shaping boundaries.
-- Hyphenation language source and policy.
+- Hyphenation language source and policy beyond the current English fallback.
 - Overflow/truncation semantics across mixed styles.
 - Bitmap/vector/color glyph capability model.
 - Cache keys, invalidation, and scheduling thresholds.

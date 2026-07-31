@@ -64,10 +64,25 @@ extension Font {
             package let renderBounds: GlyphDebugInfo.Bounds?
         }
 
+        package struct Insertion: Hashable, Sendable {
+            package enum Kind: String, Hashable, Sendable {
+                case ellipsis = "Ellipsis"
+                case hyphen = "Hyphen"
+            }
+
+            package let lineIndex: Int
+            package let kind: Kind
+            package let glyphID: UInt16
+            package let sourceOffset: Int
+            package let typographicBounds: GlyphDebugInfo.Bounds
+            package let renderBounds: GlyphDebugInfo.Bounds?
+        }
+
         package struct Break: Hashable, Sendable {
             package enum Kind: String, Hashable, Sendable {
                 case allowed = "Allowed"
                 case softHyphen = "Soft hyphen"
+                case automaticHyphen = "Automatic hyphen"
                 case mandatory = "Mandatory"
             }
 
@@ -114,6 +129,7 @@ extension Font {
 
         package let runs: [Run]
         package let glyphs: [Glyph]
+        package let insertions: [Insertion]
         package let words: [Word]
         package let breaks: [Break]
         package let lines: [Line]

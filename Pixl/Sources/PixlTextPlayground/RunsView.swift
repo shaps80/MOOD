@@ -138,6 +138,29 @@ struct RunsView: View {
                         )
                     )
                 }
+                for insertion in information.insertions {
+                    let typographicFrame = rect(
+                        for: insertion.typographicBounds,
+                        lineIndex: insertion.lineIndex,
+                        information: information
+                    )
+                    context.stroke(
+                        Path(typographicFrame),
+                        with: .color(.pink),
+                        style: .init(lineWidth: 2, dash: [5, 3])
+                    )
+                    if let bounds = insertion.renderBounds {
+                        context.stroke(
+                            Path(rect(
+                                for: bounds,
+                                lineIndex: insertion.lineIndex,
+                                information: information
+                            )),
+                            with: .color(.pink),
+                            lineWidth: 2
+                        )
+                    }
+                }
             }
             .contentShape(Rectangle())
             .onContinuousHover { phase in
@@ -264,6 +287,9 @@ struct RunsView: View {
             case .softHyphen:
                 marker = "‐"
                 color = .orange
+            case .automaticHyphen:
+                marker = "‐"
+                color = .pink
             case .mandatory:
                 marker = "↵"
                 color = .red
@@ -308,11 +334,7 @@ struct RunsView: View {
                     "Reserved lines",
                     value: information.reservedLineCount.description
                 )
-                if overflow != .visible {
-                    Text("Selected mode is carried by constraints; its presentation behavior is the next slice.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                LabeledContent("Insertions", value: information.insertions.count.description)
             }
 
             Section("Paragraph") {
@@ -363,9 +385,6 @@ struct RunsView: View {
                     Text("None").tag(PixlText.Hyphenation.none)
                     Text("Automatic").tag(PixlText.Hyphenation.automatic)
                 }
-                Text("Automatic insertion is not implemented yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             if let hoveredWord {

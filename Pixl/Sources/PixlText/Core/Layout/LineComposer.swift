@@ -33,6 +33,8 @@ enum LineComposer {
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>,
         units: Span<LineBreakUnit>,
+        insertionGlyphs: Span<ShapingGlyph>,
+        trailingToken: ShapedInsertionToken? = nil,
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
     ) throws -> LineComposition {
@@ -57,6 +59,7 @@ enum LineComposer {
 
         if glyphs.isEmpty {
             let positionStart = workspace.positions.count
+            let insertionStart = workspace.insertions.count
             let halfLeading = max(0, emptyLineMetrics.leading) * 0.5
             let naturalAbove = emptyLineMetrics.ascent + halfLeading
             let naturalBelow = emptyLineMetrics.descent + halfLeading
@@ -67,6 +70,7 @@ enum LineComposer {
             let resolvedBelow = naturalBelow + halfAdjustment
             let line = PositionedLine(
                 positionRange: positionStart..<positionStart,
+                insertionRange: insertionStart..<insertionStart,
                 consumedSourceRange: 0..<0,
                 consumedGlyphRange: 0..<0,
                 visibleGlyphRange: 0..<0,
@@ -120,8 +124,30 @@ enum LineComposer {
         var unitIndex = start.unitIndex
         var opportunityIndex = start.opportunityIndex
         var glyphIndex = start.glyphIndex
-        var lastFittingCandidate: Candidate?
+        let insertionStart = workspace.insertions.count
         let positionStart = workspace.positions.count
+        let trailingAdvance = trailingToken.map {
+            tokenAdvance($0, glyphs: insertionGlyphs)
+        } ?? 0
+        let contentMaximumWidth = max(0, maximumWidth - trailingAdvance)
+        var lastFittingCandidate: Candidate? = trailingToken == nil ? nil : .init(
+            sourceEnd: start.sourceOffset,
+            glyphEnd: start.glyphIndex,
+            visibleGlyphEnd: start.glyphIndex,
+            positionCount: 0,
+            breakKind: .allowed,
+            advance: 0,
+            ascent: 0,
+            descent: 0,
+            leading: 0,
+            naturalAbove: 0,
+            naturalBelow: 0,
+            renderBounds: nil,
+            insertionToken: nil,
+            nextRunIndex: start.runIndex,
+            nextOpportunityIndex: start.opportunityIndex,
+            nextUnitIndex: start.unitIndex
+        )
 
         while glyphIndex < glyphs.count {
             let clusterRange = glyphs[glyphIndex].sourceRange
@@ -204,10 +230,41 @@ enum LineComposer {
                   opportunities[opportunityIndex].sourceOffset < clusterRange.upperBound {
                 opportunityIndex += 1
             }
+            if trailingToken != nil, visibleAdvance <= contentMaximumWidth {
+                lastFittingCandidate = Candidate(
+                    sourceEnd: clusterRange.upperBound,
+                    glyphEnd: clusterEnd,
+                    visibleGlyphEnd: visibleGlyphEnd,
+                    positionCount: clusterEnd - start.glyphIndex,
+                    breakKind: .allowed,
+                    advance: visibleAdvance,
+                    ascent: ascent,
+                    descent: descent,
+                    leading: leading,
+                    naturalAbove: naturalAbove,
+                    naturalBelow: naturalBelow,
+                    renderBounds: renderBounds,
+                    insertionToken: nil,
+                    nextRunIndex: nextRunIndex,
+                    nextOpportunityIndex: opportunityIndex,
+                    nextUnitIndex: cluster.nextUnitIndex
+                )
+            }
             while opportunityIndex < opportunities.count,
                   opportunities[opportunityIndex].sourceOffset == clusterRange.upperBound {
                 let opportunity = opportunities[opportunityIndex]
                 let nextOpportunityIndex = opportunityIndex + 1
+                let insertionToken: ShapedInsertionToken? = if trailingToken == nil,
+                    opportunity.kind == .softHyphen || opportunity.kind == .automaticHyphen {
+                    .init(
+                        kind: .hyphen,
+                        glyphRange: runs[runIndex].hyphenGlyphRange,
+                        face: runs[runIndex].face,
+                        size: runs[runIndex].size
+                    )
+                } else {
+                    nil
+                }
                 let candidate = Candidate(
                     sourceEnd: opportunity.sourceOffset,
                     glyphEnd: clusterEnd,
@@ -221,12 +278,16 @@ enum LineComposer {
                     naturalAbove: naturalAbove,
                     naturalBelow: naturalBelow,
                     renderBounds: renderBounds,
+                    insertionToken: insertionToken,
                     nextRunIndex: nextRunIndex,
                     nextOpportunityIndex: nextOpportunityIndex,
                     nextUnitIndex: cluster.nextUnitIndex
                 )
 
-                if candidate.advance > maximumWidth {
+                let candidateAdvance = candidate.advance + (insertionToken.map {
+                    tokenAdvance($0, glyphs: insertionGlyphs)
+                } ?? 0)
+                if candidateAdvance > contentMaximumWidth {
                     return finish(
                         lastFittingCandidate ?? candidate,
                         start: start,
@@ -238,6 +299,10 @@ enum LineComposer {
                         sourceUTF8Count: sourceUTF8Count,
                         glyphCount: glyphs.count,
                         lineHeight: lineHeight,
+                        insertionStart: insertionStart,
+                        insertionGlyphs: insertionGlyphs,
+                        trailingToken: trailingToken,
+                        registry: registry,
                         workspace: &workspace
                     )
                 }
@@ -253,6 +318,10 @@ enum LineComposer {
                         sourceUTF8Count: sourceUTF8Count,
                         glyphCount: glyphs.count,
                         lineHeight: lineHeight,
+                        insertionStart: insertionStart,
+                        insertionGlyphs: insertionGlyphs,
+                        trailingToken: trailingToken,
+                        registry: registry,
                         workspace: &workspace
                     )
                 }
@@ -278,6 +347,10 @@ enum LineComposer {
             sourceUTF8Count: sourceUTF8Count,
             glyphCount: glyphs.count,
             lineHeight: lineHeight,
+            insertionStart: insertionStart,
+            insertionGlyphs: insertionGlyphs,
+            trailingToken: trailingToken,
+            registry: registry,
             workspace: &workspace
         )
     }
@@ -295,6 +368,7 @@ enum LineComposer {
         let naturalAbove: Float
         let naturalBelow: Float
         let renderBounds: PositionedLine.Bounds?
+        let insertionToken: ShapedInsertionToken?
         let nextRunIndex: Int
         let nextOpportunityIndex: Int
         let nextUnitIndex: Int
@@ -352,17 +426,66 @@ enum LineComposer {
         sourceUTF8Count: Int,
         glyphCount: Int,
         lineHeight: LineHeight,
+        insertionStart: Int,
+        insertionGlyphs: Span<ShapingGlyph>,
+        trailingToken: ShapedInsertionToken?,
+        registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
     ) -> LineComposition {
         let positionEnd = positionStart + candidate.positionCount
         let excess = workspace.positions.count - positionEnd
         workspace.positions.removeLast(excess)
-        let naturalHeight = candidate.naturalAbove + candidate.naturalBelow
+        var advance = candidate.advance
+        var ascent = candidate.ascent
+        var descent = candidate.descent
+        var naturalAbove = candidate.naturalAbove
+        var naturalBelow = candidate.naturalBelow
+        var renderBounds = candidate.renderBounds
+        if let insertionToken = trailingToken ?? candidate.insertionToken {
+            let metrics = insertionToken.face.metrics.scaled(to: insertionToken.size)
+            let halfLeading = max(0, metrics.leading) * 0.5
+            ascent = max(ascent, metrics.ascent)
+            descent = max(descent, metrics.descent)
+            naturalAbove = max(naturalAbove, metrics.ascent + halfLeading)
+            naturalBelow = max(naturalBelow, metrics.descent + halfLeading)
+            let scale = insertionToken.size / Float(insertionToken.face.metrics.unitsPerEm)
+            var tokenPenX = candidate.advance
+            for index in insertionToken.glyphRange {
+                let glyph = insertionGlyphs[index]
+                let position = PositionedGlyph(
+                    x: tokenPenX + Float(glyph.xPlacement) * scale,
+                    y: -Float(glyph.yPlacement) * scale
+                )
+                let glyphAdvance = Float(glyph.nominalXAdvance + glyph.xAdvance) * scale
+                let bounds = registry.renderBounds(for: glyph.id, in: insertionToken.face).map {
+                    PositionedLine.Bounds(
+                        x: position.x + Float($0.xMin) * scale,
+                        y: position.y - Float($0.yMax) * scale,
+                        width: Float($0.xMax - $0.xMin) * scale,
+                        height: Float($0.yMax - $0.yMin) * scale
+                    )
+                }
+                if let bounds { renderBounds = union(renderBounds, bounds) }
+                workspace.insertions.append(.init(
+                    kind: insertionToken.kind,
+                    glyphID: glyph.id,
+                    face: insertionToken.face,
+                    size: insertionToken.size,
+                    sourceOffset: candidate.sourceEnd,
+                    position: position,
+                    advance: glyphAdvance,
+                    renderBounds: bounds
+                ))
+                tokenPenX += glyphAdvance
+            }
+            advance = tokenPenX
+        }
+        let naturalHeight = naturalAbove + naturalBelow
         let resolvedHeight = lineHeight.resolve(natural: naturalHeight)
         let halfAdjustment = (resolvedHeight - naturalHeight) * 0.5
-        let resolvedAbove = candidate.naturalAbove + halfAdjustment
-        let resolvedBelow = candidate.naturalBelow + halfAdjustment
-        let remainingWidth = max(0, maximumWidth - candidate.advance)
+        let resolvedAbove = naturalAbove + halfAdjustment
+        let resolvedBelow = naturalBelow + halfAdjustment
+        let remainingWidth = max(0, maximumWidth - advance)
         let alignmentOffset: Float = switch alignment {
         case .leading: 0
         case .center: remainingWidth * 0.5
@@ -371,32 +494,33 @@ enum LineComposer {
         let offsetX = horizontalOrigin + alignmentOffset
         let line = PositionedLine(
             positionRange: positionStart..<positionEnd,
+            insertionRange: insertionStart..<workspace.insertions.count,
             consumedSourceRange: start.sourceOffset..<candidate.sourceEnd,
             consumedGlyphRange: start.glyphIndex..<candidate.glyphEnd,
             visibleGlyphRange: start.glyphIndex..<candidate.visibleGlyphEnd,
             breakKind: candidate.breakKind,
-            advance: candidate.advance,
-            ascent: candidate.ascent,
-            descent: candidate.descent,
-            leading: candidate.leading,
-            naturalAbove: candidate.naturalAbove,
-            naturalBelow: candidate.naturalBelow,
+            advance: advance,
+            ascent: ascent,
+            descent: descent,
+            leading: max(0, naturalAbove + naturalBelow - ascent - descent),
+            naturalAbove: naturalAbove,
+            naturalBelow: naturalBelow,
             originX: offsetX,
             baselineY: lineTop + resolvedAbove,
             baselineOffset: resolvedAbove,
             typographicBounds: .init(
                 x: offsetX,
-                y: -candidate.ascent,
-                width: candidate.advance,
-                height: candidate.ascent + candidate.descent
+                y: -ascent,
+                width: advance,
+                height: ascent + descent
             ),
             lineBounds: .init(
                 x: offsetX,
                 y: -resolvedAbove,
-                width: candidate.advance,
+                width: advance,
                 height: resolvedAbove + resolvedBelow
             ),
-            renderBounds: candidate.renderBounds.map {
+            renderBounds: renderBounds.map {
                 .init(
                     x: $0.x + offsetX,
                     y: $0.y,
@@ -415,6 +539,19 @@ enum LineComposer {
             unitIndex: candidate.nextUnitIndex
         )
         return .init(line: line, next: next)
+    }
+
+    private static func tokenAdvance(
+        _ token: ShapedInsertionToken,
+        glyphs: Span<ShapingGlyph>
+    ) -> Float {
+        let scale = token.size / Float(token.face.metrics.unitsPerEm)
+        var result: Float = 0
+        for index in token.glyphRange {
+            let glyph = glyphs[index]
+            result += Float(glyph.nominalXAdvance + glyph.xAdvance) * scale
+        }
+        return result
     }
 
     private static func union(

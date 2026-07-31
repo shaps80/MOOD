@@ -22,6 +22,7 @@ The core is platform-independent and struct-first. It borrows `String` UTF-8/sca
 ## Line and Paragraph Layout
 
 - UAX #14 Unicode 16 line breaking writes sparse allowed/mandatory UTF-8 offsets. No-break controls are authoritative.
+- Automatic English hyphenation uses checked-in Knuth–Liang patterns and exceptions compiled into a flat immutable trie. Matching writes opportunities into reusable line-break buffers; it does not consult platform services or allocate temporary collections.
 - Composition scans shaped clusters sequentially, never splits a cluster, and selects the last legal fitting opportunity. First unbreakable segments overflow intact.
 - Consumed ranges include trailing break whitespace/control characters; visible ranges and advance exclude them.
 - Typographic advance controls wrapping. Render bounds remain independent and may overhang.
@@ -72,11 +73,11 @@ struct LineLimit {
 }
 ```
 
-Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow, and automatic default-line metrics. `DefaultLineMetrics.automatic` uses base-font metrics; `.inherited` uses the final laid-out line and falls back to the base font. Leading/trailing follow resolved writing direction. Minimum lines affect only overall geometry; they create no source, glyph, line, paragraph, or selection records. Empty source still has one insertion line using base-font metrics even when the minimum is zero. Initial truncation supports a trailing ellipsis only; head/middle remain future modes. Truncation/hyphen insertion must occur only at legal cluster boundaries.
+Defaults: leading alignment, zero indentation/spacing, automatic hyphenation, unlimited lines, visible overflow, and automatic default-line metrics. `DefaultLineMetrics.automatic` uses base-font metrics; `.inherited` uses the final laid-out line and falls back to the base font. Leading/trailing follow resolved writing direction. Minimum lines affect only overall geometry; they create no source, glyph, line, paragraph, or selection records. Empty source still has one insertion line using base-font metrics even when the minimum is zero. Initial truncation supports a trailing ellipsis only; head/middle remain future modes. Truncation and soft/automatic hyphenation shape generated insertion glyphs without mutating source or fabricating source/glyph ranges. Both occur only at cluster boundaries.
 
 First-line indentation applies inward from the aligned logical edge for leading and trailing alignment, and is ignored for centered text. Bidi resolution will later map those logical edges to physical left/right for each paragraph.
 
-`ParagraphStyle`, `TextAlignment`, `Indentation`, `Spacing`, and `Hyphenation` now exist as value types. Alignment, indentation, and spacing affect composition. Automatic hyphen insertion remains future work; the value is already carried per paragraph.
+`ParagraphStyle`, `TextAlignment`, `Indentation`, `Spacing`, and `Hyphenation` are value types. Alignment, indentation, spacing, and hyphenation affect composition. Automatic currently means the portable English fallback; explicit language selection comes with broader language policy.
 
 ## Future Content API
 

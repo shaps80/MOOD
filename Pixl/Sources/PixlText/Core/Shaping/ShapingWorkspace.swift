@@ -2,6 +2,7 @@ struct ShapingWorkspace: ~Copyable {
     var inputRuns: TextRunBuffer
     var scratch: ShapingScratch
     var glyphs: GlyphBuffer
+    var insertionGlyphs: GlyphBuffer
     var runs: GlyphRunBuffer
     var normalization: UnicodeNormalizationBuffer
 
@@ -9,6 +10,7 @@ struct ShapingWorkspace: ~Copyable {
         inputRuns = .init(minimumCapacity: minimumRunCapacity)
         scratch = .init(minimumGlyphCapacity: minimumGlyphCapacity)
         glyphs = .init(minimumCapacity: minimumGlyphCapacity)
+        insertionGlyphs = .init(minimumCapacity: minimumRunCapacity * 2)
         runs = .init(minimumCapacity: minimumRunCapacity)
         normalization = .init()
     }
@@ -22,6 +24,7 @@ struct ShapingWorkspace: ~Copyable {
         scratch.glyphs.removeAll(keepingCapacity: keepingCapacity)
         scratch.scratch.removeAll(keepingCapacity: keepingCapacity)
         glyphs.removeAll(keepingCapacity: keepingCapacity)
+        insertionGlyphs.removeAll(keepingCapacity: keepingCapacity)
         runs.removeAll(keepingCapacity: keepingCapacity)
         normalization.removeAll(keepingCapacity: keepingCapacity)
     }

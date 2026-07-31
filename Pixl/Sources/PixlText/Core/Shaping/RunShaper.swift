@@ -75,6 +75,26 @@ enum RunShaper {
 
             let glyphStart = workspace.glyphs.count
             workspace.glyphs.append(contentsOf: workspace.scratch.glyphs)
+            let ellipsisGlyphRange = shapeInsertionToken(
+                primary: "…",
+                fallback: ".",
+                fallbackCount: 3,
+                input: input,
+                substitutionPlans: substitutionPlans,
+                positioningPlans: positioningPlans,
+                registry: registry,
+                workspace: &workspace
+            )
+            let hyphenGlyphRange = shapeInsertionToken(
+                primary: "‐",
+                fallback: "-",
+                fallbackCount: 1,
+                input: input,
+                substitutionPlans: substitutionPlans,
+                positioningPlans: positioningPlans,
+                registry: registry,
+                workspace: &workspace
+            )
             workspace.runs.append(.init(
                 sourceRange: input.sourceRange,
                 glyphRange: glyphStart..<workspace.glyphs.count,
@@ -82,9 +102,71 @@ enum RunShaper {
                 size: input.size,
                 direction: input.direction,
                 script: input.script,
-                language: input.language
+                language: input.language,
+                ellipsisGlyphRange: ellipsisGlyphRange,
+                hyphenGlyphRange: hyphenGlyphRange
             ))
         }
+    }
+
+    private static func shapeInsertionToken(
+        primary: Unicode.Scalar,
+        fallback: Unicode.Scalar,
+        fallbackCount: Int,
+        input: TextRun,
+        substitutionPlans: Span<OpenTypeShapingPlan>,
+        positioningPlans: Span<OpenTypePositioningPlan>,
+        registry: borrowing SFNT.Registry,
+        workspace: inout ShapingWorkspace
+    ) -> Range<Int> {
+        workspace.scratch.glyphs.removeAll()
+        workspace.scratch.scratch.removeAll()
+        if let glyph = registry.glyphID(for: primary, in: input.face) {
+            workspace.scratch.glyphs.append(.init(
+                id: glyph,
+                sourceRange: 0..<0,
+                lookupIndex: nil,
+                feature: nil
+            ))
+        } else {
+            let glyph = registry.glyphID(for: fallback, in: input.face)
+                ?? .init(rawValue: 0)
+            for _ in 0..<fallbackCount {
+                workspace.scratch.glyphs.append(.init(
+                    id: glyph,
+                    sourceRange: 0..<0,
+                    lookupIndex: nil,
+                    feature: nil
+                ))
+            }
+        }
+
+        if let planIndex = input.substitutionPlanIndex,
+           substitutionPlans.indices.contains(planIndex) {
+            OpenTypeShaper.apply(
+                substitutionPlans[planIndex],
+                glyphDefinition: registry.glyphDefinition(in: input.face),
+                workspace: &workspace.scratch
+            )
+        }
+        for index in 0..<workspace.scratch.glyphs.count {
+            let glyph = workspace.scratch.glyphs[index].id
+            workspace.scratch.glyphs[index].nominalXAdvance = Int32(
+                registry.advanceInFontUnits(for: glyph, in: input.face) ?? 0
+            )
+        }
+        if let planIndex = input.positioningPlanIndex,
+           positioningPlans.indices.contains(planIndex) {
+            OpenTypePositioner.apply(
+                positioningPlans[planIndex],
+                glyphDefinition: registry.glyphDefinition(in: input.face),
+                to: &workspace.scratch.glyphs
+            )
+        }
+
+        let start = workspace.insertionGlyphs.count
+        workspace.insertionGlyphs.append(contentsOf: workspace.scratch.glyphs)
+        return start..<workspace.insertionGlyphs.count
     }
 
     private static func validate(

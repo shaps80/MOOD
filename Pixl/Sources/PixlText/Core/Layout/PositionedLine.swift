@@ -7,6 +7,7 @@ struct PositionedLine: Hashable, Sendable {
     }
 
     let positionRange: Range<Int>
+    let insertionRange: Range<Int>
     let consumedSourceRange: Range<Int>
     let consumedGlyphRange: Range<Int>
     let visibleGlyphRange: Range<Int>

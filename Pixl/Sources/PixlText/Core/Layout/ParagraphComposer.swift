@@ -9,6 +9,7 @@ enum ParagraphComposer {
         runs: Span<GlyphRun>,
         opportunities: Span<LineBreakOpportunity>,
         units: Span<LineBreakUnit>,
+        insertionGlyphs: Span<ShapingGlyph>,
         registry: borrowing SFNT.Registry,
         workspace: inout LineLayoutWorkspace
     ) throws -> PositionedLayout {
@@ -65,7 +66,9 @@ enum ParagraphComposer {
                 0,
                 constraints.width - leading - trailing
             )
-            let composition = try LineComposer.positionLine(
+            let positionStart = workspace.positions.count
+            let insertionStart = workspace.insertions.count
+            var composition = try LineComposer.positionLine(
                 from: lineStart,
                 lineTop: lineTop,
                 sourceUTF8Count: sourceUTF8Count,
@@ -78,9 +81,41 @@ enum ParagraphComposer {
                 runs: runs,
                 opportunities: opportunities,
                 units: units,
+                insertionGlyphs: insertionGlyphs,
                 registry: registry,
                 workspace: &workspace
             )
+            let isLastPermittedLine = constraints.lines.maximum != 0
+                && UInt(workspace.lines.count + 1) >= constraints.lines.maximum
+            if constraints.overflow == .trailingEllipsis,
+               isLastPermittedLine,
+               composition.next != nil,
+               let token = truncationToken(
+                    for: composition.line,
+                    fallbackRunIndex: lineStart.runIndex,
+                    runs: runs
+            ) {
+                workspace.positions.removeLast(workspace.positions.count - positionStart)
+                workspace.insertions.removeLast(workspace.insertions.count - insertionStart)
+                composition = try LineComposer.positionLine(
+                    from: lineStart,
+                    lineTop: lineTop,
+                    sourceUTF8Count: sourceUTF8Count,
+                    maximumWidth: availableWidth,
+                    horizontalOrigin: leading,
+                    alignment: style.alignment,
+                    lineHeight: lineHeight,
+                    emptyLineMetrics: baseMetrics,
+                    glyphs: glyphs,
+                    runs: runs,
+                    opportunities: opportunities,
+                    units: units,
+                    insertionGlyphs: insertionGlyphs,
+                    trailingToken: token,
+                    registry: registry,
+                    workspace: &workspace
+                )
+            }
             let line = composition.line
             let lineIndex = workspace.lines.count
             if lineIndex == paragraphLineStart {
@@ -158,6 +193,36 @@ enum ParagraphComposer {
             lineHeight: lineHeight,
             baseMetrics: baseMetrics,
             workspace: workspace
+        )
+    }
+
+    private static func truncationToken(
+        for line: PositionedLine,
+        fallbackRunIndex: Int,
+        runs: Span<GlyphRun>
+    ) -> ShapedInsertionToken? {
+        guard !runs.isEmpty else { return nil }
+        let glyphIndex = line.visibleGlyphRange.isEmpty
+            ? nil
+            : line.visibleGlyphRange.upperBound - 1
+        var runIndex = min(max(0, fallbackRunIndex), runs.count - 1)
+        if let glyphIndex {
+            while runIndex < runs.count,
+                  glyphIndex >= runs[runIndex].glyphRange.upperBound {
+                runIndex += 1
+            }
+            while runIndex > 0,
+                  glyphIndex < runs[runIndex].glyphRange.lowerBound {
+                runIndex -= 1
+            }
+        }
+        guard runIndex < runs.count else { return nil }
+        let run = runs[runIndex]
+        return .init(
+            kind: .ellipsis,
+            glyphRange: run.ellipsisGlyphRange,
+            face: run.face,
+            size: run.size
         )
     }
 
