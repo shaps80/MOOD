@@ -1,61 +1,43 @@
-# Text Engine Roadmap
+# PixlText Roadmap
 
-## Direction
+## Current Slice
 
-Build a cross-platform text engine that is usable independently of Pixl. Pixl and PixlUI are clients of the engine, not its defining boundary.
+1. Add `ParagraphStyle` value types: `TextAlignment`, `Indentation`, `Spacing`, and `Hyphenation`.
+2. Apply alignment and indentation while preserving baseline-local glyph positions.
+3. Expose paragraph-style geometry in the playground for visual validation.
 
-Keep text layout and glyph/atlas work separate from renderer lowering. The engine should eventually produce ordered, pre-culled renderer primitives that make GPU and CPU integration straightforward for Pixl, other engines, and applications.
+## Completed Foundation
 
-Start with efficient low-level data and algorithms. Add mid-level, TextKit 2-like abstractions only when they can be built cleanly on those primitives with measured overhead.
+- Real SFNT registration, metrics, cmap, glyph advances, TrueType bounds, and installed-font probing.
+- Platform-independent Unicode 16 NFC, Script data, and UAX #14 line opportunities.
+- Data-oriented shaping with flat indexed GSUB/GPOS/GDEF plans and reusable caller-owned buffers.
+- Source/glyph cluster mapping, mixed-font runs, positioning, typographic/render bounds.
+- Resumable single-line composition and uncapped full multi-line composition.
+- Natural/custom line height, independent line spacing, baseline-local positions, document baselines.
+- Paragraph grouping, spacing, source/line ranges, bounds, render bounds, and first/last baselines.
+- Exactly three reusable stage workspaces; paragraph records are another line-layout column, not another workspace.
+- Playground validation for shaping, break opportunities, words, lines, and multiple paragraphs.
 
-The final package name and target boundaries remain open.
+## Next Core Work
 
-## Current Focus
+- `LayoutConstraints`, `LineLimit`, and `Overflow` including cluster-safe head/middle/tail truncation.
+- Reserved minimum-line height without synthetic line records.
+- Automatic language-aware hyphenation; explicit no-wrap/no-hyphen source ranges.
+- Bidirectional resolution and script-specific shaping/reordering/feature masks.
+- Variable-font FeatureVariations/ItemVariationStore and Device adjustments.
 
-1. Validate multiple paragraph boundaries, spacing, bounds, and baselines visually in the playground.
-2. Define the next low-level content/layout slice after paragraph validation.
-3. Add bidirectional resolution and script-specific shaping stages later.
+## Later Systems
 
-## Established Decisions
+- Embedded bitmap-strike parsing, selection, metrics, and extraction.
+- Rasterisation/MSDF generation, dynamic atlas packing, cache ownership and lifetime.
+- Low-level paragraph/content records evolving into `Element`, `Paragraph`, and `Line` APIs.
+- Ordered renderer-neutral primitives, viewport layout/culling, and higher-level editing/navigation APIs.
 
-- MSDF is the initial distance-field format.
-- Glyph atlases are dynamic, memory-only, and generated per missing glyph on first use.
-- Glyph generation and atlas packing have separate explicit input/output boundaries so compile-time tooling can reuse them later.
-- Shaping and layout use font metrics and glyph IDs, never atlas placement.
-- PixlText depends on PixlConcurrency; initial execution is one lane with later lane scaling kept internal.
-- Hot text work uses contiguous, cache-aligned, data-oriented storage.
-- Base GSUB lookup types 1–8, GPOS lookup types 1–9, and the GDEF data needed by lookup flags are implemented in platform-agnostic Swift.
-- Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
-- Source `TextRun` records and output `GlyphRun` records are separate. Run execution borrows contiguous run and precompiled-plan columns through call-local spans and writes all results into shared reusable glyph/run buffers.
-- Unicode 16.0 line-breaking classification writes sparse allowed/mandatory UTF-8 offsets into reusable caller-owned storage; prohibited boundaries are implicit.
-- Unicode no-break controls are authoritative: word joiner, non-breaking space, and non-breaking hyphen suppress opportunities across their protected boundaries. Future automatic hyphenation must preserve them.
-- Line-breaking opportunities are visually validated with long text and an explicit mandatory break in the playground.
-- Single-line composition selects the last fitting legal opportunity without splitting glyph clusters. Its compact record separates consumed and visible ranges, references reusable contiguous position storage, preserves unbreakable overflow, and reports line metrics plus typographic and render bounds.
-- Single-line composition is visually validated across shaped text: trailing whitespace is consumed but excluded from visible width, and the selected line remains within the available width.
-- Mixed-run natural line geometry takes the maximum per-run above/below contribution during the existing scan. Associated-value line-height policies resolve a separate line box symmetrically around those natural extents; line spacing remains external.
-- A `1.35×` line-height policy is visually validated: natural height `30.4`, resolved height `41.04`, and baseline offset `29.32` confirm equal half-leading distribution.
-- Line composition resumes through a compact value containing source, glyph, run, opportunity, and unit indices. Shared shaped input is validated once; each later line starts directly at the prior line's returned indices without rescanning earlier content.
-- The playground validates consecutive resumed-line boundaries with baseline-local glyph geometry. Consumed trailing break whitespace and glyph render overhang remain visible as distinct geometry outside the yellow visible-advance line box; neither changes wrapping width.
-- Full composition runs until source exhaustion with no implicit line cap. `LineLayoutWorkspace` retains positioned glyphs and line records as two reusable contiguous columns; each line references its position range and stores its document-space baseline.
-- Explicit line spacing affects only vertical stacking. It does not mutate baseline-local glyph positions, natural metrics, or resolved line height.
-- Paragraph composition groups positioned lines at mandatory source breaks. Compact paragraph records reference source and line ranges, retain document-space bounds plus first/last baselines, and append to the existing line-layout workspace without duplicating glyph or line data. Paragraph spacing applies only between paragraphs.
-- PixlText now has exactly three stage workspaces: shaping, line breaking, and line layout. Typed buffers remain single contiguous columns; per-run shaping temporaries are `ShapingScratch`, while `Storage` remains reserved for long-lived retained identity.
-- Future API vocabulary treats `Element` as a source-addressable content unit, `Paragraph` as the standard text element, and `Line` as derived layout referencing positioned glyph ranges. These abstractions retain efficient direct access to contiguous glyph/range data instead of fully hiding glyphs as TextKit 2 does. Line-break segments are not elements; attachments remain uncommitted.
-- OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
-- Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
+## Open Gates
 
-## Open Design Gates
-
-- Standalone package/target structure and Pixl/PixlUI adapter boundaries.
-- Script-specific shaping stages, per-glyph feature masks, language selection, and feature policy.
-- Variable-font FeatureVariations/ItemVariationStore evaluation and size-specific Device adjustments.
-- Optional future AAT `morx`/`kerx` support for fonts whose advanced shaping is not expressed through OpenType Layout.
-- Exact low-level line and paragraph records.
-- Language-aware automatic hyphenation, discretionary break insertion, and explicit no-wrap/no-hyphenation source ranges.
-- Bidirectional implementation boundary.
-- Rasterisation and MSDF-generation implementation.
-- Bitmap-strike parsing, pixel-size selection, metrics, and glyph-image extraction.
-- Cache ownership, keys, invalidation, and storage lifetime.
-- Paragraph and run scheduling thresholds.
-- Renderer primitive format, culling contract, and CPU/GPU integration seams.
-- Mid-level abstraction scope and sequencing.
+- Exact bidi and script-shaping boundaries.
+- Hyphenation language source and policy.
+- Overflow/truncation semantics across mixed styles.
+- Bitmap/vector/color glyph capability model.
+- Cache keys, invalidation, and scheduling thresholds.
+- Standalone package boundaries and final public API surface.
