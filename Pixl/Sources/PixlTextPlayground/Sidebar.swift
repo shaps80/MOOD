@@ -16,27 +16,18 @@ private struct SidebarModifier<Wrapped: View>: ViewModifier {
     var wrapped: Wrapped
 
     func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .trailing) {
-                ZStack {
-                    if isPresented {
-                        Form {
-                            wrapped
-                        }
-                        .toolbarTitleDisplayMode(.inline)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                    }
-                }
-                .frame(maxWidth: 300, maxHeight: .infinity)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                .scenePadding()
-                .toolbar {
-                    Button("Toggle Panel", systemImage: "sidebar.right") {
-                        withAnimation(.snappy) {
-                            isPresented.toggle()
-                        }
-                    }
-                }
+        HStack {
+            content
+
+            Spacer()
+
+            Form {
+                wrapped
             }
+            .toolbarTitleDisplayMode(.inline)
+            .transition(.move(edge: .trailing).combined(with: .opacity))
+            .frame(width: 300, alignment: .trailing)
+            .scenePadding()
+        }
     }
 }
