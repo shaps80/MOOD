@@ -333,7 +333,24 @@ extension Font {
                     }
                 }
             }
-            return .init(runs: debugRuns, glyphs: debugGlyphs)
+
+            var lineBreakWorkspace = LineBreakWorkspace(
+                minimumScalarCapacity: text.unicodeScalars.count,
+                minimumOpportunityCapacity: text.utf8.count / 4
+            )
+            LineBreaker.findOpportunities(in: text, workspace: &lineBreakWorkspace)
+            var debugBreaks: [RunDebugInfo.Break] = []
+            debugBreaks.reserveCapacity(lineBreakWorkspace.opportunities.count)
+            lineBreakWorkspace.opportunities.withSpan { opportunities in
+                for index in opportunities.indices {
+                    let opportunity = opportunities[index]
+                    debugBreaks.append(.init(
+                        sourceOffset: opportunity.sourceOffset,
+                        kind: opportunity.kind == .allowed ? .allowed : .mandatory
+                    ))
+                }
+            }
+            return .init(runs: debugRuns, glyphs: debugGlyphs, breaks: debugBreaks)
         }
 
         private static func script(

@@ -12,10 +12,10 @@ The final package name and target boundaries remain open.
 
 ## Current Focus
 
-1. Validate shaped-run boundaries and mixed-font output visually.
-2. Add bidirectional resolution and Unicode line-breaking opportunities.
-3. Define line and paragraph layout records over positioned glyph runs.
-4. Add script-specific shaping stages, feature masks, and explicit language input.
+1. Visually validate Unicode line-breaking opportunities.
+2. Define a single positioned line record that selects opportunities against width.
+3. Add wrapping and paragraph layout over positioned lines.
+4. Add bidirectional resolution and script-specific shaping stages later.
 
 ## Established Decisions
 
@@ -28,6 +28,7 @@ The final package name and target boundaries remain open.
 - Base GSUB lookup types 1–8, GPOS lookup types 1–9, and the GDEF data needed by lookup flags are implemented in platform-agnostic Swift.
 - Hot GSUB/GPOS execution uses indexed immutable plans and noncopyable contiguous glyph buffers.
 - Source `TextRun` records and output `GlyphRun` records are separate. Run execution borrows contiguous run and precompiled-plan columns through call-local spans and writes all results into shared reusable glyph/run buffers.
+- Unicode 16.0 line-breaking classification writes sparse allowed/mandatory UTF-8 offsets into reusable caller-owned storage; prohibited boundaries are implicit.
 - OpenType layout parsing and execution have been exercised against every supported installed font; HarfBuzz matches the current Latin OpenType reference cases.
 - Embedded bitmap fonts are a first-class font capability, including legacy `bdat`/`bloc`, monochrome `EBDT`/`EBLC`, color `CBDT`/`CBLC`, and `sbix` strikes.
 
@@ -37,7 +38,7 @@ The final package name and target boundaries remain open.
 - Script-specific shaping stages, per-glyph feature masks, language selection, and feature policy.
 - Variable-font FeatureVariations/ItemVariationStore evaluation and size-specific Device adjustments.
 - Optional future AAT `morx`/`kerx` support for fonts whose advanced shaping is not expressed through OpenType Layout.
-- Exact low-level shaped-run, line, and paragraph records.
+- Exact low-level line and paragraph records.
 - Bidirectional and Unicode line-breaking implementation boundaries.
 - Rasterisation and MSDF-generation implementation.
 - Bitmap-strike parsing, pixel-size selection, metrics, and glyph-image extraction.

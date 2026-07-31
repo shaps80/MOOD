@@ -49,7 +49,18 @@ extension Font {
             package let renderBounds: GlyphDebugInfo.Bounds?
         }
 
+        package struct Break: Hashable, Sendable {
+            package enum Kind: String, Hashable, Sendable {
+                case allowed = "Allowed"
+                case mandatory = "Mandatory"
+            }
+
+            package let sourceOffset: Int
+            package let kind: Kind
+        }
+
         package let runs: [Run]
         package let glyphs: [Glyph]
+        package let breaks: [Break]
     }
 }

@@ -2,7 +2,10 @@ import SwiftUI
 import PixlText
 
 struct RunsView: View {
-    private static let text = "Hello, world!"
+    private static let text = """
+    Hello, world! Line breaking finds every legal opportunity before layout chooses which words fit. Explicit newlines remain mandatory.
+    A second paragraph gives us enough text to exercise wrapping across several future lines.
+    """
     private static let origin = CGPoint(x: 40, y: 170)
     private static let colors: [Color] = [.cyan, .orange]
 
@@ -16,20 +19,20 @@ struct RunsView: View {
             let secondFont = font.path == PlaygroundFont.zapfino.path
                 ? PlaygroundFont.senilita
                 : PlaygroundFont.zapfino
-            let split = "Hello, ".utf8.count
+            let split = "Hello, world! Line breaking finds every legal opportunity ".utf8.count
             return try Font.runDebugInfo(
                 in: Self.text,
                 runs: [
                     .init(
                         sourceRange: 0..<split,
-                        font: .system(size: 48),
+                        font: .system(size: 32),
                         fontBytes: try font.loadBytes(),
                         fontID: font.path,
                         fontName: font.name
                     ),
                     .init(
                         sourceRange: split..<Self.text.utf8.count,
-                        font: .system(size: 64),
+                        font: .system(size: 36),
                         fontBytes: try secondFont.loadBytes(),
                         fontID: secondFont.path,
                         fontName: secondFont.name
@@ -41,7 +44,7 @@ struct RunsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            sourceLegend
+            breakLegend
 
             Canvas { context, _ in
                 guard case .success(let information) = information else { return }
@@ -90,22 +93,13 @@ struct RunsView: View {
     }
 
     @ViewBuilder
-    private var sourceLegend: some View {
+    private var breakLegend: some View {
         switch information {
         case .success(let information):
-            HStack(spacing: 0) {
-                ForEach(information.runs.indices, id: \.self) { index in
-                    let run = information.runs[index]
-                    Text(run.source)
-                        .font(.title)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Self.colors[index % Self.colors.count].opacity(0.22))
-                        .overlay {
-                            Rectangle().stroke(Self.colors[index % Self.colors.count])
-                        }
-                }
-            }
+            breakText(information)
+                .font(.title3)
+                .lineSpacing(6)
+                .frame(maxWidth: 760, alignment: .leading)
         case .failure(let error):
             ContentUnavailableView(
                 "Run shaping failed",
@@ -114,6 +108,23 @@ struct RunsView: View {
             )
             .foregroundStyle(.red)
         }
+    }
+
+    private func breakText(_ information: Font.RunDebugInfo) -> Text {
+        let bytes = Array(Self.text.utf8)
+        var lowerBound = 0
+        var result = Text("")
+        for opportunity in information.breaks {
+            let segment = String(
+                decoding: bytes[lowerBound..<opportunity.sourceOffset],
+                as: UTF8.self
+            )
+            let marker = opportunity.kind == .mandatory ? "↵" : "│"
+            let color: Color = opportunity.kind == .mandatory ? .red : .yellow
+            result = result + Text(segment) + Text(marker).foregroundColor(color)
+            lowerBound = opportunity.sourceOffset
+        }
+        return result
     }
 
     @ViewBuilder
