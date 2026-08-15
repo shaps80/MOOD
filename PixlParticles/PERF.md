@@ -16,18 +16,19 @@ million values. The benchmark driver disables its own optimisation to prevent
 hoisting; the measured production paths compile with `-O` and whole-module
 optimisation.
 
-| Path | macOS arm64 | WebAssembly | Checksum |
-| --- | ---: | ---: | ---: |
-| Philox raw words | 488.77 million values/s | 445.75 million values/s | `85900635147323622` |
-| Half-open ranged floats | 466.58 million values/s | 384.30 million values/s | `87285233708789853` |
-| Closed ranged floats | 402.50 million values/s | 341.74 million values/s | `87285234823698366` |
+| Path | macOS M1 Max | iPad M5 | WebAssembly | Checksum |
+| --- | ---: | ---: | ---: | ---: |
+| Philox raw words | 488.77 million values/s | 819.89 million values/s | 445.75 million values/s | `85900635147323622` |
+| Half-open ranged floats | 466.58 million values/s | 755.31 million values/s | 384.30 million values/s | `87285233708789853` |
+| Closed ranged floats | 402.50 million values/s | 666.01 million values/s | 341.74 million values/s | `87285234823698366` |
 
 The matching checksums confirm that these benchmark workloads produced the same
 raw words and mapped `Float` bit patterns through both execution paths.
 
 ### Environments
 
-- macOS: Apple Swift 6.4 (`swiftlang-6.4.0.30.4`, `clang-2100.3.30.1`), native arm64 executable.
+- macOS: M1 Max Mac Studio, Apple Swift 6.4 (`swiftlang-6.4.0.30.4`, `clang-2100.3.30.1`), native arm64 executable.
+- iPadOS: iPad Pro 11-inch (M5), iPad17,1, 10-core arm64e, iPadOS 27.0 (24A5408d), wired; Xcode 27.0 (27A5237l), Apple Swift 6.4 (`swiftlang-6.4.0.30.4`), deployment target iOS 17.0.
 - WebAssembly: Swift 6.4 development snapshot 2026-07-17, `wasm32-unknown-wasip1`, executed by Node.js 24.1.0's WASI runtime on the same machine.
 
 ### Earlier provisional comparison
