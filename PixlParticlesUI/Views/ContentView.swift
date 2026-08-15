@@ -10,6 +10,11 @@ struct ContentView: View {
     @State private var isPaused: Bool = false
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
+    @State private var camera = Camera(
+        position: [300, 250, 450],
+        target: .zero,
+        projection: .perspective
+    )
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +25,10 @@ struct ContentView: View {
                     isPaused: isPaused || isScrubbing
                 )
 
-                ParticleCanvas(sample: sample)
+                ParticleCanvas(
+                    sample: sample,
+                    camera: camera
+                )
                     .onChange(of: sample.time) { _, time in
                         guard !isScrubbing, system.duration > .zero else {
                             return
@@ -43,13 +51,23 @@ struct ContentView: View {
             }
         }
         .toolbar {
-            Button(
-                isPaused ? "Play" : "Pause",
-                systemImage: isPaused ? "play" : "pause"
-            ) {
-                isPaused.toggle()
+            ToolbarItem(placement: .principal) {
+                Picker("Projection", selection: $camera.projection) {
+                    Text("Perspective").tag(Projection.perspective)
+                    Text("Orthographic").tag(Projection.orthographic)
+                }
+                .pickerStyle(.segmented)
             }
-            .keyboardShortcut(.space, modifiers: [])
+
+            ToolbarItem {
+                Button(
+                    isPaused ? "Play" : "Pause",
+                    systemImage: isPaused ? "play" : "pause"
+                ) {
+                    isPaused.toggle()
+                }
+                .keyboardShortcut(.space, modifiers: [])
+            }
         }
     }
 }

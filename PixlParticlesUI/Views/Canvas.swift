@@ -3,18 +3,20 @@ import PixlParticles
 
 struct ParticleCanvas: View {
     let sample: Sample
+    let camera: Camera
 
     var body: some View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
+            guard let viewport = camera.viewport(for: size) else { return }
 
             for particle in sample.particles {
                 let position = particle.interpolated(by: sample.interpolation)
-                // center just for testing
-                let x: Double = size.width / 2 + .init(position.x)
-                let y: Double = size.height / 2 + .init(position.y)
+                guard let screenPosition = viewport.project(position) else {
+                    continue
+                }
 
-                context.draw(symbol, at: .init(x: x, y: y))
+                context.draw(symbol, at: screenPosition)
             }
         } symbols: {
             Rectangle()
@@ -27,6 +29,11 @@ struct ParticleCanvas: View {
 
 #Preview {
     ParticleCanvas(
-        sample: System().sample(at: .now)
+        sample: System().sample(at: .now),
+        camera: Camera(
+            position: [300, 250, 450],
+            target: .zero,
+            projection: .perspective
+        )
     )
 }
