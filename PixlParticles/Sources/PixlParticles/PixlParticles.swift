@@ -30,11 +30,13 @@ public struct Particle {
 public struct Sample {
     public let particles: [Particle]
     public let interpolation: Float
+    public let tick: UInt64
 }
 
 public final class System {
     private var loop = Loop(settings: .default)
     private var particles: [Particle]
+    private var tick: UInt64 = 0
 
     public init() {
         particles = [
@@ -60,11 +62,14 @@ public final class System {
             for index in particles.indices {
                 particles[index].advance(by: delta)
             }
+
+            tick += 1
         }
 
         return .init(
             particles: particles,
-            interpolation: interpolation
+            interpolation: interpolation,
+            tick: tick
         )
     }
 }
