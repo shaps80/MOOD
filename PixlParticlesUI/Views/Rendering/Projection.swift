@@ -1,18 +1,23 @@
 import simd
 
 enum Projection: Hashable {
-    case perspective
-    case orthographic
+    case perspective(
+        verticalFieldOfView: Float,
+        near: Float,
+        far: Float
+    )
+    case orthographic(
+        halfHeight: Float,
+        near: Float,
+        far: Float
+    )
 
-    func matrix(
-        aspectRatio: Float
-    ) -> simd_float4x4 {
-        let near: Float = 0.1
-        let far: Float = 2_000
-
+    func matrix(aspectRatio: Float) -> simd_float4x4 {
         switch self {
-        case .perspective:
-            let fieldOfView = Float.pi * 50 / 180
+        case let .perspective(fieldOfView, near, far):
+            precondition(fieldOfView > 0 && fieldOfView < .pi)
+            precondition(near > 0 && far > near)
+
             let scale = 1 / tan(fieldOfView / 2)
             let depthScale = far / (near - far)
             let depthTranslation = far * near / (near - far)
@@ -24,15 +29,17 @@ enum Projection: Hashable {
                 [0, 0, depthTranslation, 0]
             ))
 
-        case .orthographic:
-            let verticalSize: Float = 350
-            let horizontalSize = verticalSize * aspectRatio
+        case let .orthographic(halfHeight, near, far):
+            precondition(halfHeight > 0)
+            precondition(near > 0 && far > near)
+
+            let halfWidth = halfHeight * aspectRatio
             let depthScale = 1 / (near - far)
             let depthTranslation = near / (near - far)
 
             return simd_float4x4(columns: (
-                [2 / horizontalSize, 0, 0, 0],
-                [0, 2 / verticalSize, 0, 0],
+                [1 / halfWidth, 0, 0, 0],
+                [0, 1 / halfHeight, 0, 0],
                 [0, 0, depthScale, 0],
                 [0, 0, depthTranslation, 1]
             ))

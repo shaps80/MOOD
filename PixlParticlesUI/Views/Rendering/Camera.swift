@@ -2,22 +2,72 @@ import CoreGraphics
 import PixlParticles
 import simd
 
-struct Camera: Hashable {
+struct Camera {
     var position: Vec3
-    var target: Vec3
+    var orientation: simd_quatf
     var projection: Projection
 
-    static let perspective = Self(
-        position: [300, 250, 450],
-        target: .zero,
-        projection: .perspective
-    )
+    init(
+        position: Vec3,
+        orientation: simd_quatf,
+        projection: Projection
+    ) {
+        self.position = position
+        self.orientation = simd_normalize(orientation)
+        self.projection = projection
+    }
 
-    static let isometric = Self(
-        position: [400, 400, 400],
-        target: .zero,
-        projection: .orthographic
-    )
+    init(
+        position: Vec3,
+        lookingAt target: Vec3,
+        projection: Projection,
+        worldUp: Vec3 = [0, 1, 0]
+    ) {
+        let backward = position - target
+        precondition(simd_length_squared(backward) > 0)
+
+        let normalizedBackward = simd_normalize(backward)
+        let right = simd_cross(worldUp, normalizedBackward)
+        precondition(simd_length_squared(right) > 0)
+
+        let normalizedRight = simd_normalize(right)
+        let up = simd_cross(normalizedBackward, normalizedRight)
+        let rotation = simd_float3x3(columns: (
+            normalizedRight,
+            up,
+            normalizedBackward
+        ))
+
+        self.init(
+            position: position,
+            orientation: simd_quatf(rotation),
+            projection: projection
+        )
+    }
+
+    /// Creates a camera pose from orbit controls. Yaw and pitch are radians.
+    init(
+        orbiting target: Vec3,
+        distance: Float,
+        yaw: Float,
+        pitch: Float,
+        projection: Projection
+    ) {
+        precondition(distance > 0)
+
+        let horizontalScale = cos(pitch)
+        let offset: Vec3 = [
+            sin(yaw) * horizontalScale,
+            sin(pitch),
+            cos(yaw) * horizontalScale,
+        ]
+
+        self.init(
+            position: target + offset * distance,
+            lookingAt: target,
+            projection: projection
+        )
+    }
 
     func viewport(for size: CGSize) -> Viewport? {
         guard size.width > 0, size.height > 0 else { return nil }
@@ -33,9 +83,9 @@ struct Camera: Hashable {
     }
 
     private var viewMatrix: simd_float4x4 {
-        let backward = simd_normalize(position - target)
-        let right = simd_normalize(simd_cross([0, 1, 0], backward))
-        let up = simd_cross(backward, right)
+        let right = orientation.act([1, 0, 0])
+        let up = orientation.act([0, 1, 0])
+        let backward = orientation.act([0, 0, 1])
 
         return simd_float4x4(columns: (
             [right.x, up.x, backward.x, 0],

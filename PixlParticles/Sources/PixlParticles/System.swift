@@ -4,6 +4,7 @@ public final class System {
     public let duration: Duration
 
     private let random: RandomSource
+    private let spawnRegion: SpawnRegion
     private var loop: Loop
     private let durationInTicks: UInt64
     private var particles: [Particle] = []
@@ -15,9 +16,12 @@ public final class System {
     public init(
         seed: UInt64 = 0,
         particleCount: Int = 0,
+        spawnRegion: SpawnRegion = .box(size: [200, 200, 200]),
         duration: Duration = .seconds(2)
     ) {
+        precondition(particleCount >= 0)
         precondition(duration >= .zero)
+        spawnRegion.validate()
 
         let loop = Loop(settings: .default)
         let durationInTicks = (
@@ -28,6 +32,7 @@ public final class System {
         self.duration = duration
         self.durationInTicks = UInt64(durationInTicks)
         random = RandomSource(seed: seed)
+        self.spawnRegion = spawnRegion
         self.loop = loop
 
         particles = (0..<particleCount).map { _ in spawn() }
@@ -109,24 +114,15 @@ public final class System {
     private func spawn() -> Particle {
         defer { nextID += 1 }
 
-        let positionBlock = random.block(
-            at: nextID,
-            channel: .position
-        )
         let velocityBlock = random.block(
             at: nextID,
             channel: .velocity
         )
-        let positionRange: Range<Float> = -100..<100
         let velocityRange: Range<Float> = -20..<20
 
         return Particle(
             id: nextID,
-            position: [
-                RandomSource.float(from: positionBlock.x0, in: positionRange),
-                RandomSource.float(from: positionBlock.x1, in: positionRange),
-                RandomSource.float(from: positionBlock.x2, in: positionRange),
-            ],
+            position: spawnRegion.sample(using: random, at: nextID),
             velocity: [
                 RandomSource.float(from: velocityBlock.x0, in: velocityRange),
                 RandomSource.float(from: velocityBlock.x1, in: velocityRange),
@@ -134,9 +130,4 @@ public final class System {
             ]
         )
     }
-}
-
-private extension RandomSource.Channel {
-    static let position = Self(rawValue: 0)
-    static let velocity = Self(rawValue: 1)
 }

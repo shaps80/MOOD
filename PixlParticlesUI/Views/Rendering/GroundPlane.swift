@@ -2,11 +2,28 @@ import PixlParticles
 import SwiftUI
 
 struct GroundPlane {
+    enum Style: Hashable {
+        case grid
+        case horizon
+    }
+
     let height: Float
     let extent: Float
     let spacing: Float
 
-    func path(in viewport: Camera.Viewport) -> Path {
+    func path(
+        in viewport: Camera.Viewport,
+        style: Style
+    ) -> Path {
+        switch style {
+        case .grid:
+            gridPath(in: viewport)
+        case .horizon:
+            horizonPath(in: viewport)
+        }
+    }
+
+    private func gridPath(in viewport: Camera.Viewport) -> Path {
         var path = Path()
         var coordinate = -extent
 
@@ -28,6 +45,20 @@ struct GroundPlane {
             }
 
             coordinate += spacing
+        }
+
+        return path
+    }
+
+    private func horizonPath(in viewport: Camera.Viewport) -> Path {
+        var path = Path()
+
+        if
+            let start = viewport.project([-extent, height, 0]),
+            let end = viewport.project([extent, height, 0])
+        {
+            path.move(to: start)
+            path.addLine(to: end)
         }
 
         return path

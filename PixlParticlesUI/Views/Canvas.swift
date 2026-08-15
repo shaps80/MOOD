@@ -10,14 +10,17 @@ struct ParticleCanvas: View {
 
     let sample: Sample
     let camera: Camera
+    let groundPlaneStyle: GroundPlane.Style
 
     var body: some View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
             guard let viewport = camera.viewport(for: size) else { return }
-
             context.stroke(
-                groundPlane.path(in: viewport),
+                groundPlane.path(
+                    in: viewport,
+                    style: groundPlaneStyle
+                ),
                 with: .color(.gray.opacity(0.2)),
                 lineWidth: 0.5
             )
@@ -43,6 +46,7 @@ struct ParticleCanvas: View {
 #Preview {
     ParticleCanvas(
         sample: System().sample(at: .now),
-        camera: .perspective
+        camera: CameraPreset.perspective.fixedCamera,
+        groundPlaneStyle: .grid
     )
 }

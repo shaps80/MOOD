@@ -8,9 +8,24 @@ struct ParticleTimeline: View {
         Slider(value: $fraction, in: 0...1) { isEditing in
             isScrubbing = isEditing
         }
+        .tint(.primary)
+        .background {
+            HStack {
+                Button("Back") {
+                    fraction -= 0.1
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [])
+
+                Button("Forward") {
+                    fraction += 0.1
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [])
+            }
+            .hidden()
+        }
         .sliderThumbVisibility(.hidden)
-        .padding(.horizontal)
-        .glassEffect(.clear, in: .capsule)
+        .padding(.horizontal, 10)
+        .glassEffect(.clear.tint(.black.opacity(0.3)).interactive(), in: .capsule)
         .scenePadding()
     }
 }
