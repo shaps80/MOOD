@@ -26,11 +26,7 @@ public final class System {
         let interpolation = Float(schedule.renderTime.interpolation)
 
         for _ in 0..<schedule.fixedUpdateCount {
-            for index in particles.indices {
-                particles[index].advance(by: delta)
-            }
-
-            tick += 1
+            update(by: delta)
         }
 
         return .init(
@@ -38,5 +34,13 @@ public final class System {
             interpolation: interpolation,
             tick: tick
         )
+    }
+
+    private func update(by delta: Float) {
+        for index in particles.indices {
+            particles[index].advance(by: delta)
+        }
+
+        tick += 1
     }
 }
