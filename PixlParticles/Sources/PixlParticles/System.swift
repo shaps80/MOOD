@@ -1,6 +1,8 @@
 import Swift
 
 public final class System {
+    public let duration: Duration
+
     private let random: RandomSource
     private var loop = Loop(settings: .default)
     private var particles: [Particle] = []
@@ -9,7 +11,13 @@ public final class System {
     private var nextID: Particle.ID = 0
     private var initialNextID: Particle.ID = 0
 
-    public init(seed: UInt64 = 0) {
+    public init(
+        seed: UInt64 = 0,
+        duration: Duration = .seconds(2)
+    ) {
+        precondition(duration >= .zero)
+
+        self.duration = duration
         random = RandomSource(seed: seed)
 
         particles = (0...100).map { _ in spawn() }
@@ -40,7 +48,13 @@ public final class System {
         )
     }
 
-    public func seek(to targetTick: UInt64) {
+    public func seek(to time: Duration) {
+        precondition(time >= .zero && time <= duration)
+
+        let targetTick = UInt64(
+            (Self.seconds(time) / loop.fixedDeltaSeconds).rounded()
+        )
+
         if targetTick < tick {
             particles = initialParticles
             tick = 0
@@ -58,6 +72,12 @@ public final class System {
         }
 
         loop.rebase(to: tick)
+    }
+
+    private static func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) * 1e-18
     }
 
     private func update(by delta: Float) {

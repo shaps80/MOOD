@@ -24,11 +24,11 @@ struct SystemDeterminismTests {
         let instant = ContinuousClock.now
         let system = System(seed: 42)
 
-        system.seek(to: 45)
+        system.seek(to: .milliseconds(1_500))
         let first = system.sample(at: instant, isPaused: true)
 
-        system.seek(to: 15)
-        system.seek(to: 45)
+        system.seek(to: .milliseconds(500))
+        system.seek(to: .milliseconds(1_500))
         let replayed = system.sample(at: instant, isPaused: true)
 
         #expect(first.tick == 45)
@@ -40,7 +40,7 @@ struct SystemDeterminismTests {
                 replayed.particles.map(\.position)
         )
 
-        system.seek(to: 45)
+        system.seek(to: .milliseconds(1_500))
         let resumedAt = ContinuousClock.now
         _ = system.sample(at: resumedAt)
         let resumed = system.sample(

@@ -2,10 +2,8 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
-    private let durationInTicks: UInt64 = 60
-
     @State private var isPaused: Bool = true
-    @State private var system: System = .init()
+    @State private var system: System = .init(duration: .seconds(10))
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
 
@@ -31,10 +29,7 @@ struct ContentView: View {
             .onChange(of: fraction) { _, fraction in
                 guard isScrubbing else { return }
 
-                let tick = UInt64(
-                    (fraction * Double(durationInTicks)).rounded()
-                )
-                system.seek(to: tick)
+                system.seek(to: system.duration * fraction)
             }
         }
         .toolbar {
