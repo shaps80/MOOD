@@ -2,8 +2,12 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
+    private let system: System = .init(
+        particleCount: 1_000,
+        duration: .seconds(20)
+    )
+
     @State private var isPaused: Bool = false
-    @State private var system: System = .init(duration: .seconds(10))
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
 

@@ -14,13 +14,14 @@ public final class System {
 
     public init(
         seed: UInt64 = 0,
+        particleCount: Int = 0,
         duration: Duration = .seconds(2)
     ) {
         precondition(duration >= .zero)
 
         let loop = Loop(settings: .default)
         let durationInTicks = (
-            Self.seconds(duration) / loop.fixedDeltaSeconds
+            Loop.seconds(duration) / loop.fixedDeltaSeconds
         ).rounded()
         precondition(durationInTicks <= Double(UInt64.max))
 
@@ -29,7 +30,7 @@ public final class System {
         random = RandomSource(seed: seed)
         self.loop = loop
 
-        particles = (0...100).map { _ in spawn() }
+        particles = (0..<particleCount).map { _ in spawn() }
         initialParticles = particles
         initialNextID = nextID
     }
@@ -75,7 +76,7 @@ public final class System {
         precondition(time >= .zero && time <= duration)
 
         let targetTick = UInt64(
-            (Self.seconds(time) / loop.fixedDeltaSeconds).rounded()
+            (Loop.seconds(time) / loop.fixedDeltaSeconds).rounded()
         )
 
         if targetTick < tick {
@@ -95,12 +96,6 @@ public final class System {
         }
 
         loop.rebase(to: tick)
-    }
-
-    private static func seconds(_ duration: Duration) -> Double {
-        let components = duration.components
-        return Double(components.seconds)
-            + Double(components.attoseconds) * 1e-18
     }
 
     private func update(by delta: Float) {
