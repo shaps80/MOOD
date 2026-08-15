@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var isPaused: Bool = true
     @State private var system: System = .init()
     @State private var fraction: Double = 0
+    @State private var isScrubbing: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,13 +15,17 @@ struct ContentView: View {
                 ParticleCanvas(
                     system: system,
                     now: now,
+                    isScrubbing: isScrubbing,
                     isPaused: isPaused
                 )
             }
 
             Divider()
 
-            ParticleTimeline(fraction: $fraction)
+            ParticleTimeline(
+                fraction: $fraction,
+                isScrubbing: $isScrubbing
+            )
         }
         .toolbar {
             Button(

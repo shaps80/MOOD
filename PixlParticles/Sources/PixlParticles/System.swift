@@ -4,17 +4,17 @@ public final class System {
     private let random: RandomSource
     private var loop = Loop(settings: .default)
     private var particles: [Particle] = []
+    private var initialParticles: [Particle] = []
     private var tick: UInt64 = 0
     private var nextID: Particle.ID = 0
+    private var initialNextID: Particle.ID = 0
 
     public init(seed: UInt64 = 0) {
         random = RandomSource(seed: seed)
 
-        particles = [
-            spawn(position: [0, 0, 0], velocity: [20, 0, 0]),
-            spawn(position: [5, 0, 0], velocity: [0, 20, 0]),
-            spawn(position: [-5, 0, 0], velocity: [-20, 0, 0]),
-        ]
+        particles = (0...100).map { _ in spawn() }
+        initialParticles = particles
+        initialNextID = nextID
     }
 
     public func sample(
@@ -40,6 +40,26 @@ public final class System {
         )
     }
 
+    public func seek(to targetTick: UInt64) {
+        if targetTick < tick {
+            particles = initialParticles
+            tick = 0
+            nextID = initialNextID
+        }
+
+        let delta = Float(loop.fixedDeltaSeconds)
+
+        for _ in tick..<targetTick {
+            update(by: delta)
+        }
+
+        for index in particles.indices {
+            particles[index].resetInterpolation()
+        }
+
+        loop.rebase(to: tick)
+    }
+
     private func update(by delta: Float) {
         for index in particles.indices {
             particles[index].advance(by: delta)
@@ -48,13 +68,32 @@ public final class System {
         tick += 1
     }
 
-    private func spawn(position: Vec3, velocity: Vec3) -> Particle {
+    private func spawn() -> Particle {
         defer { nextID += 1 }
+
+        let positionBlock = random.block(
+            at: nextID,
+            channel: .position
+        )
+        let velocityBlock = random.block(
+            at: nextID,
+            channel: .velocity
+        )
+        let positionRange: Range<Float> = -100..<100
+        let velocityRange: Range<Float> = -20..<20
 
         return Particle(
             id: nextID,
-            position: position,
-            velocity: velocity
+            position: [
+                RandomSource.float(from: positionBlock.x0, in: positionRange),
+                RandomSource.float(from: positionBlock.x1, in: positionRange),
+                RandomSource.float(from: positionBlock.x2, in: positionRange),
+            ],
+            velocity: [
+                RandomSource.float(from: velocityBlock.x0, in: velocityRange),
+                RandomSource.float(from: velocityBlock.x1, in: velocityRange),
+                RandomSource.float(from: velocityBlock.x2, in: velocityRange),
+            ]
         )
     }
 }

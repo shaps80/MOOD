@@ -86,7 +86,14 @@ struct Loop {
         )
     }
 
-    private var fixedDeltaSeconds: Double {
+    mutating func rebase(to tickIndex: UInt64) {
+        previousInstant = nil
+        accumulator = 0
+        elapsedSeconds = Double(tickIndex) * fixedDeltaSeconds
+        self.tickIndex = tickIndex
+    }
+
+    var fixedDeltaSeconds: Double {
         guard let fixedStep = settings.fixedStep else { return 0 }
         return 1.0 / Double(fixedStep.updatesPerSecond)
     }

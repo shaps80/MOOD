@@ -28,4 +28,8 @@ public struct Particle: Identifiable {
         previousPosition = position
         position += velocity * delta
     }
+
+    mutating func resetInterpolation() {
+        previousPosition = position
+    }
 }

@@ -4,12 +4,17 @@ import PixlParticles
 struct ParticleCanvas: View {
     let system: System
     let now: ContinuousClock.Instant
+    let isScrubbing: Bool
     let isPaused: Bool
+
+    private var paused: Bool {
+        isPaused || isScrubbing
+    }
 
     var body: some View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
-            let sample = system.sample(at: now, isPaused: isPaused)
+            let sample = system.sample(at: now, isPaused: paused)
 
             for particle in sample.particles {
                 let position = particle.interpolated(by: sample.interpolation)
@@ -32,6 +37,7 @@ struct ParticleCanvas: View {
     ParticleCanvas(
         system: .init(),
         now: .now,
+        isScrubbing: false,
         isPaused: false
     )
 }
