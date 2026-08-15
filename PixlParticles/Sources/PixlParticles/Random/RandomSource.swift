@@ -8,7 +8,8 @@ import Swift
 ///
 /// - The seed's low and high 32 bits map to key lanes `x0` and `x1`.
 /// - The address's low and high 32 bits map to counter lanes `x0` and `x1`.
-/// - Counter lanes `x2` and `x3` are reserved and currently remain zero.
+/// - The channel maps to counter lane `x2` and isolates unrelated properties.
+/// - The index maps to counter lane `x3` and selects another block in a channel.
 struct RandomSource {
     private let key: Philox4x32.Key
 
@@ -21,13 +22,17 @@ struct RandomSource {
     }
 
     @inline(__always)
-    func block(at address: UInt64) -> Philox4x32.Counter {
+    func block(
+        at address: UInt64,
+        channel: UInt32 = 0,
+        index: UInt32 = 0
+    ) -> Philox4x32.Counter {
         Philox4x32.generate(
             counter: .init(
                 UInt32(truncatingIfNeeded: address),
                 UInt32(truncatingIfNeeded: address >> 32),
-                0,
-                0
+                channel,
+                index
             ),
             key: key
         )

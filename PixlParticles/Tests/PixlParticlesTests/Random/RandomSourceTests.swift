@@ -3,13 +3,26 @@ import Testing
 
 @Suite("Random source")
 struct RandomSourceTests {
-    @Test("Maps the seed and address to fixed Philox lanes")
+    @Test("Maps a zero address to the Random123 zero vector")
     func addressMapping() {
         let source = RandomSource(seed: 0)
 
         #expect(
             source.block(at: 0) ==
                 .init(0x6627E8D5, 0xE169C58D, 0xBC57AC4C, 0x9B00DBD8)
+        )
+    }
+
+    @Test("Maps the seed, address, channel, and index to fixed Philox lanes")
+    func fullAddressMapping() {
+        let source = RandomSource(seed: 0x299F31D0A4093822)
+
+        #expect(
+            source.block(
+                at: 0x85A308D3243F6A88,
+                channel: 0x13198A2E,
+                index: 0x03707344
+            ) == .init(0xD16CFE09, 0x94FDCCEB, 0x5001E420, 0x24126EA1)
         )
     }
 
