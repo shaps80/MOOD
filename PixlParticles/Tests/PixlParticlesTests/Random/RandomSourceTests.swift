@@ -20,7 +20,7 @@ struct RandomSourceTests {
         #expect(
             source.block(
                 at: 0x85A308D3243F6A88,
-                channel: 0x13198A2E,
+                channel: .init(rawValue: 0x13198A2E),
                 index: 0x03707344
             ) == .init(0xD16CFE09, 0x94FDCCEB, 0x5001E420, 0x24126EA1)
         )

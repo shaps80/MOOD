@@ -58,3 +58,8 @@ public final class System {
         )
     }
 }
+
+private extension RandomSource.Channel {
+    static let position = Self(rawValue: 0)
+    static let velocity = Self(rawValue: 1)
+}

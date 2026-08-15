@@ -11,6 +11,15 @@ import Swift
 /// - The channel maps to counter lane `x2` and isolates unrelated properties.
 /// - The index maps to counter lane `x3` and selects another block in a channel.
 struct RandomSource {
+    struct Channel: RawRepresentable, Sendable {
+        let rawValue: UInt32
+
+        @inline(__always)
+        init(rawValue: UInt32) {
+            self.rawValue = rawValue
+        }
+    }
+
     private let key: Philox4x32.Key
 
     @inline(__always)
@@ -24,14 +33,14 @@ struct RandomSource {
     @inline(__always)
     func block(
         at address: UInt64,
-        channel: UInt32 = 0,
+        channel: Channel = .init(rawValue: 0),
         index: UInt32 = 0
     ) -> Philox4x32.Counter {
         Philox4x32.generate(
             counter: .init(
                 UInt32(truncatingIfNeeded: address),
                 UInt32(truncatingIfNeeded: address >> 32),
-                channel,
+                channel.rawValue,
                 index
             ),
             key: key
