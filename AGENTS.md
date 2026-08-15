@@ -25,3 +25,9 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - Read `CONTEXT.md` before proposing or changing low-level platform vocabulary or architecture. Update it when those decisions change.
 - Read `ROADMAP.md` for current progress, workstreams, and unresolved gates. Progress belongs there, not in this file.
 - Read `PERF.md` before profiling or discussing performance baselines. Record only accepted results there.
+
+## PixlParticles Boundary
+
+- `PixlParticles` owns simulation state, fixed timing, previous/current values, interpolation metadata, and interpolated value calculation.
+- Renderers and UI own coordinate transforms, bounds, culling, buffer packing, visual symbols/materials, and draw submission.
+- Stop and tell the user before placing a renderer or UI responsibility inside `PixlParticles`.

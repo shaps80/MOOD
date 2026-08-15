@@ -2,6 +2,7 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
+    @State private var isPlaying: Bool = false
     @State private var system: System = .init()
     @State private var fraction: Double = 0
 
@@ -12,11 +13,13 @@ struct ContentView: View {
 
                 Canvas { context, size in
                     guard let symbol = context.resolveSymbol(id: "particle") else { return }
+                    let sample = system.sample(at: now)
 
-                    for particle in system.sample(at: now) {
+                    for particle in sample.particles {
+                        let position = particle.interpolated(by: sample.interpolation)
                         // center just for testing
-                        let x: Double = size.width / 2 + .init(particle.position.x)
-                        let y: Double = size.height / 2 + .init(particle.position.y)
+                        let x: Double = size.width / 2 + .init(position.x)
+                        let y: Double = size.height / 2 + .init(position.y)
 
                         context.draw(symbol, at: .init(x: x, y: y))
                     }
@@ -30,10 +33,23 @@ struct ContentView: View {
 
             Divider()
 
-            Slider(value: $fraction, in: 0...1)
-                .sliderThumbVisibility(.hidden)
-                .scenePadding()
-                .background(.quinary)
+            HStack {
+                Toggle(isOn: $isPlaying) {
+                    ZStack {
+                        Image(systemName: isPlaying ? "pause" : "play")
+                            .symbolVariant(.fill)
+                            .fontWeight(.bold)
+                            .fontDesign(.rounded)
+                    }
+                }
+                .buttonStyle(.glass)
+                .toggleStyle(.button)
+
+                Slider(value: $fraction, in: 0...1)
+                    .sliderThumbVisibility(.hidden)
+            }
+            .scenePadding()
+            .background(.quinary)
         }
     }
 }

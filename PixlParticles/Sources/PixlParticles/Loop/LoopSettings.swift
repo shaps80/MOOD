@@ -23,8 +23,8 @@ struct LoopSettings: Hashable, Sendable {
     init(
         maximumDeltaSeconds: Double = 0.25,
         fixedStep: FixedStep? = FixedStep(
-            updatesPerSecond: 60,
-            maximumUpdatesPerFrame: 8
+            updatesPerSecond: 30,
+            maximumUpdatesPerFrame: 4
         )
     ) {
         precondition(maximumDeltaSeconds.isFinite)
