@@ -9,10 +9,7 @@ struct ParticleCanvas: View {
     var body: some View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
-            let sample = system.sample(
-                at: now,
-                isPaused: isPaused
-            )
+            let sample = system.sample(at: now, isPaused: isPaused)
 
             for particle in sample.particles {
                 let position = particle.interpolated(by: sample.interpolation)
