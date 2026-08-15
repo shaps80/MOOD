@@ -2,20 +2,26 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
-    @State private var isPlaying: Bool = false
+    @State private var isPaused: Bool = true
+    @State private var system: System = .init()
     @State private var fraction: Double = 0
 
     var body: some View {
         VStack(spacing: 0) {
             TimelineView(.animation) { _ in
                 let now = ContinuousClock.now
-                ParticleCanvas(now: now, isPlaying: isPlaying)
+                
+                ParticleCanvas(
+                    system: system,
+                    now: now,
+                    isPaused: isPaused
+                )
             }
 
             Divider()
             
             ParticleTimeline(
-                isPlaying: $isPlaying,
+                isPaused: $isPaused,
                 fraction: $fraction
             )
         }

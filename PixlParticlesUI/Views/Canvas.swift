@@ -2,17 +2,16 @@ import SwiftUI
 import PixlParticles
 
 struct ParticleCanvas: View {
-    private let system: System = .init()
-
+    let system: System
     let now: ContinuousClock.Instant
-    let isPlaying: Bool
+    let isPaused: Bool
 
     var body: some View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
             let sample = system.sample(
                 at: now,
-                isPaused: !isPlaying
+                isPaused: isPaused
             )
 
             for particle in sample.particles {
@@ -33,5 +32,9 @@ struct ParticleCanvas: View {
 }
 
 #Preview {
-    ParticleCanvas(now: .now, isPlaying: true)
+    ParticleCanvas(
+        system: .init(),
+        now: .now,
+        isPaused: false
+    )
 }
