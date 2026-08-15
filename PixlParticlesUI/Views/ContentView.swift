@@ -26,7 +26,10 @@ struct ContentView: View {
             Button(
                 isPaused ? "Play" : "Pause",
                 systemImage: isPaused ? "play" : "pause"
-            ) { isPaused.toggle() }
+            ) {
+                isPaused.toggle()
+            }
+            .keyboardShortcut(.space, modifiers: [])
         }
     }
 }
