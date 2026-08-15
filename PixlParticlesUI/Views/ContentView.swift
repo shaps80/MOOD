@@ -11,12 +11,12 @@ struct ContentView: View {
                 let now = ContinuousClock.now
 
                 Canvas { context, size in
-                    for particle in system.sample(at: now) {
-                        guard let symbol = context.resolveSymbol(id: "particle") else { continue }
+                    guard let symbol = context.resolveSymbol(id: "particle") else { return }
 
+                    for particle in system.sample(at: now) {
                         // center just for testing
-                        let x: Double = (size.width - .init(particle.position.x)) / 2
-                        let y: Double = (size.height - .init(particle.position.y)) / 2
+                        let x: Double = size.width / 2 + .init(particle.position.x)
+                        let y: Double = size.height / 2 + .init(particle.position.y)
 
                         context.draw(symbol, at: .init(x: x, y: y))
                     }
