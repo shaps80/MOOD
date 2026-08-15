@@ -2,14 +2,15 @@ import Swift
 
 public final class System {
     private var loop = Loop(settings: .default)
-    private var particles: [Particle]
+    private var particles: [Particle] = []
     private var tick: UInt64 = 0
+    private var nextID: Particle.ID = 0
 
     public init() {
         particles = [
-            .init(position: [0, 0, 0], velocity: [20, 0, 0]),
-            .init(position: [5, 0, 0], velocity: [0, 20, 0]),
-            .init(position: [-5, 0, 0], velocity: [-20, 0, 0]),
+            spawn(position: [0, 0, 0], velocity: [20, 0, 0]),
+            spawn(position: [5, 0, 0], velocity: [0, 20, 0]),
+            spawn(position: [-5, 0, 0], velocity: [-20, 0, 0]),
         ]
     }
 
@@ -42,5 +43,18 @@ public final class System {
         }
 
         tick += 1
+    }
+
+    private func spawn(
+        position: Vec3,
+        velocity: Vec3
+    ) -> Particle {
+        defer { nextID += 1 }
+
+        return Particle(
+            id: nextID,
+            position: position,
+            velocity: velocity
+        )
     }
 }
