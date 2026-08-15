@@ -4,11 +4,15 @@ import PixlParticles
 struct ContentView: View {
     private let orbitSensitivity: Float = 0.005
 
-    private let system: System = .init(
+    @State private var system: System = .init(
+        seed: 0,
         particleCount: 201,
+//        spawnRegion: .box(size: [200, 200]),
         duration: .seconds(20)
     )
-
+    @State private var duration: Double = 20
+    @State private var particleCount: Double = 201
+    @State private var seed: Double = 0
     @State private var isPaused: Bool = true
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
@@ -28,7 +32,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             TimelineView(.animation) { _ in
                 let now = ContinuousClock.now
                 let sample = system.sample(
@@ -70,9 +74,15 @@ struct ContentView: View {
                 HStack {
                     Spacer(minLength: 0)
 
-                    Inspector()
-                        .scenePadding([.horizontal, .top])
+                    Inspector(
+                        duration: $duration,
+                        particleCount: $particleCount,
+                        seed: $seed
+                    )
+                    .scenePadding([.horizontal, .top])
                 }
+
+                Spacer(minLength: 0)
 
                 ParticleTimeline(
                     fraction: $fraction,
@@ -84,6 +94,34 @@ struct ContentView: View {
 
                     system.seek(to: system.duration * fraction)
                 }
+            }
+        }
+        .onChange(of: duration) { _, duration in
+            let duration = max(duration, 0)
+
+            if self.duration != duration {
+                self.duration = duration
+            } else {
+                updateSystem()
+            }
+        }
+        .onChange(of: particleCount) { _, particleCount in
+            let particleCount = max(particleCount.rounded(), 0)
+
+            if self.particleCount != particleCount {
+                self.particleCount = particleCount
+            } else {
+                updateSystem()
+            }
+        }
+        .onChange(of: seed) { _, seed in
+            let maximumExactInteger = 9_007_199_254_740_991.0
+            let seed = min(max(seed.rounded(), 0), maximumExactInteger)
+
+            if self.seed != seed {
+                self.seed = seed
+            } else {
+                updateSystem()
             }
         }
         .toolbar {
@@ -106,6 +144,15 @@ struct ContentView: View {
                 .keyboardShortcut(.space, modifiers: [])
             }
         }
+    }
+
+    private func updateSystem() {
+        system = System(
+            seed: UInt64(seed),
+            particleCount: Int(particleCount),
+            duration: .seconds(duration)
+        )
+        fraction = 0
     }
 }
 

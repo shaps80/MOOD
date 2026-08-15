@@ -2,24 +2,34 @@ import SwiftUI
 import PixlParticles
 
 struct Inspector: View {
-    @State private var value: Double = 20
+    @Binding var duration: Double
+    @Binding var particleCount: Double
+    @Binding var seed: Double
+
     var body: some View {
-        ScrollView {
+//        ScrollView {
             Divided {
-                Section("Test") {
-                    // duration, particles (count), etc...
+                Section("System") {
                     LabeledContent("Duration") {
-                        Field(value: $value)
+                        Field(value: $duration)
+                    }
+
+                    LabeledContent("Particles") {
+                        Field(value: $particleCount)
+                    }
+
+                    LabeledContent("Seed") {
+                        Field(value: $seed)
                     }
                 }
             }
             .frame(
                 maxWidth: .infinity,
-                maxHeight: .infinity,
                 alignment: .topLeading
             )
             .scenePadding()
-        }
+//        }
+        .labeledContentStyle(.inspector)
         .focusable(false)
         .focusEffectDisabled(true)
         .clipShape(.rect(cornerRadius: 28))
@@ -61,7 +71,15 @@ struct Divided<Content: View>: View {
 }
 
 #Preview {
-    Inspector()
-        .fixedSize(horizontal: true, vertical: false)
-        .scenePadding()
+    @Previewable @State var duration: Double = 20
+    @Previewable @State var particleCount: Double = 201
+    @Previewable @State var seed: Double = 0
+
+    Inspector(
+        duration: $duration,
+        particleCount: $particleCount,
+        seed: $seed
+    )
+    .fixedSize(horizontal: true, vertical: false)
+    .scenePadding()
 }

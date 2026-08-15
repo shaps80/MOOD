@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct Field: View {
+    private let pointsPerStep: Double = 10
+
     @State private var isDragging: Bool = false
     @State private var isShowingField: Bool = false
     @State private var currentValue: Double
+    @State private var dragStartValue: Double?
+    @State private var selection: TextSelection?
     @FocusState private var focused
 
     @Binding var value: Double
@@ -17,7 +21,7 @@ struct Field: View {
 
     var body: some View {
         Text(
-            value,
+            currentValue,
             format: .number.precision(.fractionLength(0))
         )
         .foregroundStyle(.foreground)
@@ -33,10 +37,8 @@ struct Field: View {
             .focusEffectDisabled()
             .fixedSize()
             .opacity(isShowingField ? 1 : 0)
-#if os(macOS)
-            .offset(x: 3)
-#endif
         }
+        .multilineTextAlignment(.center)
         .padding(.vertical, 5)
         .padding(.horizontal, 10)
         .background(.quinary, in: .capsule)
@@ -74,22 +76,34 @@ struct Field: View {
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { state in
+                    let startValue = dragStartValue ?? value
+
+                    if dragStartValue == nil {
+                        dragStartValue = startValue
+                    }
+
                     isDragging = true
-                    // LLM translate to increment, decrement by step ?? 1
+                    let increments = (
+                        -Double(state.translation.height) / pointsPerStep
+                    ).rounded(.towardZero)
+
+                    currentValue = startValue + increments * (step ?? 1)
                 }
                 .onEnded { _ in
                     isDragging = false
+                    dragStartValue = nil
+                    value = currentValue
                 }
         )
     }
 }
 
 
-private extension LabeledContentStyle where Self == InspectorLabeledContentStyle {
+extension LabeledContentStyle where Self == InspectorLabeledContentStyle {
     static var inspector: Self { .init() }
 }
 
-private struct InspectorLabeledContentStyle: LabeledContentStyle {
+struct InspectorLabeledContentStyle: LabeledContentStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack {
             configuration.label
