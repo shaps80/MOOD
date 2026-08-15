@@ -3,25 +3,18 @@ import PackageDescription
 
 let package = Package(
     name: "PixlParticles",
-    platforms: [
-        .macOS(.v14)
-    ],
     products: [
         .library(
             name: "PixlParticles",
             targets: ["PixlParticles"]
-        ),
-        .executable(
-            name: "PixlParticlesUI",
-            targets: ["PixlParticlesUI"]
         )
     ],
     targets: [
         .target(
             name: "PixlParticles"
         ),
-        .executableTarget(
-            name: "PixlParticlesUI",
+        .testTarget(
+            name: "PixlParticlesTests",
             dependencies: ["PixlParticles"]
         )
     ],

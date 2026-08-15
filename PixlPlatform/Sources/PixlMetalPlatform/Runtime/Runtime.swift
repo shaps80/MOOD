@@ -55,6 +55,7 @@ final class Runtime: NSObject {
         let application = NSApplication.shared
         application.delegate = self
         application.setActivationPolicy(.regular)
+        NSWindow.allowsAutomaticWindowTabbing = false
         application.mainMenu = makeMainMenu()
     }
 
@@ -85,6 +86,7 @@ final class Runtime: NSObject {
             backing: .buffered,
             defer: false
         )
+        window.tabbingMode = .disallowed
         window.contentView = view
         window.acceptsMouseMovedEvents = true
         NSEvent.isMouseCoalescingEnabled = false
@@ -127,7 +129,7 @@ final class Runtime: NSObject {
     @MainActor
     private func makeMainMenu() -> NSMenu {
         let mainMenu = NSMenu()
-        let applicationMenuItem = NSMenuItem()
+        let applicationMenuItem = NSMenuItem(title: "Pixl", action: nil, keyEquivalent: "")
         let applicationMenu = NSMenu()
         let quitItem = NSMenuItem(
             title: "Quit Pixl",
@@ -139,6 +141,48 @@ final class Runtime: NSObject {
         applicationMenu.addItem(quitItem)
         applicationMenuItem.submenu = applicationMenu
         mainMenu.addItem(applicationMenuItem)
+
+        let fileMenuItem = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
+        let fileMenu = NSMenu(title: "File")
+        fileMenu.addItem(
+            withTitle: "Close Window",
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
+        )
+        fileMenuItem.submenu = fileMenu
+        mainMenu.addItem(fileMenuItem)
+
+        let viewMenuItem = NSMenuItem(title: "View", action: nil, keyEquivalent: "")
+        let viewMenu = NSMenu(title: "View")
+        viewMenu.addItem(
+            withTitle: "Enter Full Screen",
+            action: #selector(NSWindow.toggleFullScreen(_:)),
+            keyEquivalent: "f"
+        ).keyEquivalentModifierMask = [.control, .command]
+        viewMenuItem.submenu = viewMenu
+        mainMenu.addItem(viewMenuItem)
+
+        let windowMenuItem = NSMenuItem(title: "Window", action: nil, keyEquivalent: "")
+        let windowMenu = NSMenu(title: "Window")
+        windowMenu.addItem(
+            withTitle: "Minimize",
+            action: #selector(NSWindow.performMiniaturize(_:)),
+            keyEquivalent: "m"
+        )
+        windowMenu.addItem(
+            withTitle: "Zoom",
+            action: #selector(NSWindow.performZoom(_:)),
+            keyEquivalent: ""
+        )
+        windowMenu.addItem(NSMenuItem.separator())
+        windowMenu.addItem(
+            withTitle: "Bring All to Front",
+            action: #selector(NSApplication.arrangeInFront(_:)),
+            keyEquivalent: ""
+        )
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+        NSApplication.shared.windowsMenu = windowMenu
 
         return mainMenu
     }

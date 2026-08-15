@@ -21,6 +21,7 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 
 ## Project Documents
 
+- Work scoped to `PixlParticles` or `PixlParticlesUI` is independent of the root project documents. Use dedicated `PixlParticles/CONTEXT.md` and `PixlParticles/ROADMAP.md` files for shared particle-system context and progress across both packages.
 - Read `CONTEXT.md` before proposing or changing low-level platform vocabulary or architecture. Update it when those decisions change.
 - Read `ROADMAP.md` for current progress, workstreams, and unresolved gates. Progress belongs there, not in this file.
 - Read `PERF.md` before profiling or discussing performance baselines. Record only accepted results there.
