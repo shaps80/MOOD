@@ -2,6 +2,8 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
+    private let durationInTicks: UInt64 = 60
+
     @State private var isPaused: Bool = true
     @State private var system: System = .init()
     @State private var fraction: Double = 0
@@ -26,6 +28,14 @@ struct ContentView: View {
                 fraction: $fraction,
                 isScrubbing: $isScrubbing
             )
+            .onChange(of: fraction) { _, fraction in
+                guard isScrubbing else { return }
+
+                let tick = UInt64(
+                    (fraction * Double(durationInTicks)).rounded()
+                )
+                system.seek(to: tick)
+            }
         }
         .toolbar {
             Button(

@@ -39,5 +39,14 @@ struct SystemDeterminismTests {
             replayed.particles.map { $0.interpolated(by: replayed.interpolation) } ==
                 replayed.particles.map(\.position)
         )
+
+        system.seek(to: 45)
+        let resumedAt = ContinuousClock.now
+        _ = system.sample(at: resumedAt)
+        let resumed = system.sample(
+            at: resumedAt.advanced(by: .milliseconds(34))
+        )
+
+        #expect(resumed.tick == 46)
     }
 }
