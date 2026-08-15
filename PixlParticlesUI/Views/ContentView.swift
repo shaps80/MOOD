@@ -19,11 +19,14 @@ struct ContentView: View {
             }
 
             Divider()
-            
-            ParticleTimeline(
-                isPaused: $isPaused,
-                fraction: $fraction
-            )
+
+            ParticleTimeline(fraction: $fraction)
+        }
+        .toolbar {
+            Button(
+                isPaused ? "Play" : "Pause",
+                systemImage: isPaused ? "play" : "pause"
+            ) { isPaused.toggle() }
         }
     }
 }
