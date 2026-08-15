@@ -31,3 +31,9 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - `PixlParticles` owns simulation state, fixed timing, previous/current values, interpolation metadata, and interpolated value calculation.
 - Renderers and UI own coordinate transforms, bounds, culling, buffer packing, visual symbols/materials, and draw submission.
 - Stop and tell the user before placing a renderer or UI responsibility inside `PixlParticles`.
+
+## PixlParticles Benchmarks
+
+- Keep performance benchmarks out of the normal test suite and place standalone release harnesses under `PixlParticles/Benchmarks`.
+- Compile benchmark harnesses together with the real production sources so internal hot-path code remains internal and no benchmark-only API is introduced.
+- Run relevant benchmarks on both the host and WebAssembly toolchains where possible, and record accepted configurations and results in `PixlParticles/PERF.md`.
