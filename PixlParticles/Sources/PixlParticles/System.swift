@@ -14,10 +14,10 @@ public final class System {
     private var initialNextID: Particle.ID = 0
 
     public init(
-        seed: UInt64 = 0,
-        particleCount: Int = 0,
-        spawnRegion: SpawnRegion = .box(size: [200, 200, 200]),
-        duration: Duration = .seconds(2)
+        seed: UInt64,
+        particleCount: Int,
+        spawnRegion: SpawnRegion,
+        duration: Duration
     ) {
         precondition(particleCount >= 0)
         precondition(duration >= .zero)

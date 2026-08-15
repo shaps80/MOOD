@@ -21,7 +21,7 @@ struct ParticleCanvas: View {
                     in: viewport,
                     style: groundPlaneStyle
                 ),
-                with: .color(.gray.opacity(0.2)),
+                with: .color(.gray.opacity(0.4)),
                 lineWidth: 0.5
             )
 
@@ -36,7 +36,7 @@ struct ParticleCanvas: View {
         } symbols: {
             Rectangle()
                 .frame(width: 2, height: 2)
-                .foregroundStyle(.gray)
+                .foregroundStyle(.foreground)
                 .tag("particle")
         }
         .background(.background.secondary)
@@ -45,7 +45,13 @@ struct ParticleCanvas: View {
 
 #Preview {
     ParticleCanvas(
-        sample: System().sample(at: .now),
+        sample: System(
+            seed: 0,
+            particleCount: 100,
+            spawnRegion: SpawnPreset.sphere.region,
+            duration: .seconds(20)
+        )
+        .sample(at: .now),
         camera: CameraPreset.perspective.fixedCamera,
         groundPlaneStyle: .grid
     )

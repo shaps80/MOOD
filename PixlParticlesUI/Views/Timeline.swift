@@ -25,7 +25,7 @@ struct ParticleTimeline: View {
         }
         .sliderThumbVisibility(.hidden)
         .padding(.horizontal, 10)
-        .glassEffect(.clear.tint(.black.opacity(0.3)).interactive(), in: .capsule)
+        .glassEffect(.clear.interactive(), in: .capsule)
         .scenePadding()
     }
 }

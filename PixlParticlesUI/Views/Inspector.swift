@@ -5,6 +5,7 @@ struct Inspector: View {
     @Binding var duration: Double
     @Binding var particleCount: Double
     @Binding var seed: Double
+    @Binding var spawnPreset: SpawnPreset
 
     var body: some View {
 //        ScrollView {
@@ -21,6 +22,17 @@ struct Inspector: View {
                     LabeledContent("Seed") {
                         Field(value: $seed)
                     }
+
+                    LabeledContent("Spawn") {
+                        Picker("Spawn", selection: $spawnPreset) {
+                            ForEach(SpawnPreset.allCases, id: \.self) { preset in
+                                Text(preset.title).tag(preset)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .tint(.primary)
+                    }
                 }
             }
             .frame(
@@ -33,7 +45,7 @@ struct Inspector: View {
         .focusable(false)
         .focusEffectDisabled(true)
         .clipShape(.rect(cornerRadius: 28))
-        .glassEffect(.clear.tint(.black.opacity(0.3)), in: .rect(cornerRadius: 28))
+        .glassEffect(.clear, in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
     }
 }
@@ -72,13 +84,15 @@ struct Divided<Content: View>: View {
 
 #Preview {
     @Previewable @State var duration: Double = 20
-    @Previewable @State var particleCount: Double = 201
+    @Previewable @State var particleCount: Double = 200
     @Previewable @State var seed: Double = 0
+    @Previewable @State var spawnPreset = SpawnPreset.sphere
 
     Inspector(
         duration: $duration,
         particleCount: $particleCount,
-        seed: $seed
+        seed: $seed,
+        spawnPreset: $spawnPreset
     )
     .fixedSize(horizontal: true, vertical: false)
     .scenePadding()

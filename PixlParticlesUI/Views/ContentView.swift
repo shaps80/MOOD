@@ -4,20 +4,18 @@ import PixlParticles
 struct ContentView: View {
     private let orbitSensitivity: Float = 0.005
 
-    @State private var system: System = .init(
-        seed: 0,
-        particleCount: 201,
-//        spawnRegion: .box(size: [200, 200]),
-        duration: .seconds(20)
-    )
-    @State private var duration: Double = 20
-    @State private var particleCount: Double = 201
-    @State private var seed: Double = 0
     @State private var isPaused: Bool = true
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
     @State private var cameraPreset = CameraPreset.perspective
     @State private var perspectiveOrbit = CameraPreset.perspectiveOrbit
+
+    @State private var system: System
+    @State private var seed: Double
+    @State private var particleCount: Double
+    @State private var duration: Double
+    @State private var spawnPreset: SpawnPreset
+
     @GestureState private var orbitTranslation: CGSize = .zero
 
     private var camera: Camera {
@@ -28,6 +26,22 @@ struct ContentView: View {
         return perspectiveOrbit.camera(
             yawOffset: -Float(orbitTranslation.width) * orbitSensitivity,
             pitchOffset: Float(orbitTranslation.height) * orbitSensitivity
+        )
+    }
+
+    init() {
+        _seed = .init(initialValue: 0)
+        _particleCount = .init(initialValue: 2000)
+        _duration = .init(initialValue: 20)
+        _spawnPreset = .init(initialValue: .sphere)
+
+        _system = .init(
+            initialValue: .init(
+                seed: .init(_seed.wrappedValue),
+                particleCount: .init(_particleCount.wrappedValue),
+                spawnRegion: _spawnPreset.wrappedValue.region,
+                duration: .seconds(_duration.wrappedValue)
+            )
         )
     }
 
@@ -77,7 +91,8 @@ struct ContentView: View {
                     Inspector(
                         duration: $duration,
                         particleCount: $particleCount,
-                        seed: $seed
+                        seed: $seed,
+                        spawnPreset: $spawnPreset
                     )
                     .scenePadding([.horizontal, .top])
                 }
@@ -124,6 +139,9 @@ struct ContentView: View {
                 updateSystem()
             }
         }
+        .onChange(of: spawnPreset) {
+            updateSystem()
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("Camera", selection: $cameraPreset) {
@@ -150,6 +168,7 @@ struct ContentView: View {
         system = System(
             seed: UInt64(seed),
             particleCount: Int(particleCount),
+            spawnRegion: spawnPreset.region,
             duration: .seconds(duration)
         )
         fraction = 0
