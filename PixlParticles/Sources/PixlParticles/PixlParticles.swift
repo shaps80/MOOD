@@ -1,23 +1,23 @@
 import Swift
 
-public typealias Vec2 = SIMD2<Float>
+public typealias Vec3 = SIMD3<Float>
 
 public struct Particle {
-    public internal(set) var position: Vec2
+    public internal(set) var position: Vec3
 
-    var previousPosition: Vec2
-    let velocity: Vec2
+    var previousPosition: Vec3
+    let velocity: Vec3
 
     init(
-        position: Vec2,
-        velocity: Vec2
+        position: Vec3,
+        velocity: Vec3
     ) {
         previousPosition = position
         self.position = position
         self.velocity = velocity
     }
 
-    public func interpolated(by fraction: Float) -> Vec2 {
+    public func interpolated(by fraction: Float) -> Vec3 {
         previousPosition + (position - previousPosition) * fraction
     }
 
@@ -38,9 +38,9 @@ public final class System {
 
     public init() {
         particles = [
-            .init(position: .zero, velocity: [20, 0]),
-            .init(position: [5, 0], velocity: [0, 20]),
-            .init(position: [-5, 0], velocity: [-20, 0]),
+            .init(position: [0, 0, 0], velocity: [20, 0, 0]),
+            .init(position: [5, 0, 0], velocity: [0, 20, 0]),
+            .init(position: [-5, 0, 0], velocity: [-20, 0, 0]),
         ]
     }
 
