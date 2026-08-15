@@ -13,7 +13,10 @@ struct ContentView: View {
 
                 Canvas { context, size in
                     guard let symbol = context.resolveSymbol(id: "particle") else { return }
-                    let sample = system.sample(at: now)
+                    let sample = system.sample(
+                        at: now,
+                        isPaused: !isPlaying
+                    )
 
                     for particle in sample.particles {
                         let position = particle.interpolated(by: sample.interpolation)
@@ -34,13 +37,13 @@ struct ContentView: View {
             Divider()
 
             HStack {
-                Toggle(isOn: $isPlaying) {
-                    ZStack {
-                        Image(systemName: isPlaying ? "pause" : "play")
-                            .symbolVariant(.fill)
-                            .fontWeight(.bold)
-                            .fontDesign(.rounded)
-                    }
+                Button {
+                    isPlaying.toggle()
+                } label: {
+                    Image(systemName: isPlaying ? "pause" : "play")
+                        .symbolVariant(.fill)
+                        .fontWeight(.bold)
+                        .fontDesign(.rounded)
                 }
                 .buttonStyle(.glass)
                 .toggleStyle(.button)

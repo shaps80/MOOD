@@ -44,8 +44,15 @@ public final class System {
         ]
     }
 
-    public func sample(at instant: ContinuousClock.Instant) -> Sample {
-        let schedule = loop.advance(to: instant)
+    public func sample(
+        at instant: ContinuousClock.Instant,
+        isPaused: Bool = false
+    ) -> Sample {
+        let schedule = loop.advance(
+            to: instant,
+            timeScale: isPaused ? 0 : 1
+        )
+        
         let delta = Float(schedule.fixedDeltaSeconds)
         let interpolation = Float(schedule.renderTime.interpolation)
 
