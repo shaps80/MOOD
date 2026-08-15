@@ -5,14 +5,13 @@ struct ParticleTimeline: View {
     @Binding var isScrubbing: Bool
 
     var body: some View {
-        HStack {
-            Slider(value: $fraction, in: 0...1) { isEditing in
-                isScrubbing = isEditing
-            }
-            .sliderThumbVisibility(.hidden)
+        Slider(value: $fraction, in: 0...1) { isEditing in
+            isScrubbing = isEditing
         }
+        .sliderThumbVisibility(.hidden)
+        .padding(.horizontal)
+        .glassEffect(.clear, in: .capsule)
         .scenePadding()
-        .background(.quinary)
     }
 }
 

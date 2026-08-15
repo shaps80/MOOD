@@ -2,6 +2,12 @@ import SwiftUI
 import PixlParticles
 
 struct ParticleCanvas: View {
+    private let groundPlane = GroundPlane(
+        height: -110,
+        extent: 500,
+        spacing: 50
+    )
+
     let sample: Sample
     let camera: Camera
 
@@ -9,6 +15,12 @@ struct ParticleCanvas: View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
             guard let viewport = camera.viewport(for: size) else { return }
+
+            context.stroke(
+                groundPlane.path(in: viewport),
+                with: .color(.gray.opacity(0.2)),
+                lineWidth: 0.5
+            )
 
             for particle in sample.particles {
                 let position = particle.interpolated(by: sample.interpolation)
@@ -24,16 +36,13 @@ struct ParticleCanvas: View {
                 .foregroundStyle(.gray)
                 .tag("particle")
         }
+        .background(.background.secondary)
     }
 }
 
 #Preview {
     ParticleCanvas(
         sample: System().sample(at: .now),
-        camera: Camera(
-            position: [300, 250, 450],
-            target: .zero,
-            projection: .perspective
-        )
+        camera: .perspective
     )
 }

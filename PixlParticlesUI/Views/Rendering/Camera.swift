@@ -2,10 +2,22 @@ import CoreGraphics
 import PixlParticles
 import simd
 
-struct Camera {
+struct Camera: Hashable {
     var position: Vec3
     var target: Vec3
     var projection: Projection
+
+    static let perspective = Self(
+        position: [300, 250, 450],
+        target: .zero,
+        projection: .perspective
+    )
+
+    static let isometric = Self(
+        position: [400, 400, 400],
+        target: .zero,
+        projection: .orthographic
+    )
 
     func viewport(for size: CGSize) -> Viewport? {
         guard size.width > 0, size.height > 0 else { return nil }
@@ -50,10 +62,6 @@ extension Camera {
 
             guard
                 clipPosition.w > 0,
-                clipPosition.x >= -clipPosition.w,
-                clipPosition.x <= clipPosition.w,
-                clipPosition.y >= -clipPosition.w,
-                clipPosition.y <= clipPosition.w,
                 clipPosition.z >= 0,
                 clipPosition.z <= clipPosition.w
             else {
