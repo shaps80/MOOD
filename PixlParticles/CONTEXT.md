@@ -7,11 +7,14 @@
 ## Goals
 
 - Keep particles and editor scene framing 3D.
-- Make simulation deterministic enough to pause, seek, scrub, reproduce tests, and inspect exact lifetime state.
 - Offer expressive, composable Swift authoring types, then lower them into a runtime representation suitable for hot loops and GPU execution.
 - Support CPU and GPU compute without guaranteeing the preferred backend when capabilities require fallback.
-- Model causal multi-emitter effects, including triggers and event payloads.
 - Decide post-processing ownership explicitly, including bloom behavior across multiple or nested systems.
+
+## Foundational Constraints
+
+- Treat a particle effect as a deterministic program over time, not merely mutable emitters updated each frame. It must support pausing, seeking, scrubbing, repeatable tests, and precise state inspection.
+- Support Niagara-style events as a core system capability, allowing causal communication between emitters through explicit triggers and event payloads.
 
 ## Evidence
 
