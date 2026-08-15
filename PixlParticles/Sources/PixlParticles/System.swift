@@ -4,7 +4,8 @@ public final class System {
     public let duration: Duration
 
     private let random: RandomSource
-    private var loop = Loop(settings: .default)
+    private var loop: Loop
+    private let durationInTicks: UInt64
     private var particles: [Particle] = []
     private var initialParticles: [Particle] = []
     private var tick: UInt64 = 0
@@ -17,8 +18,16 @@ public final class System {
     ) {
         precondition(duration >= .zero)
 
+        let loop = Loop(settings: .default)
+        let durationInTicks = (
+            Self.seconds(duration) / loop.fixedDeltaSeconds
+        ).rounded()
+        precondition(durationInTicks <= Double(UInt64.max))
+
         self.duration = duration
+        self.durationInTicks = UInt64(durationInTicks)
         random = RandomSource(seed: seed)
+        self.loop = loop
 
         particles = (0...100).map { _ in spawn() }
         initialParticles = particles
@@ -29,22 +38,36 @@ public final class System {
         at instant: ContinuousClock.Instant,
         isPaused: Bool = false
     ) -> Sample {
+        let isComplete = tick >= durationInTicks
         let schedule = loop.advance(
             to: instant,
-            timeScale: isPaused ? 0 : 1
+            timeScale: isPaused || isComplete ? 0 : 1
         )
-        
-        let delta = Float(schedule.fixedDeltaSeconds)
-        let interpolation = Float(schedule.renderTime.interpolation)
 
-        for _ in 0..<schedule.fixedUpdateCount {
+        let delta = Float(schedule.fixedDeltaSeconds)
+        let remainingUpdates = durationInTicks - min(tick, durationInTicks)
+        let updateCount = min(
+            UInt64(schedule.fixedUpdateCount),
+            remainingUpdates
+        )
+
+        for _ in 0..<updateCount {
             update(by: delta)
         }
+
+        let isNowComplete = tick >= durationInTicks
+        let interpolation = isNowComplete
+            ? 1
+            : Float(schedule.renderTime.interpolation)
+        let time = isNowComplete
+            ? duration
+            : Duration.seconds(Double(tick) * schedule.fixedDeltaSeconds)
 
         return .init(
             particles: particles,
             interpolation: interpolation,
-            tick: tick
+            tick: tick,
+            time: time
         )
     }
 

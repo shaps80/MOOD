@@ -49,4 +49,24 @@ struct SystemDeterminismTests {
 
         #expect(resumed.tick == 46)
     }
+
+    @Test("Stops at its duration")
+    func duration() {
+        let system = System(duration: .milliseconds(100))
+        let start = ContinuousClock.now
+
+        _ = system.sample(at: start)
+        let completed = system.sample(
+            at: start.advanced(by: .milliseconds(200))
+        )
+        let later = system.sample(
+            at: start.advanced(by: .seconds(1))
+        )
+
+        #expect(completed.tick == 3)
+        #expect(completed.time == .milliseconds(100))
+        #expect(completed.interpolation == 1)
+        #expect(later.tick == completed.tick)
+        #expect(later.particles.map(\.position) == completed.particles.map(\.position))
+    }
 }

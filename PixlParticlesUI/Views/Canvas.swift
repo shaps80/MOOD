@@ -2,19 +2,11 @@ import SwiftUI
 import PixlParticles
 
 struct ParticleCanvas: View {
-    let system: System
-    let now: ContinuousClock.Instant
-    let isScrubbing: Bool
-    let isPaused: Bool
-
-    private var paused: Bool {
-        isPaused || isScrubbing
-    }
+    let sample: Sample
 
     var body: some View {
         Canvas { context, size in
             guard let symbol = context.resolveSymbol(id: "particle") else { return }
-            let sample = system.sample(at: now, isPaused: paused)
 
             for particle in sample.particles {
                 let position = particle.interpolated(by: sample.interpolation)
@@ -26,7 +18,7 @@ struct ParticleCanvas: View {
             }
         } symbols: {
             Rectangle()
-                .frame(width: 2, height: 2)
+                .frame(width: 5, height: 5)
                 .foregroundStyle(.gray)
                 .tag("particle")
         }
@@ -35,9 +27,6 @@ struct ParticleCanvas: View {
 
 #Preview {
     ParticleCanvas(
-        system: .init(),
-        now: .now,
-        isScrubbing: false,
-        isPaused: false
+        sample: System().sample(at: .now)
     )
 }
