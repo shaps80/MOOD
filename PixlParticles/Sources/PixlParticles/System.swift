@@ -7,8 +7,8 @@ public final class System {
     private let spawnRegion: SpawnRegion
     private var loop: Loop
     private let durationInTicks: UInt64
-    private var particles: [Particle] = []
-    private var initialParticles: [Particle] = []
+    private var storage: ParticleStorage
+    private let initialStorage: ParticleStorage
     private var tick: UInt64 = 0
     private var nextID: Particle.ID = 0
     private var initialNextID: Particle.ID = 0
@@ -29,14 +29,24 @@ public final class System {
         ).rounded()
         precondition(durationInTicks <= Double(UInt64.max))
 
+        let randomSource = RandomSource(seed: seed)
+        let region = spawnRegion
+
         self.duration = duration
         self.durationInTicks = UInt64(durationInTicks)
-        random = RandomSource(seed: seed)
-        self.spawnRegion = spawnRegion
+        random = randomSource
+        self.spawnRegion = region
         self.loop = loop
 
-        particles = (0..<particleCount).map { _ in spawn() }
-        initialParticles = particles
+        storage = ParticleStorage(count: particleCount) { index in
+            Self.spawn(
+                id: Particle.ID(index),
+                random: randomSource,
+                region: region
+            )
+        }
+        initialStorage = ParticleStorage(copying: storage)
+        nextID = Particle.ID(particleCount)
         initialNextID = nextID
     }
 
@@ -70,7 +80,7 @@ public final class System {
             : Duration.seconds(Double(tick) * schedule.fixedDeltaSeconds)
 
         return .init(
-            particles: particles,
+            particles: storage.particles(),
             interpolation: interpolation,
             tick: tick,
             time: time
@@ -85,7 +95,7 @@ public final class System {
         )
 
         if targetTick < tick {
-            particles = initialParticles
+            storage.copyState(from: initialStorage)
             tick = 0
             nextID = initialNextID
         }
@@ -96,33 +106,31 @@ public final class System {
             update(by: delta)
         }
 
-        for index in particles.indices {
-            particles[index].resetInterpolation()
-        }
+        storage.resetInterpolation()
 
         loop.rebase(to: tick)
     }
 
     func update(by delta: Float) {
-        for index in particles.indices {
-            particles[index].advance(by: delta)
-        }
+        storage.advance(by: delta)
 
         tick += 1
     }
 
-    private func spawn() -> Particle {
-        defer { nextID += 1 }
-
+    private static func spawn(
+        id: Particle.ID,
+        random: RandomSource,
+        region: SpawnRegion
+    ) -> Particle {
         let velocityBlock = random.block(
-            at: nextID,
+            at: id,
             channel: .velocity
         )
         let velocityRange: Range<Float> = -20..<20
 
         return Particle(
-            id: nextID,
-            position: spawnRegion.sample(using: random, at: nextID),
+            id: id,
+            position: region.sample(using: random, at: id),
             velocity: [
                 RandomSource.float(from: velocityBlock.x0, in: velocityRange),
                 RandomSource.float(from: velocityBlock.x1, in: velocityRange),

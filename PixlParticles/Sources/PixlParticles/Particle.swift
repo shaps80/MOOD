@@ -20,6 +20,18 @@ public struct Particle: Identifiable {
         self.velocity = velocity
     }
 
+    init(
+        id: ID,
+        previousPosition: Vec3,
+        position: Vec3,
+        velocity: Vec3
+    ) {
+        self.id = id
+        self.previousPosition = previousPosition
+        self.position = position
+        self.velocity = velocity
+    }
+
     public func interpolated(by fraction: Float) -> Vec3 {
         previousPosition + (position - previousPosition) * fraction
     }
