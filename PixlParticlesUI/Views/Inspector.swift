@@ -7,6 +7,11 @@ struct Inspector: View {
     @Binding var seed: Double
     @Binding var spawnPreset: SpawnPreset
     @Binding var spawnDomain: SpawnRegion.Domain
+    @Binding var lodEnabled: Bool
+    @Binding var lodActivation: Double
+    @Binding var lodMaximum: Double
+    @Binding var lodTileSize: Double
+    @Binding var lodPointsPerPixel: Double
 
     var body: some View {
 //        ScrollView {
@@ -51,6 +56,26 @@ struct Inspector: View {
                             .pickerStyle(.menu)
                             .tint(.primary)
                         }
+                    }
+                }
+
+                Section("Point LOD") {
+                    Toggle("Enabled", isOn: $lodEnabled)
+
+                    LabeledContent("Activation") {
+                        Field(value: $lodActivation, step: 100_000)
+                    }
+
+                    LabeledContent("Maximum") {
+                        Field(value: $lodMaximum, step: 100_000)
+                    }
+
+                    LabeledContent("Tile Size") {
+                        Field(value: $lodTileSize, step: 1)
+                    }
+
+                    LabeledContent("Points/Pixel") {
+                        Field(value: $lodPointsPerPixel, step: 1)
                     }
                 }
             }
@@ -108,13 +133,23 @@ struct Divided<Content: View>: View {
     @Previewable @State var seed: Double = 0
     @Previewable @State var spawnPreset = SpawnPreset.sphere
     @Previewable @State var spawnDomain = SpawnRegion.Domain.volume
+    @Previewable @State var lodEnabled = true
+    @Previewable @State var lodActivation = 500_000.0
+    @Previewable @State var lodMaximum = 1_000_000.0
+    @Previewable @State var lodTileSize = 16.0
+    @Previewable @State var lodPointsPerPixel = 1.0
 
     Inspector(
         duration: $duration,
         particleCount: $particleCount,
         seed: $seed,
         spawnPreset: $spawnPreset,
-        spawnDomain: $spawnDomain
+        spawnDomain: $spawnDomain,
+        lodEnabled: $lodEnabled,
+        lodActivation: $lodActivation,
+        lodMaximum: $lodMaximum,
+        lodTileSize: $lodTileSize,
+        lodPointsPerPixel: $lodPointsPerPixel
     )
     .fixedSize(horizontal: true, vertical: false)
     .scenePadding()

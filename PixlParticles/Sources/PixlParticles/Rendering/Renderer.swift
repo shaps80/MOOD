@@ -15,23 +15,28 @@ public final class Renderer {
         _ system: System,
         interpolation: Float,
         tick: UInt64,
-        viewProjection: Matrix4x4
+        viewProjection: Matrix4x4,
+        viewport: ViewportSize
     ) throws {
         let systemID = ObjectIdentifier(system)
         let positionsChanged = stateSystem != systemID || stateTick != tick
+        let idsChanged = stateSystem != systemID
         if positionsChanged {
             stateSystem = systemID
             stateTick = tick
         }
 
-        try system.withPositions { previous, current, count in
+        try system.withRenderingData { previous, current, ids, count in
             try renderer.render(
                 previous: previous,
                 current: current,
+                ids: ids,
                 count: count,
                 positionsChanged: positionsChanged,
+                idsChanged: idsChanged,
                 interpolation: interpolation,
-                viewProjection: viewProjection
+                viewProjection: viewProjection,
+                viewport: viewport
             )
         }
     }

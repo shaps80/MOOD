@@ -84,11 +84,13 @@
 - Metal visibility uses stable GPU compaction: block-local scans, deterministic
   block offsets, stable index scatter, and indirect drawing. Culling never
   mutates authoritative simulation or changes particle order.
-- High-density point rendering will use optional screen-space LOD after frustum
+- High-density point rendering uses optional screen-space LOD after frustum
   compaction. The GPU-visible count selects the path without CPU readback.
   Below the activation threshold, the existing visible-index buffer is drawn;
-  above it, particles are counted in quantized screen tiles and thinned using a
-  stable particle-ID hash. Do not use atomic arrival order for selection.
+  at or above it, particles are counted in quantized screen tiles and thinned
+  using a stable 64-bit particle-ID hash. Selection uses integer thresholds,
+  stable compaction order, and an exact upper bound on the indirect draw count;
+  it never depends on atomic arrival order.
 - Screen-space LOD defaults are 16-by-16 physical-pixel tiles, one retained
   point per pixel, activation at 500,000 visible points, and an exact 1
   million visible-point ceiling. These deliberately low initial thresholds
@@ -97,9 +99,10 @@
   replacement for authored particle count.
 - LOD resources must remain parallel and optional. Allocate no LOD-specific
   storage when the feature is disabled or total particle count cannot reach the
-  activation threshold. Reuse existing scan scratch after frustum compaction
-  where possible. A stable-ID GPU buffer and final compacted index buffer may
-  add particle-proportional storage only on the high-density path.
+  activation threshold. The implementation reuses frustum scan scratch and
+  adds parallel double-buffered stable IDs plus a final compacted index buffer
+  only on the high-density path. Disabling LOD or dropping below the total-count
+  activation threshold releases those resources.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
   after buffer availability, position-pair lowering, and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU

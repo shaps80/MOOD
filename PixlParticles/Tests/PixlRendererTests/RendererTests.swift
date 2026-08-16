@@ -3,6 +3,33 @@ import Testing
 
 @Suite("Renderer lowering")
 struct RendererTests {
+    @Test("Writes stable IDs into caller storage")
+    func ids() {
+        let source = UnsafeMutableBufferPointer<SIMD4<UInt64>>.allocate(
+            capacity: 2
+        )
+        source.initialize(repeating: .zero)
+        source[0] = [10, 11, 12, 13]
+        source[1] = [14, 15, 16, 17]
+        let destination = UnsafeMutableBufferPointer<UInt64>.allocate(capacity: 5)
+        destination.initialize(repeating: 0)
+        defer {
+            source.deinitialize()
+            source.deallocate()
+            destination.deinitialize()
+            destination.deallocate()
+        }
+
+        let count = Renderer.lowerIDs(
+            unsafe Span(_unsafeElements: UnsafeBufferPointer(source)),
+            count: 5,
+            into: destination
+        )
+
+        #expect(count == 5)
+        #expect(Array(destination) == [10, 11, 12, 13, 14])
+    }
+
     @Test("Writes previous and current positions into caller storage")
     func positions() {
         let previous = UnsafeMutableBufferPointer<Vector3Batch>.allocate(

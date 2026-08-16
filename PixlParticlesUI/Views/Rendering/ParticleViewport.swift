@@ -1,4 +1,5 @@
 import PixlParticles
+import PixlRenderer
 import SwiftUI
 
 struct ParticleViewport: View {
@@ -10,6 +11,7 @@ struct ParticleViewport: View {
     @Binding var perspectivePitch: Double
     @Binding var cameraZoom: Double
     @Binding var fraction: Double
+    let pointLOD: PointLOD
 
     var body: some View {
         ParticleMetalView(
@@ -19,6 +21,7 @@ struct ParticleViewport: View {
             yaw: Float(perspectiveYaw),
             pitch: Float(perspectivePitch),
             zoom: Float(cameraZoom),
+            pointLOD: pointLOD,
             onCameraChange: persistCamera,
             onTimeChange: updateFraction
         )

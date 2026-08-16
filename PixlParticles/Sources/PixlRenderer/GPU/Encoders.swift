@@ -7,6 +7,10 @@ public protocol ComputeEncoder: AnyObject {
     func setBytes(_ bytes: UnsafeRawBufferPointer, index: Int)
     func dispatchThreadgroups(_ groups: ThreadGrid, threads: ThreadGrid)
     func dispatchThreads(_ grid: ThreadGrid, threads: ThreadGrid)
+    func dispatchThreadgroups(
+        indirectBuffer: any Buffer,
+        threads: ThreadGrid
+    )
     func endEncoding()
 }
 

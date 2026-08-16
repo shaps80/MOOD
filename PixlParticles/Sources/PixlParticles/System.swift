@@ -120,14 +120,15 @@ public final class System {
         tick += 1
     }
 
-    package func withPositions<Result: ~Copyable>(
+    package func withRenderingData<Result: ~Copyable>(
         _ body: (
             Span<Vector3Batch>,
             Span<Vector3Batch>,
+            Span<SIMD4<UInt64>>,
             Int
         ) throws -> Result
     ) rethrows -> Result {
-        try storage.withPositions(body)
+        try storage.withRenderingData(body)
     }
 
     private static func spawn(

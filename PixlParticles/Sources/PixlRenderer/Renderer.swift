@@ -11,16 +11,21 @@ package final class Renderer {
     package func render(
         previous: Span<Vector3Batch>,
         current: Span<Vector3Batch>,
+        ids: Span<SIMD4<UInt64>>,
         count: Int,
         positionsChanged: Bool,
+        idsChanged: Bool,
         interpolation: Float,
-        viewProjection: Matrix4x4
+        viewProjection: Matrix4x4,
+        viewport: ViewportSize
     ) throws {
         try backend.renderPoints(
             count: count,
             positionsChanged: positionsChanged,
+            idsChanged: idsChanged,
             interpolation: interpolation,
-            viewProjection: viewProjection
+            viewProjection: viewProjection,
+            viewport: viewport
         ) { destination in
             Self.lowerPositionPairs(
                 previous: previous,
@@ -28,6 +33,8 @@ package final class Renderer {
                 count: count,
                 into: destination
             )
+        } writeIDs: { destination in
+            Self.lowerIDs(ids, count: count, into: destination)
         }
     }
 
@@ -63,6 +70,25 @@ package final class Renderer {
             }
         }
 
+        return count
+    }
+
+    @discardableResult
+    package nonisolated static func lowerIDs(
+        _ source: Span<SIMD4<UInt64>>,
+        count: Int,
+        into destination: UnsafeMutableBufferPointer<UInt64>
+    ) -> Int {
+        precondition(destination.count >= count)
+
+        for batchIndex in source.indices {
+            let batch = source[batchIndex]
+            let start = batchIndex * 4
+            let end = min(4, count - start)
+            for lane in 0..<end {
+                destination[start + lane] = batch[lane]
+            }
+        }
         return count
     }
 }

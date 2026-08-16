@@ -108,10 +108,11 @@ final class ParticleStorage {
         }
     }
 
-    func withPositions<Result: ~Copyable>(
+    func withRenderingData<Result: ~Copyable>(
         _ body: (
             Span<Vector3Batch>,
             Span<Vector3Batch>,
+            Span<SIMD4<UInt64>>,
             Int
         ) throws -> Result
     ) rethrows -> Result {
@@ -123,10 +124,15 @@ final class ParticleStorage {
             start: positions.baseAddress,
             count: batchCount
         )
+        let ids = UnsafeBufferPointer(
+            start: self.ids.baseAddress,
+            count: batchCount
+        )
 
         return try body(
             unsafe Span(_unsafeElements: previous),
             unsafe Span(_unsafeElements: current),
+            unsafe Span(_unsafeElements: ids),
             count
         )
     }

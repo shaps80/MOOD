@@ -18,6 +18,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
     let yaw: Float
     let pitch: Float
     let zoom: Float
+    let pointLOD: PointLOD
     let onCameraChange: (Float, Float, Float) -> Void
     let onTimeChange: (Duration) -> Void
 
@@ -29,6 +30,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
             yaw: yaw,
             pitch: pitch,
             zoom: zoom,
+            pointLOD: pointLOD,
             onCameraChange: onCameraChange,
             onTimeChange: onTimeChange
         )
@@ -53,6 +55,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
             system: system,
             isPaused: isPaused,
             preset: cameraPreset,
+            pointLOD: pointLOD,
             onCameraChange: onCameraChange,
             onTimeChange: onTimeChange
         )
@@ -69,6 +72,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
 @MainActor
 final class Coordinator: NSObject, MTKViewDelegate {
     private let platform: PixlMetal.Platform
+    private let backend: GPUBackend
     private let renderer: PixlParticles.Renderer
     private weak var view: MTKView?
     private var system: System
@@ -88,14 +92,17 @@ final class Coordinator: NSObject, MTKViewDelegate {
         yaw: Float,
         pitch: Float,
         zoom: Float,
+        pointLOD: PointLOD,
         onCameraChange: @escaping (Float, Float, Float) -> Void,
         onTimeChange: @escaping (Duration) -> Void
     ) {
         do {
             let platform = try PixlMetal.Platform()
+            let backend = try GPUBackend(platform: platform, pointLOD: pointLOD)
             self.platform = platform
+            self.backend = backend
             renderer = PixlParticles.Renderer(
-                backend: try GPUBackend(platform: platform)
+                backend: backend
             )
         } catch {
             fatalError("Unable to create Metal renderer: \(error)")
@@ -126,12 +133,14 @@ final class Coordinator: NSObject, MTKViewDelegate {
         system: System,
         isPaused: Bool,
         preset: CameraPreset,
+        pointLOD: PointLOD,
         onCameraChange: @escaping (Float, Float, Float) -> Void,
         onTimeChange: @escaping (Duration) -> Void
     ) {
         self.system = system
         self.isPaused = isPaused
         self.preset = preset
+        backend.pointLOD = pointLOD
         self.onCameraChange = onCameraChange
         self.onTimeChange = onTimeChange
     }
@@ -149,6 +158,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
                     y: viewport.viewProjection.columns.1,
                     z: viewport.viewProjection.columns.2,
                     w: viewport.viewProjection.columns.3
+                ),
+                viewport: .init(
+                    width: UInt32(view.drawableSize.width.rounded(.up)),
+                    height: UInt32(view.drawableSize.height.rounded(.up))
                 )
             )
             onTimeChange(sample.time)

@@ -47,7 +47,8 @@ struct LoweringBenchmarks {
                 system,
                 interpolation: 0,
                 tick: tick,
-                viewProjection: matrix
+                viewProjection: matrix,
+                viewport: .init(width: 1920, height: 1080)
             )
         }
 
@@ -64,7 +65,8 @@ struct LoweringBenchmarks {
                     system,
                     interpolation: 0,
                     tick: tick,
-                    viewProjection: matrix
+                    viewProjection: matrix,
+                    viewport: .init(width: 1920, height: 1080)
                 )
             }
             samples.append(seconds(start.duration(to: clock.now)))
@@ -139,9 +141,12 @@ private final class BenchmarkBackend: Backend {
     func renderPoints(
         count: Int,
         positionsChanged: Bool,
+        idsChanged: Bool,
         interpolation: Float,
         viewProjection: Matrix4x4,
-        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void
+        viewport: ViewportSize,
+        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
+        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void
     ) throws {
         if positionsChanged {
             writePositions(.init(rebasing: positions[..<count]))

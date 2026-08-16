@@ -7,6 +7,7 @@ import SwiftUI
                 ContentView()
             }
         }
-        .defaultSize(width: 1280, height: 720)
+        .defaultSize(width: 1920, height: 1080)
+        .defaultPosition(.center)
     }
 }

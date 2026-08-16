@@ -5,8 +5,11 @@ public protocol Backend: AnyObject {
     func renderPoints(
         count: Int,
         positionsChanged: Bool,
+        idsChanged: Bool,
         interpolation: Float,
         viewProjection: Matrix4x4,
-        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void
+        viewport: ViewportSize,
+        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
+        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void
     ) throws
 }

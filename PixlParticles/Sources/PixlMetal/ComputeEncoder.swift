@@ -31,6 +31,17 @@ final class MetalComputeEncoder: PixlRenderer.ComputeEncoder {
         value.dispatchThreads(grid.metal, threadsPerThreadgroup: threads.metal)
     }
 
+    func dispatchThreadgroups(
+        indirectBuffer: any PixlRenderer.Buffer,
+        threads: ThreadGrid
+    ) {
+        value.dispatchThreadgroups(
+            indirectBuffer: (indirectBuffer as! MetalBuffer).value,
+            indirectBufferOffset: 0,
+            threadsPerThreadgroup: threads.metal
+        )
+    }
+
     func endEncoding() { value.endEncoding() }
 }
 

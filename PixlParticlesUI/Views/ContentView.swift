@@ -1,5 +1,6 @@
 import SwiftUI
 import PixlParticles
+import PixlRenderer
 
 struct ContentView: View {
     @State private var isPaused: Bool = false
@@ -21,6 +22,11 @@ struct ContentView: View {
     @State private var duration: Double
     @State private var spawnPreset: SpawnPreset
     @State private var spawnDomain: SpawnRegion.Domain
+    @State private var lodEnabled = true
+    @State private var lodActivation = 500_000.0
+    @State private var lodMaximum = 1_000_000.0
+    @State private var lodTileSize = 16.0
+    @State private var lodPointsPerPixel = 1.0
 
     init() {
         _seed = .init(initialValue: 0)
@@ -51,7 +57,8 @@ struct ContentView: View {
                 perspectiveYaw: $perspectiveYaw,
                 perspectivePitch: $perspectivePitch,
                 cameraZoom: $cameraZoom,
-                fraction: $fraction
+                fraction: $fraction,
+                pointLOD: pointLOD
             )
             .ignoresSafeArea()
 
@@ -64,7 +71,12 @@ struct ContentView: View {
                         particleCount: $particleCount,
                         seed: $seed,
                         spawnPreset: $spawnPreset,
-                        spawnDomain: $spawnDomain
+                        spawnDomain: $spawnDomain,
+                        lodEnabled: $lodEnabled,
+                        lodActivation: $lodActivation,
+                        lodMaximum: $lodMaximum,
+                        lodTileSize: $lodTileSize,
+                        lodPointsPerPixel: $lodPointsPerPixel
                     )
                     .scenePadding([.horizontal, .vertical])
                 }
@@ -148,6 +160,16 @@ struct ContentView: View {
             duration: .seconds(duration)
         )
         fraction = 0
+    }
+
+    private var pointLOD: PointLOD {
+        .init(
+            isEnabled: lodEnabled,
+            activationCount: max(Int(lodActivation), 0),
+            maximumVisibleCount: max(Int(lodMaximum), 1),
+            tileSize: max(Int(lodTileSize), 1),
+            targetPointsPerPixel: max(Float(lodPointsPerPixel), 0.001)
+        )
     }
 
 }
