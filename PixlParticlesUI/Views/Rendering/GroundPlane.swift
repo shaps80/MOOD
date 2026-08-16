@@ -28,20 +28,20 @@ struct GroundPlane {
         var coordinate = -extent
 
         while coordinate <= extent {
-            if
-                let start = viewport.project([-extent, height, coordinate]),
-                let end = viewport.project([extent, height, coordinate])
-            {
-                path.move(to: start)
-                path.addLine(to: end)
+            if let line = viewport.projectLine(
+                from: [-extent, height, coordinate],
+                to: [extent, height, coordinate]
+            ) {
+                path.move(to: line.start)
+                path.addLine(to: line.end)
             }
 
-            if
-                let start = viewport.project([coordinate, height, -extent]),
-                let end = viewport.project([coordinate, height, extent])
-            {
-                path.move(to: start)
-                path.addLine(to: end)
+            if let line = viewport.projectLine(
+                from: [coordinate, height, -extent],
+                to: [coordinate, height, extent]
+            ) {
+                path.move(to: line.start)
+                path.addLine(to: line.end)
             }
 
             coordinate += spacing
@@ -53,12 +53,12 @@ struct GroundPlane {
     private func horizonPath(in viewport: Camera.Viewport) -> Path {
         var path = Path()
 
-        if
-            let start = viewport.project([-extent, height, 0]),
-            let end = viewport.project([extent, height, 0])
-        {
-            path.move(to: start)
-            path.addLine(to: end)
+        if let line = viewport.projectLine(
+            from: [-extent, height, 0],
+            to: [extent, height, 0]
+        ) {
+            path.move(to: line.start)
+            path.addLine(to: line.end)
         }
 
         return path

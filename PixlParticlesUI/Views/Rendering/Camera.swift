@@ -118,6 +118,36 @@ extension Camera {
                 return nil
             }
 
+            return screenPosition(for: clipPosition)
+        }
+
+        func projectLine(
+            from start: Vec3,
+            to end: Vec3
+        ) -> (start: CGPoint, end: CGPoint)? {
+            var start = viewProjection * SIMD4<Float>(start, 1)
+            var end = viewProjection * SIMD4<Float>(end, 1)
+
+            guard
+                Self.clip(&start, &end, distances: (start.z, end.z)),
+                Self.clip(
+                    &start,
+                    &end,
+                    distances: (start.w - start.z, end.w - end.z)
+                )
+            else {
+                return nil
+            }
+
+            return (
+                screenPosition(for: start),
+                screenPosition(for: end)
+            )
+        }
+
+        private func screenPosition(
+            for clipPosition: SIMD4<Float>
+        ) -> CGPoint {
             let x = clipPosition.x / clipPosition.w
             let y = clipPosition.y / clipPosition.w
 
@@ -125,6 +155,32 @@ extension Camera {
                 x: size.width * Double(x + 1) / 2,
                 y: size.height * Double(1 - y) / 2
             )
+        }
+
+        private static func clip(
+            _ start: inout SIMD4<Float>,
+            _ end: inout SIMD4<Float>,
+            distances: (start: Float, end: Float)
+        ) -> Bool {
+            guard distances.start >= 0 || distances.end >= 0 else {
+                return false
+            }
+
+            guard distances.start < 0 || distances.end < 0 else {
+                return true
+            }
+
+            let amount = distances.start
+                / (distances.start - distances.end)
+            let intersection = start + (end - start) * amount
+
+            if distances.start < 0 {
+                start = intersection
+            } else {
+                end = intersection
+            }
+
+            return true
         }
     }
 }

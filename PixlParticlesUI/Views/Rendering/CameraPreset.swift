@@ -17,7 +17,7 @@ enum CameraPreset: Hashable {
         projection: .perspective(
             verticalFieldOfView: .pi * 50 / 180,
             near: 0.1,
-            far: 2_000
+            far: 10_000
         )
     )
 

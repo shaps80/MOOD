@@ -3,12 +3,21 @@ import PixlParticles
 
 struct ContentView: View {
     private let orbitSensitivity: Float = 0.005
+    private let scrollZoomSensitivity: Float = 0.01
+    private let zoomRange: ClosedRange<Float> = 0.1...10
 
     @State private var isPaused: Bool = true
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
     @State private var cameraPreset = CameraPreset.perspective
-    @State private var perspectiveOrbit = CameraPreset.perspectiveOrbit
+
+    @SceneStorage("camera.perspective.yaw")
+    private var perspectiveYaw = Double(CameraPreset.perspectiveOrbit.yaw)
+
+    @SceneStorage("camera.perspective.pitch")
+    private var perspectivePitch = Double(CameraPreset.perspectiveOrbit.pitch)
+
+    @SceneStorage("camera.zoom") private var cameraZoom: Double = 1
 
     @State private var system: System
     @State private var seed: Double
@@ -18,24 +27,37 @@ struct ContentView: View {
     @State private var spawnDomain: SpawnRegion.Domain
 
     @GestureState private var orbitTranslation: CGSize = .zero
+    @GestureState private var zoomMagnification: CGFloat = 1
+
+    private var perspectiveOrbit: Orbit {
+        var orbit = CameraPreset.perspectiveOrbit
+        orbit.yaw = Float(perspectiveYaw)
+        orbit.pitch = Float(perspectivePitch)
+        return orbit
+    }
 
     private var camera: Camera {
+        let zoom = Float(cameraZoom) * Float(zoomMagnification)
+
         guard cameraPreset == .perspective else {
-            return cameraPreset.fixedCamera
+            var camera = cameraPreset.fixedCamera
+            camera.projection = camera.projection.magnified(by: zoom)
+            return camera
         }
 
         return perspectiveOrbit.camera(
             yawOffset: -Float(orbitTranslation.width) * orbitSensitivity,
-            pitchOffset: Float(orbitTranslation.height) * orbitSensitivity
+            pitchOffset: Float(orbitTranslation.height) * orbitSensitivity,
+            zoom: zoom
         )
     }
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 1000)
+        _particleCount = .init(initialValue: 2000)
         _duration = .init(initialValue: 20)
         _spawnPreset = .init(initialValue: .sphere)
-        _spawnDomain = .init(initialValue: .volume)
+        _spawnDomain = .init(initialValue: .surface)
 
         _system = .init(
             initialValue: .init(
@@ -76,15 +98,30 @@ struct ContentView: View {
                             state = value.translation
                         }
                         .onEnded { value in
-                            perspectiveOrbit.rotate(
+                            var orbit = perspectiveOrbit
+                            orbit.rotate(
                                 yawBy: -Float(value.translation.width)
                                     * orbitSensitivity,
                                 pitchBy: Float(value.translation.height)
                                     * orbitSensitivity
                             )
+                            perspectiveYaw = Double(orbit.yaw)
+                            perspectivePitch = Double(orbit.pitch)
                         },
                     isEnabled: cameraPreset == .perspective
                 )
+                .simultaneousGesture(
+                    MagnifyGesture()
+                        .updating($zoomMagnification) { value, state, _ in
+                            state = value.magnification
+                        }
+                        .onEnded { value in
+                            zoom(by: Float(value.magnification))
+                        }
+                )
+                .onScrollWheel { delta in
+                    zoom(by: exp(Float(delta) * scrollZoomSensitivity))
+                }
             }
             .ignoresSafeArea()
 
@@ -99,7 +136,7 @@ struct ContentView: View {
                         spawnPreset: $spawnPreset,
                         spawnDomain: $spawnDomain
                     )
-                    .scenePadding([.horizontal])
+                    .scenePadding([.horizontal, .vertical])
                 }
 
                 Spacer(minLength: 0)
@@ -181,6 +218,18 @@ struct ContentView: View {
             duration: .seconds(duration)
         )
         fraction = 0
+    }
+
+    private func zoom(by magnification: Float) {
+        cameraZoom = Double(
+            min(
+                max(
+                    Float(cameraZoom) * magnification,
+                    zoomRange.lowerBound
+                ),
+                zoomRange.upperBound
+            )
+        )
     }
 }
 

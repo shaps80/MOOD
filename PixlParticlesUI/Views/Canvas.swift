@@ -35,11 +35,11 @@ struct ParticleCanvas: View {
             }
         } symbols: {
             Rectangle()
-                .frame(width: 1, height: 1)
+                .frame(width: 2, height: 2)
                 .foregroundStyle(.foreground)
                 .tag("particle")
         }
-        .background(.background.secondary)
+        .background(.gray.quaternary)
     }
 }
 

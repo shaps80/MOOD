@@ -12,6 +12,22 @@ enum Projection: Hashable {
         far: Float
     )
 
+    func magnified(by scale: Float) -> Self {
+        precondition(scale > 0)
+
+        switch self {
+        case .perspective:
+            return self
+
+        case let .orthographic(halfHeight, near, far):
+            return .orthographic(
+                halfHeight: halfHeight / scale,
+                near: near,
+                far: far
+            )
+        }
+    }
+
     func matrix(aspectRatio: Float) -> simd_float4x4 {
         switch self {
         case let .perspective(fieldOfView, near, far):

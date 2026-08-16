@@ -9,11 +9,14 @@ struct Orbit {
 
     func camera(
         yawOffset: Float = 0,
-        pitchOffset: Float = 0
+        pitchOffset: Float = 0,
+        zoom: Float = 1
     ) -> Camera {
-        Camera(
+        precondition(zoom > 0)
+
+        return Camera(
             orbiting: target,
-            distance: distance,
+            distance: distance / zoom,
             yaw: yaw + yawOffset,
             pitch: Self.clamp(pitch + pitchOffset),
             projection: projection

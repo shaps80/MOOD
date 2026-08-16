@@ -64,7 +64,7 @@ struct Inspector: View {
         .focusable(false)
         .focusEffectDisabled(true)
         .clipShape(.rect(cornerRadius: 28))
-        .glassEffect(.clear, in: .rect(cornerRadius: 28))
+        .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
         .animation(.snappy, value: spawnPreset)
     }
