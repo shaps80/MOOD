@@ -6,6 +6,7 @@ import SwiftUI
             NavigationStack {
                 ContentView()
             }
+            .preferredColorScheme(.dark)
         }
 #if os(macOS)
         .defaultSize(width: 1280, height: 720)

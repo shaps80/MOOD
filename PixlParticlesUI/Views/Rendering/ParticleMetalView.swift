@@ -212,7 +212,14 @@ final class Coordinator: NSObject, MTKViewDelegate {
         )
     }
 
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        guard view.isPaused else { return }
+#if os(macOS)
+        view.setNeedsDisplay(view.bounds)
+#else
+        view.setNeedsDisplay()
+#endif
+    }
 
     private var camera: Camera {
         guard preset == .perspective else {

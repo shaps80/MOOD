@@ -37,8 +37,11 @@ struct MovableOverlay<Content: View>: View {
                 } action: { size in
                     contentSize = size
                 }
-                .background {
-                    Color.clear
+                .overlay(alignment: .top) {
+                    Capsule()
+                        .fill(.secondary)
+                        .frame(width: 36, height: 5)
+                        .frame(width: 64, height: 28)
                         .contentShape(.rect)
                         .gesture(drag(in: geometry.size))
                 }
