@@ -47,25 +47,6 @@ final class ParticleStorage {
         }
     }
 
-    init(copying source: ParticleStorage) {
-        count = source.count
-        batchCount = source.batchCount
-        ids = .allocate(capacity: batchCount)
-        positions = .allocate(capacity: batchCount)
-        previousPositions = .allocate(capacity: batchCount)
-        velocities = .allocate(capacity: batchCount)
-
-        for index in 0..<batchCount {
-            ids.initializeElement(at: index, to: source.ids[index])
-            positions.initializeElement(at: index, to: source.positions[index])
-            previousPositions.initializeElement(
-                at: index,
-                to: source.previousPositions[index]
-            )
-            velocities.initializeElement(at: index, to: source.velocities[index])
-        }
-    }
-
     deinit {
         ids.deallocate()
         positions.deallocate()
@@ -73,14 +54,20 @@ final class ParticleStorage {
         velocities.deallocate()
     }
 
-    func copyState(from source: ParticleStorage) {
-        precondition(count == source.count)
+    func initialState() -> InitialParticleState {
+        InitialParticleState(
+            particleCount: count,
+            copying: positions
+        )
+    }
+
+    func restore(from state: InitialParticleState) {
+        precondition(count == state.particleCount)
 
         for index in 0..<batchCount {
-            ids[index] = source.ids[index]
-            positions[index] = source.positions[index]
-            previousPositions[index] = source.previousPositions[index]
-            velocities[index] = source.velocities[index]
+            let initialPosition = state[batch: index]
+            positions[index] = initialPosition
+            previousPositions[index] = initialPosition
         }
     }
 

@@ -8,7 +8,7 @@ public final class System {
     private var loop: Loop
     private let durationInTicks: UInt64
     private var storage: ParticleStorage
-    private let initialStorage: ParticleStorage
+    private let initialState: InitialParticleState
     private var tick: UInt64 = 0
     private var nextID: Particle.ID = 0
     private var initialNextID: Particle.ID = 0
@@ -45,7 +45,7 @@ public final class System {
                 region: region
             )
         }
-        initialStorage = ParticleStorage(copying: storage)
+        initialState = storage.initialState()
         nextID = Particle.ID(particleCount)
         initialNextID = nextID
     }
@@ -95,7 +95,7 @@ public final class System {
         )
 
         if targetTick < tick {
-            storage.copyState(from: initialStorage)
+            storage.restore(from: initialState)
             tick = 0
             nextID = initialNextID
         }

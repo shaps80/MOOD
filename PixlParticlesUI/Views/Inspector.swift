@@ -13,11 +13,11 @@ struct Inspector: View {
             Divided {
                 Section("System") {
                     LabeledContent("Duration") {
-                        Field(value: $duration)
+                        Field(value: $duration, step: 5)
                     }
 
                     LabeledContent("Particles") {
-                        Field(value: $particleCount)
+                        Field(value: $particleCount, step: 1_000)
                     }
 
                     LabeledContent("Seed") {

@@ -31,6 +31,11 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - `PixlParticles` owns simulation state, fixed timing, previous/current values, interpolation metadata, and interpolated value calculation.
 - Renderers and UI own coordinate transforms, bounds, culling, buffer packing, visual symbols/materials, and draw submission.
 - Stop and tell the user before placing a renderer or UI responsibility inside `PixlParticles`.
+- Keep public particles independent of internal storage. Current CPU lowering
+  uses unsafe property buffers of four-particle SIMD batches: each spatial
+  component is a `SIMD4<Float>` whose lanes represent particles. Extend this
+  AoSoA shape deliberately as properties are added; do not return to `Array`
+  storage or expose an artificial fourth spatial component through public API.
 
 ## PixlParticles Benchmarks
 
@@ -38,3 +43,7 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - Compile benchmark harnesses together with the real production sources so internal hot-path code remains internal and no benchmark-only API is introduced.
 - Run relevant benchmarks on both the host and WebAssembly toolchains where possible, and record accepted configurations and results in `PixlParticles/PERF.md`.
 - Compile production `PixlParticles` WebAssembly builds, including accepted benchmarks, directly with `swiftc -O -whole-module-optimization` and do not pass `-num-threads`. The Swift 6.4 snapshot's SwiftPM build adds that flag and currently destroys crucial cross-file optimization even when its value is `1`.
+- Pass `-Xcc -msimd128` for SIMD-enabled production and benchmark WebAssembly
+  builds. Without it, Swift `SIMD4` code is scalarized by the current toolchain.
+- Run performance measurements sequentially. Parallel benchmark processes
+  compete for memory bandwidth and invalidate comparisons.

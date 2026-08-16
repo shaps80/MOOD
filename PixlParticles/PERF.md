@@ -37,6 +37,11 @@ SwiftPM adds `-num-threads` even for release WMO builds; its presence partitions
 code generation and reduces cross-file Philox throughput from roughly 447 to 12
 million values/s. This is a benchmark-build regression, not production evidence.
 
+SIMD-enabled WebAssembly builds must also pass `-Xcc -msimd128`. Without it,
+Swift's `SIMD4` operations were scalarized and the inspected benchmark binary
+contained no WebAssembly SIMD instructions. With it, the binary emitted `v128`
+operations and retained matching deterministic checksums.
+
 ### Earlier provisional comparison
 
 Before the retained harness existed, a temporary 100-million-block microbenchmark
@@ -71,6 +76,27 @@ particle state. Sphere volume is slower because rejection sampling sometimes
 needs more than one candidate; sphere surface is effectively level with box
 surface on WebAssembly.
 
+### AoSoA production storage
+
+Measured after lowering production particle state into unsafe four-particle
+AoSoA batches. The initial rewind state stores positions only rather than copying
+identifiers, previous positions, and immutable velocities.
+
+| Region | macOS M1 Max | Checksum |
+| --- | ---: | ---: |
+| Point | 53.30 M particles/s · 18.76 ns/particle | `425986654175` |
+| Line | 46.71 M particles/s · 21.41 ns/particle | `688322051651` |
+| Box volume | 37.96 M particles/s · 26.34 ns/particle | `1246931346963` |
+| Box surface | 23.67 M particles/s · 42.24 ns/particle | `1231086806959` |
+| Sphere volume | 16.73 M particles/s · 59.77 ns/particle | `1228237922277` |
+| Sphere surface | 24.72 M particles/s · 40.45 ns/particle | `1242808241845` |
+
+Cheap regions expose the cost of packing and eagerly retaining rewind state;
+regions dominated by sampling math remain close to the earlier baseline. The
+position-only rewind snapshot costs approximately 12 bytes per particle rather
+than the earlier full AoSoA snapshot's 44 bytes per particle. iPad and
+WebAssembly initialization must be remeasured for the new production layout.
+
 ## Fixed Simulation Updates
 
 The fixed-update benchmark creates 1 million point-spawned particles, performs
@@ -94,3 +120,28 @@ assume perfect scaling with no renderer or other simulation work:
 | macOS M1 Max | 27.00 M | 13.50 M | 6.75 M |
 | iPad M5 | 30.99 M | 15.49 M | 7.75 M |
 | WebAssembly | 17.69 M | 8.85 M | 4.42 M |
+
+### AoSoA SIMD baseline
+
+The production CPU update now stores each three-component property as batches
+of three `SIMD4<Float>` values, with each SIMD lane representing one particle.
+Property buffers remain separate. This avoids `SIMD3` padding while updating
+four particles per operation.
+
+| Platform | Throughput | Cost per update | 1 M-particle tick | Checksum |
+| --- | ---: | ---: | ---: | ---: |
+| macOS M1 Max | 1,559.86 M updates/s | 0.641 ns | 0.641 ms | `1295003598899` |
+
+The immediately preceding production implementation measured 840.66 million
+updates/s and 1.190 ms per million-particle tick in the same session. AoSoA
+therefore increased throughput by approximately 86% and reduced tick time by
+approximately 46%, with identical output. This benchmark remains
+single-threaded and excludes scheduling, snapshot materialization,
+interpolation, and rendering.
+
+| Platform | 30 Hz | 60 Hz | 120 Hz |
+| --- | ---: | ---: | ---: |
+| macOS M1 Max AoSoA | 52.00 M | 26.00 M | 13.00 M |
+
+iPad and WebAssembly fixed updates must be remeasured against the production
+AoSoA implementation before replacing their earlier baselines.

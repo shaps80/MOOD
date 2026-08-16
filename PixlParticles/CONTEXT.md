@@ -22,6 +22,18 @@
 - GPU compute mattered around 100,000 particles, while smaller systems could favor CPU cost and memory usage.
 - Earlier value APIs combining constants, ranges, random selection, interpolation, and easing became complex while remaining limiting.
 - Renderer-global bloom threshold and soft-knee settings prevented systems from expressing different behavior.
+- Production CPU state is lowered into unsafe property buffers containing
+  four-particle SIMD batches. A three-component batch stores `x`, `y`, and `z`
+  as `SIMD4<Float>`, with lanes representing particles. This AoSoA layout more
+  than halved the measured linear-update cost while preserving exact checksums.
+- A public particle remains a complete, renderer-independent snapshot. Internal
+  batching must not leak a meaningless fourth spatial component into that API.
+- Whole-buffer specialized passes are the default execution shape. Temporary
+  measurements found no useful gain from fused rich-property loops or cache
+  chunking, while explicit cross-particle SIMD produced the material gain.
+- Initial rewind state retains only mutable values required to restore the
+  simulation. At present that is initial position; identifiers and velocities
+  remain immutable.
 
 ## Boundaries
 
@@ -31,6 +43,10 @@
 - Pixl renderer improvements may be identified, but particle-system design must not change Pixl implicitly.
 - Tests use Swift Testing. XCTest is reserved for performance tests. UI testing is manual only.
 - Never run the app; build it and run valuable non-UI tests only.
+- Backward seeking currently restores initial state and deterministically
+  replays forward. This is correct but not scalable for long effects; periodic
+  checkpoints are the intended next direction. Checkpoint frequency and memory
+  policy remain undecided.
 
 ## Working Method
 
