@@ -31,10 +31,6 @@ point-primitive rendering path.
 - Validate GPU-only screen-space LOD visually and with Metal traces across the
   activation boundary, dense and sparse tiles, camera motion, and the exact
   maximum-visible ceiling. Tune defaults only from those results.
-- Investigate compacting retained LOD particles into sequential clip-space
-  position storage. Compare its extra GPU writes and memory against the current
-  indexed draw's random position reads and vertex transforms; retain it only if
-  measured frame performance improves.
 - Move simulation sampling, renderer lowering, culling, and Metal submission
   under dedicated serial render ownership. Keep `PixlRenderer` synchronous and
   nonisolated; the UI sends immutable settings and replacement commands rather

@@ -134,6 +134,9 @@
 
 - Six million particles remain fully simulated while screen-space LOD limits
   drawing to the configured visible ceiling.
+- LOD retains compact particle indices. A measured sequential clip-space
+  position experiment increased effective GPU work and Metal memory, so it was
+  removed rather than becoming production policy.
 - With a 2-million visible ceiling, manual Release testing improved from the
   previous approximately 30 FPS to close to 60 FPS. Process memory fell from
   approximately 1.18 GiB to 960 MiB–1.0 GiB.

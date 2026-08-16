@@ -24,14 +24,14 @@ struct ContentView: View {
     @State private var spawnDomain: SpawnRegion.Domain
     @State private var lodEnabled = true
     @State private var lodActivation = 500_000.0
-    @State private var lodMaximum = 1_000_000.0
+    @State private var lodMaximum = 2_000_000.0
     @State private var lodTileSize = 16.0
     @State private var lodPointsPerPixel = 1.0
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 2_000_000)
-        _duration = .init(initialValue: 15)
+        _particleCount = .init(initialValue: 6_000_000)
+        _duration = .init(initialValue: 10)
         _spawnPreset = .init(initialValue: .sphere)
         _spawnDomain = .init(initialValue: .surface)
 

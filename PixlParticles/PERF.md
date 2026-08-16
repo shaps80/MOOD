@@ -308,3 +308,20 @@ After those changes, manual Release-app observation at 6 million particles and
 a 2-million visible ceiling measured approximately 960 MiB to 1.0 GiB process
 memory, down from approximately 1.18 GiB before the changes. Treat this as an
 observed range pending a matched post-change Metal allocation trace.
+
+### Retained-position compaction experiment
+
+Matched 10.77-second traces compared retained 32-bit indices against compacted
+clip-space `float4` positions at 6 million simulated particles and a 2-million
+visible ceiling. Shader Timeline reduced both captures to approximately 30
+submissions per second, but the matched stage comparison remained conclusive.
+
+| Output | Compute median | Effective GPU median | Effective GPU p95 | Metal memory |
+| --- | ---: | ---: | ---: | ---: |
+| Indices | 3.043 ms | 8.690 ms | 11.657 ms | 561.45 MiB |
+| Positions | 3.367 ms | 9.064 ms | 12.838 ms | 607.23 MiB |
+
+Position compaction added 0.324 ms median compute time, increased effective GPU
+work by 0.374 ms median and 1.181 ms at p95, and consumed another 45.78 MiB.
+The small vertex reduction did not repay the compute write. The experiment was
+rejected and removed; indexed LOD remains the production path.
