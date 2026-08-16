@@ -8,7 +8,7 @@ import SwiftUI
             }
         }
 #if os(macOS)
-        .defaultSize(width: 1920, height: 1080)
+        .defaultSize(width: 1280, height: 720)
         .defaultPosition(.center)
 #endif
     }
