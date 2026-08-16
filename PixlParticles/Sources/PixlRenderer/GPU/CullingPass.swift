@@ -34,6 +34,7 @@ final class CullingPass {
         count: Int,
         interpolation: Float,
         viewProjection: Matrix4x4,
+        cullingBounds: CullingBounds,
         positions: any Buffer,
         buffers: CullingBuffers,
         into commandBuffer: any CommandBuffer
@@ -55,6 +56,17 @@ final class CullingPass {
             encoder.setValue(viewProjection, index: 3)
             encoder.setValue(interpolation, index: 4)
             encoder.setValue(particleCount, index: 5)
+            encoder.setValue(
+                SIMD2<Float>(
+                    cullingBounds.scale * 0.5,
+                    cullingBounds.baseHeight
+                ),
+                index: 6
+            )
+            encoder.setValue(
+                UInt32(cullingBounds.isEnabled ? 1 : 0),
+                index: 7
+            )
             encoder.dispatchThreadgroups(
                 .init(width: Int(blockCount)),
                 threads: .init(width: Self.threadCount)

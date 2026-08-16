@@ -2,20 +2,31 @@ import Swift
 
 final class EditorPass {
     private let groundPlane: GroundPlanePass
+    private let cullingBounds: CullingBoundsPass
 
     init(platform: any Platform) throws {
         groundPlane = try GroundPlanePass(platform: platform)
+        cullingBounds = try CullingBoundsPass(platform: platform)
     }
 
     func encode(
         groundPlane settings: GroundPlane,
-        viewProjection _: Matrix4x4,
+        cullingBounds bounds: CullingBounds,
+        viewProjection: Matrix4x4,
         into encoder: any RenderEncoder
     ) {
-        guard settings.isVisible else { return }
-        groundPlane.encode(
-            settings: settings,
-            into: encoder
-        )
+        if settings.isVisible {
+            groundPlane.encode(
+                settings: settings,
+                into: encoder
+            )
+        }
+        if bounds.isEnabled {
+            cullingBounds.encode(
+                bounds: bounds,
+                viewProjection: viewProjection,
+                into: encoder
+            )
+        }
     }
 }

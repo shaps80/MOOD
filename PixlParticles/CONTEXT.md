@@ -16,6 +16,8 @@
 ## Foundational Constraints
 
 - Treat a particle effect as a deterministic program over time, not merely mutable emitters updated each frame. It must support pausing, seeking, scrubbing, repeatable tests, and precise state inspection.
+- A zero duration means the system runs forever. Positive durations remain
+  finite and reset according to the editor's Play or Loop mode.
 - Support Niagara-style events as a core system capability, allowing causal communication between emitters through explicit triggers and event payloads.
 - Keep the colour workflow linear throughout authoring conversion, simulation,
   interpolation, shading, blending, HDR rendering, and post-processing. Convert
@@ -51,7 +53,9 @@
   cross-platform math infrastructure.
 - The editor renders point primitives through `PixlMetal` in an `MTKView`. It
   retains perspective, isometric, and front cameras; perspective orbit controls;
-  and pinch or scroll zoom. Camera orientation and zoom are restored per scene.
+  and pinch or scroll zoom. Perspective orbit accumulates and persists a
+  quaternion rather than yaw/pitch, allowing continuous rotation through the
+  poles. Camera orientation and zoom are restored per scene.
   Its ground plane is an editor pass composed before particles in the shared
   render encoder.
 - Renderer-facing binary16 colour components use portable `UInt16` bit storage.
@@ -84,6 +88,12 @@
 - Metal visibility uses stable GPU compaction: block-local scans, deterministic
   block offsets, stable index scatter, and indirect drawing. Culling never
   mutates authoritative simulation or changes particle order.
+- Optional authored cubic bounds are fused into the existing GPU visibility
+  classification. Particles outside the cube remain simulated but are omitted
+  from rendering. The matching editor visualization is one procedural line
+  draw containing 12 edges and no geometry buffer; later multiple bounds can
+  retain that 24-vertex shape and use instancing. The cube is anchored to the
+  ground plane at Y -100 and grows upward as its scale changes.
 - High-density point rendering uses optional screen-space LOD after frustum
   compaction. The GPU-visible count selects the path without CPU readback.
   Below the activation threshold, the existing visible-index buffer is drawn;
@@ -118,7 +128,7 @@
   `PixlParticlesUI`; none are particle simulation responsibilities. Portable
   editor-pass composition and ground-plane rendering belong to `PixlRenderer`.
   The ground plane reproduces the former Canvas visualization using one
-  procedural line draw with no geometry buffer: height -110, extent 500,
+  procedural line draw with no geometry buffer: height -100, extent 500,
   spacing 50, and linear grey at 20 percent opacity.
 - Pixl renderer improvements may be identified, but particle-system design must not change Pixl implicitly.
 - Tests use Swift Testing. XCTest is reserved for performance tests. UI testing is manual only.
@@ -127,8 +137,14 @@
   regenerates initial particles deterministically and replays forward. The
   editor disables retained rewind state by default. Periodic checkpoints remain
   the intended scalable direction for long effects.
-- Editor LOD controls use ordinary local defaults and are deliberately not
-  persisted through `SceneStorage`.
+- Editor LOD controls use ordinary local defaults. View visibility toggles,
+  culling-bounds scale, playback mode, camera orientation, and camera zoom
+  persist per scene through `SceneStorage`.
+- The leading View menu toggles the ground plane, timeline, and authored
+  culling bounds. The inspector remains permanently visible. Enabling culling
+  bounds reveals a 1-to-10,000 scale field; the initial scale is 500.
+- Playback uses a primary-action menu. Play resets to time zero and pauses on
+  completion; Loop resets through the render-thread seek mailbox and continues.
 
 ## Working Method
 

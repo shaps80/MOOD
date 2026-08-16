@@ -30,16 +30,19 @@ public final class System {
         spawnRegion.validate()
 
         let loop = Loop(settings: .default)
-        let durationInTicks = (
+        let finiteDurationInTicks = (
             Loop.seconds(duration) / loop.fixedDeltaSeconds
         ).rounded()
-        precondition(durationInTicks <= Double(UInt64.max))
+        precondition(finiteDurationInTicks <= Double(UInt64.max))
+        let durationInTicks = duration == .zero
+            ? UInt64.max
+            : UInt64(finiteDurationInTicks)
 
         let randomSource = RandomSource(seed: seed)
         let region = spawnRegion
 
         self.duration = duration
-        self.durationInTicks = UInt64(durationInTicks)
+        self.durationInTicks = durationInTicks
         random = randomSource
         self.spawnRegion = region
         self.loop = loop
@@ -93,7 +96,9 @@ public final class System {
     }
 
     public func seek(to time: Duration) {
-        precondition(time >= .zero && time <= duration)
+        precondition(
+            time >= .zero && (duration == .zero || time <= duration)
+        )
 
         let targetTick = UInt64(
             (Loop.seconds(time) / loop.fixedDeltaSeconds).rounded()

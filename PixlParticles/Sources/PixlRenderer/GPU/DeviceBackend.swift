@@ -11,6 +11,7 @@ public final class DeviceBackend: Backend {
     private let points: PointPass
     public var pointLOD: PointLOD
     public var groundPlane = GroundPlane()
+    public var cullingBounds = CullingBounds()
 
     public init(
         platform: any Platform,
@@ -63,6 +64,7 @@ public final class DeviceBackend: Backend {
             count: count,
             interpolation: interpolation,
             viewProjection: viewProjection,
+            cullingBounds: cullingBounds,
             positions: resources.positions,
             buffers: resources.culling,
             into: commandBuffer
@@ -89,6 +91,7 @@ public final class DeviceBackend: Backend {
         encoder.label = "Scene Draw"
         editor.encode(
             groundPlane: groundPlane,
+            cullingBounds: cullingBounds,
             viewProjection: viewProjection,
             into: encoder
         )

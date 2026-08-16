@@ -12,11 +12,17 @@ struct Field: View {
 
     @Binding var value: Double
     var step: Double?
+    var range: ClosedRange<Double>
 
-    init(value: Binding<Double>, step: Double? = nil) {
+    init(
+        value: Binding<Double>,
+        step: Double? = nil,
+        range: ClosedRange<Double> = -.infinity ... .infinity
+    ) {
         _value = value
         _currentValue = .init(initialValue: value.wrappedValue)
         self.step = step
+        self.range = range
     }
 
     var body: some View {
@@ -64,6 +70,7 @@ struct Field: View {
         .onSubmit {
             focused = false
             isShowingField = false
+            currentValue = clamped(currentValue)
             value = currentValue
         }
         .gesture(
@@ -87,7 +94,9 @@ struct Field: View {
                         -Double(state.translation.height) / pointsPerStep
                     ).rounded(.towardZero)
 
-                    currentValue = startValue + increments * (step ?? 1)
+                    currentValue = clamped(
+                        startValue + increments * (step ?? 1)
+                    )
                 }
                 .onEnded { _ in
                     isDragging = false
@@ -95,6 +104,10 @@ struct Field: View {
                     value = currentValue
                 }
         )
+    }
+
+    private func clamped(_ value: Double) -> Double {
+        min(max(value, range.lowerBound), range.upperBound)
     }
 }
 

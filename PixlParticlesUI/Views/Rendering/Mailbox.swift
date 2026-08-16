@@ -7,6 +7,7 @@ nonisolated final class Mailbox: @unchecked Sendable {
         let isPaused: Bool
         let pointLOD: PointLOD
         let groundPlane: GroundPlane
+        let cullingBounds: CullingBounds
         let viewProjection: Matrix4x4
         let viewport: ViewportSize
     }

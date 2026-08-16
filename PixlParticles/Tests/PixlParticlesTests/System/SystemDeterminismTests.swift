@@ -118,4 +118,21 @@ struct SystemDeterminismTests {
         #expect(later.tick == completed.tick)
         #expect(laterParticles.map(\.position) == completedParticles.map(\.position))
     }
+
+    @Test("A zero duration runs forever")
+    func infiniteDuration() {
+        let system = System(
+            seed: 0,
+            particleCount: 16,
+            spawnRegion: .cube(size: [200, 200, 200]),
+            duration: .zero
+        )
+
+        system.seek(to: .seconds(2))
+        let sample = system.sample(at: .now, isPaused: true)
+
+        #expect(sample.tick == 60)
+        #expect(sample.time == .seconds(2))
+        #expect(sample.interpolation == 0)
+    }
 }

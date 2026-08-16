@@ -76,6 +76,8 @@ kernel void classifyAndScanVisibility(
     constant float4x4 &viewProjection [[buffer(3)]],
     constant float &interpolation [[buffer(4)]],
     constant uint &particleCount [[buffer(5)]],
+    constant float2 &cullingBounds [[buffer(6)]],
+    constant uint &hasCullingBounds [[buffer(7)]],
     uint index [[thread_position_in_grid]],
     uint lane [[thread_index_in_threadgroup]],
     uint block [[threadgroup_position_in_grid]],
@@ -91,7 +93,15 @@ kernel void classifyAndScanVisibility(
             interpolation
         );
         float4 clip = viewProjection * float4(position, 1);
-        visible = clip.w > 0 &&
+        float halfExtent = cullingBounds.x;
+        float baseHeight = cullingBounds.y;
+        bool insideBounds = !hasCullingBounds || (
+            abs(position.x) <= halfExtent
+            && abs(position.z) <= halfExtent
+            && position.y >= baseHeight
+            && position.y <= baseHeight + halfExtent * 2.0f
+        );
+        visible = insideBounds && clip.w > 0 &&
             clip.x >= -clip.w && clip.x <= clip.w &&
             clip.y >= -clip.w && clip.y <= clip.w &&
             clip.z >= 0 && clip.z <= clip.w;

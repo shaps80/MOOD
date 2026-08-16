@@ -1,20 +1,35 @@
 import SwiftUI
 import PixlParticles
 import PixlRenderer
+import simd
 
 struct ContentView: View {
-    @State private var isPaused: Bool = false
+    @State private var isPaused: Bool = true
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
     @State private var cameraPreset = CameraPreset.perspective
 
-    @SceneStorage("camera.perspective.yaw")
-    private var perspectiveYaw = Double(CameraPreset.perspectiveOrbit.yaw)
-
-    @SceneStorage("camera.perspective.pitch")
-    private var perspectivePitch = Double(CameraPreset.perspectiveOrbit.pitch)
+    @SceneStorage("camera.perspective.rotation.x")
+    private var perspectiveRotationX = Double(
+        CameraPreset.perspectiveOrbit.rotation.vector.x
+    )
+    @SceneStorage("camera.perspective.rotation.y")
+    private var perspectiveRotationY = Double(
+        CameraPreset.perspectiveOrbit.rotation.vector.y
+    )
+    @SceneStorage("camera.perspective.rotation.z")
+    private var perspectiveRotationZ = Double(
+        CameraPreset.perspectiveOrbit.rotation.vector.z
+    )
+    @SceneStorage("camera.perspective.rotation.w")
+    private var perspectiveRotationW = Double(
+        CameraPreset.perspectiveOrbit.rotation.vector.w
+    )
 
     @SceneStorage("camera.zoom") private var cameraZoom: Double = 1
+    @SceneStorage("camera.perspective.target.x") private var cameraTargetX = 0.0
+    @SceneStorage("camera.perspective.target.y") private var cameraTargetY = 0.0
+    @SceneStorage("camera.perspective.target.z") private var cameraTargetZ = 0.0
 
     @State private var system: System
     @State private var seed: Double
@@ -27,6 +42,16 @@ struct ContentView: View {
     @State private var lodMaximum = 1_000_000.0
     @State private var lodTileSize = 16.0
     @State private var lodPointsPerPixel = 1.0
+    @SceneStorage("editor.groundPlane.isVisible")
+    private var isGroundPlaneVisible = true
+    @SceneStorage("editor.timeline.isVisible")
+    private var isTimelineVisible = true
+    @SceneStorage("editor.cullingBounds.isVisible")
+    private var areCullingBoundsEnabled = false
+    @SceneStorage("editor.cullingBounds.scale")
+    private var cullingBoundsScale = 500.0
+    @SceneStorage("editor.playMode") private var playMode = PlayMode.play
+    @State private var playbackResetID: UInt64 = 0
 
     init() {
         _seed = .init(initialValue: 0)
@@ -49,17 +74,26 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottomTrailing) {
             ParticleViewport(
                 system: system,
                 isPaused: isPaused,
                 isScrubbing: isScrubbing,
                 cameraPreset: cameraPreset,
-                perspectiveYaw: $perspectiveYaw,
-                perspectivePitch: $perspectivePitch,
+                perspectiveRotationX: $perspectiveRotationX,
+                perspectiveRotationY: $perspectiveRotationY,
+                perspectiveRotationZ: $perspectiveRotationZ,
+                perspectiveRotationW: $perspectiveRotationW,
                 cameraZoom: $cameraZoom,
+                cameraTargetX: $cameraTargetX,
+                cameraTargetY: $cameraTargetY,
+                cameraTargetZ: $cameraTargetZ,
                 fraction: $fraction,
-                pointLOD: pointLOD
+                pointLOD: pointLOD,
+                isGroundPlaneVisible: isGroundPlaneVisible,
+                cullingBounds: cullingBounds,
+                playbackResetID: playbackResetID,
+                onPlaybackComplete: completePlayback
             )
             .ignoresSafeArea()
 
@@ -77,18 +111,22 @@ struct ContentView: View {
                         lodActivation: $lodActivation,
                         lodMaximum: $lodMaximum,
                         lodTileSize: $lodTileSize,
-                        lodPointsPerPixel: $lodPointsPerPixel
+                        lodPointsPerPixel: $lodPointsPerPixel,
+                        areCullingBoundsEnabled: $areCullingBoundsEnabled,
+                        cullingBoundsScale: $cullingBoundsScale
                     )
                     .scenePadding([.horizontal, .vertical])
                 }
 
                 Spacer(minLength: 0)
 
-                ParticleTimeline(
-                    fraction: $fraction,
-                    isScrubbing: $isScrubbing
-                )
-                .frame(maxWidth: 500)
+                if isTimelineVisible {
+                    ParticleTimeline(
+                        fraction: $fraction,
+                        isScrubbing: $isScrubbing
+                    )
+                    .frame(maxWidth: 500)
+                }
             }
         }
         .background(.quinary)
@@ -127,6 +165,17 @@ struct ContentView: View {
             updateSystem()
         }
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Menu("View", systemImage: "eye") {
+                    Toggle("Ground Plane", isOn: $isGroundPlaneVisible)
+                    Toggle("Timeline", isOn: $isTimelineVisible)
+                    Toggle(
+                        "Culling Bounds",
+                        isOn: $areCullingBoundsEnabled
+                    )
+                }
+            }
+
             ToolbarItem(placement: .principal) {
                 Picker("Camera", selection: $cameraPreset) {
                     Text("Perspective").tag(CameraPreset.perspective)
@@ -137,11 +186,20 @@ struct ContentView: View {
             }
 
             ToolbarItem {
-                Button(
-                    isPaused ? "Play" : "Pause",
-                    systemImage: isPaused ? "play" : "pause"
-                ) {
-                    isPaused.toggle()
+                Menu {
+                    Picker("Playback", selection: $playMode) {
+                        ForEach(PlayMode.allCases, id: \.self) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label(
+                        isPaused ? "Play" : "Pause",
+                        systemImage: isPaused ? "play" : "pause"
+                    )
+                } primaryAction: {
+                    togglePlayback()
                 }
                 .symbolVariant(.fill)
                 .keyboardShortcut(.space, modifiers: [])
@@ -170,6 +228,28 @@ struct ContentView: View {
         )
     }
 
+    private var cullingBounds: CullingBounds {
+        .init(
+            isEnabled: areCullingBoundsEnabled,
+            scale: Float(cullingBoundsScale)
+        )
+    }
+
+    private func completePlayback() {
+        if playMode == .loop {
+            playbackResetID &+= 1
+        } else {
+            isPaused = true
+        }
+    }
+
+    private func togglePlayback() {
+        if isPaused, fraction >= 1 {
+            fraction = 0
+            playbackResetID &+= 1
+        }
+        isPaused.toggle()
+    }
 }
 
 #Preview {

@@ -12,17 +12,27 @@ struct Inspector: View {
     @Binding var lodMaximum: Double
     @Binding var lodTileSize: Double
     @Binding var lodPointsPerPixel: Double
+    @Binding var areCullingBoundsEnabled: Bool
+    @Binding var cullingBoundsScale: Double
 
     var body: some View {
 //        ScrollView {
             Divided {
                 Section("System") {
                     LabeledContent("Duration") {
-                        Field(value: $duration, step: 5)
+                        Field(
+                            value: $duration,
+                            step: 5,
+                            range: 0 ... .infinity
+                        )
                     }
 
                     LabeledContent("Particles") {
-                        Field(value: $particleCount, step: 1_000)
+                        Field(
+                            value: $particleCount,
+                            step: 1_000,
+                            range: 0 ... .infinity
+                        )
                     }
 
                     LabeledContent("Seed") {
@@ -80,6 +90,18 @@ struct Inspector: View {
                         }
                     }
                 }
+
+                if areCullingBoundsEnabled {
+                    Section("Culling Bounds") {
+                        LabeledContent("Scale") {
+                            Field(
+                                value: $cullingBoundsScale,
+                                step: 25,
+                                range: 1 ... 10_000
+                            )
+                        }
+                    }
+                }
             }
             .frame(
                 maxWidth: .infinity,
@@ -106,7 +128,7 @@ struct Divided<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 40) {
+        VStack(alignment: .leading, spacing: 20) {
             Group(sections: content) { sections in
                 ForEach(sections) { section in
                     VStack(alignment: .leading) {
@@ -141,6 +163,8 @@ struct Divided<Content: View>: View {
     @Previewable @State var lodMaximum = 1_000_000.0
     @Previewable @State var lodTileSize = 16.0
     @Previewable @State var lodPointsPerPixel = 1.0
+    @Previewable @State var areCullingBoundsEnabled = true
+    @Previewable @State var cullingBoundsScale = 500.0
 
     Inspector(
         duration: $duration,
@@ -152,7 +176,9 @@ struct Divided<Content: View>: View {
         lodActivation: $lodActivation,
         lodMaximum: $lodMaximum,
         lodTileSize: $lodTileSize,
-        lodPointsPerPixel: $lodPointsPerPixel
+        lodPointsPerPixel: $lodPointsPerPixel,
+        areCullingBoundsEnabled: $areCullingBoundsEnabled,
+        cullingBoundsScale: $cullingBoundsScale
     )
     .fixedSize(horizontal: true, vertical: false)
     .scenePadding()
