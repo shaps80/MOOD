@@ -31,6 +31,18 @@ point-primitive rendering path.
 - Validate GPU-only screen-space LOD visually and with Metal traces across the
   activation boundary, dense and sparse tiles, camera motion, and the exact
   maximum-visible ceiling. Tune defaults only from those results.
+- Investigate compacting retained LOD particles into sequential clip-space
+  position storage. Compare its extra GPU writes and memory against the current
+  indexed draw's random position reads and vertex transforms; retain it only if
+  measured frame performance improves.
+- Move simulation sampling, renderer lowering, culling, and Metal submission
+  under dedicated serial render ownership. Keep `PixlRenderer` synchronous and
+  nonisolated; the UI sends immutable settings and replacement commands rather
+  than mutating render-owned state.
+- After both changes, capture a matched 6-million-particle Metal trace with LOD
+  enabled and a 2-million visible ceiling. Compare frame cadence, aggregate
+  compute/draw medians and p95, drawable waits, and steady/peak Metal memory
+  against the recorded pre-optimization trace.
 
 ## 3. Colour Diagnostics
 

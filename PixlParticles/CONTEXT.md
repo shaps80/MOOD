@@ -129,3 +129,16 @@
 - Discuss and resolve one architectural decision at a time.
 - Stay concise and focused; expand deeply only when asked.
 - Do not introduce new architectural decisions during implementation.
+
+## Current Checkpoint
+
+- Six million particles remain fully simulated while screen-space LOD limits
+  drawing to the configured visible ceiling.
+- With a 2-million visible ceiling, manual Release testing improved from the
+  previous approximately 30 FPS to close to 60 FPS. Process memory fell from
+  approximately 1.18 GiB to 960 MiB–1.0 GiB.
+- CPU regression measurements remain clean: one-million simulation and lowering
+  measured 0.642 ms and 0.778 ms; two-million measured 1.285 ms and 1.547 ms.
+- Next sequence: investigate compact retained clip-space positions, introduce
+  dedicated render ownership, then collect the final matched 6-million Metal
+  trace. Do not begin GPU simulation until this renderer sequence is measured.
