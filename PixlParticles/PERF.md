@@ -233,3 +233,29 @@ interpolation and packing ran every render frame. The change approximately
 halves average lowering CPU time while retaining 60 Hz visual interpolation.
 It increases the two renderer state buffers from 24 to 48 bytes per particle in
 total and doubles GPU position reads per vertex from 12 to 24 bytes.
+
+### Particle-count scaling
+
+Measured 2026-08-16 on the same macOS M1 Max environment. Each retained
+release harness processed at least 100 million particle operations per sample.
+The table reports the median result across three complete sequential runs.
+Simulation is the production linear-motion pass; lowering is the production
+`PixlRenderer` position-pair path. Metal, SwiftUI, editor diagnostics, command
+submission, and drawing are excluded.
+
+| Particles | Simulation tick | Position-pair lowering | Combined per 30 Hz tick | Amortized per 60 Hz frame |
+| ---: | ---: | ---: | ---: | ---: |
+| 10 K | 0.006 ms | 0.006 ms | 0.013 ms | 0.006 ms |
+| 50 K | 0.032 ms | 0.031 ms | 0.062 ms | 0.031 ms |
+| 100 K | 0.063 ms | 0.063 ms | 0.126 ms | 0.063 ms |
+| 250 K | 0.165 ms | 0.180 ms | 0.345 ms | 0.173 ms |
+| 500 K | 0.336 ms | 0.381 ms | 0.717 ms | 0.358 ms |
+| 1 M | 0.643 ms | 0.780 ms | 1.423 ms | 0.712 ms |
+| 2 M | 1.292 ms | 1.633 ms | 2.925 ms | 1.462 ms |
+
+Simulation remained close to linear through 2 million particles. Lowering
+throughput decreased after roughly 100,000 particles, consistent with a cache
+or memory-bandwidth boundary, but remained inexpensive relative to a 16.67 ms
+frame budget. These measurements do not justify CPU multithreading for the
+current linear pass. Re-evaluate per pass when collisions, forces, or events
+add materially more work; do not select concurrency from particle count alone.

@@ -24,6 +24,10 @@ point-primitive rendering path.
 - Restore the ground plane as a separate editor render pass.
 - Measure CPU submission and GPU rendering separately from simulation and
   portable render-data packing.
+- Profile Metal culling and drawing independently; accepted CPU scaling shows
+  simulation plus position-pair lowering consumes only about 1.46 ms per
+  rendered frame at 2 million particles with 30 Hz simulation and 60 Hz
+  rendering.
 
 ## 3. Colour Diagnostics
 

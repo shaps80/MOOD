@@ -9,6 +9,16 @@ struct SystemBenchmarks {
     private static let warmupTickCount = 10
     private static let sampleCount = 5
     private static let fixedDelta: Float = 1.0 / 30.0
+    private static let updateParticleCounts = [
+        10_000,
+        50_000,
+        100_000,
+        250_000,
+        500_000,
+        1_000_000,
+        2_000_000,
+    ]
+    private static let measuredUpdateCount = 100_000_000
 
     static func main() {
         let regions: [(String, SpawnRegion)] = [
@@ -27,7 +37,9 @@ struct SystemBenchmarks {
         }
 
         print("Fixed updates")
-        benchmarkUpdates()
+        for particleCount in updateParticleCounts {
+            benchmarkUpdates(particleCount: particleCount)
+        }
     }
 
     @_optimize(none)
@@ -75,10 +87,14 @@ struct SystemBenchmarks {
     }
 
     @_optimize(none)
-    private static func benchmarkUpdates() {
+    private static func benchmarkUpdates(particleCount: Int) {
         let system = makeSystem(
-            particleCount: measuredParticleCount,
+            particleCount: particleCount,
             region: .point(.zero)
+        )
+        let measuredTickCount = max(
+            measuredUpdateCount / particleCount,
+            10
         )
 
         for _ in 0..<warmupTickCount {
@@ -107,7 +123,7 @@ struct SystemBenchmarks {
 
         let elapsed = samples[sampleCount / 2]
         let updateCount = Double(
-            measuredParticleCount * measuredTickCount
+            particleCount * measuredTickCount
         )
         let updatesPerSecond = updateCount / elapsed
         let nanosecondsPerUpdate = elapsed / updateCount * 1_000_000_000
@@ -116,7 +132,8 @@ struct SystemBenchmarks {
             * 1_000
 
         print(
-            "Linear motion: \(updatesPerSecond / 1_000_000) million updates/s, "
+            "\(particleCount) particles: "
+                + "\(updatesPerSecond / 1_000_000) million updates/s, "
                 + "\(nanosecondsPerUpdate) ns/update, "
                 + "\(millisecondsPerTick) ms/tick "
                 + "[\(combinedChecksum)]"

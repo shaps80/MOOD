@@ -3,12 +3,27 @@ import Swift
 
 @main
 struct LoweringBenchmarks {
-    private static let particleCount = 1_000_000
-    private static let iterationCount = 100
+    private static let particleCounts = [
+        10_000,
+        50_000,
+        100_000,
+        250_000,
+        500_000,
+        1_000_000,
+        2_000_000,
+    ]
+    private static let measuredParticleCount = 100_000_000
     private static let warmupCount = 10
     private static let sampleCount = 5
 
     static func main() {
+        for particleCount in particleCounts {
+            benchmark(particleCount: particleCount)
+        }
+    }
+
+    private static func benchmark(particleCount: Int) {
+        let iterationCount = max(measuredParticleCount / particleCount, 10)
         let system = System(
             seed: 0x0123456789ABCDEF,
             particleCount: particleCount,
@@ -51,7 +66,10 @@ struct LoweringBenchmarks {
                 )
             }
             samples.append(seconds(start.duration(to: clock.now)))
-            combinedChecksum ^= checksum(destination)
+            combinedChecksum ^= checksum(
+                destination,
+                particleCount: particleCount
+            )
         }
 
         samples.sort()
@@ -62,7 +80,7 @@ struct LoweringBenchmarks {
         let milliseconds = elapsed / Double(iterationCount) * 1_000
 
         print(
-            "Production lowering: \(throughput) million particles/s, "
+            "\(particleCount) particles: \(throughput) million particles/s, "
                 + "\(nanoseconds) ns/particle, "
                 + "\(milliseconds) ms/frame [\(combinedChecksum)]"
         )
@@ -70,7 +88,8 @@ struct LoweringBenchmarks {
 
     @inline(never)
     private static func checksum(
-        _ positions: UnsafeMutableBufferPointer<PositionPair>
+        _ positions: UnsafeMutableBufferPointer<PositionPair>,
+        particleCount: Int
     ) -> UInt64 {
         var result: UInt64 = 0
         let step = particleCount / 64
