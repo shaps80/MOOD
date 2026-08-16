@@ -36,12 +36,12 @@ struct SpawnRegionTests {
         })
     }
 
-    @Test("Box fills its volume")
-    func box() {
+    @Test("Cube fills its volume")
+    func cube() {
         let particles = System(
             seed: 42,
             particleCount: 1_000,
-            spawnRegion: .box(size: [20, 40, 60]),
+            spawnRegion: .cube(size: [20, 40, 60]),
             duration: .seconds(2)
         ).particleSnapshot
 
@@ -52,12 +52,12 @@ struct SpawnRegionTests {
         })
     }
 
-    @Test("Box surface samples faces by area deterministically")
-    func boxSurface() {
+    @Test("Cube surface samples faces by area deterministically")
+    func cubeSurface() {
         let first = System(
             seed: 42,
             particleCount: 10_000,
-            spawnRegion: .box(
+            spawnRegion: .cube(
                 size: [20, 40, 60],
                 domain: .surface
             ),
@@ -66,7 +66,7 @@ struct SpawnRegionTests {
         let second = System(
             seed: 42,
             particleCount: 10_000,
-            spawnRegion: .box(
+            spawnRegion: .cube(
                 size: [20, 40, 60],
                 domain: .surface
             ),
@@ -89,18 +89,18 @@ struct SpawnRegionTests {
         #expect(yFaces > zFaces)
     }
 
-    @Test("Box defaults to its volume domain")
-    func boxDefaultDomain() {
+    @Test("Cube defaults to its volume domain")
+    func cubeDefaultDomain() {
         let implicit = System(
             seed: 42,
             particleCount: 1_000,
-            spawnRegion: .box(size: [20, 40, 60]),
+            spawnRegion: .cube(size: [20, 40, 60]),
             duration: .seconds(2)
         ).particleSnapshot
         let explicit = System(
             seed: 42,
             particleCount: 1_000,
-            spawnRegion: .box(
+            spawnRegion: .cube(
                 size: [20, 40, 60],
                 domain: .volume
             ),
@@ -169,8 +169,8 @@ struct SpawnRegionTests {
     func stableBitPatterns() {
         let regions: [SpawnRegion] = [
             .line(from: [-10, 20, 30], to: [10, 20, 30]),
-            .box(size: [20, 40, 60]),
-            .box(size: [20, 40, 60], domain: .surface),
+            .cube(size: [20, 40, 60]),
+            .cube(size: [20, 40, 60], domain: .surface),
             .sphere(radius: 100),
             .sphere(radius: 100, domain: .surface),
         ]

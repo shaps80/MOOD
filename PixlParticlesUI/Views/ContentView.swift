@@ -22,7 +22,7 @@ struct ContentView: View {
     @State private var duration: Double
     @State private var spawnPreset: SpawnPreset
     @State private var spawnDomain: SpawnRegion.Domain
-    @State private var lodEnabled = true
+    @State private var lodEnabled = false
     @State private var lodActivation = 500_000.0
     @State private var lodMaximum = 1_000_000.0
     @State private var lodTileSize = 16.0
@@ -30,10 +30,10 @@ struct ContentView: View {
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 1_000_000)
-        _duration = .init(initialValue: 20)
-        _spawnPreset = .init(initialValue: .sphere)
-        _spawnDomain = .init(initialValue: .surface)
+        _particleCount = .init(initialValue: 500_000)
+        _duration = .init(initialValue: 30)
+        _spawnPreset = .init(initialValue: .cube)
+        _spawnDomain = .init(initialValue: .volume)
 
         _system = .init(
             initialValue: .init(

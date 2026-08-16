@@ -62,20 +62,22 @@ struct Inspector: View {
                 Section("Point LOD") {
                     Toggle("Enabled", isOn: $lodEnabled)
 
-                    LabeledContent("Activation") {
-                        Field(value: $lodActivation, step: 100_000)
-                    }
+                    if lodEnabled {
+                        LabeledContent("Activation") {
+                            Field(value: $lodActivation, step: 100_000)
+                        }
 
-                    LabeledContent("Maximum") {
-                        Field(value: $lodMaximum, step: 100_000)
-                    }
+                        LabeledContent("Maximum") {
+                            Field(value: $lodMaximum, step: 100_000)
+                        }
 
-                    LabeledContent("Tile Size") {
-                        Field(value: $lodTileSize, step: 1)
-                    }
+                        LabeledContent("Tile Size") {
+                            Field(value: $lodTileSize, step: 1)
+                        }
 
-                    LabeledContent("Points/Pixel") {
-                        Field(value: $lodPointsPerPixel, step: 1)
+                        LabeledContent("Points/Pixel") {
+                            Field(value: $lodPointsPerPixel, step: 1)
+                        }
                     }
                 }
             }
@@ -92,6 +94,7 @@ struct Inspector: View {
         .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
         .animation(.snappy, value: spawnPreset)
+        .animation(.snappy, value: lodEnabled)
     }
 }
 

@@ -66,14 +66,14 @@ output without contaminating the measurement.
 | --- | ---: | ---: | ---: | ---: |
 | Point | 68.23 M particles/s · 14.66 ns/particle | 99.40 M particles/s · 10.06 ns/particle | 45.54 M particles/s · 21.96 ns/particle | `425986654175` |
 | Line | 54.22 M particles/s · 18.44 ns/particle | 91.26 M particles/s · 10.96 ns/particle | 44.28 M particles/s · 22.58 ns/particle | `688322051651` |
-| Box volume | 40.74 M particles/s · 24.55 ns/particle | 69.91 M particles/s · 14.30 ns/particle | 32.28 M particles/s · 30.98 ns/particle | `1246931346963` |
-| Box surface | 23.61 M particles/s · 42.36 ns/particle | 37.43 M particles/s · 26.72 ns/particle | 20.97 M particles/s · 47.69 ns/particle | `1231086806959` |
+| Cube volume | 40.74 M particles/s · 24.55 ns/particle | 69.91 M particles/s · 14.30 ns/particle | 32.28 M particles/s · 30.98 ns/particle | `1246931346963` |
+| Cube surface | 23.61 M particles/s · 42.36 ns/particle | 37.43 M particles/s · 26.72 ns/particle | 20.97 M particles/s · 47.69 ns/particle | `1231086806959` |
 | Sphere volume | 16.63 M particles/s · 60.12 ns/particle | 28.85 M particles/s · 34.66 ns/particle | 12.32 M particles/s · 81.18 ns/particle | `1228237922277` |
 | Sphere surface | 25.81 M particles/s · 38.74 ns/particle | 47.88 M particles/s · 20.88 ns/particle | 20.70 M particles/s · 48.30 ns/particle | `1242808241845` |
 
 The matching checksums confirm that each platform produced identical sampled
 particle state. Sphere volume is slower because rejection sampling sometimes
-needs more than one candidate; sphere surface is effectively level with box
+needs more than one candidate; sphere surface is effectively level with cube
 surface on WebAssembly.
 
 ### AoSoA production storage
@@ -86,8 +86,8 @@ identifiers, previous positions, and immutable velocities.
 | --- | ---: | ---: | ---: |
 | Point | 53.30 M particles/s · 18.76 ns/particle | 42.65 M particles/s · 23.45 ns/particle | `425986654175` |
 | Line | 46.71 M particles/s · 21.41 ns/particle | 38.39 M particles/s · 26.05 ns/particle | `688322051651` |
-| Box volume | 37.96 M particles/s · 26.34 ns/particle | 30.13 M particles/s · 33.19 ns/particle | `1246931346963` |
-| Box surface | 23.67 M particles/s · 42.24 ns/particle | 20.11 M particles/s · 49.72 ns/particle | `1231086806959` |
+| Cube volume | 37.96 M particles/s · 26.34 ns/particle | 30.13 M particles/s · 33.19 ns/particle | `1246931346963` |
+| Cube surface | 23.67 M particles/s · 42.24 ns/particle | 20.11 M particles/s · 49.72 ns/particle | `1231086806959` |
 | Sphere volume | 16.73 M particles/s · 59.77 ns/particle | 11.27 M particles/s · 88.73 ns/particle | `1228237922277` |
 | Sphere surface | 24.72 M particles/s · 40.45 ns/particle | 18.79 M particles/s · 53.21 ns/particle | `1242808241845` |
 

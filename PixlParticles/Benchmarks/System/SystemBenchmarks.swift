@@ -24,8 +24,8 @@ struct SystemBenchmarks {
         let regions: [(String, SpawnRegion)] = [
             ("Point", .point(.zero)),
             ("Line", .line(from: [-100, 0, 0], to: [100, 0, 0])),
-            ("Box volume", .box(size: [200, 200, 200])),
-            ("Box surface", .box(size: [200, 200, 200], domain: .surface)),
+            ("Cube volume", .cube(size: [200, 200, 200])),
+            ("Cube surface", .cube(size: [200, 200, 200], domain: .surface)),
             ("Sphere volume", .sphere(radius: 100)),
             ("Sphere surface", .sphere(radius: 100, domain: .surface)),
         ]

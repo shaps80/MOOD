@@ -41,8 +41,8 @@
 - Initial rewind state retains only mutable values required to restore the
   simulation. At present that is initial position; identifiers and velocities
   remain immutable.
-- Deterministic spawning currently supports point and line regions plus box and
-  sphere regions. Box and sphere support volume and surface domains. Region
+- Deterministic spawning currently supports point and line regions plus cube and
+  sphere regions. Cube and sphere support volume and surface domains. Region
   sampling uses stable particle addresses and dedicated random channels so
   unrelated future properties do not perturb existing output.
 - Philox4x32-10, integer-to-float mappings, and deterministic trigonometric

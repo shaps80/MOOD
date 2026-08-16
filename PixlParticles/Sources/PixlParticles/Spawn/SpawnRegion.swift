@@ -12,8 +12,8 @@ public enum SpawnRegion: Hashable, Sendable {
     /// Distributes particles along a world-space line segment.
     case line(from: Vec3, to: Vec3)
 
-    /// Distributes particles within a box centred on the origin.
-    case box(size: Vec3, domain: Domain = .volume)
+    /// Distributes particles within a cube centred on the origin.
+    case cube(size: Vec3, domain: Domain = .volume)
 
     /// Distributes particles within a sphere centred on the origin.
     case sphere(radius: Float, domain: Domain = .volume)
@@ -26,12 +26,12 @@ public enum SpawnRegion: Hashable, Sendable {
         case let .line(start, end):
             precondition(start.isFinite && end.isFinite)
 
-        case let .box(size, domain):
+        case let .cube(size, domain):
             precondition(size.isFinite)
             precondition(size.x >= 0 && size.y >= 0 && size.z >= 0)
 
             if domain == .surface {
-                precondition(Self.boxFaceAreaSum(size).isFinite)
+                precondition(Self.cubeFaceAreaSum(size).isFinite)
             }
 
         case let .sphere(radius, _):
@@ -58,7 +58,7 @@ public enum SpawnRegion: Hashable, Sendable {
             let fraction = RandomSource.unitFloat(from: block.x0)
             return start + (end - start) * fraction
 
-        case let .box(size, domain):
+        case let .cube(size, domain):
             let block = random.block(
                 at: address,
                 channel: .position
@@ -66,9 +66,9 @@ public enum SpawnRegion: Hashable, Sendable {
 
             switch domain {
             case .volume:
-                return Self.boxVolume(size: size, block: block)
+                return Self.cubeVolume(size: size, block: block)
             case .surface:
-                return Self.boxSurface(size: size, block: block)
+                return Self.cubeSurface(size: size, block: block)
             }
 
         case let .sphere(radius, domain):
@@ -156,7 +156,7 @@ public enum SpawnRegion: Hashable, Sendable {
     }
 
     @inline(__always)
-    private static func boxVolume(
+    private static func cubeVolume(
         size: Vec3,
         block: Philox4x32.Counter
     ) -> Vec3 {
@@ -170,7 +170,7 @@ public enum SpawnRegion: Hashable, Sendable {
     }
 
     @inline(__always)
-    private static func boxSurface(
+    private static func cubeSurface(
         size: Vec3,
         block: Philox4x32.Counter
     ) -> Vec3 {
@@ -180,7 +180,7 @@ public enum SpawnRegion: Hashable, Sendable {
         let faceAreaSum = xyArea + xzArea + size.y * size.z
 
         guard faceAreaSum > 0 else {
-            return boxVolume(size: size, block: block)
+            return cubeVolume(size: size, block: block)
         }
 
         let selection = RandomSource.unitFloat(from: block.x0) * faceAreaSum
@@ -210,7 +210,7 @@ public enum SpawnRegion: Hashable, Sendable {
     }
 
     @inline(__always)
-    private static func boxFaceAreaSum(_ size: Vec3) -> Float {
+    private static func cubeFaceAreaSum(_ size: Vec3) -> Float {
         size.x * size.y + size.x * size.z + size.y * size.z
     }
 

@@ -8,19 +8,19 @@ struct SystemDeterminismTests {
         let first = System(
             seed: 42,
             particleCount: 101,
-            spawnRegion: .box(size: [200, 200, 200]),
+            spawnRegion: .cube(size: [200, 200, 200]),
             duration: .seconds(2)
         ).particleSnapshot
         let second = System(
             seed: 42,
             particleCount: 101,
-            spawnRegion: .box(size: [200, 200, 200]),
+            spawnRegion: .cube(size: [200, 200, 200]),
             duration: .seconds(2)
         ).particleSnapshot
         let different = System(
             seed: 43,
             particleCount: 101,
-            spawnRegion: .box(size: [200, 200, 200]),
+            spawnRegion: .cube(size: [200, 200, 200]),
             duration: .seconds(2)
         ).particleSnapshot
 
@@ -39,7 +39,7 @@ struct SystemDeterminismTests {
         let system = System(
             seed: 42,
             particleCount: 16,
-            spawnRegion: .box(size: [200, 200, 200]),
+            spawnRegion: .cube(size: [200, 200, 200]),
             duration: .seconds(2)
         )
 
@@ -97,7 +97,7 @@ struct SystemDeterminismTests {
         let system = System(
             seed: 0,
             particleCount: 16,
-            spawnRegion: .box(size: [200, 200, 200]),
+            spawnRegion: .cube(size: [200, 200, 200]),
             duration: .milliseconds(100)
         )
         let start = ContinuousClock.now
