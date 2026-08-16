@@ -5,13 +5,13 @@ package struct Vector3Batch {
     package var y: SIMD4<Float>
     package var z: SIMD4<Float>
 
-    init(repeating value: Vec3) {
+    package init(repeating value: SIMD3<Float>) {
         x = .init(repeating: value.x)
         y = .init(repeating: value.y)
         z = .init(repeating: value.z)
     }
 
-    subscript(lane: Int) -> Vec3 {
+    package subscript(lane: Int) -> SIMD3<Float> {
         get { [x[lane], y[lane], z[lane]] }
         set {
             x[lane] = newValue.x

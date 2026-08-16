@@ -259,3 +259,28 @@ or memory-bandwidth boundary, but remained inexpensive relative to a 16.67 ms
 frame budget. These measurements do not justify CPU multithreading for the
 current linear pass. Re-evaluate per pass when collisions, forces, or events
 add materially more work; do not select concurrency from particle count alone.
+
+## Metal Point Rendering
+
+Measured 2026-08-16 on the macOS M1 Max environment using Release builds and
+Metal System Trace. CPU simulation and portable lowering are measured
+separately above. GPU phase intervals may overlap, so vertex and fragment
+durations must not be summed.
+
+| Workload | Actual submission rate | GPU frame median | GPU frame p95 | Culling median | Vertex median | Fragment median |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 M | 59.2 FPS | 5.28 ms | 6.01 ms | 0.76 ms | 2.36 ms | 1.63 ms |
+| 2 M, early drawable acquisition | 49.5 FPS | 10.00 ms | 12.42 ms | 1.38 ms | 3.92 ms | 3.87 ms |
+| 2 M, late drawable acquisition | 59.0 FPS | 11.48 ms | 13.66 ms | 1.32 ms | 1.60 ms | 4.33 ms |
+
+Moving MTKView drawable and render-pass acquisition after buffer availability,
+position-pair lowering, and culling encoding reduced median drawable wait from
+8.12 to 4.12 ms and restored approximately 60 FPS at 2 million particles. It
+required no additional buffering or memory.
+
+A 3-million-particle transition trace showed the next limit. As screen coverage
+increased, culling remained near 1.9 ms while fragment time rose from 4.88 to
+6.70 ms. Median GPU frame time rose from 13.04 to 15.29 ms and p95 rose from
+15.76 to 18.87 ms, crossing the 16.67 ms deadline and producing roughly 30–44
+FPS. This evidence justifies screen-space density LOD; further frustum-culling
+optimization alone will not recover the lost frame rate.

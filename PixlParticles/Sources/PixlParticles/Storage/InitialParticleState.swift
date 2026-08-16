@@ -1,3 +1,4 @@
+import PixlRenderer
 import Swift
 
 final class InitialParticleState {

@@ -23,19 +23,16 @@ let package = Package(
     targets: [
         .target(
             name: "PixlParticles",
+            dependencies: ["PixlRenderer"],
             swiftSettings: releaseCrossModuleOptimization()
         ),
         .target(
             name: "PixlRenderer",
-            dependencies: ["PixlParticles"],
             swiftSettings: releaseCrossModuleOptimization()
         ),
         .target(
             name: "PixlMetal",
-            dependencies: [
-                "PixlParticles",
-                "PixlRenderer",
-            ],
+            dependencies: ["PixlRenderer"],
             resources: [
                 .process("Shaders")
             ],
@@ -43,7 +40,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PixlParticlesTests",
-            dependencies: ["PixlParticles"]
+            dependencies: ["PixlParticles", "PixlRenderer"]
         ),
         .testTarget(
             name: "PixlRendererTests",

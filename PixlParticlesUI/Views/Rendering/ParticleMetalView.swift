@@ -1,6 +1,7 @@
 import MetalKit
 import PixlMetal
 import PixlParticles
+import PixlRenderer
 import SwiftUI
 
 #if os(macOS)
@@ -67,7 +68,8 @@ struct ParticleMetalView: PlatformViewRepresentable {
 
 @MainActor
 final class Coordinator: NSObject, MTKViewDelegate {
-    private let renderer: PixlMetal.Renderer
+    private let platform: PixlMetal.Platform
+    private let renderer: PixlParticles.Renderer
     private weak var view: MTKView?
     private var system: System
     private var isPaused: Bool
@@ -89,8 +91,15 @@ final class Coordinator: NSObject, MTKViewDelegate {
         onCameraChange: @escaping (Float, Float, Float) -> Void,
         onTimeChange: @escaping (Duration) -> Void
     ) {
-        do { renderer = try PixlMetal.Renderer() }
-        catch { fatalError("Unable to create Metal renderer: \(error)") }
+        do {
+            let platform = try PixlMetal.Platform()
+            self.platform = platform
+            renderer = PixlParticles.Renderer(
+                backend: try GPUBackend(platform: platform)
+            )
+        } catch {
+            fatalError("Unable to create Metal renderer: \(error)")
+        }
         var orbit = CameraPreset.perspectiveOrbit
         orbit.yaw = yaw
         orbit.pitch = pitch
@@ -105,7 +114,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
 
     func configure(_ view: ParticleMTKView) {
         self.view = view
-        renderer.configure(view)
+        platform.configure(view)
         view.delegate = self
         view.isPaused = isPaused
         view.enableSetNeedsDisplay = true
@@ -135,8 +144,12 @@ final class Coordinator: NSObject, MTKViewDelegate {
                 system,
                 interpolation: sample.interpolation,
                 tick: sample.tick,
-                viewProjection: viewport.viewProjection,
-                in: view
+                viewProjection: Matrix4x4(
+                    x: viewport.viewProjection.columns.0,
+                    y: viewport.viewProjection.columns.1,
+                    z: viewport.viewProjection.columns.2,
+                    w: viewport.viewProjection.columns.3
+                )
             )
             onTimeChange(sample.time)
         } catch { fatalError("Unable to render particles: \(error)") }

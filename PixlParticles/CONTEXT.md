@@ -62,15 +62,48 @@
 
 ## Boundaries
 
-- `PixlParticles` imports no Apple frameworks and must remain usable on
-  non-Apple platforms.
+- Data and control move downstream: `PixlParticles` drives `PixlRenderer`;
+  `PixlRenderer` defines rendering, packing, GPU pipelines, culling, and the
+  platform contract; `PixlMetal` only implements that contract with Metal.
+- `PixlMetal` must never import `PixlParticles` or accept `System`, particles,
+  packed particle types, or renderer passes. It translates generic buffers,
+  pipelines, encoders, targets, and submission into Metal operations.
+- `PixlParticles` and `PixlRenderer` import no Apple frameworks and must remain
+  usable on non-Apple platforms. `PixlRenderer` also imports neither Dispatch
+  nor Swift Concurrency; platform frame synchronization belongs to adapters.
+- The high-level `PixlRenderer.Backend` seam remains independent of GPU APIs.
+  A software renderer such as SwiftUI Canvas can implement it directly;
+  GPU-backed rendering composes it with the lower-level platform contract.
+- The temporary Metal composition is `PixlParticles.Renderer` →
+  `PixlRenderer.GPUBackend` → `PixlMetal.Platform`. Future Pixl integration
+  replaces only the final adapter with `PixlPlatform`.
 - `PixlParticlesUI` imports `PixlParticles` and supports iOS, macOS, and visionOS.
 - Simulation, renderer-facing data lowering, and platform drawing are separate
-  concerns. Renderer-side code owns buffer packing; platform targets own GPU
-  resources and draw submission.
+  concerns. Renderer-side code owns buffer packing and rendering policy;
+  platform targets own concrete GPU resources and command translation.
 - Metal visibility uses stable GPU compaction: block-local scans, deterministic
   block offsets, stable index scatter, and indirect drawing. Culling never
   mutates authoritative simulation or changes particle order.
+- High-density point rendering will use optional screen-space LOD after frustum
+  compaction. The GPU-visible count selects the path without CPU readback.
+  Below the activation threshold, the existing visible-index buffer is drawn;
+  above it, particles are counted in quantized screen tiles and thinned using a
+  stable particle-ID hash. Do not use atomic arrival order for selection.
+- Screen-space LOD defaults are 16-by-16 physical-pixel tiles, one retained
+  point per pixel, activation at 500,000 visible points, and an exact 1
+  million visible-point ceiling. These deliberately low initial thresholds
+  make the LOD path easy to exercise and inspect in the editor. Distance LOD remains a separate future
+  artistic control; the maximum-visible ceiling is a safety limit, not a
+  replacement for authored particle count.
+- LOD resources must remain parallel and optional. Allocate no LOD-specific
+  storage when the feature is disabled or total particle count cannot reach the
+  activation threshold. Reuse existing scan scratch after frustum compaction
+  where possible. A stable-ID GPU buffer and final compacted index buffer may
+  add particle-proportional storage only on the high-density path.
+- Acquire the MTKView render-pass descriptor and drawable as late as possible,
+  after buffer availability, position-pair lowering, and culling encoding.
+  Early acquisition caused double-buffer back-pressure despite sufficient GPU
+  execution budget.
 - Camera state, projection, ground-plane visualization, input gestures, and
   scene restoration belong to `PixlParticlesUI`; none are particle simulation
   responsibilities.
@@ -81,6 +114,8 @@
   replays forward. This is correct but not scalable for long effects; periodic
   checkpoints are the intended next direction. Checkpoint frequency and memory
   policy remain undecided.
+- Editor LOD controls use ordinary local defaults and are deliberately not
+  persisted through `SceneStorage`.
 
 ## Working Method
 

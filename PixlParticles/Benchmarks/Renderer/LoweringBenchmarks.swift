@@ -1,7 +1,9 @@
 import PixlParticles
+import PixlRenderer
 import Swift
 
 @main
+@MainActor
 struct LoweringBenchmarks {
     private static let particleCounts = [
         10_000,
@@ -30,25 +32,22 @@ struct LoweringBenchmarks {
             spawnRegion: .sphere(radius: 100),
             duration: .seconds(60)
         )
-        let destination = UnsafeMutableBufferPointer<PositionPair>.allocate(
-            capacity: particleCount
+        let backend = BenchmarkBackend(capacity: particleCount)
+        let renderer = PixlParticles.Renderer(backend: backend)
+        let matrix = Matrix4x4(
+            x: [1, 0, 0, 0],
+            y: [0, 1, 0, 0],
+            z: [0, 0, 1, 0],
+            w: [0, 0, 0, 1]
         )
-        destination.initialize(
-            repeating: PositionPair(
-                previous: Position(x: 0, y: 0, z: 0),
-                current: Position(x: 0, y: 0, z: 0)
-            )
-        )
-        defer {
-            destination.deinitialize()
-            destination.deallocate()
-        }
-
-        let renderer = Renderer()
+        var tick: UInt64 = 0
         for _ in 0..<warmupCount {
-            _ = renderer.lowerPositionPairs(
-                from: system,
-                into: destination
+            tick += 1
+            try! renderer.render(
+                system,
+                interpolation: 0,
+                tick: tick,
+                viewProjection: matrix
             )
         }
 
@@ -60,14 +59,17 @@ struct LoweringBenchmarks {
         for _ in 0..<sampleCount {
             let start = clock.now
             for _ in 0..<iterationCount {
-                _ = renderer.lowerPositionPairs(
-                    from: system,
-                    into: destination
+                tick += 1
+                try! renderer.render(
+                    system,
+                    interpolation: 0,
+                    tick: tick,
+                    viewProjection: matrix
                 )
             }
             samples.append(seconds(start.duration(to: clock.now)))
             combinedChecksum ^= checksum(
-                destination,
+                backend.positions,
                 particleCount: particleCount
             )
         }
@@ -112,5 +114,37 @@ struct LoweringBenchmarks {
         let components = duration.components
         return Double(components.seconds)
             + Double(components.attoseconds) * 1e-18
+    }
+}
+
+@MainActor
+private final class BenchmarkBackend: Backend {
+    let positions: UnsafeMutableBufferPointer<PositionPair>
+
+    init(capacity: Int) {
+        positions = .allocate(capacity: capacity)
+        positions.initialize(
+            repeating: PositionPair(
+                previous: Position(x: 0, y: 0, z: 0),
+                current: Position(x: 0, y: 0, z: 0)
+            )
+        )
+    }
+
+    isolated deinit {
+        positions.deinitialize()
+        positions.deallocate()
+    }
+
+    func renderPoints(
+        count: Int,
+        positionsChanged: Bool,
+        interpolation: Float,
+        viewProjection: Matrix4x4,
+        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void
+    ) throws {
+        if positionsChanged {
+            writePositions(.init(rebasing: positions[..<count]))
+        }
     }
 }

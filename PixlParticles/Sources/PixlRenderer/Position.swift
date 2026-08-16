@@ -1,11 +1,11 @@
 import Swift
 
-package struct Position {
-    package let x: Float
-    package let y: Float
-    package let z: Float
+public struct Position: BitwiseCopyable, Equatable, Sendable {
+    public let x: Float
+    public let y: Float
+    public let z: Float
 
-    package init(x: Float, y: Float, z: Float) {
+    public init(x: Float, y: Float, z: Float) {
         self.x = x
         self.y = y
         self.z = z
