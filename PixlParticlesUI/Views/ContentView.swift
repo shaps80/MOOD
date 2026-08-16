@@ -24,8 +24,8 @@ struct ContentView: View {
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 2000)
-        _duration = .init(initialValue: 20)
+        _particleCount = .init(initialValue: 1_000_000)
+        _duration = .init(initialValue: 10)
         _spawnPreset = .init(initialValue: .sphere)
         _spawnDomain = .init(initialValue: .surface)
 

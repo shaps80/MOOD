@@ -40,6 +40,7 @@ public final class Renderer {
         guard let queue = device.makeCommandQueue() else {
             throw RenderError.commandQueue
         }
+        queue.label = "Pixl Particles"
         guard let library = try? device.makeDefaultLibrary(bundle: .module) else {
             throw RenderError.shaderLibrary
         }
@@ -109,6 +110,7 @@ public final class Renderer {
         view.device = device
         (view.layer as? CAMetalLayer)?.maximumDrawableCount = Self.bufferCount
         view.colorPixelFormat = .rgba16Float
+        view.depthStencilStorageMode = .memoryless
         view.depthStencilPixelFormat = .depth32Float
         view.sampleCount = 1
         view.framebufferOnly = true
@@ -167,6 +169,7 @@ public final class Renderer {
         else {
             throw RenderError.commandBuffer
         }
+        commandBuffer.label = "Pixl Particles Frame"
 
         try encodeCulling(
             particleCount: count,
@@ -184,6 +187,7 @@ public final class Renderer {
         else {
             throw RenderError.commandBuffer
         }
+        encoder.label = "Point Draw"
 
         var viewProjection = viewProjection
         var interpolation = interpolation
@@ -227,13 +231,14 @@ public final class Renderer {
         var buffers: [any MTLBuffer] = []
         buffers.reserveCapacity(Self.bufferCount)
 
-        for _ in 0..<Self.bufferCount {
+        for index in 0..<Self.bufferCount {
             guard let buffer = device.makeBuffer(
                 length: length,
                 options: .storageModeShared
             ) else {
                 throw RenderError.buffer
             }
+            buffer.label = "Position Pairs \(index)"
             buffers.append(buffer)
         }
 
@@ -243,7 +248,7 @@ public final class Renderer {
         ) / Self.cullingThreadCount
         var cullingBuffers: [CullingBuffers] = []
         cullingBuffers.reserveCapacity(Self.bufferCount)
-        for _ in 0..<Self.bufferCount {
+        for index in 0..<Self.bufferCount {
             guard
                 let localOffsets = device.makeBuffer(
                     length: requiredCapacity * MemoryLayout<UInt32>.stride,
@@ -268,6 +273,11 @@ public final class Renderer {
             else {
                 throw RenderError.buffer
             }
+            localOffsets.label = "Culling Local Offsets \(index)"
+            blockSums.label = "Culling Block Sums \(index)"
+            blockOffsets.label = "Culling Block Offsets \(index)"
+            visibleIndices.label = "Visible Particle Indices \(index)"
+            indirectArguments.label = "Point Draw Arguments \(index)"
             cullingBuffers.append(
                 CullingBuffers(
                     localOffsets: localOffsets,
@@ -307,6 +317,7 @@ public final class Renderer {
             guard let classify = commandBuffer.makeComputeCommandEncoder() else {
                 throw RenderError.commandBuffer
             }
+            classify.label = "Culling Classify and Local Scan"
             classify.setComputePipelineState(classifyPipeline)
             classify.setBuffer(positions, offset: 0, index: 0)
             classify.setBuffer(buffers.localOffsets, offset: 0, index: 1)
@@ -340,6 +351,7 @@ public final class Renderer {
         guard let scan = commandBuffer.makeComputeCommandEncoder() else {
             throw RenderError.commandBuffer
         }
+        scan.label = "Culling Block Scan"
         scan.setComputePipelineState(scanPipeline)
         scan.setBuffer(buffers.blockSums, offset: 0, index: 0)
         scan.setBuffer(buffers.blockOffsets, offset: 0, index: 1)
@@ -359,6 +371,7 @@ public final class Renderer {
             guard let scatter = commandBuffer.makeComputeCommandEncoder() else {
                 throw RenderError.commandBuffer
             }
+            scatter.label = "Culling Scatter"
             scatter.setComputePipelineState(scatterPipeline)
             scatter.setBuffer(buffers.localOffsets, offset: 0, index: 0)
             scatter.setBuffer(buffers.blockOffsets, offset: 0, index: 1)
