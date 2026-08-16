@@ -37,3 +37,4 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - Keep performance benchmarks out of the normal test suite and place standalone release harnesses under `PixlParticles/Benchmarks`.
 - Compile benchmark harnesses together with the real production sources so internal hot-path code remains internal and no benchmark-only API is introduced.
 - Run relevant benchmarks on both the host and WebAssembly toolchains where possible, and record accepted configurations and results in `PixlParticles/PERF.md`.
+- Compile production `PixlParticles` WebAssembly builds, including accepted benchmarks, directly with `swiftc -O -whole-module-optimization` and do not pass `-num-threads`. The Swift 6.4 snapshot's SwiftPM build adds that flag and currently destroys crucial cross-file optimization even when its value is `1`.

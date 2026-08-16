@@ -31,6 +31,12 @@ raw words and mapped `Float` bit patterns through both execution paths.
 - iPadOS: iPad Pro 11-inch (M5), iPad17,1, 10-core arm64e, iPadOS 27.0 (24A5408d), wired; Xcode 27.0 (27A5237l), Apple Swift 6.4 (`swiftlang-6.4.0.30.4`), deployment target iOS 17.0.
 - WebAssembly: Swift 6.4 development snapshot 2026-07-17, `wasm32-unknown-wasip1`, executed by Node.js 24.1.0's WASI runtime on the same machine.
 
+WebAssembly baselines must be compiled directly with `swiftc -O
+-whole-module-optimization`, without `-num-threads`. With this toolchain,
+SwiftPM adds `-num-threads` even for release WMO builds; its presence partitions
+code generation and reduces cross-file Philox throughput from roughly 447 to 12
+million values/s. This is a benchmark-build regression, not production evidence.
+
 ### Earlier provisional comparison
 
 Before the retained harness existed, a temporary 100-million-block microbenchmark
@@ -53,16 +59,17 @@ output without contaminating the measurement.
 
 | Region | macOS M1 Max | iPad M5 | WebAssembly | Checksum |
 | --- | ---: | ---: | ---: | ---: |
-| Point | 68.23 M particles/s · 14.66 ns/particle | 99.40 M particles/s · 10.06 ns/particle | 34.67 M particles/s · 28.85 ns/particle | `425986654175` |
-| Line | 54.22 M particles/s · 18.44 ns/particle | 91.26 M particles/s · 10.96 ns/particle | 30.72 M particles/s · 32.55 ns/particle | `688322051651` |
-| Box volume | 40.74 M particles/s · 24.55 ns/particle | 69.91 M particles/s · 14.30 ns/particle | 22.78 M particles/s · 43.89 ns/particle | `1246931346963` |
-| Box surface | 23.61 M particles/s · 42.36 ns/particle | 37.43 M particles/s · 26.72 ns/particle | 17.90 M particles/s · 55.85 ns/particle | `1231086806959` |
-| Sphere volume | 16.63 M particles/s · 60.12 ns/particle | 28.85 M particles/s · 34.66 ns/particle | 1.42 M particles/s · 706.39 ns/particle | `1228237922277` |
-| Sphere surface | 25.81 M particles/s · 38.74 ns/particle | 47.88 M particles/s · 20.88 ns/particle | 2.05 M particles/s · 488.77 ns/particle | `1242808241845` |
+| Point | 68.23 M particles/s · 14.66 ns/particle | 99.40 M particles/s · 10.06 ns/particle | 45.54 M particles/s · 21.96 ns/particle | `425986654175` |
+| Line | 54.22 M particles/s · 18.44 ns/particle | 91.26 M particles/s · 10.96 ns/particle | 44.28 M particles/s · 22.58 ns/particle | `688322051651` |
+| Box volume | 40.74 M particles/s · 24.55 ns/particle | 69.91 M particles/s · 14.30 ns/particle | 32.28 M particles/s · 30.98 ns/particle | `1246931346963` |
+| Box surface | 23.61 M particles/s · 42.36 ns/particle | 37.43 M particles/s · 26.72 ns/particle | 20.97 M particles/s · 47.69 ns/particle | `1231086806959` |
+| Sphere volume | 16.63 M particles/s · 60.12 ns/particle | 28.85 M particles/s · 34.66 ns/particle | 12.32 M particles/s · 81.18 ns/particle | `1228237922277` |
+| Sphere surface | 25.81 M particles/s · 38.74 ns/particle | 47.88 M particles/s · 20.88 ns/particle | 20.70 M particles/s · 48.30 ns/particle | `1242808241845` |
 
 The matching checksums confirm that each platform produced identical sampled
-particle state. The unusually large WebAssembly penalty for both rejection-based
-sphere paths is retained as measured evidence and requires focused profiling.
+particle state. Sphere volume is slower because rejection sampling sometimes
+needs more than one candidate; sphere surface is effectively level with box
+surface on WebAssembly.
 
 ## Fixed Simulation Updates
 
@@ -75,7 +82,7 @@ scheduling, sampling, interpolation, and rendering.
 | --- | ---: | ---: | ---: |
 | macOS M1 Max | 809.91 M updates/s | 1.23 ns | 1.23 ms |
 | iPad M5 | 929.55 M updates/s | 1.08 ns | 1.08 ms |
-| WebAssembly | 532.67 M updates/s | 1.88 ns | 1.88 ms |
+| WebAssembly | 530.76 M updates/s | 1.88 ns | 1.88 ms |
 
 All platforms produced checksum `1295003598899`.
 
@@ -86,4 +93,4 @@ assume perfect scaling with no renderer or other simulation work:
 | --- | ---: | ---: | ---: |
 | macOS M1 Max | 27.00 M | 13.50 M | 6.75 M |
 | iPad M5 | 30.99 M | 15.49 M | 7.75 M |
-| WebAssembly | 17.76 M | 8.88 M | 4.44 M |
+| WebAssembly | 17.69 M | 8.85 M | 4.42 M |
