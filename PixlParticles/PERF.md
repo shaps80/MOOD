@@ -154,3 +154,30 @@ between WebAssembly and native execution.
 
 iPad fixed updates must be remeasured against the production AoSoA
 implementation before replacing its earlier baseline.
+
+## Renderer Buffer Access
+
+Measured 2026-08-16 on the macOS and WebAssembly environments above. The
+standalone `Benchmarks/Renderer/BufferAccessBenchmarks.swift` harness compiles
+with the production `Vector3Batch` and packed `Position` types. It compares the
+same SIMD interpolation and packed-position writes through borrowed `Span`
+sources and `UnsafeBufferPointer` sources.
+
+The harness warms both paths with 10 one-million-particle passes, then
+alternates their measurement order. Each reported result is the median of five
+samples containing 100 one-million-particle passes. Runs are sequential.
+
+| Source view | macOS M1 Max | WebAssembly | Checksum |
+| --- | ---: | ---: | ---: |
+| `Span` | 1,764.12 M particles/s · 0.567 ns/particle | 236.51 M particles/s · 4.228 ns/particle | `233860995248` |
+| `UnsafeBufferPointer` | 1,777.24 M particles/s · 0.563 ns/particle | 236.11 M particles/s · 4.235 ns/particle | `233860995248` |
+
+The native difference was approximately 0.7% in favour of unsafe buffers; the
+WebAssembly difference was approximately 0.2% in favour of `Span`. Repeated
+native runs changed which path led. Treat the paths as equivalent for this
+workload and prefer non-escapable `Span` for borrowed read access.
+
+The production `PixlParticles` and `PixlRenderer` modules also compile
+successfully for `wasm32-unknown-wasip1` with the accepted direct Swift 6.4
+snapshot invocation, whole-module optimization, no `-num-threads`, and
+`-Xcc -msimd128`.

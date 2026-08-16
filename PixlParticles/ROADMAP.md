@@ -5,9 +5,6 @@ point-primitive rendering path.
 
 ## 1. Portable Render Data
 
-- Decide the package target boundary and name for renderer-facing data lowering.
-- Keep this component separate from simulation even if it initially lives in the
-  same package and depends directly on `PixlParticles`.
 - Lower interpolated particle values into the smallest fixed packed form that a
   platform renderer can consume with minimal additional work.
 - Support point primitives only: one physical framebuffer pixel, colour, and
@@ -19,9 +16,9 @@ point-primitive rendering path.
 
 ## 2. Metal Renderer
 
-- Add an Apple-platform renderer target to the `PixlParticles` package for iOS,
-  macOS, and visionOS.
 - Consume the portable packed representation and render Metal point primitives.
+- Keep particle colour linear and premultiplied through HDR shading and blending,
+  then encode only for final display presentation.
 - Perform camera projection and fixed-pipeline clipping and depth testing on the
   GPU.
 - Replace the SwiftUI Canvas particle drawing path while retaining the existing
@@ -30,6 +27,19 @@ point-primitive rendering path.
   portable render-data packing.
 - Keep this renderer isolated from Pixl integration. Decide how it later shares
   Pixl's Metal device and command workflow only when that integration begins.
+
+## 3. Colour Diagnostics
+
+- Add an editor-only diagnostic view driven by the production colour pipeline.
+- Compare correct linear interpolation with an intentionally incorrect
+  gamma-space reference.
+- Visualize premultiplied-alpha overlap on contrasting backgrounds.
+- Show an HDR intensity ladder and expose stored linear colour, pre-tone-map HDR
+  output, and final display-encoded values through a pixel inspector or GPU
+  readback.
+- Keep the diagnostic isolated enough to inform a later Pixl equivalent without
+  making that integration a current design constraint.
+- Extend the diagnostic with bloom comparisons when bloom enters scope.
 
 ## Later
 

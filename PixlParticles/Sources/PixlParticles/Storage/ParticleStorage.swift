@@ -106,4 +106,27 @@ final class ParticleStorage {
             initializedCount = count
         }
     }
+
+    func withPositions<Result: ~Copyable>(
+        _ body: (
+            Span<Vector3Batch>,
+            Span<Vector3Batch>,
+            Int
+        ) throws -> Result
+    ) rethrows -> Result {
+        let previous = UnsafeBufferPointer(
+            start: previousPositions.baseAddress,
+            count: batchCount
+        )
+        let current = UnsafeBufferPointer(
+            start: positions.baseAddress,
+            count: batchCount
+        )
+
+        return try body(
+            unsafe Span(_unsafeElements: previous),
+            unsafe Span(_unsafeElements: current),
+            count
+        )
+    }
 }

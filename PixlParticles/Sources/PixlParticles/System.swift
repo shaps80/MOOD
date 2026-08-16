@@ -117,6 +117,16 @@ public final class System {
         tick += 1
     }
 
+    package func withPositions<Result: ~Copyable>(
+        _ body: (
+            Span<Vector3Batch>,
+            Span<Vector3Batch>,
+            Int
+        ) throws -> Result
+    ) rethrows -> Result {
+        try storage.withPositions(body)
+    }
+
     private static func spawn(
         id: Particle.ID,
         random: RandomSource,
