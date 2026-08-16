@@ -181,3 +181,32 @@ The production `PixlParticles` and `PixlRenderer` modules also compile
 successfully for `wasm32-unknown-wasip1` with the accepted direct Swift 6.4
 snapshot invocation, whole-module optimization, no `-num-threads`, and
 `-Xcc -msimd128`.
+
+## Production Position Lowering
+
+Measured 2026-08-16 on the macOS M1 Max environment above. The standalone
+`Benchmarks/Renderer/LoweringBenchmarks.swift` harness compiles the production
+`PixlParticles` and `PixlRenderer` sources with `-O`, whole-module optimization,
+and cross-module optimization. It calls the real `Renderer.lowerPositions`
+path, including `System.withPositions`, SIMD interpolation, and packed writes.
+It excludes simulation and Metal submission.
+
+The harness warms up with 10 one-million-particle passes, then reports the
+median of five samples containing 100 passes each. Three complete sequential
+runs measured 0.800, 0.785, and 0.798 ms per million particles.
+
+| Platform | Throughput | Cost per particle | 1 M-particle frame | Checksum |
+| --- | ---: | ---: | ---: | ---: |
+| macOS M1 Max | 1,253.02 M particles/s | 0.798 ns | 0.798 ms | `401125634051` |
+
+This production result must replace the earlier buffer-access microbenchmark
+when budgeting renderer CPU time. That microbenchmark remains useful only for
+comparing `Span` against unsafe borrowed views under otherwise identical work.
+
+### Simulation regression check
+
+The current production sources measured 1,558.11 million fixed updates/s,
+0.642 ns/update, and 0.642 ms per one-million-particle tick with checksum
+`1295003598899`. The accepted AoSoA baseline is 1,559.86 million updates/s and
+0.641 ms per tick. The 0.1% throughput difference is normal measurement noise;
+no simulation regression was detected.
