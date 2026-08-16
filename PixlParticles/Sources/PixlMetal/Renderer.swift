@@ -8,10 +8,14 @@ import simd
 @MainActor
 public final class Renderer {
     private static let bufferCount = 2
+    private static let cullingThreadCount = 256
 
     private let device: any MTLDevice
     private let queue: any MTLCommandQueue
     private let pipeline: any MTLRenderPipelineState
+    private let classifyPipeline: any MTLComputePipelineState
+    private let scanPipeline: any MTLComputePipelineState
+    private let scatterPipeline: any MTLComputePipelineState
     private let depthState: any MTLDepthStencilState
     private let lowerer = PixlRenderer.Renderer()
     private let available = DispatchSemaphore(value: bufferCount)
@@ -21,6 +25,8 @@ public final class Renderer {
     private var stateBufferIndex = -1
     private var stateSystem: ObjectIdentifier?
     private var stateTick: UInt64?
+    private var cullingBuffers: [CullingBuffers] = []
+    private var cullingBufferIndex = 0
 
     public convenience init() throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -39,9 +45,28 @@ public final class Renderer {
         }
         guard
             let vertex = library.makeFunction(name: "pointVertex"),
-            let fragment = library.makeFunction(name: "pointFragment")
+            let fragment = library.makeFunction(name: "pointFragment"),
+            let classify = library.makeFunction(
+                name: "classifyAndScanVisibility"
+            ),
+            let scan = library.makeFunction(name: "scanVisibilityBlocks"),
+            let scatter = library.makeFunction(name: "scatterVisibleIndices")
         else {
             throw RenderError.shaderFunction
+        }
+
+        guard
+            let classifyPipeline = try? device.makeComputePipelineState(
+                function: classify
+            ),
+            let scanPipeline = try? device.makeComputePipelineState(
+                function: scan
+            ),
+            let scatterPipeline = try? device.makeComputePipelineState(
+                function: scatter
+            )
+        else {
+            throw RenderError.pipeline
         }
 
         let descriptor = MTLRenderPipelineDescriptor()
@@ -74,6 +99,9 @@ public final class Renderer {
         self.device = device
         self.queue = queue
         self.pipeline = pipeline
+        self.classifyPipeline = classifyPipeline
+        self.scanPipeline = scanPipeline
+        self.scatterPipeline = scatterPipeline
         self.depthState = depthState
     }
 
@@ -131,9 +159,25 @@ public final class Renderer {
 
         let buffer = buffers[stateBufferIndex]
         let count = system.particleCount
+        let cullingBuffers = cullingBuffers[cullingBufferIndex]
+        cullingBufferIndex = (cullingBufferIndex + 1) % Self.bufferCount
 
         guard
-            let commandBuffer = queue.makeCommandBuffer(),
+            let commandBuffer = queue.makeCommandBuffer()
+        else {
+            throw RenderError.commandBuffer
+        }
+
+        try encodeCulling(
+            particleCount: count,
+            interpolation: interpolation,
+            viewProjection: viewProjection,
+            positions: buffer,
+            buffers: cullingBuffers,
+            commandBuffer: commandBuffer
+        )
+
+        guard
             let encoder = commandBuffer.makeRenderCommandEncoder(
                 descriptor: descriptor
             )
@@ -146,20 +190,25 @@ public final class Renderer {
         encoder.setRenderPipelineState(pipeline)
         encoder.setDepthStencilState(depthState)
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+        encoder.setVertexBuffer(
+            cullingBuffers.visibleIndices,
+            offset: 0,
+            index: 1
+        )
         encoder.setVertexBytes(
             &viewProjection,
             length: MemoryLayout<simd_float4x4>.stride,
-            index: 1
+            index: 2
         )
         encoder.setVertexBytes(
             &interpolation,
             length: MemoryLayout<Float>.stride,
-            index: 2
+            index: 3
         )
         encoder.drawPrimitives(
             type: .point,
-            vertexStart: 0,
-            vertexCount: count
+            indirectBuffer: cullingBuffers.indirectArguments,
+            indirectBufferOffset: 0
         )
         encoder.endEncoding()
 
@@ -189,9 +238,153 @@ public final class Renderer {
         }
 
         self.buffers = buffers
+        let blockCapacity = (
+            requiredCapacity + Self.cullingThreadCount - 1
+        ) / Self.cullingThreadCount
+        var cullingBuffers: [CullingBuffers] = []
+        cullingBuffers.reserveCapacity(Self.bufferCount)
+        for _ in 0..<Self.bufferCount {
+            guard
+                let localOffsets = device.makeBuffer(
+                    length: requiredCapacity * MemoryLayout<UInt32>.stride,
+                    options: .storageModePrivate
+                ),
+                let blockSums = device.makeBuffer(
+                    length: blockCapacity * MemoryLayout<UInt32>.stride,
+                    options: .storageModePrivate
+                ),
+                let blockOffsets = device.makeBuffer(
+                    length: blockCapacity * MemoryLayout<UInt32>.stride,
+                    options: .storageModePrivate
+                ),
+                let visibleIndices = device.makeBuffer(
+                    length: requiredCapacity * MemoryLayout<UInt32>.stride,
+                    options: .storageModePrivate
+                ),
+                let indirectArguments = device.makeBuffer(
+                    length: 4 * MemoryLayout<UInt32>.stride,
+                    options: .storageModePrivate
+                )
+            else {
+                throw RenderError.buffer
+            }
+            cullingBuffers.append(
+                CullingBuffers(
+                    localOffsets: localOffsets,
+                    blockSums: blockSums,
+                    blockOffsets: blockOffsets,
+                    visibleIndices: visibleIndices,
+                    indirectArguments: indirectArguments
+                )
+            )
+        }
+
+        self.cullingBuffers = cullingBuffers
+        cullingBufferIndex = 0
         capacity = requiredCapacity
         stateBufferIndex = -1
         stateSystem = nil
         stateTick = nil
     }
+
+    private func encodeCulling(
+        particleCount: Int,
+        interpolation: Float,
+        viewProjection: simd_float4x4,
+        positions: any MTLBuffer,
+        buffers: CullingBuffers,
+        commandBuffer: any MTLCommandBuffer
+    ) throws {
+        let integerBlockCount = (
+            particleCount + Self.cullingThreadCount - 1
+        ) / Self.cullingThreadCount
+        var particleCount = UInt32(particleCount)
+        var blockCount = UInt32(integerBlockCount)
+        var interpolation = interpolation
+        var viewProjection = viewProjection
+
+        if particleCount > 0 {
+            guard let classify = commandBuffer.makeComputeCommandEncoder() else {
+                throw RenderError.commandBuffer
+            }
+            classify.setComputePipelineState(classifyPipeline)
+            classify.setBuffer(positions, offset: 0, index: 0)
+            classify.setBuffer(buffers.localOffsets, offset: 0, index: 1)
+            classify.setBuffer(buffers.blockSums, offset: 0, index: 2)
+            classify.setBytes(
+                &viewProjection,
+                length: MemoryLayout<simd_float4x4>.stride,
+                index: 3
+            )
+            classify.setBytes(
+                &interpolation,
+                length: MemoryLayout<Float>.stride,
+                index: 4
+            )
+            classify.setBytes(
+                &particleCount,
+                length: MemoryLayout<UInt32>.stride,
+                index: 5
+            )
+            classify.dispatchThreadgroups(
+                MTLSize(width: Int(blockCount), height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: Self.cullingThreadCount,
+                    height: 1,
+                    depth: 1
+                )
+            )
+            classify.endEncoding()
+        }
+
+        guard let scan = commandBuffer.makeComputeCommandEncoder() else {
+            throw RenderError.commandBuffer
+        }
+        scan.setComputePipelineState(scanPipeline)
+        scan.setBuffer(buffers.blockSums, offset: 0, index: 0)
+        scan.setBuffer(buffers.blockOffsets, offset: 0, index: 1)
+        scan.setBuffer(buffers.indirectArguments, offset: 0, index: 2)
+        scan.setBytes(
+            &blockCount,
+            length: MemoryLayout<UInt32>.stride,
+            index: 3
+        )
+        scan.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1)
+        )
+        scan.endEncoding()
+
+        if particleCount > 0 {
+            guard let scatter = commandBuffer.makeComputeCommandEncoder() else {
+                throw RenderError.commandBuffer
+            }
+            scatter.setComputePipelineState(scatterPipeline)
+            scatter.setBuffer(buffers.localOffsets, offset: 0, index: 0)
+            scatter.setBuffer(buffers.blockOffsets, offset: 0, index: 1)
+            scatter.setBuffer(buffers.visibleIndices, offset: 0, index: 2)
+            scatter.setBytes(
+                &particleCount,
+                length: MemoryLayout<UInt32>.stride,
+                index: 3
+            )
+            scatter.dispatchThreads(
+                MTLSize(width: Int(particleCount), height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: Self.cullingThreadCount,
+                    height: 1,
+                    depth: 1
+                )
+            )
+            scatter.endEncoding()
+        }
+    }
+}
+
+private struct CullingBuffers {
+    let localOffsets: any MTLBuffer
+    let blockSums: any MTLBuffer
+    let blockOffsets: any MTLBuffer
+    let visibleIndices: any MTLBuffer
+    let indirectArguments: any MTLBuffer
 }

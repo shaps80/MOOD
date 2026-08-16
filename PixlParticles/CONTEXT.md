@@ -68,6 +68,9 @@
 - Simulation, renderer-facing data lowering, and platform drawing are separate
   concerns. Renderer-side code owns buffer packing; platform targets own GPU
   resources and draw submission.
+- Metal visibility uses stable GPU compaction: block-local scans, deterministic
+  block offsets, stable index scatter, and indirect drawing. Culling never
+  mutates authoritative simulation or changes particle order.
 - Camera state, projection, ground-plane visualization, input gestures, and
   scene restoration belong to `PixlParticlesUI`; none are particle simulation
   responsibilities.

@@ -14,6 +14,10 @@ point-primitive rendering path.
 
 ## 2. Complete the Metal Point Path
 
+- Validate stable GPU frustum compaction across empty, partial, and fully visible
+  systems and measure its compute cost against the indirect-draw savings.
+- Expose visible-particle counts and Metal stage timings for diagnostics without
+  adding CPU readback to the production frame loop.
 - Consume packed particle colour in the point shader.
 - Keep colour linear and premultiplied through HDR shading and blending, then
   encode only for final display presentation.
@@ -40,5 +44,4 @@ point-primitive rendering path.
 - Niagara-style events and event payloads, including collision-driven events.
 
 Emitters, quads, sprites, textures, post-processing, additional particle
-properties, GPU compute, and advanced culling are deliberately outside the
-current roadmap.
+properties, and LOD policy are deliberately outside the current roadmap.
