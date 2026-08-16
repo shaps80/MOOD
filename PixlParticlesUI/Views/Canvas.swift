@@ -35,7 +35,7 @@ struct ParticleCanvas: View {
             }
         } symbols: {
             Rectangle()
-                .frame(width: 2, height: 2)
+                .frame(width: 1, height: 1)
                 .foregroundStyle(.foreground)
                 .tag("particle")
         }
