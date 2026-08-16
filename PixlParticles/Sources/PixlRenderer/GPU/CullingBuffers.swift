@@ -1,12 +1,13 @@
 import Swift
 
-@MainActor
-struct GPUCullingBuffers {
+struct CullingBuffers {
+    let blockCapacity: Int
     let localOffsets: any Buffer
     let blockSums: any Buffer
     let blockOffsets: any Buffer
     let visibleIndices: any Buffer
     let indirectArguments: any Buffer
+    let scan: ScanBuffers
 
     init?(
         platform: any Platform,
@@ -29,14 +30,20 @@ struct GPUCullingBuffers {
         ), let indirectArguments = platform.makeBuffer(
             length: 4 * integer,
             memory: .gpuOnly
+        ), let scan = ScanBuffers(
+            platform: platform,
+            blockCapacity: blockCapacity,
+            threadCount: CullingPass.threadCount
         ) else {
             return nil
         }
 
+        self.blockCapacity = blockCapacity
         self.localOffsets = localOffsets
         self.blockSums = blockSums
         self.blockOffsets = blockOffsets
         self.visibleIndices = visibleIndices
         self.indirectArguments = indirectArguments
+        self.scan = scan
     }
 }

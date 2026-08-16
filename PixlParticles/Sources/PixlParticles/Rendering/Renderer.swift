@@ -1,7 +1,6 @@
 import PixlRenderer
 import Swift
 
-@MainActor
 public final class Renderer {
     private let renderer: PixlRenderer.Renderer
     private var stateSystem: ObjectIdentifier?

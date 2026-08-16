@@ -1,6 +1,5 @@
 import Swift
 
-@MainActor
 package final class Renderer {
     private let backend: any Backend
 

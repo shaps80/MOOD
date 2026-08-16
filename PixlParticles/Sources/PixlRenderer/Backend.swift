@@ -1,6 +1,5 @@
 import Swift
 
-@MainActor
 public protocol Backend: AnyObject {
     func renderPoints(
         count: Int,

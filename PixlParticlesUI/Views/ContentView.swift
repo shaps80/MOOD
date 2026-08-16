@@ -42,7 +42,8 @@ struct ContentView: View {
                 spawnRegion: _spawnPreset.wrappedValue.region(
                     domain: _spawnDomain.wrappedValue
                 ),
-                duration: .seconds(_duration.wrappedValue)
+                duration: .seconds(_duration.wrappedValue),
+                storesRewindState: false
             )
         )
     }
@@ -157,7 +158,8 @@ struct ContentView: View {
             seed: UInt64(seed),
             particleCount: Int(particleCount),
             spawnRegion: spawnPreset.region(domain: spawnDomain),
-            duration: .seconds(duration)
+            duration: .seconds(duration),
+            storesRewindState: false
         )
         fraction = 0
     }

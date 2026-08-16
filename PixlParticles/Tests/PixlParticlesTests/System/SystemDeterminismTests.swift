@@ -71,6 +71,27 @@ struct SystemDeterminismTests {
         #expect(resumed.tick == 46)
     }
 
+    @Test("Seeking without stored rewind state regenerates deterministically")
+    func seekWithoutStoredState() {
+        let system = System(
+            seed: 42,
+            particleCount: 101,
+            spawnRegion: .sphere(radius: 100),
+            duration: .seconds(2),
+            storesRewindState: false
+        )
+
+        system.seek(to: .milliseconds(1_500))
+        let first = system.particleSnapshot
+        system.seek(to: .milliseconds(500))
+        system.seek(to: .milliseconds(1_500))
+
+        let replayed = system.particleSnapshot
+        #expect(replayed.map(\.id) == first.map(\.id))
+        #expect(replayed.map(\.position) == first.map(\.position))
+        #expect(replayed.map(\.velocity) == first.map(\.velocity))
+    }
+
     @Test("Stops at its duration")
     func duration() {
         let system = System(

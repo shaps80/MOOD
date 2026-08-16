@@ -4,7 +4,7 @@ import PixlRenderer
 import QuartzCore
 
 @MainActor
-public final class Platform: PixlRenderer.Platform {
+public final class Platform: @preconcurrency PixlRenderer.Platform {
     private static let frameCount = 2
 
     private let device: any MTLDevice

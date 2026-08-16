@@ -75,7 +75,7 @@
   A software renderer such as SwiftUI Canvas can implement it directly;
   GPU-backed rendering composes it with the lower-level platform contract.
 - The temporary Metal composition is `PixlParticles.Renderer` →
-  `PixlRenderer.GPUBackend` → `PixlMetal.Platform`. Future Pixl integration
+  `PixlRenderer.DeviceBackend` → `PixlMetal.Platform`. Future Pixl integration
   replaces only the final adapter with `PixlPlatform`.
 - `PixlParticlesUI` imports `PixlParticles` and supports iOS, macOS, and visionOS.
 - Simulation, renderer-facing data lowering, and platform drawing are separate
@@ -88,7 +88,7 @@
   compaction. The GPU-visible count selects the path without CPU readback.
   Below the activation threshold, the existing visible-index buffer is drawn;
   at or above it, particles are counted in quantized screen tiles and thinned
-  using a stable 64-bit particle-ID hash. Selection uses integer thresholds,
+  using a stable 32-bit hash derived from each 64-bit particle ID. Selection uses integer thresholds,
   stable compaction order, and an exact upper bound on the indirect draw count;
   it never depends on atomic arrival order.
 - Screen-space LOD defaults are 16-by-16 physical-pixel tiles, one retained
@@ -99,10 +99,14 @@
   replacement for authored particle count.
 - LOD resources must remain parallel and optional. Allocate no LOD-specific
   storage when the feature is disabled or total particle count cannot reach the
-  activation threshold. The implementation reuses frustum scan scratch and
-  adds parallel double-buffered stable IDs plus a final compacted index buffer
-  only on the high-density path. Disabling LOD or dropping below the total-count
-  activation threshold releases those resources.
+  activation threshold. The implementation reuses frustum scan scratch, keeps
+  one immutable stable-ID buffer, and sizes each final compacted index buffer to
+  the configured visible ceiling rather than total particle capacity. Disabling
+  LOD or dropping below the total-count activation threshold releases those
+  resources.
+- Portable particle and renderer code is nonisolated by default. Actor or thread
+  ownership belongs at composition boundaries; the temporary `PixlMetal`
+  adapter remains main-isolated only because it directly owns an `MTKView`.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
   after buffer availability, position-pair lowering, and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU
@@ -113,10 +117,10 @@
 - Pixl renderer improvements may be identified, but particle-system design must not change Pixl implicitly.
 - Tests use Swift Testing. XCTest is reserved for performance tests. UI testing is manual only.
 - Never run the app; build it and run valuable non-UI tests only.
-- Backward seeking currently restores initial state and deterministically
-  replays forward. This is correct but not scalable for long effects; periodic
-  checkpoints are the intended next direction. Checkpoint frequency and memory
-  policy remain undecided.
+- Backward seeking restores retained initial state when configured, otherwise
+  regenerates initial particles deterministically and replays forward. The
+  editor disables retained rewind state by default. Periodic checkpoints remain
+  the intended scalable direction for long effects.
 - Editor LOD controls use ordinary local defaults and are deliberately not
   persisted through `SceneStorage`.
 

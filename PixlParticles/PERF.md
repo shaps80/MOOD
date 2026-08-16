@@ -260,6 +260,17 @@ frame budget. These measurements do not justify CPU multithreading for the
 current linear pass. Re-evaluate per pass when collisions, forces, or events
 add materially more work; do not select concurrency from particle count alone.
 
+### Renderer-optimization regression check
+
+Measured after making renderer isolation explicit, reducing high-density LOD
+storage, and replacing serial GPU scans. Three sequential native runs retained
+the same CPU checksums. The median one-million-particle simulation tick was
+0.642 ms against the accepted 0.643 ms scaling result. At two million it was
+1.285 ms against 1.292 ms. Position-pair lowering measured 0.778 ms at one
+million against 0.780 ms, and 1.547 ms at two million against 1.633 ms. No CPU
+regression was detected; the two-million lowering improvement is approximately
+5.3% in this session. GPU results require a matched post-change Metal trace.
+
 ## Metal Point Rendering
 
 Measured 2026-08-16 on the macOS M1 Max environment using Release builds and
@@ -284,3 +295,16 @@ increased, culling remained near 1.9 ms while fragment time rose from 4.88 to
 15.76 to 18.87 ms, crossing the 16.67 ms deadline and producing roughly 30–44
 FPS. This evidence justifies screen-space density LOD; further frustum-culling
 optimization alone will not recover the lost frame rate.
+
+The pre-optimization 6-million-particle LOD trace, capped at 2 million visible
+points, settled at a 33.34 ms submission interval: the 30 Hz display tier.
+Aggregate compute measured 13.10 ms median and 16.80 ms p95; point drawing
+measured approximately 5.35 ms median and 7.56 ms p95. Metal allocation settled
+at 639.08 MiB and peaked at 669.80 MiB while resizing. This is the comparison
+baseline for parallel scans, cached tile indices, precomputed thresholds, and
+reduced LOD storage.
+
+After those changes, manual Release-app observation at 6 million particles and
+a 2-million visible ceiling measured approximately 960 MiB to 1.0 GiB process
+memory, down from approximately 1.18 GiB before the changes. Treat this as an
+observed range pending a matched post-change Metal allocation trace.

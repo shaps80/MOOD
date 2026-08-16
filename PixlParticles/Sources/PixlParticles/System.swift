@@ -13,7 +13,7 @@ public final class System {
     private var loop: Loop
     private let durationInTicks: UInt64
     private var storage: ParticleStorage
-    private let initialState: InitialParticleState
+    private let initialState: InitialParticleState?
     private var tick: UInt64 = 0
     private var nextID: Particle.ID = 0
     private var initialNextID: Particle.ID = 0
@@ -22,7 +22,8 @@ public final class System {
         seed: UInt64,
         particleCount: Int,
         spawnRegion: SpawnRegion,
-        duration: Duration
+        duration: Duration,
+        storesRewindState: Bool = true
     ) {
         precondition(particleCount >= 0)
         precondition(duration >= .zero)
@@ -50,7 +51,7 @@ public final class System {
                 region: region
             )
         }
-        initialState = storage.initialState()
+        initialState = storesRewindState ? storage.initialState() : nil
         nextID = Particle.ID(particleCount)
         initialNextID = nextID
     }
@@ -99,7 +100,17 @@ public final class System {
         )
 
         if targetTick < tick {
-            storage.restore(from: initialState)
+            if let initialState {
+                storage.restore(from: initialState)
+            } else {
+                storage = ParticleStorage(count: storage.count) { index in
+                    Self.spawn(
+                        id: Particle.ID(index),
+                        random: random,
+                        region: spawnRegion
+                    )
+                }
+            }
             tick = 0
             nextID = initialNextID
         }

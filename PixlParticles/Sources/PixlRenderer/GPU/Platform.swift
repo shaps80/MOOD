@@ -1,6 +1,5 @@
 import Swift
 
-@MainActor
 public protocol Platform: AnyObject {
     func acquireFrame()
     func releaseFrame()

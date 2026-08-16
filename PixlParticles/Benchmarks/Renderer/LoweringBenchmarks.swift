@@ -119,7 +119,6 @@ struct LoweringBenchmarks {
     }
 }
 
-@MainActor
 private final class BenchmarkBackend: Backend {
     let positions: UnsafeMutableBufferPointer<PositionPair>
 
@@ -133,7 +132,7 @@ private final class BenchmarkBackend: Backend {
         )
     }
 
-    isolated deinit {
+    deinit {
         positions.deinitialize()
         positions.deallocate()
     }

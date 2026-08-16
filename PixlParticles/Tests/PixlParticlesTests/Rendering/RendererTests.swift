@@ -46,7 +46,6 @@ struct ParticleRendererTests {
     }
 }
 
-@MainActor
 private final class RecordingBackend: Backend {
     let positions: UnsafeMutableBufferPointer<PositionPair>
     let ids: UnsafeMutableBufferPointer<UInt64>
@@ -66,7 +65,7 @@ private final class RecordingBackend: Backend {
         ids.initialize(repeating: 0)
     }
 
-    isolated deinit {
+    deinit {
         positions.deinitialize()
         positions.deallocate()
         ids.deinitialize()

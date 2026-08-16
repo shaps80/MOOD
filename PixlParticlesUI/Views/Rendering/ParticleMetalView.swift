@@ -72,7 +72,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
 @MainActor
 final class Coordinator: NSObject, MTKViewDelegate {
     private let platform: PixlMetal.Platform
-    private let backend: GPUBackend
+    private let backend: DeviceBackend
     private let renderer: PixlParticles.Renderer
     private weak var view: MTKView?
     private var system: System
@@ -98,7 +98,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
     ) {
         do {
             let platform = try PixlMetal.Platform()
-            let backend = try GPUBackend(platform: platform, pointLOD: pointLOD)
+            let backend = try DeviceBackend(platform: platform, pointLOD: pointLOD)
             self.platform = platform
             self.backend = backend
             renderer = PixlParticles.Renderer(

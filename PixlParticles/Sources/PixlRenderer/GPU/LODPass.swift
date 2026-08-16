@@ -1,27 +1,28 @@
 import Swift
 
-@MainActor
-final class GPULODPass {
+final class LODPass {
     private let prepare: any ComputePipeline
     private let clear: any ComputePipeline
     private let count: any ComputePipeline
+    private let thresholds: any ComputePipeline
     private let classify: any ComputePipeline
-    private let scan: any ComputePipeline
+    private let scan: LODScanPass
     private let scatter: any ComputePipeline
 
     init(platform: any Platform) throws {
         guard let prepare = platform.makeComputePipeline(function: "preparePointLOD"),
               let clear = platform.makeComputePipeline(function: "clearPointLODTiles"),
               let count = platform.makeComputePipeline(function: "countPointLODTiles"),
+              let thresholds = platform.makeComputePipeline(function: "preparePointLODThresholds"),
               let classify = platform.makeComputePipeline(function: "classifyPointLOD"),
-              let scan = platform.makeComputePipeline(function: "scanPointLODBlocks"),
               let scatter = platform.makeComputePipeline(function: "scatterPointLOD")
-        else { throw GPUError.pipeline }
+        else { throw RenderError.pipeline }
         self.prepare = prepare
         self.clear = clear
         self.count = count
+        self.thresholds = thresholds
         self.classify = classify
-        self.scan = scan
+        scan = try LODScanPass(platform: platform)
         self.scatter = scatter
     }
 
@@ -32,14 +33,14 @@ final class GPULODPass {
         viewProjection: Matrix4x4,
         positions: any Buffer,
         ids: any Buffer,
-        culling: GPUCullingBuffers,
-        lod: GPULODBuffers,
+        culling: CullingBuffers,
+        lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
         let tileSize = UInt32(settings.tileSize)
         let columns = (viewport.width + tileSize - 1) / tileSize
         let rows = (viewport.height + tileSize - 1) / tileSize
-        let configuration = GPULODConfiguration(
+        let configuration = LODConfiguration(
             activationCount: UInt32(settings.activationCount),
             maximumVisibleCount: UInt32(settings.maximumVisibleCount),
             tileSize: tileSize,
@@ -69,24 +70,27 @@ final class GPULODPass {
             lod,
             into: commandBuffer
         )
+        try encodeThresholds(configuration, culling, lod, into: commandBuffer)
         try encodeClassification(
             configuration,
-            interpolation,
-            viewProjection,
-            positions,
             ids,
             culling,
             lod,
             into: commandBuffer
         )
-        try encodeScan(configuration, culling, lod, into: commandBuffer)
+        try scan.encode(
+            maximumVisibleCount: configuration.maximumVisibleCount,
+            culling: culling,
+            lod: lod,
+            into: commandBuffer
+        )
         try encodeScatter(configuration, culling, lod, into: commandBuffer)
     }
 
     private func encodePrepare(
-        _ configuration: GPULODConfiguration,
-        _ culling: GPUCullingBuffers,
-        _ lod: GPULODBuffers,
+        _ configuration: LODConfiguration,
+        _ culling: CullingBuffers,
+        _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
         let encoder = try makeEncoder(commandBuffer, label: "Point LOD Prepare")
@@ -102,8 +106,8 @@ final class GPULODPass {
     }
 
     private func encodeClear(
-        _ configuration: GPULODConfiguration,
-        _ lod: GPULODBuffers,
+        _ configuration: LODConfiguration,
+        _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
         let encoder = try makeEncoder(commandBuffer, label: "Point LOD Clear Tiles")
@@ -112,18 +116,18 @@ final class GPULODPass {
         encoder.setValue(configuration.tileCount, index: 1)
         encoder.dispatchThreadgroups(
             indirectBuffer: lod.clearArguments,
-            threads: .init(width: GPUCullingPass.threadCount)
+            threads: .init(width: CullingPass.threadCount)
         )
         encoder.endEncoding()
     }
 
     private func encodeTileCount(
-        _ configuration: GPULODConfiguration,
+        _ configuration: LODConfiguration,
         _ interpolation: Float,
         _ viewProjection: Matrix4x4,
         _ positions: any Buffer,
-        _ culling: GPUCullingBuffers,
-        _ lod: GPULODBuffers,
+        _ culling: CullingBuffers,
+        _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
         let encoder = try makeEncoder(commandBuffer, label: "Point LOD Count Tiles")
@@ -132,67 +136,62 @@ final class GPULODPass {
         encoder.setBuffer(culling.visibleIndices, index: 1)
         encoder.setBuffer(culling.indirectArguments, index: 2)
         encoder.setBuffer(lod.tileCounts, index: 3)
-        encoder.setValue(viewProjection, index: 4)
-        encoder.setValue(interpolation, index: 5)
-        encoder.setValue(configuration, index: 6)
+        encoder.setBuffer(culling.localOffsets, index: 4)
+        encoder.setValue(viewProjection, index: 5)
+        encoder.setValue(interpolation, index: 6)
+        encoder.setValue(configuration, index: 7)
         encoder.dispatchThreadgroups(
             indirectBuffer: lod.workArguments,
-            threads: .init(width: GPUCullingPass.threadCount)
+            threads: .init(width: CullingPass.threadCount)
+        )
+        encoder.endEncoding()
+    }
+
+    private func encodeThresholds(
+        _ configuration: LODConfiguration,
+        _ culling: CullingBuffers,
+        _ lod: LODBuffers,
+        into commandBuffer: any CommandBuffer
+    ) throws {
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Thresholds")
+        encoder.setPipeline(thresholds)
+        encoder.setBuffer(lod.tileCounts, index: 0)
+        encoder.setBuffer(lod.tileThresholds, index: 1)
+        encoder.setValue(configuration, index: 2)
+        encoder.dispatchThreadgroups(
+            indirectBuffer: lod.clearArguments,
+            threads: .init(width: CullingPass.threadCount)
         )
         encoder.endEncoding()
     }
 
     private func encodeClassification(
-        _ configuration: GPULODConfiguration,
-        _ interpolation: Float,
-        _ viewProjection: Matrix4x4,
-        _ positions: any Buffer,
+        _ configuration: LODConfiguration,
         _ ids: any Buffer,
-        _ culling: GPUCullingBuffers,
-        _ lod: GPULODBuffers,
+        _ culling: CullingBuffers,
+        _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
         let encoder = try makeEncoder(commandBuffer, label: "Point LOD Classify")
         encoder.setPipeline(classify)
-        encoder.setBuffer(positions, index: 0)
-        encoder.setBuffer(ids, index: 1)
-        encoder.setBuffer(culling.visibleIndices, index: 2)
-        encoder.setBuffer(culling.indirectArguments, index: 3)
-        encoder.setBuffer(lod.tileCounts, index: 4)
-        encoder.setBuffer(culling.localOffsets, index: 5)
-        encoder.setBuffer(culling.blockSums, index: 6)
-        encoder.setValue(viewProjection, index: 7)
-        encoder.setValue(interpolation, index: 8)
-        encoder.setValue(configuration, index: 9)
+        encoder.setBuffer(ids, index: 0)
+        encoder.setBuffer(culling.visibleIndices, index: 1)
+        encoder.setBuffer(culling.indirectArguments, index: 2)
+        encoder.setBuffer(lod.tileThresholds, index: 3)
+        encoder.setBuffer(culling.localOffsets, index: 4)
+        encoder.setBuffer(culling.blockSums, index: 5)
+        encoder.setBuffer(lod.state, index: 6)
         encoder.dispatchThreadgroups(
             indirectBuffer: lod.workArguments,
-            threads: .init(width: GPUCullingPass.threadCount)
+            threads: .init(width: CullingPass.threadCount)
         )
         encoder.endEncoding()
     }
 
-    private func encodeScan(
-        _ configuration: GPULODConfiguration,
-        _ culling: GPUCullingBuffers,
-        _ lod: GPULODBuffers,
-        into commandBuffer: any CommandBuffer
-    ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Scan")
-        encoder.setPipeline(scan)
-        encoder.setBuffer(culling.blockSums, index: 0)
-        encoder.setBuffer(culling.blockOffsets, index: 1)
-        encoder.setBuffer(culling.indirectArguments, index: 2)
-        encoder.setBuffer(lod.drawArguments, index: 3)
-        encoder.setBuffer(lod.state, index: 4)
-        encoder.setValue(configuration, index: 5)
-        encoder.dispatchThreads(.init(width: 1), threads: .init(width: 1))
-        encoder.endEncoding()
-    }
-
     private func encodeScatter(
-        _ configuration: GPULODConfiguration,
-        _ culling: GPUCullingBuffers,
-        _ lod: GPULODBuffers,
+        _ configuration: LODConfiguration,
+        _ culling: CullingBuffers,
+        _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
         let encoder = try makeEncoder(commandBuffer, label: "Point LOD Scatter")
@@ -205,7 +204,7 @@ final class GPULODPass {
         encoder.setValue(configuration.maximumVisibleCount, index: 5)
         encoder.dispatchThreadgroups(
             indirectBuffer: lod.workArguments,
-            threads: .init(width: GPUCullingPass.threadCount)
+            threads: .init(width: CullingPass.threadCount)
         )
         encoder.endEncoding()
     }
@@ -215,14 +214,14 @@ final class GPULODPass {
         label: String
     ) throws -> any ComputeEncoder {
         guard let encoder = commandBuffer.makeComputeEncoder() else {
-            throw GPUError.encoder
+            throw RenderError.encoder
         }
         encoder.label = label
         return encoder
     }
 }
 
-private struct GPULODConfiguration: BitwiseCopyable {
+private struct LODConfiguration: BitwiseCopyable {
     let activationCount: UInt32
     let maximumVisibleCount: UInt32
     let tileSize: UInt32

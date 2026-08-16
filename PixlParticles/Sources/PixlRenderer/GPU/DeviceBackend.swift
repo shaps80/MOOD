@@ -1,14 +1,13 @@
 import Swift
 
-@MainActor
-public final class GPUBackend: Backend {
+public final class DeviceBackend: Backend {
     private static let frameCount = 2
 
     private let platform: any Platform
-    private let buffers: GPUFrameBuffers
-    private let culling: GPUCullingPass
-    private let lod: GPULODPass
-    private let points: GPUPointPass
+    private let buffers: FrameBuffers
+    private let culling: CullingPass
+    private let lod: LODPass
+    private let points: PointPass
     public var pointLOD: PointLOD
 
     public init(
@@ -17,13 +16,13 @@ public final class GPUBackend: Backend {
     ) throws {
         self.platform = platform
         self.pointLOD = pointLOD
-        buffers = GPUFrameBuffers(
+        buffers = FrameBuffers(
             platform: platform,
             frameCount: Self.frameCount
         )
-        culling = try GPUCullingPass(platform: platform)
-        lod = try GPULODPass(platform: platform)
-        points = try GPUPointPass(platform: platform)
+        culling = try CullingPass(platform: platform)
+        lod = try LODPass(platform: platform)
+        points = try PointPass(platform: platform)
     }
 
     public func renderPoints(
@@ -54,7 +53,7 @@ public final class GPUBackend: Backend {
             writeIDs: writeIDs
         )
         guard let commandBuffer = platform.makeCommandBuffer() else {
-            throw GPUError.commandBuffer
+            throw RenderError.commandBuffer
         }
         commandBuffer.label = "Pixl Particles Frame"
         try culling.encode(
@@ -98,7 +97,7 @@ public final class GPUBackend: Backend {
     }
 }
 
-enum GPUError: Error {
+enum RenderError: Error {
     case buffer
     case commandBuffer
     case encoder

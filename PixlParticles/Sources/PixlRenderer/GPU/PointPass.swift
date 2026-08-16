@@ -1,7 +1,6 @@
 import Swift
 
-@MainActor
-final class GPUPointPass {
+final class PointPass {
     private let pipeline: any RenderPipeline
     private let lodPipeline: any RenderPipeline
     private let depth: any DepthState
@@ -27,7 +26,7 @@ final class GPUPointPass {
             compare: .less,
             isWriteEnabled: true
         ) else {
-            throw GPUError.pipeline
+            throw RenderError.pipeline
         }
         self.pipeline = pipeline
         self.lodPipeline = lodPipeline
@@ -38,14 +37,14 @@ final class GPUPointPass {
         positions: any Buffer,
         visibleIndices: any Buffer,
         indirectArguments: any Buffer,
-        lod: GPULODBuffers?,
+        lod: LODBuffers?,
         interpolation: Float,
         viewProjection: Matrix4x4,
         target: any RenderTarget,
         into commandBuffer: any CommandBuffer
     ) throws {
         guard let encoder = commandBuffer.makeRenderEncoder(target: target) else {
-            throw GPUError.encoder
+            throw RenderError.encoder
         }
         encoder.label = "Point Draw"
         encoder.setPipeline(lod == nil ? pipeline : lodPipeline)
