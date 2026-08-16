@@ -32,7 +32,13 @@ let package = Package(
         ),
         .target(
             name: "PixlMetal",
-            dependencies: ["PixlRenderer"],
+            dependencies: [
+                "PixlParticles",
+                "PixlRenderer",
+            ],
+            resources: [
+                .process("Shaders")
+            ],
             swiftSettings: releaseCrossModuleOptimization()
         ),
         .testTarget(

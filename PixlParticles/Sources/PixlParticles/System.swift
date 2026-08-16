@@ -3,6 +3,8 @@ import Swift
 public final class System {
     public let duration: Duration
 
+    package var particleCount: Int { storage.count }
+
     private let random: RandomSource
     private let spawnRegion: SpawnRegion
     private var loop: Loop
