@@ -140,6 +140,31 @@ struct SpawnRegionTests {
         })
     }
 
+    @Test("Sphere surface samples its radius deterministically")
+    func sphereSurface() {
+        let first = System(
+            seed: 42,
+            particleCount: 10_000,
+            spawnRegion: .sphere(radius: 100, domain: .surface),
+            duration: .seconds(2)
+        ).sample(at: .now).particles
+        let second = System(
+            seed: 42,
+            particleCount: 10_000,
+            spawnRegion: .sphere(radius: 100, domain: .surface),
+            duration: .seconds(2)
+        ).sample(at: .now).particles
+
+        #expect(first.map(\.position) == second.map(\.position))
+        #expect(first.allSatisfy { particle in
+            let position = particle.position
+            let radiusSquared = position.x * position.x +
+                position.y * position.y +
+                position.z * position.z
+            return abs(radiusSquared - 10_000) < 0.01
+        })
+    }
+
     @Test("Matches stable spawn-position bit patterns")
     func stableBitPatterns() {
         let regions: [SpawnRegion] = [
@@ -147,6 +172,7 @@ struct SpawnRegionTests {
             .box(size: [20, 40, 60]),
             .box(size: [20, 40, 60], domain: .surface),
             .sphere(radius: 100),
+            .sphere(radius: 100, domain: .surface),
         ]
         let actual = regions.map { region in
             System(
@@ -187,6 +213,12 @@ struct SpawnRegionTests {
                 [3_250_952_976, 1_116_056_620, 1_097_390_144],
                 [1_115_838_659, 1_107_119_621, 1_101_292_521],
                 [1_110_945_260, 1_107_854_089, 1_099_578_771],
+            ],
+            [
+                [1_110_422_093, 3_242_422_486, 1_118_962_006],
+                [3_266_409_025, 3_255_413_204, 3_254_109_107],
+                [1_119_070_998, 1_110_348_665, 3_231_716_222],
+                [1_117_169_044, 1_113_582_701, 1_107_960_267],
             ],
         ]
 

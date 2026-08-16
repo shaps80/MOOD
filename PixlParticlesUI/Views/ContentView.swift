@@ -99,7 +99,7 @@ struct ContentView: View {
                         spawnPreset: $spawnPreset,
                         spawnDomain: $spawnDomain
                     )
-                    .scenePadding([.horizontal, .top])
+                    .scenePadding([.horizontal])
                 }
 
                 Spacer(minLength: 0)

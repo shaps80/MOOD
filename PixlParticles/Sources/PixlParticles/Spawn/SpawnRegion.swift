@@ -15,8 +15,8 @@ public enum SpawnRegion: Hashable, Sendable {
     /// Distributes particles within a box centred on the origin.
     case box(size: Vec3, domain: Domain = .volume)
 
-    /// Distributes particles throughout a sphere centred on the origin.
-    case sphere(radius: Float)
+    /// Distributes particles within a sphere centred on the origin.
+    case sphere(radius: Float, domain: Domain = .volume)
 
     func validate() {
         switch self {
@@ -34,7 +34,7 @@ public enum SpawnRegion: Hashable, Sendable {
                 precondition(Self.boxFaceAreaSum(size).isFinite)
             }
 
-        case let .sphere(radius):
+        case let .sphere(radius, _):
             precondition(radius.isFinite && radius >= 0)
         }
     }
@@ -71,33 +71,87 @@ public enum SpawnRegion: Hashable, Sendable {
                 return Self.boxSurface(size: size, block: block)
             }
 
-        case let .sphere(radius):
+        case let .sphere(radius, domain):
             guard radius > 0 else { return .zero }
 
-            var index: UInt32 = 0
-
-            while true {
-                let block = random.block(
-                    at: address,
-                    channel: .position,
-                    index: index
+            switch domain {
+            case .volume:
+                return Self.sphereVolume(
+                    radius: radius,
+                    using: random,
+                    at: address
                 )
-                let position: Vec3 = [
-                    Self.component(from: block.x0, extent: 1),
-                    Self.component(from: block.x1, extent: 1),
-                    Self.component(from: block.x2, extent: 1),
-                ]
-                let xSquared = position.x * position.x
-                let ySquared = position.y * position.y
-                let zSquared = position.z * position.z
-                let lengthSquared = xSquared + ySquared + zSquared
-
-                if lengthSquared <= 1 {
-                    return position * radius
-                }
-
-                index &+= 1
+            case .surface:
+                return Self.sphereSurface(
+                    radius: radius,
+                    using: random,
+                    at: address
+                )
             }
+        }
+    }
+
+    @inline(__always)
+    private static func sphereVolume(
+        radius: Float,
+        using random: RandomSource,
+        at address: UInt64
+    ) -> Vec3 {
+        var index: UInt32 = 0
+
+        while true {
+            let block = random.block(
+                at: address,
+                channel: .position,
+                index: index
+            )
+            let position: Vec3 = [
+                Self.component(from: block.x0, extent: 1),
+                Self.component(from: block.x1, extent: 1),
+                Self.component(from: block.x2, extent: 1),
+            ]
+            let xSquared = position.x * position.x
+            let ySquared = position.y * position.y
+            let zSquared = position.z * position.z
+            let lengthSquared = xSquared + ySquared + zSquared
+
+            if lengthSquared <= 1 {
+                return position * radius
+            }
+
+            index &+= 1
+        }
+    }
+
+    /// Marsaglia's trig-free mapping from a unit disc onto a unit sphere.
+    @inline(__always)
+    private static func sphereSurface(
+        radius: Float,
+        using random: RandomSource,
+        at address: UInt64
+    ) -> Vec3 {
+        var index: UInt32 = 0
+
+        while true {
+            let block = random.block(
+                at: address,
+                channel: .position,
+                index: index
+            )
+            let x = component(from: block.x0, extent: 1)
+            let y = component(from: block.x1, extent: 1)
+            let lengthSquared = x * x + y * y
+
+            if lengthSquared < 1 {
+                let scale = 2 * (1 - lengthSquared).squareRoot()
+                return [
+                    x * scale * radius,
+                    y * scale * radius,
+                    (1 - 2 * lengthSquared) * radius,
+                ]
+            }
+
+            index &+= 1
         }
     }
 
