@@ -82,20 +82,20 @@ Measured after lowering production particle state into unsafe four-particle
 AoSoA batches. The initial rewind state stores positions only rather than copying
 identifiers, previous positions, and immutable velocities.
 
-| Region | macOS M1 Max | Checksum |
-| --- | ---: | ---: |
-| Point | 53.30 M particles/s · 18.76 ns/particle | `425986654175` |
-| Line | 46.71 M particles/s · 21.41 ns/particle | `688322051651` |
-| Box volume | 37.96 M particles/s · 26.34 ns/particle | `1246931346963` |
-| Box surface | 23.67 M particles/s · 42.24 ns/particle | `1231086806959` |
-| Sphere volume | 16.73 M particles/s · 59.77 ns/particle | `1228237922277` |
-| Sphere surface | 24.72 M particles/s · 40.45 ns/particle | `1242808241845` |
+| Region | macOS M1 Max | WebAssembly | Checksum |
+| --- | ---: | ---: | ---: |
+| Point | 53.30 M particles/s · 18.76 ns/particle | 42.65 M particles/s · 23.45 ns/particle | `425986654175` |
+| Line | 46.71 M particles/s · 21.41 ns/particle | 38.39 M particles/s · 26.05 ns/particle | `688322051651` |
+| Box volume | 37.96 M particles/s · 26.34 ns/particle | 30.13 M particles/s · 33.19 ns/particle | `1246931346963` |
+| Box surface | 23.67 M particles/s · 42.24 ns/particle | 20.11 M particles/s · 49.72 ns/particle | `1231086806959` |
+| Sphere volume | 16.73 M particles/s · 59.77 ns/particle | 11.27 M particles/s · 88.73 ns/particle | `1228237922277` |
+| Sphere surface | 24.72 M particles/s · 40.45 ns/particle | 18.79 M particles/s · 53.21 ns/particle | `1242808241845` |
 
 Cheap regions expose the cost of packing and eagerly retaining rewind state;
 regions dominated by sampling math remain close to the earlier baseline. The
 position-only rewind snapshot costs approximately 12 bytes per particle rather
-than the earlier full AoSoA snapshot's 44 bytes per particle. iPad and
-WebAssembly initialization must be remeasured for the new production layout.
+than the earlier full AoSoA snapshot's 44 bytes per particle. iPad
+initialization must still be remeasured for the new production layout.
 
 ## Fixed Simulation Updates
 
@@ -131,6 +131,7 @@ four particles per operation.
 | Platform | Throughput | Cost per update | 1 M-particle tick | Checksum |
 | --- | ---: | ---: | ---: | ---: |
 | macOS M1 Max | 1,559.86 M updates/s | 0.641 ns | 0.641 ms | `1295003598899` |
+| WebAssembly | 1,612.97 M updates/s | 0.620 ns | 0.620 ms | `1295003598899` |
 
 The immediately preceding production implementation measured 840.66 million
 updates/s and 1.190 ms per million-particle tick in the same session. AoSoA
@@ -139,9 +140,17 @@ approximately 46%, with identical output. This benchmark remains
 single-threaded and excludes scheduling, snapshot materialization,
 interpolation, and rendering.
 
+The WebAssembly result used direct WMO compilation with `-Xcc -msimd128`; the
+inspected binary contained 331 SIMD opcode lines. It improved from the earlier
+530.76 million updates/s and 1.88 ms baseline to 1,612.97 million updates/s and
+0.620 ms. Node/V8 therefore measured marginally faster than native Swift for
+this focused loop on the same M1 Max hardware; this is not a general comparison
+between WebAssembly and native execution.
+
 | Platform | 30 Hz | 60 Hz | 120 Hz |
 | --- | ---: | ---: | ---: |
 | macOS M1 Max AoSoA | 52.00 M | 26.00 M | 13.00 M |
+| WebAssembly AoSoA | 53.77 M | 26.88 M | 13.44 M |
 
-iPad and WebAssembly fixed updates must be remeasured against the production
-AoSoA implementation before replacing their earlier baselines.
+iPad fixed updates must be remeasured against the production AoSoA
+implementation before replacing its earlier baseline.

@@ -38,8 +38,8 @@ Work through one decision at a time, in this order unless new evidence requires 
 - Determine how events affect CPU execution, GPU execution, or hybrid approaches.
 - The current production CPU motion pass is single-threaded and explicitly SIMD
   across particles. The macOS baseline is 0.641 ms per million particles.
-- Rerun production AoSoA benchmarks on iPad and WebAssembly. WebAssembly requires
-  both direct WMO compilation without `-num-threads` and `-Xcc -msimd128`.
+- Rerun production AoSoA benchmarks on iPad. WebAssembly is verified using
+  direct WMO compilation without `-num-threads` and with `-Xcc -msimd128`.
 
 ## 6. Post-processing Ownership
 
