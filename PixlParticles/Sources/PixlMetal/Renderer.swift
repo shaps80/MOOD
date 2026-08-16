@@ -126,13 +126,6 @@ public final class Renderer {
     ) throws {
         precondition(interpolation >= 0 && interpolation <= 1)
 
-        guard
-            let descriptor = view.currentRenderPassDescriptor,
-            let drawable = view.currentDrawable
-        else {
-            return
-        }
-
         available.wait()
         var submitted = false
         defer {
@@ -179,6 +172,13 @@ public final class Renderer {
             buffers: cullingBuffers,
             commandBuffer: commandBuffer
         )
+
+        guard
+            let descriptor = view.currentRenderPassDescriptor,
+            let drawable = view.currentDrawable
+        else {
+            return
+        }
 
         guard
             let encoder = commandBuffer.makeRenderCommandEncoder(

@@ -175,7 +175,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
         handlePan(
             state: gesture.state,
             x: Float(gesture.translation(in: gesture.view).x),
-            y: Float(gesture.translation(in: gesture.view).y)
+            y: -Float(gesture.translation(in: gesture.view).y)
         )
     }
 

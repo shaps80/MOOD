@@ -2,7 +2,7 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
-    @State private var isPaused: Bool = true
+    @State private var isPaused: Bool = false
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
     @State private var cameraPreset = CameraPreset.perspective
@@ -24,8 +24,8 @@ struct ContentView: View {
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 1_000_000)
-        _duration = .init(initialValue: 10)
+        _particleCount = .init(initialValue: 2_000_000)
+        _duration = .init(initialValue: 15)
         _spawnPreset = .init(initialValue: .sphere)
         _spawnDomain = .init(initialValue: .surface)
 
