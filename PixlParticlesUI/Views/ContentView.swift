@@ -2,10 +2,6 @@ import SwiftUI
 import PixlParticles
 
 struct ContentView: View {
-    private let orbitSensitivity: Float = 0.005
-    private let scrollZoomSensitivity: Float = 0.01
-    private let zoomRange: ClosedRange<Float> = 0.1...10
-
     @State private var isPaused: Bool = true
     @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
@@ -25,32 +21,6 @@ struct ContentView: View {
     @State private var duration: Double
     @State private var spawnPreset: SpawnPreset
     @State private var spawnDomain: SpawnRegion.Domain
-
-    @GestureState private var orbitTranslation: CGSize = .zero
-    @GestureState private var zoomMagnification: CGFloat = 1
-
-    private var perspectiveOrbit: Orbit {
-        var orbit = CameraPreset.perspectiveOrbit
-        orbit.yaw = Float(perspectiveYaw)
-        orbit.pitch = Float(perspectivePitch)
-        return orbit
-    }
-
-    private var camera: Camera {
-        let zoom = Float(cameraZoom) * Float(zoomMagnification)
-
-        guard cameraPreset == .perspective else {
-            var camera = cameraPreset.fixedCamera
-            camera.projection = camera.projection.magnified(by: zoom)
-            return camera
-        }
-
-        return perspectiveOrbit.camera(
-            yawOffset: -Float(orbitTranslation.width) * orbitSensitivity,
-            pitchOffset: Float(orbitTranslation.height) * orbitSensitivity,
-            zoom: zoom
-        )
-    }
 
     init() {
         _seed = .init(initialValue: 0)
@@ -73,56 +43,16 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            TimelineView(.animation) { _ in
-                let now = ContinuousClock.now
-                let sample = system.sample(
-                    at: now,
-                    isPaused: isPaused || isScrubbing
-                )
-
-                ParticleCanvas(
-                    sample: sample,
-                    camera: camera,
-                    groundPlaneStyle: cameraPreset.groundPlaneStyle
-                )
-                .onChange(of: sample.time) { _, time in
-                    guard !isScrubbing, system.duration > .zero else {
-                        return
-                    }
-
-                    fraction = time / system.duration
-                }
-                .gesture(
-                    DragGesture()
-                        .updating($orbitTranslation) { value, state, _ in
-                            state = value.translation
-                        }
-                        .onEnded { value in
-                            var orbit = perspectiveOrbit
-                            orbit.rotate(
-                                yawBy: -Float(value.translation.width)
-                                    * orbitSensitivity,
-                                pitchBy: Float(value.translation.height)
-                                    * orbitSensitivity
-                            )
-                            perspectiveYaw = Double(orbit.yaw)
-                            perspectivePitch = Double(orbit.pitch)
-                        },
-                    isEnabled: cameraPreset == .perspective
-                )
-                .simultaneousGesture(
-                    MagnifyGesture()
-                        .updating($zoomMagnification) { value, state, _ in
-                            state = value.magnification
-                        }
-                        .onEnded { value in
-                            zoom(by: Float(value.magnification))
-                        }
-                )
-                .onScrollWheel { delta in
-                    zoom(by: exp(Float(delta) * scrollZoomSensitivity))
-                }
-            }
+            ParticleViewport(
+                system: system,
+                isPaused: isPaused,
+                isScrubbing: isScrubbing,
+                cameraPreset: cameraPreset,
+                perspectiveYaw: $perspectiveYaw,
+                perspectivePitch: $perspectivePitch,
+                cameraZoom: $cameraZoom,
+                fraction: $fraction
+            )
             .ignoresSafeArea()
 
             VStack {
@@ -148,11 +78,11 @@ struct ContentView: View {
                 .frame(maxWidth: 500)
                 .onChange(of: fraction) { _, fraction in
                     guard isScrubbing else { return }
-
                     system.seek(to: system.duration * fraction)
                 }
             }
         }
+        .background(.quinary)
         .onChange(of: duration) { _, duration in
             let duration = max(duration, 0)
 
@@ -220,17 +150,6 @@ struct ContentView: View {
         fraction = 0
     }
 
-    private func zoom(by magnification: Float) {
-        cameraZoom = Double(
-            min(
-                max(
-                    Float(cameraZoom) * magnification,
-                    zoomRange.lowerBound
-                ),
-                zoomRange.upperBound
-            )
-        )
-    }
 }
 
 #Preview {

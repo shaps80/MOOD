@@ -11,7 +11,7 @@ struct SpawnRegionTests {
             particleCount: 32,
             spawnRegion: .point(position),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(particles.allSatisfy { $0.position == position })
     }
@@ -26,7 +26,7 @@ struct SpawnRegionTests {
                 to: [10, 20, 30]
             ),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(particles.allSatisfy { particle in
             particle.position.x >= -10 &&
@@ -43,7 +43,7 @@ struct SpawnRegionTests {
             particleCount: 1_000,
             spawnRegion: .box(size: [20, 40, 60]),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(particles.allSatisfy { particle in
             abs(particle.position.x) <= 10 &&
@@ -62,7 +62,7 @@ struct SpawnRegionTests {
                 domain: .surface
             ),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
         let second = System(
             seed: 42,
             particleCount: 10_000,
@@ -71,7 +71,7 @@ struct SpawnRegionTests {
                 domain: .surface
             ),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(first.map(\.position) == second.map(\.position))
         #expect(first.allSatisfy { particle in
@@ -96,7 +96,7 @@ struct SpawnRegionTests {
             particleCount: 1_000,
             spawnRegion: .box(size: [20, 40, 60]),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
         let explicit = System(
             seed: 42,
             particleCount: 1_000,
@@ -105,7 +105,7 @@ struct SpawnRegionTests {
                 domain: .volume
             ),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(implicit.map(\.position) == explicit.map(\.position))
     }
@@ -117,13 +117,13 @@ struct SpawnRegionTests {
             particleCount: 1_000,
             spawnRegion: .sphere(radius: 100),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
         let second = System(
             seed: 42,
             particleCount: 1_000,
             spawnRegion: .sphere(radius: 100),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(first.map(\.position) == second.map(\.position))
         #expect(first.allSatisfy { particle in
@@ -147,13 +147,13 @@ struct SpawnRegionTests {
             particleCount: 10_000,
             spawnRegion: .sphere(radius: 100, domain: .surface),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
         let second = System(
             seed: 42,
             particleCount: 10_000,
             spawnRegion: .sphere(radius: 100, domain: .surface),
             duration: .seconds(2)
-        ).sample(at: .now).particles
+        ).particleSnapshot
 
         #expect(first.map(\.position) == second.map(\.position))
         #expect(first.allSatisfy { particle in
@@ -180,7 +180,7 @@ struct SpawnRegionTests {
                 particleCount: 4,
                 spawnRegion: region,
                 duration: .seconds(2)
-            ).sample(at: .now).particles.map { particle in
+            ).particleSnapshot.map { particle in
                 let position = particle.position
                 return [
                     position.x.bitPattern,

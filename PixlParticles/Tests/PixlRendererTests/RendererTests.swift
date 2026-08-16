@@ -1,5 +1,5 @@
-import PixlParticles
 import Testing
+@testable import PixlParticles
 @testable import PixlRenderer
 
 @Suite("Renderer lowering")
@@ -34,9 +34,10 @@ struct RendererTests {
             into: destination
         )
 
-        #expect(count == sample.particles.count)
+        let particles = system.particleSnapshot
+        #expect(count == particles.count)
         for index in 0..<count {
-            let expected = sample.particles[index].interpolated(
+            let expected = particles[index].interpolated(
                 by: sample.interpolation
             )
             #expect(destination[index].x == expected.x)

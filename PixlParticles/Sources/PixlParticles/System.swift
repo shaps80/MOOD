@@ -3,6 +3,8 @@ import Swift
 public final class System {
     public let duration: Duration
 
+    var particleSnapshot: [Particle] { storage.particles() }
+
     package var particleCount: Int { storage.count }
 
     private let random: RandomSource
@@ -82,7 +84,6 @@ public final class System {
             : Duration.seconds(Double(tick) * schedule.fixedDeltaSeconds)
 
         return .init(
-            particles: storage.particles(),
             interpolation: interpolation,
             tick: tick,
             time: time
@@ -109,7 +110,6 @@ public final class System {
         }
 
         storage.resetInterpolation()
-
         loop.rebase(to: tick)
     }
 

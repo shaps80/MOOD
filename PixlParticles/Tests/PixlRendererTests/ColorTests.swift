@@ -19,9 +19,9 @@ struct ColorTests {
             alpha: 0.5
         )
 
-        #expect(color.red == 2)
-        #expect(color.green == 1)
-        #expect(color.blue == 0.5)
-        #expect(color.alpha == 0.5)
+        #expect(color.red.bitPattern == 0x4000)
+        #expect(color.green.bitPattern == 0x3c00)
+        #expect(color.blue.bitPattern == 0x3800)
+        #expect(color.alpha.bitPattern == 0x3800)
     }
 }

@@ -5,25 +5,24 @@ import Testing
 struct SystemDeterminismTests {
     @Test("A seed reproduces spawned particles")
     func seededSpawn() {
-        let instant = ContinuousClock.now
         let first = System(
             seed: 42,
             particleCount: 101,
             spawnRegion: .box(size: [200, 200, 200]),
             duration: .seconds(2)
-        ).sample(at: instant).particles
+        ).particleSnapshot
         let second = System(
             seed: 42,
             particleCount: 101,
             spawnRegion: .box(size: [200, 200, 200]),
             duration: .seconds(2)
-        ).sample(at: instant).particles
+        ).particleSnapshot
         let different = System(
             seed: 43,
             particleCount: 101,
             spawnRegion: .box(size: [200, 200, 200]),
             duration: .seconds(2)
-        ).sample(at: instant).particles
+        ).particleSnapshot
 
         #expect(first.count == 101)
         #expect(first.first?.id == 0)
@@ -46,18 +45,20 @@ struct SystemDeterminismTests {
 
         system.seek(to: .milliseconds(1_500))
         let first = system.sample(at: instant, isPaused: true)
+        let firstParticles = system.particleSnapshot
 
         system.seek(to: .milliseconds(500))
         system.seek(to: .milliseconds(1_500))
         let replayed = system.sample(at: instant, isPaused: true)
+        let replayedParticles = system.particleSnapshot
 
         #expect(first.tick == 45)
         #expect(replayed.tick == 45)
-        #expect(first.particles.map(\.position) == replayed.particles.map(\.position))
-        #expect(first.particles.map(\.velocity) == replayed.particles.map(\.velocity))
+        #expect(firstParticles.map(\.position) == replayedParticles.map(\.position))
+        #expect(firstParticles.map(\.velocity) == replayedParticles.map(\.velocity))
         #expect(
-            replayed.particles.map { $0.interpolated(by: replayed.interpolation) } ==
-                replayed.particles.map(\.position)
+            replayedParticles.map { $0.interpolated(by: replayed.interpolation) } ==
+                replayedParticles.map(\.position)
         )
 
         system.seek(to: .milliseconds(1_500))
@@ -84,14 +85,16 @@ struct SystemDeterminismTests {
         let completed = system.sample(
             at: start.advanced(by: .milliseconds(200))
         )
+        let completedParticles = system.particleSnapshot
         let later = system.sample(
             at: start.advanced(by: .seconds(1))
         )
+        let laterParticles = system.particleSnapshot
 
         #expect(completed.tick == 3)
         #expect(completed.time == .milliseconds(100))
         #expect(completed.interpolation == 1)
         #expect(later.tick == completed.tick)
-        #expect(later.particles.map(\.position) == completed.particles.map(\.position))
+        #expect(laterParticles.map(\.position) == completedParticles.map(\.position))
     }
 }

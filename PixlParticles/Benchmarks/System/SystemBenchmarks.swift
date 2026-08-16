@@ -138,10 +138,11 @@ struct SystemBenchmarks {
 
     @inline(never)
     private static func checksum(_ system: System) -> UInt64 {
-        let particles = system.sample(
+        _ = system.sample(
             at: .now,
             isPaused: true
-        ).particles
+        )
+        let particles = system.particleSnapshot
         var checksum: UInt64 = 0
         let stride = max(particles.count / 64, 1)
         var index = 0

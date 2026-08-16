@@ -82,6 +82,7 @@ public final class Renderer {
         view.depthStencilPixelFormat = .depth32Float
         view.sampleCount = 1
         view.framebufferOnly = true
+        view.clearColor = .init(red: 0.01, green: 0.01, blue: 0.01, alpha: 1)
     }
 
     public func render(

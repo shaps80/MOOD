@@ -8,11 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		549480163030BB2100BCB679 /* PixlParticles in Frameworks */ = {isa = PBXBuildFile; productRef = 549480153030BB2100BCB679 /* PixlParticles */; };
+		549480183030BB2100BCB679 /* PixlMetal in Frameworks */ = {isa = PBXBuildFile; productRef = 549480173030BB2100BCB679 /* PixlMetal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* PixlParticlesUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PixlParticlesUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		549480133030BB1A00BCB679 /* PixlParticles */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = PixlParticles; path = ../PixlParticles; sourceTree = SOURCE_ROOT; };
+		54CBB8D83031F23E0059E757 /* PixlParticles */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = PixlParticles; path = ../PixlParticles; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -28,6 +29,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				549480163030BB2100BCB679 /* PixlParticles in Frameworks */,
+				549480183030BB2100BCB679 /* PixlMetal in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -36,7 +38,7 @@
 		000000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				549480133030BB1A00BCB679 /* PixlParticles */,
+				54CBB8D83031F23E0059E757 /* PixlParticles */,
 				000000000000000000000010 /* Views */,
 				549480143030BB2100BCB679 /* Frameworks */,
 				000000000000000000000020 /* Products */,
@@ -77,6 +79,7 @@
 			name = PixlParticlesUI;
 			packageProductDependencies = (
 				549480153030BB2100BCB679 /* PixlParticles */,
+				549480173030BB2100BCB679 /* PixlMetal */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* PixlParticlesUI.app */;
@@ -106,6 +109,9 @@
 			);
 			mainGroup = 000000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */,
+			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 000000000000000000000020 /* Products */;
 			projectDirPath = "";
@@ -370,10 +376,23 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../PixlParticles;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		549480153030BB2100BCB679 /* PixlParticles */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */;
 			productName = PixlParticles;
+		};
+		549480173030BB2100BCB679 /* PixlMetal */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */;
+			productName = PixlMetal;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

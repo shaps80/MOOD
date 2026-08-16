@@ -49,10 +49,14 @@
   functions are isolated and covered by stable bit-pattern tests. The math
   implementation is intentionally kept movable so it can later become shared
   cross-platform math infrastructure.
-- The editor currently renders through SwiftUI Canvas as a diagnostic surface.
-  It has renderer-owned perspective, isometric, and front cameras; a projected
-  ground plane; perspective orbit controls; and pinch or scroll zoom. Camera
-  orientation and zoom are restored per scene.
+- The editor renders point primitives through `PixlMetal` in an `MTKView`. It
+  retains perspective, isometric, and front cameras; perspective orbit controls;
+  and pinch or scroll zoom. Camera orientation and zoom are restored per scene.
+  The former Canvas ground plane is intentionally absent until it becomes an
+  editor Metal pass.
+- Renderer-facing binary16 colour components use portable `UInt16` bit storage.
+  Swift `Float16` is unavailable when compiling for Intel macOS, while the byte
+  representation consumed by Metal remains `RGBA16Float`.
 - Editor controls currently recreate the system from duration, particle count,
   seed, spawn region, and supported spawn domain selections.
 

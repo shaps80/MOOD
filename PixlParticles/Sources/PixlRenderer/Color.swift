@@ -1,10 +1,10 @@
 import Swift
 
 package struct Color {
-    package let red: Float16
-    package let green: Float16
-    package let blue: Float16
-    package let alpha: Float16
+    package let red: Half
+    package let green: Half
+    package let blue: Half
+    package let alpha: Half
 
     package init(
         premultipliedRed: Float,
@@ -14,9 +14,9 @@ package struct Color {
     ) {
         precondition(alpha >= 0 && alpha <= 1)
 
-        red = Float16(premultipliedRed)
-        green = Float16(premultipliedGreen)
-        blue = Float16(premultipliedBlue)
-        self.alpha = Float16(alpha)
+        red = Half(premultipliedRed)
+        green = Half(premultipliedGreen)
+        blue = Half(premultipliedBlue)
+        self.alpha = Half(alpha)
     }
 }
