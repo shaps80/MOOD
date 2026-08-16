@@ -30,9 +30,9 @@ struct ContentView: View {
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 500_000)
+        _particleCount = .init(initialValue: 50_000)
         _duration = .init(initialValue: 30)
-        _spawnPreset = .init(initialValue: .cube)
+        _spawnPreset = .init(initialValue: .plane)
         _spawnDomain = .init(initialValue: .volume)
 
         _system = .init(

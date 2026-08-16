@@ -11,7 +11,7 @@ enum CameraPreset: Hashable {
 
     static let perspectiveOrbit = Orbit(
         target: .zero,
-        distance: 600,
+        distance: 400,
         yaw: .pi * 34 / 180,
         pitch: .pi * 25 / 180,
         projection: .perspective(
