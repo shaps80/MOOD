@@ -1,47 +1,41 @@
 # PixlParticles Roadmap
 
-Work through one decision at a time, in this order unless new evidence requires reordering.
+Work through one decision at a time. Keep the current scope limited to a fast,
+point-primitive rendering path.
 
-## 1. Architecture
+## 1. Portable Render Data
 
-- Continue refining responsibilities and data flow as new behavior appears.
-- Current boundary: simulation owns mutable state and interpolation metadata;
-  rendering owns projection, culling, visual representation, and drawing.
+- Decide the package target boundary and name for renderer-facing data lowering.
+- Keep this component separate from simulation even if it initially lives in the
+  same package and depends directly on `PixlParticles`.
+- Lower interpolated particle values into the smallest fixed packed form that a
+  platform renderer can consume with minimal additional work.
+- Support point primitives only: one physical framebuffer pixel, colour, and
+  opacity. Do not introduce quad, sprite, texture, or variable-size concerns.
+- Define buffer ownership so platform renderers can avoid redundant allocation
+  and copying.
+- Add standalone release benchmarks for interpolation and render-data packing,
+  separate from simulation and GPU rendering measurements.
 
-## 2. Deterministic Simulation
+## 2. Metal Renderer
 
-- Fixed updates, Philox random streams, pause/resume, duration, deterministic
-  replay, live scrubbing, and basic seeking are working end to end.
-- Design periodic checkpoints so backward seeking restores nearby state instead
-  of replaying every tick from zero.
-- Preserve cross-version and cross-platform output as properties, events, and
-  checkpoints are introduced.
+- Add an Apple-platform renderer target to the `PixlParticles` package for iOS,
+  macOS, and visionOS.
+- Consume the portable packed representation and render Metal point primitives.
+- Perform camera projection and fixed-pipeline clipping and depth testing on the
+  GPU.
+- Replace the SwiftUI Canvas particle drawing path while retaining the existing
+  editor camera and controls.
+- Measure CPU submission and GPU rendering separately from simulation and
+  portable render-data packing.
+- Keep this renderer isolated from Pixl integration. Decide how it later shares
+  Pixl's Metal device and command workflow only when that integration begins.
 
-## 3. Sequencing and State Over Time
+## Later
 
-- Define sequencing, timelines, and precise state-over-time authoring for Swift and the editor.
-- Account for causal cohorts such as moving heads, distance-emitted trails, and death-triggered bursts.
+- Collisions.
+- Niagara-style events and event payloads, including collision-driven events.
 
-## 4. Authoring and Runtime Representation
-
-- Design small, composable Swift authoring types.
-- Define lowering into allocation-conscious runtime data without existential costs in hot paths.
-- Choose terminology for this lowering step.
-- Extend the established unsafe AoSoA runtime storage as particle properties are
-  added: separate property buffers, four particles per SIMD batch, and focused
-  whole-buffer update passes.
-- Keep public particles as complete snapshots independent of internal storage.
-
-## 5. CPU and GPU Execution
-
-- Define compute preferences and capability-driven fallback.
-- Determine how events affect CPU execution, GPU execution, or hybrid approaches.
-- The current production CPU motion pass is single-threaded and explicitly SIMD
-  across particles. The macOS baseline is 0.641 ms per million particles.
-- Rerun production AoSoA benchmarks on iPad. WebAssembly is verified using
-  direct WMO compilation without `-num-threads` and with `-Xcc -msimd128`.
-
-## 6. Post-processing Ownership
-
-- Decide where bloom and other post-processing are authored and owned.
-- Define how multiple and nested particle systems can request different behavior.
+Emitters, quads, sprites, textures, post-processing, additional particle
+properties, GPU compute, and advanced culling are deliberately outside the
+current roadmap.
