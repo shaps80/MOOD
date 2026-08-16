@@ -22,6 +22,7 @@ struct ParticleViewport: View {
             pitch: Float(perspectivePitch),
             zoom: Float(cameraZoom),
             pointLOD: pointLOD,
+            seekTime: isScrubbing ? system.duration * fraction : nil,
             onCameraChange: persistCamera,
             onTimeChange: updateFraction
         )

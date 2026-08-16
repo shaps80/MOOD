@@ -19,6 +19,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
     let pitch: Float
     let zoom: Float
     let pointLOD: PointLOD
+    let seekTime: Duration?
     let onCameraChange: (Float, Float, Float) -> Void
     let onTimeChange: (Duration) -> Void
 
@@ -31,6 +32,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
             pitch: pitch,
             zoom: zoom,
             pointLOD: pointLOD,
+            seekTime: seekTime,
             onCameraChange: onCameraChange,
             onTimeChange: onTimeChange
         )
@@ -56,6 +58,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
             isPaused: isPaused,
             preset: cameraPreset,
             pointLOD: pointLOD,
+            seekTime: seekTime,
             onCameraChange: onCameraChange,
             onTimeChange: onTimeChange
         )
@@ -71,11 +74,10 @@ struct ParticleMetalView: PlatformViewRepresentable {
 
 @MainActor
 final class Coordinator: NSObject, MTKViewDelegate {
-    private let platform: PixlMetal.Platform
-    private let backend: DeviceBackend
-    private let renderer: PixlParticles.Renderer
     private weak var view: MTKView?
+    private var renderThread: RenderThread?
     private var system: System
+    private var systemID: ObjectIdentifier
     private var isPaused: Bool
     private var preset: CameraPreset
     private var orbit: Orbit
@@ -84,6 +86,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
     private var startZoom: Float?
     private var onCameraChange: (Float, Float, Float) -> Void
     private var onTimeChange: (Duration) -> Void
+    private var pointLOD: PointLOD
+    private var seekTime: Duration?
 
     init(
         system: System,
@@ -93,35 +97,29 @@ final class Coordinator: NSObject, MTKViewDelegate {
         pitch: Float,
         zoom: Float,
         pointLOD: PointLOD,
+        seekTime: Duration?,
         onCameraChange: @escaping (Float, Float, Float) -> Void,
         onTimeChange: @escaping (Duration) -> Void
     ) {
-        do {
-            let platform = try PixlMetal.Platform()
-            let backend = try DeviceBackend(platform: platform, pointLOD: pointLOD)
-            self.platform = platform
-            self.backend = backend
-            renderer = PixlParticles.Renderer(
-                backend: backend
-            )
-        } catch {
-            fatalError("Unable to create Metal renderer: \(error)")
-        }
         var orbit = CameraPreset.perspectiveOrbit
         orbit.yaw = yaw
         orbit.pitch = pitch
         self.system = system
+        systemID = ObjectIdentifier(system)
         self.isPaused = isPaused
         self.preset = preset
         self.orbit = orbit
         self.zoom = zoom
         self.onCameraChange = onCameraChange
         self.onTimeChange = onTimeChange
+        self.pointLOD = pointLOD
+        self.seekTime = seekTime
     }
 
     func configure(_ view: ParticleMTKView) {
         self.view = view
-        platform.configure(view)
+        let layer = PixlMetal.Platform.configure(view)
+        renderThread = RenderThread(layer: layer, system: system)
         view.delegate = self
         view.isPaused = isPaused
         view.enableSetNeedsDisplay = true
@@ -134,25 +132,39 @@ final class Coordinator: NSObject, MTKViewDelegate {
         isPaused: Bool,
         preset: CameraPreset,
         pointLOD: PointLOD,
+        seekTime: Duration?,
         onCameraChange: @escaping (Float, Float, Float) -> Void,
         onTimeChange: @escaping (Duration) -> Void
     ) {
-        self.system = system
+        let replacement = ObjectIdentifier(system) != systemID
+        if replacement {
+            self.system = system
+            systemID = ObjectIdentifier(system)
+            renderThread?.replaceSystem(system)
+        }
         self.isPaused = isPaused
         self.preset = preset
-        backend.pointLOD = pointLOD
+        self.pointLOD = pointLOD
+        if let seekTime, replacement || seekTime != self.seekTime {
+            renderThread?.seek(to: seekTime)
+        }
+        self.seekTime = seekTime
         self.onCameraChange = onCameraChange
         self.onTimeChange = onTimeChange
     }
 
     func draw(in view: MTKView) {
+        guard let renderThread else { return }
+        let result = renderThread.result()
+        if let failure = result.failure {
+            fatalError("Unable to render particles: \(failure)")
+        }
+        if let time = result.time { onTimeChange(time) }
         guard let viewport = camera.viewport(for: view.drawableSize) else { return }
-        let sample = system.sample(at: .now, isPaused: isPaused)
-        do {
-            try renderer.render(
-                system,
-                interpolation: sample.interpolation,
-                tick: sample.tick,
+        renderThread.submit(
+            .init(
+                isPaused: isPaused,
+                pointLOD: pointLOD,
                 viewProjection: Matrix4x4(
                     x: viewport.viewProjection.columns.0,
                     y: viewport.viewProjection.columns.1,
@@ -164,8 +176,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
                     height: UInt32(view.drawableSize.height.rounded(.up))
                 )
             )
-            onTimeChange(sample.time)
-        } catch { fatalError("Unable to render particles: \(error)") }
+        )
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}

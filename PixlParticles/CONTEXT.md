@@ -105,8 +105,11 @@
   LOD or dropping below the total-count activation threshold releases those
   resources.
 - Portable particle and renderer code is nonisolated by default. Actor or thread
-  ownership belongs at composition boundaries; the temporary `PixlMetal`
-  adapter remains main-isolated only because it directly owns an `MTKView`.
+  ownership belongs at composition boundaries. The editor main actor configures
+  `MTKView`; a dedicated serial thread owns simulation sampling, seeking,
+  lowering, Metal resources, culling, and submission. Its latest-value mailbox
+  uses `NSCondition`, never queues stale frames, and introduces no concurrency
+  dependency into `PixlRenderer`.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
   after buffer availability, position-pair lowering, and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU
@@ -142,6 +145,7 @@
   approximately 1.18 GiB to 960 MiB–1.0 GiB.
 - CPU regression measurements remain clean: one-million simulation and lowering
   measured 0.642 ms and 0.778 ms; two-million measured 1.285 ms and 1.547 ms.
-- Next sequence: investigate compact retained clip-space positions, introduce
-  dedicated render ownership, then collect the final matched 6-million Metal
-  trace. Do not begin GPU simulation until this renderer sequence is measured.
+- Dedicated render ownership is implemented and awaits manual interaction and
+  scrubbing validation. After validation, collect the final matched 6-million
+  Metal trace. Do not begin GPU simulation until this renderer sequence is
+  measured.

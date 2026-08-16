@@ -3,24 +3,24 @@ import MetalKit
 import PixlRenderer
 import QuartzCore
 
-@MainActor
-public final class Platform: @preconcurrency PixlRenderer.Platform {
+public final class Platform: PixlRenderer.Platform {
     private static let frameCount = 2
 
     private let device: any MTLDevice
     private let queue: any MTLCommandQueue
     private let library: any MTLLibrary
     private let available = DispatchSemaphore(value: frameCount)
-    private weak var view: MTKView?
+    private let layer: CAMetalLayer
+    private var depthTexture: (any MTLTexture)?
 
-    public convenience init() throws {
+    public convenience init(layer: CAMetalLayer) throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw RenderError.device
         }
-        try self.init(device: device)
+        try self.init(device: device, layer: layer)
     }
 
-    public init(device: any MTLDevice) throws {
+    public init(device: any MTLDevice, layer: CAMetalLayer) throws {
         guard let queue = device.makeCommandQueue() else {
             throw RenderError.commandQueue
         }
@@ -31,18 +31,21 @@ public final class Platform: @preconcurrency PixlRenderer.Platform {
         self.device = device
         self.queue = queue
         self.library = library
+        self.layer = layer
     }
 
-    public func configure(_ view: MTKView) {
-        self.view = view
+    @MainActor
+    public static func configure(_ view: MTKView) -> CAMetalLayer {
+        let device = MTLCreateSystemDefaultDevice()
         view.device = device
-        (view.layer as? CAMetalLayer)?.maximumDrawableCount = Self.frameCount
         view.colorPixelFormat = .rgba16Float
-        view.depthStencilStorageMode = .memoryless
-        view.depthStencilPixelFormat = .depth32Float
+        view.depthStencilPixelFormat = .invalid
         view.sampleCount = 1
         view.framebufferOnly = true
         view.clearColor = .init(red: 0.01, green: 0.01, blue: 0.01, alpha: 1)
+        let layer = view.layer as! CAMetalLayer
+        layer.maximumDrawableCount = Self.frameCount
+        return layer
     }
 
     public func acquireFrame() { available.wait() }
@@ -118,10 +121,43 @@ public final class Platform: @preconcurrency PixlRenderer.Platform {
     }
 
     public func currentRenderTarget() -> (any PixlRenderer.RenderTarget)? {
-        guard let descriptor = view?.currentRenderPassDescriptor,
-              let drawable = view?.currentDrawable
-        else { return nil }
+        guard let drawable = layer.nextDrawable() else { return nil }
+        let texture = drawable.texture
+        let depth = depthTexture(
+            width: texture.width,
+            height: texture.height
+        )
+        let descriptor = MTLRenderPassDescriptor()
+        let color = descriptor.colorAttachments[0]!
+        color.texture = texture
+        color.loadAction = .clear
+        color.storeAction = .store
+        color.clearColor = .init(red: 0.01, green: 0.01, blue: 0.01, alpha: 1)
+        descriptor.depthAttachment.texture = depth
+        descriptor.depthAttachment.loadAction = .clear
+        descriptor.depthAttachment.storeAction = .dontCare
+        descriptor.depthAttachment.clearDepth = 1
         return MetalRenderTarget(descriptor: descriptor, drawable: drawable)
+    }
+
+    private func depthTexture(width: Int, height: Int) -> any MTLTexture {
+        if let depthTexture,
+           depthTexture.width == width,
+           depthTexture.height == height {
+            return depthTexture
+        }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .depth32Float,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        descriptor.storageMode = .memoryless
+        descriptor.usage = .renderTarget
+        let texture = device.makeTexture(descriptor: descriptor)!
+        texture.label = "Pixl Depth"
+        depthTexture = texture
+        return texture
     }
 }
 
