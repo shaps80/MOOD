@@ -14,11 +14,26 @@ let package = Package(
         .library(
             name: "PixlParticles",
             targets: ["PixlParticles"]
+        ),
+        .library(
+            name: "PixlMetal",
+            targets: ["PixlMetal"]
         )
     ],
     targets: [
         .target(
-            name: "PixlParticles"
+            name: "PixlParticles",
+            swiftSettings: releaseCrossModuleOptimization()
+        ),
+        .target(
+            name: "PixlRenderer",
+            dependencies: ["PixlParticles"],
+            swiftSettings: releaseCrossModuleOptimization()
+        ),
+        .target(
+            name: "PixlMetal",
+            dependencies: ["PixlRenderer"],
+            swiftSettings: releaseCrossModuleOptimization()
         ),
         .testTarget(
             name: "PixlParticlesTests",
@@ -27,3 +42,12 @@ let package = Package(
     ],
     swiftLanguageModes: [.v6]
 )
+
+private func releaseCrossModuleOptimization() -> [SwiftSetting] {
+    [
+        .unsafeFlags(
+            ["-cross-module-optimization"],
+            .when(configuration: .release)
+        )
+    ]
+}
