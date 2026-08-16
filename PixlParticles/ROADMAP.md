@@ -21,7 +21,6 @@ point-primitive rendering path.
 - Consume packed particle colour in the point shader.
 - Keep colour linear and premultiplied through HDR shading and blending, then
   encode only for final display presentation.
-- Restore the ground plane as a separate editor render pass.
 - Measure CPU submission and GPU rendering separately from simulation and
   portable render-data packing.
 - Profile Metal culling and drawing independently; accepted CPU scaling shows

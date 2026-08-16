@@ -71,6 +71,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                 guard let frame = work.frame, let system else { continue }
 
                 backend.pointLOD = frame.pointLOD
+                backend.groundPlane = frame.groundPlane
                 let sample = system.sample(at: .now, isPaused: frame.isPaused)
                 try renderer.render(
                     system,

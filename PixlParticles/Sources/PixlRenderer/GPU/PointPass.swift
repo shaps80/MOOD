@@ -40,13 +40,8 @@ final class PointPass {
         lod: LODBuffers?,
         interpolation: Float,
         viewProjection: Matrix4x4,
-        target: any RenderTarget,
-        into commandBuffer: any CommandBuffer
-    ) throws {
-        guard let encoder = commandBuffer.makeRenderEncoder(target: target) else {
-            throw RenderError.encoder
-        }
-        encoder.label = "Point Draw"
+        into encoder: any RenderEncoder
+    ) {
         encoder.setPipeline(lod == nil ? pipeline : lodPipeline)
         encoder.setDepthState(depth)
         encoder.setVertexBuffer(positions, index: 0)
@@ -60,6 +55,5 @@ final class PointPass {
         } else {
             encoder.drawPrimitives(.point, indirectBuffer: indirectArguments)
         }
-        encoder.endEncoding()
     }
 }

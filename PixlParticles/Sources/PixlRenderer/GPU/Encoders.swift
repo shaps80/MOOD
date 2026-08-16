@@ -24,6 +24,11 @@ public protocol RenderEncoder: AnyObject {
         _ primitive: Primitive,
         indirectBuffer: any Buffer
     )
+    func drawPrimitives(
+        _ primitive: Primitive,
+        vertexStart: Int,
+        vertexCount: Int
+    )
     func endEncoding()
 }
 
@@ -42,4 +47,5 @@ public extension RenderEncoder {
         var value = value
         withUnsafeBytes(of: &value) { setVertexBytes($0, index: index) }
     }
+
 }

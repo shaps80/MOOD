@@ -20,6 +20,7 @@ public enum CompareFunction: Sendable {
 
 public enum Primitive: Sendable {
     case point
+    case line
 }
 
 public struct ThreadGrid: Sendable {

@@ -31,11 +31,30 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         _ primitive: PixlRenderer.Primitive,
         indirectBuffer: any PixlRenderer.Buffer
     ) {
-        let type: MTLPrimitiveType = switch primitive { case .point: .point }
+        let type: MTLPrimitiveType = switch primitive {
+        case .point: .point
+        case .line: .line
+        }
         value.drawPrimitives(
             type: type,
             indirectBuffer: (indirectBuffer as! MetalBuffer).value,
             indirectBufferOffset: 0
+        )
+    }
+
+    func drawPrimitives(
+        _ primitive: PixlRenderer.Primitive,
+        vertexStart: Int,
+        vertexCount: Int
+    ) {
+        let type: MTLPrimitiveType = switch primitive {
+        case .point: .point
+        case .line: .line
+        }
+        value.drawPrimitives(
+            type: type,
+            vertexStart: vertexStart,
+            vertexCount: vertexCount
         )
     }
 

@@ -7,8 +7,10 @@ public final class DeviceBackend: Backend {
     private let buffers: FrameBuffers
     private let culling: CullingPass
     private let lod: LODPass
+    private let editor: EditorPass
     private let points: PointPass
     public var pointLOD: PointLOD
+    public var groundPlane = GroundPlane()
 
     public init(
         platform: any Platform,
@@ -22,6 +24,7 @@ public final class DeviceBackend: Backend {
         )
         culling = try CullingPass(platform: platform)
         lod = try LODPass(platform: platform)
+        editor = try EditorPass(platform: platform)
         points = try PointPass(platform: platform)
     }
 
@@ -80,16 +83,25 @@ public final class DeviceBackend: Backend {
         }
 
         guard let target = platform.currentRenderTarget() else { return }
-        try points.encode(
+        guard let encoder = commandBuffer.makeRenderEncoder(target: target) else {
+            throw RenderError.encoder
+        }
+        encoder.label = "Scene Draw"
+        editor.encode(
+            groundPlane: groundPlane,
+            viewProjection: viewProjection,
+            into: encoder
+        )
+        points.encode(
             positions: resources.positions,
             visibleIndices: resources.culling.visibleIndices,
             indirectArguments: resources.culling.indirectArguments,
             lod: resources.lod,
             interpolation: interpolation,
             viewProjection: viewProjection,
-            target: target,
-            into: commandBuffer
+            into: encoder
         )
+        encoder.endEncoding()
 
         commandBuffer.present(target)
         submitted = true

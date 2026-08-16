@@ -160,17 +160,19 @@ final class Coordinator: NSObject, MTKViewDelegate {
             fatalError("Unable to render particles: \(failure)")
         }
         if let time = result.time { onTimeChange(time) }
+        let camera = camera
         guard let viewport = camera.viewport(for: view.drawableSize) else { return }
+        let viewProjection = Matrix4x4(viewport.viewProjection)
         renderThread.submit(
             .init(
                 isPaused: isPaused,
                 pointLOD: pointLOD,
-                viewProjection: Matrix4x4(
-                    x: viewport.viewProjection.columns.0,
-                    y: viewport.viewProjection.columns.1,
-                    z: viewport.viewProjection.columns.2,
-                    w: viewport.viewProjection.columns.3
+                groundPlane: .init(
+                    isVisible: true,
+                    style: preset.groundPlaneStyle,
+                    viewProjection: viewProjection
                 ),
+                viewProjection: viewProjection,
                 viewport: .init(
                     width: UInt32(view.drawableSize.width.rounded(.up)),
                     height: UInt32(view.drawableSize.height.rounded(.up))
@@ -262,6 +264,17 @@ final class Coordinator: NSObject, MTKViewDelegate {
         default:
             break
         }
+    }
+}
+
+private extension Matrix4x4 {
+    init(_ matrix: simd_float4x4) {
+        self.init(
+            x: matrix.columns.0,
+            y: matrix.columns.1,
+            z: matrix.columns.2,
+            w: matrix.columns.3
+        )
     }
 }
 

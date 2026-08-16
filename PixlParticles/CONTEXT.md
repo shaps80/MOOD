@@ -52,8 +52,8 @@
 - The editor renders point primitives through `PixlMetal` in an `MTKView`. It
   retains perspective, isometric, and front cameras; perspective orbit controls;
   and pinch or scroll zoom. Camera orientation and zoom are restored per scene.
-  The former Canvas ground plane is intentionally absent until it becomes an
-  editor Metal pass.
+  Its ground plane is an editor pass composed before particles in the shared
+  render encoder.
 - Renderer-facing binary16 colour components use portable `UInt16` bit storage.
   Swift `Float16` is unavailable when compiling for Intel macOS, while the byte
   representation consumed by Metal remains `RGBA16Float`.
@@ -114,9 +114,12 @@
   after buffer availability, position-pair lowering, and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU
   execution budget.
-- Camera state, projection, ground-plane visualization, input gestures, and
-  scene restoration belong to `PixlParticlesUI`; none are particle simulation
-  responsibilities.
+- Camera state, input gestures, and scene restoration belong to
+  `PixlParticlesUI`; none are particle simulation responsibilities. Portable
+  editor-pass composition and ground-plane rendering belong to `PixlRenderer`.
+  The ground plane reproduces the former Canvas visualization using one
+  procedural line draw with no geometry buffer: height -110, extent 500,
+  spacing 50, and linear grey at 20 percent opacity.
 - Pixl renderer improvements may be identified, but particle-system design must not change Pixl implicitly.
 - Tests use Swift Testing. XCTest is reserved for performance tests. UI testing is manual only.
 - Never run the app; build it and run valuable non-UI tests only.

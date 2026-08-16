@@ -6,6 +6,7 @@ nonisolated final class Mailbox: @unchecked Sendable {
     struct Frame {
         let isPaused: Bool
         let pointLOD: PointLOD
+        let groundPlane: GroundPlane
         let viewProjection: Matrix4x4
         let viewport: ViewportSize
     }
