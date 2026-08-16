@@ -38,6 +38,10 @@ let package = Package(
         .testTarget(
             name: "PixlParticlesTests",
             dependencies: ["PixlParticles"]
+        ),
+        .testTarget(
+            name: "PixlRendererTests",
+            dependencies: ["PixlRenderer"]
         )
     ],
     swiftLanguageModes: [.v6]
