@@ -182,7 +182,7 @@ successfully for `wasm32-unknown-wasip1` with the accepted direct Swift 6.4
 snapshot invocation, whole-module optimization, no `-num-threads`, and
 `-Xcc -msimd128`.
 
-## Production Position Lowering
+## CPU-Interpolated Position Lowering (Superseded)
 
 Measured 2026-08-16 on the macOS M1 Max environment above. The standalone
 `Benchmarks/Renderer/LoweringBenchmarks.swift` harness compiles the production
@@ -210,3 +210,26 @@ The current production sources measured 1,558.11 million fixed updates/s,
 `1295003598899`. The accepted AoSoA baseline is 1,559.86 million updates/s and
 0.641 ms per tick. The 0.1% throughput difference is normal measurement noise;
 no simulation regression was detected.
+
+## GPU-Interpolated Position-Pair Lowering
+
+Measured 2026-08-16 on the same macOS M1 Max environment after moving visual
+interpolation into the point vertex shader. Production lowering now packs one
+24-byte `{ previous, current }` pair per particle only when the simulation tick
+changes. The active packed state is reused by intervening render frames; only
+the interpolation scalar changes at render frequency.
+
+The retained production harness uses the same warm-up and sampling shape as the
+superseded CPU-interpolated baseline. Three complete sequential runs measured
+0.768, 0.763, and 0.819 ms per million particles.
+
+| Platform | Throughput | Cost per particle | 1 M-particle tick | Checksum |
+| --- | ---: | ---: | ---: | ---: |
+| macOS M1 Max | 1,302.50 M particles/s | 0.768 ns | 0.768 ms | `802251268102` |
+
+At a 30 Hz simulation and 60 Hz renderer, lowering therefore averages roughly
+0.384 ms per rendered frame per million particles, versus 0.798 ms when CPU
+interpolation and packing ran every render frame. The change approximately
+halves average lowering CPU time while retaining 60 Hz visual interpolation.
+It increases the two renderer state buffers from 24 to 48 bytes per particle in
+total and doubles GPU position reads per vertex from 12 to 24 bytes.

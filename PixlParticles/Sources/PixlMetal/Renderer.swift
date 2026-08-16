@@ -18,7 +18,9 @@ public final class Renderer {
 
     private var buffers: [any MTLBuffer] = []
     private var capacity = 0
-    private var bufferIndex = 0
+    private var stateBufferIndex = -1
+    private var stateSystem: ObjectIdentifier?
+    private var stateTick: UInt64?
 
     public convenience init() throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -88,9 +90,12 @@ public final class Renderer {
     public func render(
         _ system: PixlParticles.System,
         interpolation: Float,
+        tick: UInt64,
         viewProjection: simd_float4x4,
         in view: MTKView
     ) throws {
+        precondition(interpolation >= 0 && interpolation <= 1)
+
         guard
             let descriptor = view.currentRenderPassDescriptor,
             let drawable = view.currentDrawable
@@ -108,21 +113,24 @@ public final class Renderer {
 
         try ensureCapacity(max(system.particleCount, 1))
 
-        let buffer = buffers[bufferIndex]
-        bufferIndex = (bufferIndex + 1) % Self.bufferCount
-        let pointer = buffer.contents().bindMemory(
-            to: Position.self,
-            capacity: capacity
-        )
-        let positions = UnsafeMutableBufferPointer(
-            start: pointer,
-            count: system.particleCount
-        )
-        let count = lowerer.lowerPositions(
-            from: system,
-            interpolation: interpolation,
-            into: positions
-        )
+        let systemID = ObjectIdentifier(system)
+        if stateSystem != systemID || stateTick != tick {
+            stateBufferIndex = (stateBufferIndex + 1) % Self.bufferCount
+            let pointer = buffers[stateBufferIndex].contents().bindMemory(
+                to: PositionPair.self,
+                capacity: capacity
+            )
+            let positions = UnsafeMutableBufferPointer(
+                start: pointer,
+                count: system.particleCount
+            )
+            _ = lowerer.lowerPositionPairs(from: system, into: positions)
+            stateSystem = systemID
+            stateTick = tick
+        }
+
+        let buffer = buffers[stateBufferIndex]
+        let count = system.particleCount
 
         guard
             let commandBuffer = queue.makeCommandBuffer(),
@@ -134,6 +142,7 @@ public final class Renderer {
         }
 
         var viewProjection = viewProjection
+        var interpolation = interpolation
         encoder.setRenderPipelineState(pipeline)
         encoder.setDepthStencilState(depthState)
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
@@ -141,6 +150,11 @@ public final class Renderer {
             &viewProjection,
             length: MemoryLayout<simd_float4x4>.stride,
             index: 1
+        )
+        encoder.setVertexBytes(
+            &interpolation,
+            length: MemoryLayout<Float>.stride,
+            index: 2
         )
         encoder.drawPrimitives(
             type: .point,
@@ -160,7 +174,7 @@ public final class Renderer {
     private func ensureCapacity(_ requiredCapacity: Int) throws {
         guard requiredCapacity > capacity else { return }
 
-        let length = requiredCapacity * MemoryLayout<Position>.stride
+        let length = requiredCapacity * MemoryLayout<PositionPair>.stride
         var buffers: [any MTLBuffer] = []
         buffers.reserveCapacity(Self.bufferCount)
 
@@ -176,6 +190,8 @@ public final class Renderer {
 
         self.buffers = buffers
         capacity = requiredCapacity
-        bufferIndex = 0
+        stateBufferIndex = -1
+        stateSystem = nil
+        stateTick = nil
     }
 }

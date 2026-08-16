@@ -10,3 +10,13 @@ struct PositionTests {
         #expect(MemoryLayout<Position>.alignment == 4)
     }
 }
+
+@Suite("Packed position pair")
+struct PositionPairTests {
+    @Test("Uses two tightly packed three-component positions")
+    func layout() {
+        #expect(MemoryLayout<PositionPair>.size == 24)
+        #expect(MemoryLayout<PositionPair>.stride == 24)
+        #expect(MemoryLayout<PositionPair>.alignment == 4)
+    }
+}

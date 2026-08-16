@@ -134,6 +134,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
             try renderer.render(
                 system,
                 interpolation: sample.interpolation,
+                tick: sample.tick,
                 viewProjection: viewport.viewProjection,
                 in: view
             )

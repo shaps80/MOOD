@@ -15,10 +15,15 @@ struct LoweringBenchmarks {
             spawnRegion: .sphere(radius: 100),
             duration: .seconds(60)
         )
-        let destination = UnsafeMutableBufferPointer<Position>.allocate(
+        let destination = UnsafeMutableBufferPointer<PositionPair>.allocate(
             capacity: particleCount
         )
-        destination.initialize(repeating: Position(x: 0, y: 0, z: 0))
+        destination.initialize(
+            repeating: PositionPair(
+                previous: Position(x: 0, y: 0, z: 0),
+                current: Position(x: 0, y: 0, z: 0)
+            )
+        )
         defer {
             destination.deinitialize()
             destination.deallocate()
@@ -26,9 +31,8 @@ struct LoweringBenchmarks {
 
         let renderer = Renderer()
         for _ in 0..<warmupCount {
-            _ = renderer.lowerPositions(
+            _ = renderer.lowerPositionPairs(
                 from: system,
-                interpolation: 0.25,
                 into: destination
             )
         }
@@ -41,9 +45,8 @@ struct LoweringBenchmarks {
         for _ in 0..<sampleCount {
             let start = clock.now
             for _ in 0..<iterationCount {
-                _ = renderer.lowerPositions(
+                _ = renderer.lowerPositionPairs(
                     from: system,
-                    interpolation: 0.25,
                     into: destination
                 )
             }
@@ -67,16 +70,19 @@ struct LoweringBenchmarks {
 
     @inline(never)
     private static func checksum(
-        _ positions: UnsafeMutableBufferPointer<Position>
+        _ positions: UnsafeMutableBufferPointer<PositionPair>
     ) -> UInt64 {
         var result: UInt64 = 0
         let step = particleCount / 64
         var index = 0
 
         while index < particleCount {
-            result &+= UInt64(positions[index].x.bitPattern)
-            result &+= UInt64(positions[index].y.bitPattern)
-            result &+= UInt64(positions[index].z.bitPattern)
+            result &+= UInt64(positions[index].previous.x.bitPattern)
+            result &+= UInt64(positions[index].previous.y.bitPattern)
+            result &+= UInt64(positions[index].previous.z.bitPattern)
+            result &+= UInt64(positions[index].current.x.bitPattern)
+            result &+= UInt64(positions[index].current.y.bitPattern)
+            result &+= UInt64(positions[index].current.z.bitPattern)
             index += step
         }
         return result
