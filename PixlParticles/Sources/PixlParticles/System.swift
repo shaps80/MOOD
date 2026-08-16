@@ -103,7 +103,7 @@ public final class System {
         loop.rebase(to: tick)
     }
 
-    private func update(by delta: Float) {
+    func update(by delta: Float) {
         for index in particles.indices {
             particles[index].advance(by: delta)
         }

@@ -37,3 +37,53 @@ Before the retained harness existed, a temporary 100-million-block microbenchmar
 measured roughly 436 million Swift Philox words/s and 411 million words/s for the
 canonical Random123 C++ implementation. Treat those figures as directional only;
 the exact harness was not retained, so the table above is the reproducible baseline.
+
+## System Initialization
+
+Measured 2026-08-16 using the environments above. The standalone
+`Benchmarks/System/SystemBenchmarks.swift` harness compiles with the real
+production sources using `-O` and whole-module optimization.
+
+Each region warms up by creating 100,000 particles, then reports the median of
+five complete `System` initializations containing 1 million particles each. The
+timed work includes particle allocation, identifiers, deterministic position
+sampling, and deterministic velocity generation. An optimized checksum over 64
+representative particles runs outside the timed interval to retain observable
+output without contaminating the measurement.
+
+| Region | macOS M1 Max | iPad M5 | WebAssembly | Checksum |
+| --- | ---: | ---: | ---: | ---: |
+| Point | 68.23 M particles/s · 14.66 ns/particle | 99.40 M particles/s · 10.06 ns/particle | 34.67 M particles/s · 28.85 ns/particle | `425986654175` |
+| Line | 54.22 M particles/s · 18.44 ns/particle | 91.26 M particles/s · 10.96 ns/particle | 30.72 M particles/s · 32.55 ns/particle | `688322051651` |
+| Box volume | 40.74 M particles/s · 24.55 ns/particle | 69.91 M particles/s · 14.30 ns/particle | 22.78 M particles/s · 43.89 ns/particle | `1246931346963` |
+| Box surface | 23.61 M particles/s · 42.36 ns/particle | 37.43 M particles/s · 26.72 ns/particle | 17.90 M particles/s · 55.85 ns/particle | `1231086806959` |
+| Sphere volume | 16.63 M particles/s · 60.12 ns/particle | 28.85 M particles/s · 34.66 ns/particle | 1.42 M particles/s · 706.39 ns/particle | `1228237922277` |
+| Sphere surface | 25.81 M particles/s · 38.74 ns/particle | 47.88 M particles/s · 20.88 ns/particle | 2.05 M particles/s · 488.77 ns/particle | `1242808241845` |
+
+The matching checksums confirm that each platform produced identical sampled
+particle state. The unusually large WebAssembly penalty for both rejection-based
+sphere paths is retained as measured evidence and requires focused profiling.
+
+## Fixed Simulation Updates
+
+The fixed-update benchmark creates 1 million point-spawned particles, performs
+10 warm-up ticks, then reports the median of five samples containing 100 ticks
+each. It calls the production linear-motion update loop directly, excluding loop
+scheduling, sampling, interpolation, and rendering.
+
+| Platform | Throughput | Cost per update | 1 M-particle tick |
+| --- | ---: | ---: | ---: |
+| macOS M1 Max | 809.91 M updates/s | 1.23 ns | 1.23 ms |
+| iPad M5 | 929.55 M updates/s | 1.08 ns | 1.08 ms |
+| WebAssembly | 532.67 M updates/s | 1.88 ns | 1.88 ms |
+
+All platforms produced checksum `1295003598899`.
+
+Theoretical particle ceilings below divide measured throughput by tick rate and
+assume perfect scaling with no renderer or other simulation work:
+
+| Platform | 30 Hz | 60 Hz | 120 Hz |
+| --- | ---: | ---: | ---: |
+| macOS M1 Max | 27.00 M | 13.50 M | 6.75 M |
+| iPad M5 | 30.99 M | 15.49 M | 7.75 M |
+| WebAssembly | 17.76 M | 8.88 M | 4.44 M |
