@@ -23,9 +23,11 @@ struct Inspector: View {
                     LabeledContent("Seed") {
                         Field(value: $seed)
                     }
+                }
 
-                    LabeledContent("Spawn") {
-                        Picker("Spawn", selection: $spawnPreset) {
+                Section("Spawn") {
+                    LabeledContent("Region") {
+                        Picker("Domain", selection: $spawnPreset) {
                             ForEach(SpawnPreset.allCases, id: \.self) { preset in
                                 Text(preset.title).tag(preset)
                             }
