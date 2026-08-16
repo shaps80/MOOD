@@ -108,12 +108,13 @@ struct Inspector: View {
                 alignment: .topLeading
             )
             .scenePadding()
+            .padding(5)
 //        }
         .labeledContentStyle(.inspector)
         .focusable(false)
         .focusEffectDisabled(true)
         .clipShape(.rect(cornerRadius: 28))
-        .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 28))
+        .background(.bar, in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
         .animation(.snappy, value: spawnPreset)
         .animation(.snappy, value: lodEnabled)
@@ -128,7 +129,7 @@ struct Divided<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 30) {
             Group(sections: content) { sections in
                 ForEach(sections) { section in
                     VStack(alignment: .leading) {
@@ -145,7 +146,13 @@ struct Divided<Content: View>: View {
                                 }
                             }
                         }
+
+                        if section.id != sections.last?.id {
+                            Divider()
+                        }
                     }
+                    .padding(.horizontal, 2)
+                    .clipped()
                 }
             }
         }

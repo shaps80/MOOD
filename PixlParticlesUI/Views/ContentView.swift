@@ -46,10 +46,16 @@ struct ContentView: View {
     private var isGroundPlaneVisible = true
     @SceneStorage("editor.timeline.isVisible")
     private var isTimelineVisible = true
+    @SceneStorage("editor.inspector.isVisible")
+    private var isInspectorVisible = true
+    @SceneStorage("editor.inspector.position.x")
+    private var inspectorPositionX = 1.0
+    @SceneStorage("editor.inspector.position.y")
+    private var inspectorPositionY = 0.0
     @SceneStorage("editor.cullingBounds.isVisible")
     private var areCullingBoundsEnabled = false
     @SceneStorage("editor.cullingBounds.scale")
-    private var cullingBoundsScale = 500.0
+    private var cullingBoundsScale = 300.0
     @SceneStorage("editor.playMode") private var playMode = PlayMode.play
     @State private var playbackResetID: UInt64 = 0
 
@@ -74,7 +80,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .bottom) {
             ParticleViewport(
                 system: system,
                 isPaused: isPaused,
@@ -96,28 +102,32 @@ struct ContentView: View {
                 onPlaybackComplete: completePlayback
             )
             .ignoresSafeArea()
+            .overlay {
+                if isInspectorVisible {
+                    MovableOverlay(
+                        horizontalPosition: $inspectorPositionX,
+                        verticalPosition: $inspectorPositionY
+                    ) {
+                        Inspector(
+                            duration: $duration,
+                            particleCount: $particleCount,
+                            seed: $seed,
+                            spawnPreset: $spawnPreset,
+                            spawnDomain: $spawnDomain,
+                            lodEnabled: $lodEnabled,
+                            lodActivation: $lodActivation,
+                            lodMaximum: $lodMaximum,
+                            lodTileSize: $lodTileSize,
+                            lodPointsPerPixel: $lodPointsPerPixel,
+                            areCullingBoundsEnabled: $areCullingBoundsEnabled,
+                            cullingBoundsScale: $cullingBoundsScale
+                        )
+                    }
+                    .scenePadding()
+                }
+            }
 
             VStack {
-                HStack {
-                    Spacer(minLength: 0)
-
-                    Inspector(
-                        duration: $duration,
-                        particleCount: $particleCount,
-                        seed: $seed,
-                        spawnPreset: $spawnPreset,
-                        spawnDomain: $spawnDomain,
-                        lodEnabled: $lodEnabled,
-                        lodActivation: $lodActivation,
-                        lodMaximum: $lodMaximum,
-                        lodTileSize: $lodTileSize,
-                        lodPointsPerPixel: $lodPointsPerPixel,
-                        areCullingBoundsEnabled: $areCullingBoundsEnabled,
-                        cullingBoundsScale: $cullingBoundsScale
-                    )
-                    .scenePadding([.horizontal, .vertical])
-                }
-
                 Spacer(minLength: 0)
 
                 if isTimelineVisible {
@@ -166,8 +176,9 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Menu("View", systemImage: "eye") {
+                Menu("View", systemImage: "slider.vertical.3") {
                     Toggle("Ground Plane", isOn: $isGroundPlaneVisible)
+                    Toggle("Inspector", isOn: $isInspectorVisible)
                     Toggle("Timeline", isOn: $isTimelineVisible)
                     Toggle(
                         "Culling Bounds",
