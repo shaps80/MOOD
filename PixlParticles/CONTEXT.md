@@ -17,6 +17,15 @@
 
 - Treat a particle effect as a deterministic program over time, not merely mutable emitters updated each frame. It must support pausing, seeking, scrubbing, repeatable tests, and precise state inspection.
 - Support Niagara-style events as a core system capability, allowing causal communication between emitters through explicit triggers and event payloads.
+- Keep the colour workflow linear throughout authoring conversion, simulation,
+  interpolation, shading, blending, HDR rendering, and post-processing. Convert
+  from encoded display colour at input boundaries and encode for display only at
+  final presentation.
+- Prefer premultiplied alpha for colour storage, interpolation, and blending.
+  Premultiply RGB only after conversion to linear space. Straight-alpha or
+  additive paths must be explicit effect-specific choices.
+- Represent renderer-facing per-particle colour as linear HDR `RGBA16Float`.
+  RGB may exceed `1`; alpha normally remains within `0...1`.
 
 ## Evidence
 
