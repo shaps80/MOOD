@@ -29,12 +29,3 @@ struct ParticleTimeline: View {
         .scenePadding()
     }
 }
-
-#Preview {
-    @Previewable @State var fraction: Double = 0
-
-    ParticleTimeline(
-        fraction: $fraction,
-        isScrubbing: .constant(false)
-    )
-}

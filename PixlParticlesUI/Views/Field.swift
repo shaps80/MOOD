@@ -116,23 +116,8 @@ struct InspectorLabeledContentStyle: LabeledContentStyle {
 #Preview {
     @Previewable @State var value: Double = 20
 
-    ScrollView {
-        VStack {
-            Divided {
-                LabeledContent("Duration") {
-                    Field(value: $value)
-                }
-            }
-        }
-        .scenePadding()
-        .frame(
-            maxWidth: .infinity,
-            maxHeight: .infinity,
-            alignment: .topLeading
-        )
+    LabeledContent("Duration") {
+        Field(value: $value)
     }
-    .labeledContentStyle(.inspector)
-    .glassEffect(.clear, in: .rect(cornerRadius: 28))
-    .frame(maxWidth: 250)
     .scenePadding()
 }

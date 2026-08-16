@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var particleCount: Double
     @State private var duration: Double
     @State private var spawnPreset: SpawnPreset
+    @State private var spawnDomain: SpawnRegion.Domain
 
     @GestureState private var orbitTranslation: CGSize = .zero
 
@@ -31,15 +32,18 @@ struct ContentView: View {
 
     init() {
         _seed = .init(initialValue: 0)
-        _particleCount = .init(initialValue: 2000)
+        _particleCount = .init(initialValue: 1000)
         _duration = .init(initialValue: 20)
         _spawnPreset = .init(initialValue: .sphere)
+        _spawnDomain = .init(initialValue: .volume)
 
         _system = .init(
             initialValue: .init(
                 seed: .init(_seed.wrappedValue),
                 particleCount: .init(_particleCount.wrappedValue),
-                spawnRegion: _spawnPreset.wrappedValue.region,
+                spawnRegion: _spawnPreset.wrappedValue.region(
+                    domain: _spawnDomain.wrappedValue
+                ),
                 duration: .seconds(_duration.wrappedValue)
             )
         )
@@ -92,7 +96,8 @@ struct ContentView: View {
                         duration: $duration,
                         particleCount: $particleCount,
                         seed: $seed,
-                        spawnPreset: $spawnPreset
+                        spawnPreset: $spawnPreset,
+                        spawnDomain: $spawnDomain
                     )
                     .scenePadding([.horizontal, .top])
                 }
@@ -142,6 +147,9 @@ struct ContentView: View {
         .onChange(of: spawnPreset) {
             updateSystem()
         }
+        .onChange(of: spawnDomain) {
+            updateSystem()
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("Camera", selection: $cameraPreset) {
@@ -159,6 +167,7 @@ struct ContentView: View {
                 ) {
                     isPaused.toggle()
                 }
+                .symbolVariant(.fill)
                 .keyboardShortcut(.space, modifiers: [])
             }
         }
@@ -168,7 +177,7 @@ struct ContentView: View {
         system = System(
             seed: UInt64(seed),
             particleCount: Int(particleCount),
-            spawnRegion: spawnPreset.region,
+            spawnRegion: spawnPreset.region(domain: spawnDomain),
             duration: .seconds(duration)
         )
         fraction = 0

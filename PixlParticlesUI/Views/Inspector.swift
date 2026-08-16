@@ -6,6 +6,7 @@ struct Inspector: View {
     @Binding var particleCount: Double
     @Binding var seed: Double
     @Binding var spawnPreset: SpawnPreset
+    @Binding var spawnDomain: SpawnRegion.Domain
 
     var body: some View {
 //        ScrollView {
@@ -33,6 +34,22 @@ struct Inspector: View {
                         .pickerStyle(.menu)
                         .tint(.primary)
                     }
+
+                    if spawnPreset.supportedDomains.count > 1 {
+                        LabeledContent("Spawn From") {
+                            Picker("Spawn From", selection: $spawnDomain) {
+                                ForEach(
+                                    spawnPreset.supportedDomains,
+                                    id: \.self
+                                ) { domain in
+                                    Text(domain.title).tag(domain)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .tint(.primary)
+                        }
+                    }
                 }
             }
             .frame(
@@ -47,6 +64,7 @@ struct Inspector: View {
         .clipShape(.rect(cornerRadius: 28))
         .glassEffect(.clear, in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
+        .animation(.snappy, value: spawnPreset)
     }
 }
 
@@ -87,12 +105,14 @@ struct Divided<Content: View>: View {
     @Previewable @State var particleCount: Double = 200
     @Previewable @State var seed: Double = 0
     @Previewable @State var spawnPreset = SpawnPreset.sphere
+    @Previewable @State var spawnDomain = SpawnRegion.Domain.volume
 
     Inspector(
         duration: $duration,
         particleCount: $particleCount,
         seed: $seed,
-        spawnPreset: $spawnPreset
+        spawnPreset: $spawnPreset,
+        spawnDomain: $spawnDomain
     )
     .fixedSize(horizontal: true, vertical: false)
     .scenePadding()

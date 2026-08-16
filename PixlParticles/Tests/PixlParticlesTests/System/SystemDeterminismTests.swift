@@ -6,9 +6,24 @@ struct SystemDeterminismTests {
     @Test("A seed reproduces spawned particles")
     func seededSpawn() {
         let instant = ContinuousClock.now
-        let first = System(seed: 42, particleCount: 101).sample(at: instant).particles
-        let second = System(seed: 42, particleCount: 101).sample(at: instant).particles
-        let different = System(seed: 43, particleCount: 101).sample(at: instant).particles
+        let first = System(
+            seed: 42,
+            particleCount: 101,
+            spawnRegion: .box(size: [200, 200, 200]),
+            duration: .seconds(2)
+        ).sample(at: instant).particles
+        let second = System(
+            seed: 42,
+            particleCount: 101,
+            spawnRegion: .box(size: [200, 200, 200]),
+            duration: .seconds(2)
+        ).sample(at: instant).particles
+        let different = System(
+            seed: 43,
+            particleCount: 101,
+            spawnRegion: .box(size: [200, 200, 200]),
+            duration: .seconds(2)
+        ).sample(at: instant).particles
 
         #expect(first.count == 101)
         #expect(first.first?.id == 0)
@@ -22,7 +37,12 @@ struct SystemDeterminismTests {
     @Test("Seeking backward resets and deterministically replays")
     func seek() {
         let instant = ContinuousClock.now
-        let system = System(seed: 42, particleCount: 16)
+        let system = System(
+            seed: 42,
+            particleCount: 16,
+            spawnRegion: .box(size: [200, 200, 200]),
+            duration: .seconds(2)
+        )
 
         system.seek(to: .milliseconds(1_500))
         let first = system.sample(at: instant, isPaused: true)
@@ -53,7 +73,9 @@ struct SystemDeterminismTests {
     @Test("Stops at its duration")
     func duration() {
         let system = System(
+            seed: 0,
             particleCount: 16,
+            spawnRegion: .box(size: [200, 200, 200]),
             duration: .milliseconds(100)
         )
         let start = ContinuousClock.now

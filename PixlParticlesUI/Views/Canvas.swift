@@ -48,7 +48,7 @@ struct ParticleCanvas: View {
         sample: System(
             seed: 0,
             particleCount: 100,
-            spawnRegion: SpawnPreset.sphere.region,
+            spawnRegion: SpawnPreset.sphere.region(domain: .volume),
             duration: .seconds(20)
         )
         .sample(at: .now),

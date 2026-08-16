@@ -1,14 +1,19 @@
 import Swift
 
 public enum SpawnRegion: Hashable, Sendable {
+    public enum Domain: Hashable, Sendable {
+        case volume
+        case surface
+    }
+
     /// Places every particle at one world-space position.
     case point(Vec3)
 
     /// Distributes particles along a world-space line segment.
     case line(from: Vec3, to: Vec3)
 
-    /// Distributes particles throughout a box centred on the origin.
-    case box(size: Vec3)
+    /// Distributes particles within a box centred on the origin.
+    case box(size: Vec3, domain: Domain = .volume)
 
     /// Distributes particles throughout a sphere centred on the origin.
     case sphere(radius: Float)
@@ -21,9 +26,13 @@ public enum SpawnRegion: Hashable, Sendable {
         case let .line(start, end):
             precondition(start.isFinite && end.isFinite)
 
-        case let .box(size):
+        case let .box(size, domain):
             precondition(size.isFinite)
             precondition(size.x >= 0 && size.y >= 0 && size.z >= 0)
+
+            if domain == .surface {
+                precondition(Self.boxFaceAreaSum(size).isFinite)
+            }
 
         case let .sphere(radius):
             precondition(radius.isFinite && radius >= 0)
@@ -49,18 +58,18 @@ public enum SpawnRegion: Hashable, Sendable {
             let fraction = RandomSource.unitFloat(from: block.x0)
             return start + (end - start) * fraction
 
-        case let .box(size):
+        case let .box(size, domain):
             let block = random.block(
                 at: address,
                 channel: .position
             )
-            let halfSize = size / 2
 
-            return [
-                Self.component(from: block.x0, extent: halfSize.x),
-                Self.component(from: block.x1, extent: halfSize.y),
-                Self.component(from: block.x2, extent: halfSize.z),
-            ]
+            switch domain {
+            case .volume:
+                return Self.boxVolume(size: size, block: block)
+            case .surface:
+                return Self.boxSurface(size: size, block: block)
+            }
 
         case let .sphere(radius):
             guard radius > 0 else { return .zero }
@@ -90,6 +99,65 @@ public enum SpawnRegion: Hashable, Sendable {
                 index &+= 1
             }
         }
+    }
+
+    @inline(__always)
+    private static func boxVolume(
+        size: Vec3,
+        block: Philox4x32.Counter
+    ) -> Vec3 {
+        let halfSize = size / 2
+
+        return [
+            component(from: block.x0, extent: halfSize.x),
+            component(from: block.x1, extent: halfSize.y),
+            component(from: block.x2, extent: halfSize.z),
+        ]
+    }
+
+    @inline(__always)
+    private static func boxSurface(
+        size: Vec3,
+        block: Philox4x32.Counter
+    ) -> Vec3 {
+        let halfSize = size / 2
+        let xyArea = size.x * size.y
+        let xzArea = size.x * size.z
+        let faceAreaSum = xyArea + xzArea + size.y * size.z
+
+        guard faceAreaSum > 0 else {
+            return boxVolume(size: size, block: block)
+        }
+
+        let selection = RandomSource.unitFloat(from: block.x0) * faceAreaSum
+        let side: Float = block.x3 & 1 == 0 ? -1 : 1
+
+        if selection < xyArea {
+            return [
+                component(from: block.x1, extent: halfSize.x),
+                component(from: block.x2, extent: halfSize.y),
+                side * halfSize.z,
+            ]
+        }
+
+        if selection < xyArea + xzArea {
+            return [
+                component(from: block.x1, extent: halfSize.x),
+                side * halfSize.y,
+                component(from: block.x2, extent: halfSize.z),
+            ]
+        }
+
+        return [
+            side * halfSize.x,
+            component(from: block.x1, extent: halfSize.y),
+            component(from: block.x2, extent: halfSize.z),
+        ]
+    }
+
+    @inline(__always)
+    private static func boxFaceAreaSum(_ size: Vec3) -> Float {
+        size.x * size.y + size.x * size.z + size.y * size.z
     }
 
     @inline(__always)

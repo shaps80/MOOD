@@ -18,7 +18,11 @@ enum SpawnPreset: CaseIterable, Hashable {
         }
     }
 
-    var region: SpawnRegion {
+    var supportedDomains: [SpawnRegion.Domain] {
+        self == .box ? [.volume, .surface] : [.volume]
+    }
+
+    func region(domain: SpawnRegion.Domain) -> SpawnRegion {
         switch self {
         case .point:
             .point(.zero)
@@ -27,9 +31,18 @@ enum SpawnPreset: CaseIterable, Hashable {
         case .plane:
             .box(size: [200, 0, 200])
         case .box:
-            .box(size: [200, 200, 200])
+            .box(size: [200, 200, 200], domain: domain)
         case .sphere:
             .sphere(radius: 150)
+        }
+    }
+}
+
+extension SpawnRegion.Domain {
+    var title: LocalizedStringResource {
+        switch self {
+        case .volume: "Volume"
+        case .surface: "Surface"
         }
     }
 }

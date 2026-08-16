@@ -7,8 +7,10 @@ struct SpawnRegionTests {
     func point() {
         let position: Vec3 = [10, 20, 30]
         let particles = System(
+            seed: 0,
             particleCount: 32,
-            spawnRegion: .point(position)
+            spawnRegion: .point(position),
+            duration: .seconds(2)
         ).sample(at: .now).particles
 
         #expect(particles.allSatisfy { $0.position == position })
@@ -22,7 +24,8 @@ struct SpawnRegionTests {
             spawnRegion: .line(
                 from: [-10, 20, 30],
                 to: [10, 20, 30]
-            )
+            ),
+            duration: .seconds(2)
         ).sample(at: .now).particles
 
         #expect(particles.allSatisfy { particle in
@@ -38,7 +41,8 @@ struct SpawnRegionTests {
         let particles = System(
             seed: 42,
             particleCount: 1_000,
-            spawnRegion: .box(size: [20, 40, 60])
+            spawnRegion: .box(size: [20, 40, 60]),
+            duration: .seconds(2)
         ).sample(at: .now).particles
 
         #expect(particles.allSatisfy { particle in
@@ -48,17 +52,77 @@ struct SpawnRegionTests {
         })
     }
 
+    @Test("Box surface samples faces by area deterministically")
+    func boxSurface() {
+        let first = System(
+            seed: 42,
+            particleCount: 10_000,
+            spawnRegion: .box(
+                size: [20, 40, 60],
+                domain: .surface
+            ),
+            duration: .seconds(2)
+        ).sample(at: .now).particles
+        let second = System(
+            seed: 42,
+            particleCount: 10_000,
+            spawnRegion: .box(
+                size: [20, 40, 60],
+                domain: .surface
+            ),
+            duration: .seconds(2)
+        ).sample(at: .now).particles
+
+        #expect(first.map(\.position) == second.map(\.position))
+        #expect(first.allSatisfy { particle in
+            let position = particle.position
+            return abs(position.x) == 10 ||
+                abs(position.y) == 20 ||
+                abs(position.z) == 30
+        })
+
+        let xFaces = first.count { abs($0.position.x) == 10 }
+        let yFaces = first.count { abs($0.position.y) == 20 }
+        let zFaces = first.count { abs($0.position.z) == 30 }
+
+        #expect(xFaces > yFaces)
+        #expect(yFaces > zFaces)
+    }
+
+    @Test("Box defaults to its volume domain")
+    func boxDefaultDomain() {
+        let implicit = System(
+            seed: 42,
+            particleCount: 1_000,
+            spawnRegion: .box(size: [20, 40, 60]),
+            duration: .seconds(2)
+        ).sample(at: .now).particles
+        let explicit = System(
+            seed: 42,
+            particleCount: 1_000,
+            spawnRegion: .box(
+                size: [20, 40, 60],
+                domain: .volume
+            ),
+            duration: .seconds(2)
+        ).sample(at: .now).particles
+
+        #expect(implicit.map(\.position) == explicit.map(\.position))
+    }
+
     @Test("Sphere uniformly fills its volume deterministically")
     func sphere() {
         let first = System(
             seed: 42,
             particleCount: 1_000,
-            spawnRegion: .sphere(radius: 100)
+            spawnRegion: .sphere(radius: 100),
+            duration: .seconds(2)
         ).sample(at: .now).particles
         let second = System(
             seed: 42,
             particleCount: 1_000,
-            spawnRegion: .sphere(radius: 100)
+            spawnRegion: .sphere(radius: 100),
+            duration: .seconds(2)
         ).sample(at: .now).particles
 
         #expect(first.map(\.position) == second.map(\.position))
@@ -81,13 +145,15 @@ struct SpawnRegionTests {
         let regions: [SpawnRegion] = [
             .line(from: [-10, 20, 30], to: [10, 20, 30]),
             .box(size: [20, 40, 60]),
+            .box(size: [20, 40, 60], domain: .surface),
             .sphere(radius: 100),
         ]
         let actual = regions.map { region in
             System(
                 seed: 42,
                 particleCount: 4,
-                spawnRegion: region
+                spawnRegion: region,
+                duration: .seconds(2)
             ).sample(at: .now).particles.map { particle in
                 let position = particle.position
                 return [
@@ -109,6 +175,12 @@ struct SpawnRegionTests {
                 [1_092_358_634, 3_235_732_452, 1_062_574_368],
                 [1_087_409_668, 1_087_022_288, 1_086_670_000],
                 [1_083_371_914, 1_088_056_128, 1_084_613_504],
+            ],
+            [
+                [1_092_616_192, 3_214_988_880, 3_251_427_658],
+                [1_092_616_192, 3_235_732_452, 1_062_574_368],
+                [1_092_616_192, 1_087_022_288, 1_086_670_000],
+                [1_092_616_192, 1_088_056_128, 1_084_613_504],
             ],
             [
                 [1_102_363_740, 3_234_401_247, 3_265_967_379],
