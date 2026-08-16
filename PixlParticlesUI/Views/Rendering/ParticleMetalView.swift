@@ -15,6 +15,7 @@ private typealias PlatformGestureState = UIGestureRecognizer.State
 struct ParticleMetalView: PlatformViewRepresentable {
     let system: System
     let isPaused: Bool
+    let duration: Duration
     let cameraPreset: CameraPreset
     let rotation: SIMD4<Float>
     let zoom: Float
@@ -31,6 +32,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
         Coordinator(
             system: system,
             isPaused: isPaused,
+            duration: duration,
             preset: cameraPreset,
             rotation: rotation,
             zoom: zoom,
@@ -63,6 +65,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
         context.coordinator.update(
             system: system,
             isPaused: isPaused,
+            duration: duration,
             preset: cameraPreset,
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
@@ -89,6 +92,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
     private var system: System
     private var systemID: ObjectIdentifier
     private var isPaused: Bool
+    private var duration: Duration
     private var preset: CameraPreset
     private var orbit: Orbit
     private var zoom: Float
@@ -106,6 +110,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
     init(
         system: System,
         isPaused: Bool,
+        duration: Duration,
         preset: CameraPreset,
         rotation: SIMD4<Float>,
         zoom: Float,
@@ -126,6 +131,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
         self.system = system
         systemID = ObjectIdentifier(system)
         self.isPaused = isPaused
+        self.duration = duration
         self.preset = preset
         self.orbit = orbit
         self.zoom = zoom
@@ -152,6 +158,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
     func update(
         system: System,
         isPaused: Bool,
+        duration: Duration,
         preset: CameraPreset,
         pointLOD: PointLOD,
         isGroundPlaneVisible: Bool,
@@ -168,6 +175,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
             renderThread?.replaceSystem(system)
         }
         self.isPaused = isPaused
+        if duration != self.duration {
+            self.duration = duration
+            renderThread?.setDuration(duration)
+        }
         self.preset = preset
         self.pointLOD = pointLOD
         self.isGroundPlaneVisible = isGroundPlaneVisible
@@ -389,8 +400,7 @@ final class ParticleMTKView: MTKView {
             target: target,
             action: #selector(Coordinator.translate(_:))
         )
-        translation.numberOfTouchesRequired = 2
-        translation.delegate = target
+        translation.buttonMask = 2
         addGestureRecognizer(translation)
 
         let magnification = NSMagnificationGestureRecognizer(

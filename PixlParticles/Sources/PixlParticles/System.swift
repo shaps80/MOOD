@@ -2,7 +2,7 @@ import PixlRenderer
 import Swift
 
 public final class System {
-    public let duration: Duration
+    public private(set) var duration: Duration
 
     var particleSnapshot: [Particle] { storage.particles() }
 
@@ -11,7 +11,7 @@ public final class System {
     private let random: RandomSource
     private let spawnRegion: SpawnRegion
     private var loop: Loop
-    private let durationInTicks: UInt64
+    private var durationInTicks: UInt64
     private var storage: ParticleStorage
     private let initialState: InitialParticleState?
     private var tick: UInt64 = 0
@@ -30,13 +30,7 @@ public final class System {
         spawnRegion.validate()
 
         let loop = Loop(settings: .default)
-        let finiteDurationInTicks = (
-            Loop.seconds(duration) / loop.fixedDeltaSeconds
-        ).rounded()
-        precondition(finiteDurationInTicks <= Double(UInt64.max))
-        let durationInTicks = duration == .zero
-            ? UInt64.max
-            : UInt64(finiteDurationInTicks)
+        let durationInTicks = Self.ticks(for: duration, using: loop)
 
         let randomSource = RandomSource(seed: seed)
         let region = spawnRegion
@@ -57,6 +51,18 @@ public final class System {
         initialState = storesRewindState ? storage.initialState() : nil
         nextID = Particle.ID(particleCount)
         initialNextID = nextID
+    }
+
+    public func setDuration(_ duration: Duration) {
+        precondition(duration >= .zero)
+
+        let durationInTicks = Self.ticks(for: duration, using: loop)
+        self.duration = duration
+        self.durationInTicks = durationInTicks
+
+        if tick > durationInTicks {
+            seek(to: duration)
+        }
     }
 
     public func sample(
@@ -167,5 +173,15 @@ public final class System {
                 RandomSource.float(from: velocityBlock.x2, in: velocityRange),
             ]
         )
+    }
+
+    private static func ticks(for duration: Duration, using loop: Loop) -> UInt64 {
+        guard duration > .zero else { return .max }
+
+        let ticks = (
+            Loop.seconds(duration) / loop.fixedDeltaSeconds
+        ).rounded()
+        precondition(ticks <= Double(UInt64.max))
+        return UInt64(ticks)
     }
 }

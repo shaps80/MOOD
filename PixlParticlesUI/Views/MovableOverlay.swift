@@ -31,31 +31,32 @@ struct MovableOverlay<Content: View>: View {
                 y: geometry.size.height * position.y
             )
 
-            content
-                .onGeometryChange(for: CGSize.self) { proxy in
-                    proxy.size
-                } action: { size in
-                    contentSize = size
-                }
-                .overlay(alignment: .top) {
-                    Capsule()
-                        .fill(.secondary)
-                        .frame(width: 36, height: 5)
-                        .frame(width: 64, height: 28)
-                        .contentShape(.rect)
-                        .gesture(drag(in: geometry.size))
-                }
-                .offset(
-                    x: clamped(
-                        origin.x,
-                        to: 0...availableWidth
-                    ),
-                    y: clamped(
-                        origin.y,
-                        to: 0...availableHeight
-                    )
+            VStack(spacing: 0) {
+                Capsule()
+                    .fill(.secondary)
+                    .frame(width: 36, height: 5)
+                    .frame(width: 64, height: 28)
+                    .contentShape(.rect)
+                    .gesture(drag(in: geometry.size))
+
+                content
+            }
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { size in
+                contentSize = size
+            }
+            .offset(
+                x: clamped(
+                    origin.x,
+                    to: 0...availableWidth
+                ),
+                y: clamped(
+                    origin.y,
+                    to: 0...availableHeight
                 )
-                .animation(.snappy, value: contentSize)
+            )
+            .animation(.snappy, value: contentSize)
         }
     }
 

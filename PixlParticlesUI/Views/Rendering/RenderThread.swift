@@ -37,6 +37,10 @@ final class RenderThread {
         mailbox.seek(to: time)
     }
 
+    func setDuration(_ duration: Duration) {
+        mailbox.setDuration(duration)
+    }
+
     func result() -> (time: Duration?, failure: String?) {
         mailbox.result()
     }
@@ -67,6 +71,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                 let work = mailbox.next()
                 if work.shouldStop { return }
                 if let replacement = work.system { system = replacement }
+                if let duration = work.duration { system?.setDuration(duration) }
                 if let seekTime = work.seekTime { system?.seek(to: seekTime) }
                 guard let frame = work.frame, let system else { continue }
 

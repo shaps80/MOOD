@@ -6,15 +6,8 @@ struct ParticleViewport: View {
     let system: System
     let isPaused: Bool
     let isScrubbing: Bool
-    let cameraPreset: CameraPreset
-    @Binding var perspectiveRotationX: Double
-    @Binding var perspectiveRotationY: Double
-    @Binding var perspectiveRotationZ: Double
-    @Binding var perspectiveRotationW: Double
-    @Binding var cameraZoom: Double
-    @Binding var cameraTargetX: Double
-    @Binding var cameraTargetY: Double
-    @Binding var cameraTargetZ: Double
+    let duration: Duration
+    @Binding var camera: EditorSettings.Camera
     @Binding var fraction: Double
     let pointLOD: PointLOD
     let isGroundPlaneVisible: Bool
@@ -26,23 +19,24 @@ struct ParticleViewport: View {
         ParticleMetalView(
             system: system,
             isPaused: isPaused || isScrubbing,
-            cameraPreset: cameraPreset,
+            duration: duration,
+            cameraPreset: camera.preset,
             rotation: [
-                Float(perspectiveRotationX),
-                Float(perspectiveRotationY),
-                Float(perspectiveRotationZ),
-                Float(perspectiveRotationW),
+                Float(camera.rotationX),
+                Float(camera.rotationY),
+                Float(camera.rotationZ),
+                Float(camera.rotationW),
             ],
-            zoom: Float(cameraZoom),
+            zoom: Float(camera.zoom),
             target: [
-                Float(cameraTargetX),
-                Float(cameraTargetY),
-                Float(cameraTargetZ),
+                Float(camera.targetX),
+                Float(camera.targetY),
+                Float(camera.targetZ),
             ],
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
             cullingBounds: cullingBounds,
-            seekTime: isScrubbing ? system.duration * fraction : nil,
+            seekTime: isScrubbing ? duration * fraction : nil,
             resetID: playbackResetID,
             onCameraChange: persistCamera,
             onTimeChange: updateFraction
@@ -54,21 +48,21 @@ struct ParticleViewport: View {
         _ zoom: Float,
         _ target: SIMD3<Float>
     ) {
-        perspectiveRotationX = Double(rotation.x)
-        perspectiveRotationY = Double(rotation.y)
-        perspectiveRotationZ = Double(rotation.z)
-        perspectiveRotationW = Double(rotation.w)
-        cameraZoom = Double(zoom)
-        cameraTargetX = Double(target.x)
-        cameraTargetY = Double(target.y)
-        cameraTargetZ = Double(target.z)
+        camera.rotationX = Double(rotation.x)
+        camera.rotationY = Double(rotation.y)
+        camera.rotationZ = Double(rotation.z)
+        camera.rotationW = Double(rotation.w)
+        camera.zoom = Double(zoom)
+        camera.targetX = Double(target.x)
+        camera.targetY = Double(target.y)
+        camera.targetZ = Double(target.z)
     }
 
     private func updateFraction(_ time: Duration) {
-        guard !isScrubbing, system.duration > .zero else { return }
+        guard !isScrubbing, duration > .zero else { return }
         let wasComplete = fraction >= 1
-        fraction = time / system.duration
-        if !wasComplete, time >= system.duration {
+        fraction = time / duration
+        if !wasComplete, time >= duration {
             onPlaybackComplete()
         }
     }

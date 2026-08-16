@@ -135,4 +135,45 @@ struct SystemDeterminismTests {
         #expect(sample.time == .seconds(2))
         #expect(sample.interpolation == 0)
     }
+
+    @Test("Extending duration preserves current state")
+    func extendingDuration() {
+        let system = System(
+            seed: 0,
+            particleCount: 16,
+            spawnRegion: .cube(size: [200, 200, 200]),
+            duration: .seconds(1)
+        )
+        system.seek(to: .milliseconds(500))
+        let particles = system.particleSnapshot
+
+        system.setDuration(.seconds(2))
+
+        #expect(system.duration == .seconds(2))
+        #expect(system.particleSnapshot.map(\.position) == particles.map(\.position))
+    }
+
+    @Test("Shortening duration clamps state to the new end")
+    func shorteningDuration() {
+        let system = System(
+            seed: 0,
+            particleCount: 16,
+            spawnRegion: .cube(size: [200, 200, 200]),
+            duration: .seconds(2)
+        )
+        let expected = System(
+            seed: 0,
+            particleCount: 16,
+            spawnRegion: .cube(size: [200, 200, 200]),
+            duration: .milliseconds(500)
+        )
+        system.seek(to: .seconds(1))
+        expected.seek(to: .milliseconds(500))
+
+        system.setDuration(.milliseconds(500))
+        let sample = system.sample(at: .now, isPaused: true)
+
+        #expect(sample.time == .milliseconds(500))
+        #expect(system.particleSnapshot.map(\.position) == expected.particleSnapshot.map(\.position))
+    }
 }

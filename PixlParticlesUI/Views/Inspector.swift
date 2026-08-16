@@ -6,7 +6,7 @@ struct Inspector: View {
     @Binding var particleCount: Double
     @Binding var seed: Double
     @Binding var spawnPreset: SpawnPreset
-    @Binding var spawnDomain: SpawnRegion.Domain
+    @Binding var spawnDomain: ParticleDocument.SpawnDomain
     @Binding var lodEnabled: Bool
     @Binding var lodActivation: Double
     @Binding var lodMaximum: Double
@@ -114,10 +114,11 @@ struct Inspector: View {
         .focusable(false)
         .focusEffectDisabled(true)
         .clipShape(.rect(cornerRadius: 28))
-        .background(.bar, in: .rect(cornerRadius: 28))
+        .background(.regularMaterial, in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
         .animation(.snappy, value: spawnPreset)
         .animation(.snappy, value: lodEnabled)
+        .animation(.snappy, value: cullingBoundsScale)
     }
 }
 
@@ -164,7 +165,7 @@ struct Divided<Content: View>: View {
     @Previewable @State var particleCount: Double = 200
     @Previewable @State var seed: Double = 0
     @Previewable @State var spawnPreset = SpawnPreset.sphere
-    @Previewable @State var spawnDomain = SpawnRegion.Domain.volume
+    @Previewable @State var spawnDomain = ParticleDocument.SpawnDomain.volume
     @Previewable @State var lodEnabled = true
     @Previewable @State var lodActivation = 500_000.0
     @Previewable @State var lodMaximum = 1_000_000.0

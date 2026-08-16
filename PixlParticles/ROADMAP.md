@@ -53,6 +53,7 @@ point-primitive rendering path.
 
 ## Later
 
+- Finder thumbnails and Quick Look playback for particle-effect documents.
 - Collisions.
 - Niagara-style events and event payloads, including collision-driven events.
 

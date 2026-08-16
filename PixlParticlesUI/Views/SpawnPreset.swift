@@ -1,7 +1,7 @@
 import Foundation
 import PixlParticles
 
-enum SpawnPreset: CaseIterable, Hashable {
+enum SpawnPreset: String, Codable, CaseIterable, Hashable, Sendable {
     case point
     case line
     case plane
@@ -18,7 +18,7 @@ enum SpawnPreset: CaseIterable, Hashable {
         }
     }
 
-    var supportedDomains: [SpawnRegion.Domain] {
+    var supportedDomains: [ParticleDocument.SpawnDomain] {
         switch self {
         case .cube, .sphere:
             [.volume, .surface]
@@ -27,7 +27,7 @@ enum SpawnPreset: CaseIterable, Hashable {
         }
     }
 
-    func region(domain: SpawnRegion.Domain) -> SpawnRegion {
+    func region(domain: ParticleDocument.SpawnDomain) -> SpawnRegion {
         switch self {
         case .point:
             .point(.zero)
@@ -36,18 +36,9 @@ enum SpawnPreset: CaseIterable, Hashable {
         case .plane:
             .cube(size: [200, 0, 200])
         case .cube:
-            .cube(size: [200, 200, 200], domain: domain)
+            .cube(size: [200, 200, 200], domain: domain.regionDomain)
         case .sphere:
-            .sphere(radius: 150, domain: domain)
-        }
-    }
-}
-
-extension SpawnRegion.Domain {
-    var title: LocalizedStringResource {
-        switch self {
-        case .volume: "Volume"
-        case .surface: "Surface"
+            .sphere(radius: 150, domain: domain.regionDomain)
         }
     }
 }

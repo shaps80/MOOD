@@ -1,6 +1,6 @@
 import Foundation
 
-enum PlayMode: String, CaseIterable, Hashable {
+enum PlayMode: String, Codable, CaseIterable, Hashable {
     case play
     case loop
 

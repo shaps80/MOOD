@@ -137,14 +137,25 @@
   regenerates initial particles deterministically and replays forward. The
   editor disables retained rewind state by default. Periodic checkpoints remain
   the intended scalable direction for long effects.
-- Editor LOD controls use ordinary local defaults. View visibility toggles,
-  culling-bounds scale, playback mode, camera orientation, and camera zoom
-  persist per scene through `SceneStorage`.
-- The leading View menu toggles the ground plane, timeline, and authored
-  culling bounds. The inspector remains permanently visible. Enabling culling
+- Per-window editor preferences are one Codable `EditorSettings` value persisted
+  through `SceneStorage`: camera preset/orientation/target/zoom, ground-plane,
+  inspector and timeline visibility, inspector placement, and playback mode.
+  Stored JSON is merged over current defaults before decoding so newly added
+  preferences do not invalidate older scenes.
+- Authored particle configuration is not editor preference state. Duration,
+  particle count, seed, spawn configuration, LOD, and culling bounds belong in
+  the particle-effect document. The editor uses the modern snapshot-based
+  `Document`, `ReadableDocument`, `WritableDocument`, and `DocumentGroup` shape
+  already validated by Comix. Native `.pixlparticles` JSON files support
+  Files/Finder and iCloud Drive workflows. Document mutations register undo and
+  redo through the shared `performEdit` path.
+- The leading View menu toggles the ground plane, inspector, timeline, and
+  authored culling bounds. Enabling culling
   bounds reveals a 1-to-10,000 scale field; the initial scale is 500.
-- Playback uses a primary-action menu. Play resets to time zero and pauses on
-  completion; Loop resets through the render-thread seek mailbox and continues.
+- Playback uses a primary-action menu beside the timeline slider. Play stops at
+  the end and restarts from zero when invoked again; Loop resets through the
+  render-thread seek mailbox and continues. Toolbar primary actions expose
+  document undo and redo.
 
 ## Working Method
 

@@ -1,7 +1,7 @@
 import simd
 import PixlRenderer
 
-enum CameraPreset: Hashable {
+enum CameraPreset: String, Codable, Hashable {
     case perspective
     case isometric
     case front
