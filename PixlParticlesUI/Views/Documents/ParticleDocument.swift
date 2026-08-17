@@ -39,16 +39,16 @@ final class ParticleDocument: Document {
 
         init(
             duration: Double = 30,
-            particleCount: Double = 50_000,
+            particleCount: Double = 10_000,
             seed: Double = 0,
-            spawnPreset: SpawnPreset = .plane,
-            spawnDomain: SpawnDomain = .volume,
+            spawnPreset: SpawnPreset = .sphere,
+            spawnDomain: SpawnDomain = .surface,
             isLODEnabled: Bool = false,
             lodActivation: Double = 500_000,
             lodMaximum: Double = 1_000_000,
             lodTileSize: Double = 16,
             lodPointsPerPixel: Double = 1,
-            areCullingBoundsEnabled: Bool = false,
+            areCullingBoundsEnabled: Bool = true,
             cullingBoundsScale: Double = 300
         ) {
             self.duration = duration

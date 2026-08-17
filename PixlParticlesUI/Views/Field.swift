@@ -42,6 +42,7 @@ struct Field: View {
             .textFieldStyle(.plain)
             .focusEffectDisabled()
             .fixedSize()
+            .padding(10)
             .opacity(isShowingField ? 1 : 0)
         }
         .multilineTextAlignment(.center)

@@ -153,7 +153,7 @@ struct Divided<Content: View>: View {
                             Divider()
                         }
                     }
-                    .padding(.horizontal, 2)
+                    .padding(2)
                     .clipped()
                 }
             }
