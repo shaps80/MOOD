@@ -17,7 +17,7 @@ struct Inspector: View {
     @Binding var cullingBoundsScale: Double
 
     var body: some View {
-//        ScrollView {
+        FittingScrollView {
             Divided {
                 Section("System") {
                     LabeledContent("Duration") {
@@ -93,8 +93,10 @@ struct Inspector: View {
                 }
 
                 if areCullingBoundsVisible || areCullingBoundsEnabled {
-                    Section("Culling Bounds") {
-                        LabeledContent("Scale") {
+                    Section("Culling") {
+                        Toggle("Cull to Bounds", isOn: $areCullingBoundsEnabled)
+
+                        LabeledContent("Bounds Scale") {
                             Field(
                                 value: $cullingBoundsScale,
                                 step: 25,
@@ -110,7 +112,7 @@ struct Inspector: View {
             )
             .scenePadding()
             .padding(5)
-//        }
+        }
         .labeledContentStyle(.inspector)
         .focusable(false)
         .focusEffectDisabled(true)
