@@ -40,7 +40,8 @@ struct ParticleTimeline: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .background(.regularMaterial, in: .capsule)
+        .glassEffect(.regular.interactive(), in: .capsule)
         .scenePadding()
+        .animation(.bouncy, value: playMode)
     }
 }

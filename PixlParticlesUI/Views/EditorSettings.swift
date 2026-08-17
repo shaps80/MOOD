@@ -17,7 +17,6 @@ struct EditorSettings: Equatable, RawRepresentable {
     struct Visibility: Codable, Equatable {
         var isGroundPlaneVisible = true
         var isInspectorVisible = true
-        var isTimelineVisible = true
     }
 
     struct Inspector: Codable, Equatable {

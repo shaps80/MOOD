@@ -6,6 +6,7 @@ struct MovableOverlay<Content: View>: View {
     @State private var contentSize = CGSize.zero
     @State private var position: CGPoint?
     @State private var dragOrigin: CGPoint?
+    @State private var isPresented: Bool = false
     @ViewBuilder let content: Content
 
     init(
@@ -33,18 +34,23 @@ struct MovableOverlay<Content: View>: View {
 
             VStack(spacing: 0) {
                 Capsule()
-                    .fill(.secondary)
+                    .glassEffect(.regular.interactive())
                     .frame(width: 36, height: 5)
                     .frame(width: 64, height: 28)
                     .contentShape(.rect)
+                    .onTapGesture {
+                        withAnimation(.snappy) { isPresented.toggle() }
+                    }
                     .gesture(drag(in: geometry.size))
 
-                content
+                    content
             }
             .onGeometryChange(for: CGSize.self) { proxy in
                 proxy.size
             } action: { size in
-                contentSize = size
+                withAnimation(.snappy) {
+                    contentSize = size
+                }
             }
             .offset(
                 x: clamped(

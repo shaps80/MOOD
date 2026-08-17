@@ -76,17 +76,15 @@ struct ContentView: View {
                 VStack {
                     Spacer(minLength: 0)
 
-                    if settings.visibility.isTimelineVisible {
-                        ParticleTimeline(
-                            fraction: $fraction,
-                            isScrubbing: $isScrubbing,
-                            isPaused: isPaused,
-                            playMode: $settings.playMode,
-                            playbackSystemImage: playbackSystemImage,
-                            togglePlayback: togglePlayback
-                        )
-                        .frame(maxWidth: 500)
-                    }
+                    ParticleTimeline(
+                        fraction: $fraction,
+                        isScrubbing: $isScrubbing,
+                        isPaused: isPaused,
+                        playMode: $settings.playMode,
+                        playbackSystemImage: playbackSystemImage,
+                        togglePlayback: togglePlayback
+                    )
+                    .frame(maxWidth: 500)
                 }
             }
             .background(.quinary)
@@ -143,10 +141,6 @@ struct ContentView: View {
                         Toggle(
                             "Inspector",
                             isOn: $settings.visibility.isInspectorVisible
-                        )
-                        Toggle(
-                            "Timeline",
-                            isOn: $settings.visibility.isTimelineVisible
                         )
                         Toggle(
                             "Culling Bounds",

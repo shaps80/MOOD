@@ -114,7 +114,7 @@ struct Inspector: View {
         .focusable(false)
         .focusEffectDisabled(true)
         .clipShape(.rect(cornerRadius: 28))
-        .background(.regularMaterial, in: .rect(cornerRadius: 28))
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 28))
         .frame(maxWidth: 250)
         .animation(.snappy, value: spawnPreset)
         .animation(.snappy, value: lodEnabled)
@@ -133,7 +133,7 @@ struct Divided<Content: View>: View {
         VStack(alignment: .leading, spacing: 30) {
             Group(sections: content) { sections in
                 ForEach(sections) { section in
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 10) {
                         section.header
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
