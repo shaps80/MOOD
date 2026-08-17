@@ -131,7 +131,9 @@ struct ContentView: View {
                     .pickerStyle(.segmented)
                     .fixedSize()
                 }
+#if os(iOS)
                 .sharedBackgroundVisibility(.hidden)
+#endif
 
                 ToolbarItem(placement: .primaryAction) {
                     Menu("View", systemImage: "ellipsis") {
