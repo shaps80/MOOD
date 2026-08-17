@@ -47,29 +47,22 @@ struct ContentView: View {
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
-                .overlay {
-                    Movable(
-                        horizontalPosition: $settings.inspector.horizontalPosition,
-                        verticalPosition: $settings.inspector.verticalPosition,
-                        isVisible: settings.visibility.isInspectorVisible
-                    ) {
-                        Inspector(
-                            duration: binding(\.duration, "Change Duration"),
-                            particleCount: binding(\.particleCount, "Change Particle Count"),
-                            seed: binding(\.seed, "Change Seed"),
-                            spawnPreset: binding(\.spawnPreset, "Change Spawn Region"),
-                            spawnDomain: binding(\.spawnDomain, "Change Spawn Domain"),
-                            lodEnabled: binding(\.isLODEnabled, "Toggle LOD"),
-                            lodActivation: binding(\.lodActivation, "Change LOD Activation"),
-                            lodMaximum: binding(\.lodMaximum, "Change LOD Maximum"),
-                            lodTileSize: binding(\.lodTileSize, "Change LOD Tile Size"),
-                            lodPointsPerPixel: binding(\.lodPointsPerPixel, "Change LOD Density"),
-                            isCullingEnabled: binding(
-                                \.isCullingEnabled, "Toggle Culling Bounds"),
-                            cullingBoundsScale: binding(\.cullingBoundsScale, "Change Culling Bounds")
-                        )
-                    }
-                    .scenePadding()
+                .draggableInspector(isPresented: $settings.visibility.isInspectorVisible) {
+                    Inspector(
+                        duration: binding(\.duration, "Change Duration"),
+                        particleCount: binding(\.particleCount, "Change Particle Count"),
+                        seed: binding(\.seed, "Change Seed"),
+                        spawnPreset: binding(\.spawnPreset, "Change Spawn Region"),
+                        spawnDomain: binding(\.spawnDomain, "Change Spawn Domain"),
+                        lodEnabled: binding(\.isLODEnabled, "Toggle LOD"),
+                        lodActivation: binding(\.lodActivation, "Change LOD Activation"),
+                        lodMaximum: binding(\.lodMaximum, "Change LOD Maximum"),
+                        lodTileSize: binding(\.lodTileSize, "Change LOD Tile Size"),
+                        lodPointsPerPixel: binding(\.lodPointsPerPixel, "Change LOD Density"),
+                        isCullingEnabled: binding(
+                            \.isCullingEnabled, "Toggle Culling Bounds"),
+                        cullingBoundsScale: binding(\.cullingBoundsScale, "Change Culling Bounds")
+                    )
                 }
 
                 VStack {

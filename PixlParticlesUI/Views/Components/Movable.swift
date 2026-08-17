@@ -1,77 +1,90 @@
 import SwiftUI
 
-struct Movable<Content: View>: View {
-    @Binding var horizontalPosition: Double
-    @Binding var verticalPosition: Double
-    let isVisible: Bool
+extension View {
+    func draggableInspector<Content: View>(id: String = "inspector", isPresented: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
+        modifier(MovableModifier(id: id, isPresented: isPresented, movableContent: content()))
+    }
+}
+
+struct MovableModifier<MovableContent: View>: ViewModifier {
+    @SceneStorage private var horizontalPosition: Double
+    @SceneStorage private var verticalPosition: Double
+
+    @State private var isVisible: Bool = false
     @State private var contentSize = CGSize.zero
     @State private var position: CGPoint?
     @State private var dragOrigin: CGPoint?
-    @ViewBuilder let content: Content
 
-    init(
-        horizontalPosition: Binding<Double>,
-        verticalPosition: Binding<Double>,
-        isVisible: Bool,
-        @ViewBuilder content: () -> Content
-    ) {
-        _horizontalPosition = horizontalPosition
-        _verticalPosition = verticalPosition
-        self.isVisible = isVisible
-        self.content = content()
+    @Binding var isPresented: Bool
+    let movableContent: MovableContent
+
+    init(id: String, isPresented: Binding<Bool>, movableContent: MovableContent) {
+        self.movableContent = movableContent
+        _horizontalPosition = .init(wrappedValue: 1, "\(id)-h")
+        _verticalPosition = .init(wrappedValue: 0.5, "\(id)-v")
+        _isPresented = isPresented
     }
 
-    var body: some View {
-        GeometryReader { geometry in
-            let availableWidth = max(geometry.size.width - contentSize.width, 0)
-            let availableHeight = max(geometry.size.height - contentSize.height, 0)
-            let position =
-            position
-            ?? CGPoint(
-                x: horizontalPosition,
-                y: verticalPosition
-            )
-            let origin = CGPoint(
-                x: availableWidth * position.x,
-                y: geometry.size.height * position.y
-            )
-
-            ZStack(alignment: .topLeading) {
-                ZStack(alignment: .topLeading) {
-                    if isVisible {
-                        VStack(spacing: 0) {
-                        Capsule()
-                            .glassEffect(.regular.interactive())
-                            .frame(width: 36, height: 5)
-                            .frame(width: 64, height: 28)
-                            .contentShape(.rect)
-                            .gesture(drag(in: geometry.size))
-
-                            content
-                        }
-                        .onGeometryChange(for: CGSize.self) { proxy in
-                            proxy.size
-                        } action: { size in
-                            withAnimation(.snappy) {
-                                contentSize = size
-                            }
-                        }
-                        .transition(PanelTransition())
-                        .animation(.snappy, value: contentSize)
-                    }
-                }
-                .offset(
-                    x: clamped(
-                        origin.x,
-                        to: 0...availableWidth
-                    ),
-                    y: clamped(
-                        origin.y,
-                        to: 0...availableHeight
-                    )
+    func body(content: Content) -> some View {
+        content.overlay {
+            GeometryReader { geometry in
+                let availableWidth = max(geometry.size.width - contentSize.width, 0)
+                let availableHeight = max(geometry.size.height - contentSize.height, 0)
+                let position =
+                position
+                ?? CGPoint(
+                    x: horizontalPosition,
+                    y: verticalPosition
                 )
+                let origin = CGPoint(
+                    x: availableWidth * position.x,
+                    y: geometry.size.height * position.y
+                )
+
+                ZStack(alignment: .topLeading) {
+                    ZStack(alignment: .topLeading) {
+                        if isPresented && isVisible {
+                            VStack(spacing: 0) {
+                                Capsule()
+                                    .glassEffect(.regular.interactive())
+                                    .frame(width: 36, height: 5)
+                                    .contentShape(.rect.inset(by: -10))
+                                    .gesture(drag(in: geometry.size))
+
+                                movableContent
+                            }
+                            .scenePadding()
+                            .onGeometryChange(for: CGSize.self) { proxy in
+                                proxy.size
+                            } action: { size in
+                                withAnimation(.snappy) {
+                                    contentSize = size
+                                }
+                            }
+                            .transition(PanelTransition())
+                            .animation(.snappy, value: contentSize)
+                        }
+                    }
+                    .offset(
+                        x: clamped(
+                            origin.x,
+                            to: 0...availableWidth
+                        ),
+                        y: clamped(
+                            origin.y,
+                            to: 0...availableHeight
+                        )
+                    )
+                }
+                .animation(.bouncy, value: isPresented)
+                .animation(.bouncy, value: isVisible)
             }
-            .animation(.bouncy, value: isVisible)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // defers the presentation until we're actually on screen
+                    isVisible = true
+                }
+            }
         }
     }
 
@@ -119,3 +132,15 @@ struct Movable<Content: View>: View {
         min(max(value, range.lowerBound), range.upperBound)
     }
 }
+
+//#Preview {
+//    ZStack {
+//        Movable(
+//            horizontalPosition: <#T##Binding<Double>#>,
+//            verticalPosition: <#T##Binding<Double>#>,
+//            isVisible: <#T##Bool#>,
+//            content: <#T##() -> View#>
+//        )
+//    }
+//    .frame(width: 600, height: 600)
+//}
