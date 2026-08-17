@@ -12,8 +12,7 @@ struct Inspector: View {
     @Binding var lodMaximum: Double
     @Binding var lodTileSize: Double
     @Binding var lodPointsPerPixel: Double
-    let areCullingBoundsVisible: Bool
-    @Binding var areCullingBoundsEnabled: Bool
+    @Binding var isCullingEnabled: Bool
     @Binding var cullingBoundsScale: Double
 
     var body: some View {
@@ -93,7 +92,7 @@ struct Inspector: View {
                 }
 
                 Section("Culling") {
-                    Toggle("Cull to Bounds", isOn: $areCullingBoundsEnabled)
+                    Toggle("Cull to Bounds", isOn: $isCullingEnabled)
 
                     LabeledContent("Bounds Scale") {
                         Field(
@@ -123,44 +122,6 @@ struct Inspector: View {
     }
 }
 
-struct Divided<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
-            Group(sections: content) { sections in
-                ForEach(sections) { section in
-                    VStack(alignment: .leading, spacing: 10) {
-                        section.header
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        Group(subviews: section.content) { subviews in
-                            ForEach(subviews: subviews) { subview in
-                                subview
-
-                                if subview.id != subviews.last?.id {
-                                    Divider()
-                                }
-                            }
-                        }
-
-                        if section.id != sections.last?.id {
-                            Divider()
-                        }
-                    }
-                    .padding(2)
-                    .clipped()
-                }
-            }
-        }
-    }
-}
-
 #Preview {
     @Previewable @State var duration: Double = 20
     @Previewable @State var particleCount: Double = 200
@@ -172,8 +133,7 @@ struct Divided<Content: View>: View {
     @Previewable @State var lodMaximum = 1_000_000.0
     @Previewable @State var lodTileSize = 16.0
     @Previewable @State var lodPointsPerPixel = 1.0
-    @Previewable @State var areCullingBoundsVisible = true
-    @Previewable @State var areCullingBoundsEnabled = true
+    @Previewable @State var isCullingEnabled = true
     @Previewable @State var cullingBoundsScale = 500.0
 
     Inspector(
@@ -187,8 +147,7 @@ struct Divided<Content: View>: View {
         lodMaximum: $lodMaximum,
         lodTileSize: $lodTileSize,
         lodPointsPerPixel: $lodPointsPerPixel,
-        areCullingBoundsVisible: areCullingBoundsVisible,
-        areCullingBoundsEnabled: $areCullingBoundsEnabled,
+        isCullingEnabled: $isCullingEnabled,
         cullingBoundsScale: $cullingBoundsScale
     )
     .fixedSize(horizontal: true, vertical: false)

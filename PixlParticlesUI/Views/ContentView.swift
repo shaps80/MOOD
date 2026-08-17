@@ -48,7 +48,7 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea()
                 .overlay {
-                    MovableOverlay(
+                    Movable(
                         horizontalPosition: $settings.inspector.horizontalPosition,
                         verticalPosition: $settings.inspector.verticalPosition,
                         isVisible: settings.visibility.isInspectorVisible
@@ -64,9 +64,8 @@ struct ContentView: View {
                             lodMaximum: binding(\.lodMaximum, "Change LOD Maximum"),
                             lodTileSize: binding(\.lodTileSize, "Change LOD Tile Size"),
                             lodPointsPerPixel: binding(\.lodPointsPerPixel, "Change LOD Density"),
-                            areCullingBoundsVisible: settings.visibility.areCullingBoundsVisible,
-                            areCullingBoundsEnabled: binding(
-                                \.areCullingBoundsEnabled, "Toggle Culling Bounds"),
+                            isCullingEnabled: binding(
+                                \.isCullingEnabled, "Toggle Culling Bounds"),
                             cullingBoundsScale: binding(\.cullingBoundsScale, "Change Culling Bounds")
                         )
                     }
@@ -148,7 +147,7 @@ struct ContentView: View {
 
                         Toggle(
                             "Culling Bounds",
-                            isOn: $settings.visibility.areCullingBoundsVisible
+                            isOn: $settings.visibility.isCullingVisible
                         )
                     }
                 }
@@ -198,8 +197,8 @@ struct ContentView: View {
     private var cullingBounds: CullingBounds {
         let snapshot = document.snapshot
         return .init(
-            isEnabled: snapshot.areCullingBoundsEnabled,
-            isVisible: settings.visibility.areCullingBoundsVisible,
+            isEnabled: snapshot.isCullingEnabled,
+            isVisible: settings.visibility.isCullingVisible,
             scale: Float(snapshot.cullingBoundsScale)
         )
     }

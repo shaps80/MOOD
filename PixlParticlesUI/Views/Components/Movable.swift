@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct MovableOverlay<Content: View>: View {
+struct Movable<Content: View>: View {
     @Binding var horizontalPosition: Double
     @Binding var verticalPosition: Double
     let isVisible: Bool

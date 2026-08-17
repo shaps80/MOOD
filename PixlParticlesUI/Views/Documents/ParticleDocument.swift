@@ -34,7 +34,7 @@ final class ParticleDocument: Document {
         var lodMaximum: Double
         var lodTileSize: Double
         var lodPointsPerPixel: Double
-        var areCullingBoundsEnabled: Bool
+        var isCullingEnabled: Bool
         var cullingBoundsScale: Double
 
         init(
@@ -48,7 +48,7 @@ final class ParticleDocument: Document {
             lodMaximum: Double = 1_000_000,
             lodTileSize: Double = 16,
             lodPointsPerPixel: Double = 1,
-            areCullingBoundsEnabled: Bool = true,
+            isCullingEnabled: Bool = true,
             cullingBoundsScale: Double = 300
         ) {
             self.duration = duration
@@ -61,7 +61,7 @@ final class ParticleDocument: Document {
             self.lodMaximum = lodMaximum
             self.lodTileSize = lodTileSize
             self.lodPointsPerPixel = lodPointsPerPixel
-            self.areCullingBoundsEnabled = areCullingBoundsEnabled
+            self.isCullingEnabled = isCullingEnabled
             self.cullingBoundsScale = cullingBoundsScale
         }
     }
