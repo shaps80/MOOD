@@ -36,7 +36,5 @@ vertex CullingBoundsVertex cullingBoundsVertex(
 }
 
 fragment half4 cullingBoundsFragment() {
-    // The low-opacity yellow is composited against the editor background here
-    // so shared line endpoints cannot accumulate into brighter corners.
-    return half4(0.208h, 0.158h, 0.008h, 1);
+    return half4(1, 1, 0, 1);
 }

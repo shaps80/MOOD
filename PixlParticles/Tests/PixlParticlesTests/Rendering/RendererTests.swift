@@ -20,6 +20,7 @@ struct ParticleRendererTests {
             system,
             interpolation: 0,
             tick: 0,
+            cullingViewProjection: .identity,
             viewProjection: .identity,
             viewport: .init(width: 100, height: 100)
         )
@@ -27,6 +28,7 @@ struct ParticleRendererTests {
             system,
             interpolation: 0.5,
             tick: 0,
+            cullingViewProjection: .identity,
             viewProjection: .identity,
             viewport: .init(width: 100, height: 100)
         )
@@ -34,6 +36,7 @@ struct ParticleRendererTests {
             system,
             interpolation: 0,
             tick: 1,
+            cullingViewProjection: .identity,
             viewProjection: .identity,
             viewport: .init(width: 100, height: 100)
         )
@@ -77,6 +80,7 @@ private final class RecordingBackend: Backend {
         positionsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
+        cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,

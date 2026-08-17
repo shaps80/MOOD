@@ -15,6 +15,7 @@ package final class Renderer {
         positionsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
+        cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize
     ) throws {
@@ -23,6 +24,7 @@ package final class Renderer {
             positionsChanged: positionsChanged,
             idsChanged: idsChanged,
             interpolation: interpolation,
+            cullingViewProjection: cullingViewProjection,
             viewProjection: viewProjection,
             viewport: viewport
         ) { destination in

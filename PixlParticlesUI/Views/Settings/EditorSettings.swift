@@ -18,6 +18,7 @@ struct EditorSettings: Equatable, RawRepresentable {
         var isGroundPlaneVisible = true
         var isInspectorVisible = true
         var isCullingVisible = false
+        var isFrustumVisible = false
     }
 
     struct Inspector: Codable, Equatable {
@@ -26,18 +27,21 @@ struct EditorSettings: Equatable, RawRepresentable {
     }
 
     var camera = Camera()
+    var observerCamera: Camera?
     var visibility = Visibility()
     var inspector = Inspector()
     var playMode = PlayMode.play
 
     private struct Representation: Codable {
         var camera: Camera
+        var observerCamera: Camera?
         var visibility: Visibility
         var inspector: Inspector
         var playMode: PlayMode
 
         init(_ settings: EditorSettings) {
             camera = settings.camera
+            observerCamera = settings.observerCamera
             visibility = settings.visibility
             inspector = settings.inspector
             playMode = settings.playMode
@@ -62,6 +66,7 @@ struct EditorSettings: Equatable, RawRepresentable {
             )
         else { return nil }
         camera = representation.camera
+        observerCamera = representation.observerCamera
         visibility = representation.visibility
         inspector = representation.inspector
         playMode = representation.playMode

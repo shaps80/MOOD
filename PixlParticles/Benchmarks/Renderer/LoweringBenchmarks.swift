@@ -47,6 +47,7 @@ struct LoweringBenchmarks {
                 system,
                 interpolation: 0,
                 tick: tick,
+                cullingViewProjection: matrix,
                 viewProjection: matrix,
                 viewport: .init(width: 1920, height: 1080)
             )
@@ -65,6 +66,7 @@ struct LoweringBenchmarks {
                     system,
                     interpolation: 0,
                     tick: tick,
+                    cullingViewProjection: matrix,
                     viewProjection: matrix,
                     viewport: .init(width: 1920, height: 1080)
                 )
@@ -142,6 +144,7 @@ private final class BenchmarkBackend: Backend {
         positionsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
+        cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,

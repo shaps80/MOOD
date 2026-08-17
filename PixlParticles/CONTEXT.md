@@ -130,6 +130,17 @@
   The ground plane reproduces the former Canvas visualization using one
   procedural line draw with no geometry buffer: height -100, extent 500,
   spacing 50, and linear grey at 20 percent opacity.
+- Perspective frustum inspection keeps the scene camera frozen for culling,
+  LOD, and every other scene decision while a separately persisted
+  `observerCamera` controls presentation. Enabling and disabling inspection
+  ease between the scene and observer poses; first use pulls the observer back
+  slightly so the frustum is immediately visible. Gestures interrupt the
+  transition directly.
+- Debug rendering must have effectively zero production impact: keep passes
+  optional, procedural where practical, free of steady-state allocation and
+  readback, and encode no work while disabled. Reusable debug geometry and
+  rendering contracts belong in `PixlRenderer`; editor interaction and camera
+  state belong in `PixlParticlesUI`.
 - Pixl renderer improvements may be identified, but particle-system design must not change Pixl implicitly.
 - Tests use Swift Testing. XCTest is reserved for performance tests. UI testing is manual only.
 - Never run the app; build it and run valuable non-UI tests only.

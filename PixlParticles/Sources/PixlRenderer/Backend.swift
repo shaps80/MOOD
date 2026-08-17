@@ -6,6 +6,7 @@ public protocol Backend: AnyObject {
         positionsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
+        cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,

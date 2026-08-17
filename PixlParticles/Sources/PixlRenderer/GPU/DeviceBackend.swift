@@ -12,6 +12,7 @@ public final class DeviceBackend: Backend {
     public var pointLOD: PointLOD
     public var groundPlane = GroundPlane()
     public var cullingBounds = CullingBounds()
+    public var cameraFrustum = CameraFrustum()
 
     public init(
         platform: any Platform,
@@ -34,6 +35,7 @@ public final class DeviceBackend: Backend {
         positionsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
+        cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
@@ -63,7 +65,7 @@ public final class DeviceBackend: Backend {
         try culling.encode(
             count: count,
             interpolation: interpolation,
-            viewProjection: viewProjection,
+            viewProjection: cullingViewProjection,
             cullingBounds: cullingBounds,
             positions: resources.positions,
             buffers: resources.culling,
@@ -75,7 +77,7 @@ public final class DeviceBackend: Backend {
                 settings: pointLOD,
                 viewport: viewport,
                 interpolation: interpolation,
-                viewProjection: viewProjection,
+                viewProjection: cullingViewProjection,
                 positions: resources.positions,
                 ids: ids,
                 culling: resources.culling,
@@ -92,6 +94,7 @@ public final class DeviceBackend: Backend {
         editor.encode(
             groundPlane: groundPlane,
             cullingBounds: cullingBounds,
+            cameraFrustum: cameraFrustum,
             viewProjection: viewProjection,
             into: encoder
         )

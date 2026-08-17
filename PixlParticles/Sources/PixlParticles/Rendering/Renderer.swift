@@ -14,6 +14,7 @@ public final class Renderer {
         _ system: System,
         interpolation: Float,
         tick: UInt64,
+        cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize
     ) throws {
@@ -34,6 +35,7 @@ public final class Renderer {
                 positionsChanged: positionsChanged,
                 idsChanged: idsChanged,
                 interpolation: interpolation,
+                cullingViewProjection: cullingViewProjection,
                 viewProjection: viewProjection,
                 viewport: viewport
             )

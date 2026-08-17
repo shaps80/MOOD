@@ -8,9 +8,11 @@ struct ParticleViewport: View {
     let isScrubbing: Bool
     let duration: Duration
     @Binding var camera: EditorSettings.Camera
+    @Binding var observerCamera: EditorSettings.Camera?
     @Binding var fraction: Double
     let pointLOD: PointLOD
     let isGroundPlaneVisible: Bool
+    let isFrustumVisible: Bool
     let cullingBounds: CullingBounds
     let playbackResetID: UInt64
     let onPlaybackComplete: () -> Void
@@ -33,8 +35,10 @@ struct ParticleViewport: View {
                 Float(camera.targetY),
                 Float(camera.targetZ),
             ],
+            observerCamera: observerCamera,
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
+            isFrustumVisible: isFrustumVisible && camera.preset == .perspective,
             cullingBounds: cullingBounds,
             seekTime: isScrubbing ? scrubDuration * fraction : nil,
             resetID: playbackResetID,
@@ -52,14 +56,21 @@ struct ParticleViewport: View {
         _ zoom: Float,
         _ target: SIMD3<Float>
     ) {
-        camera.rotationX = Double(rotation.x)
-        camera.rotationY = Double(rotation.y)
-        camera.rotationZ = Double(rotation.z)
-        camera.rotationW = Double(rotation.w)
-        camera.zoom = Double(zoom)
-        camera.targetX = Double(target.x)
-        camera.targetY = Double(target.y)
-        camera.targetZ = Double(target.z)
+        var value = EditorSettings.Camera()
+        value.preset = .perspective
+        value.rotationX = Double(rotation.x)
+        value.rotationY = Double(rotation.y)
+        value.rotationZ = Double(rotation.z)
+        value.rotationW = Double(rotation.w)
+        value.zoom = Double(zoom)
+        value.targetX = Double(target.x)
+        value.targetY = Double(target.y)
+        value.targetZ = Double(target.z)
+        if isFrustumVisible {
+            observerCamera = value
+        } else {
+            camera = value
+        }
     }
 
     private func updateFraction(_ time: Duration) {

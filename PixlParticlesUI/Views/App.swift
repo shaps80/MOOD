@@ -14,7 +14,7 @@ import SwiftUI
         DocumentGroup { document in
             ContentView(document: document)
                 .preferredColorScheme(.dark)
-        } makeDocument: { _, _ in 
+        } makeDocument: { _, _ in
             ParticleDocument()
         }
         #if os(macOS)

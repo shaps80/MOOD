@@ -14,6 +14,8 @@ point-primitive rendering path.
 
 ## 2. Complete the Metal Point Path
 
+- Add a procedural perspective-frustum editor pass so camera-frustum culling
+  can be inspected from a separate observer camera before validation.
 - Validate stable GPU frustum compaction across empty, partial, and fully visible
   systems and measure its compute cost against the indirect-draw savings.
 - Expose visible-particle counts and Metal stage timings for diagnostics without
@@ -55,8 +57,6 @@ point-primitive rendering path.
 
 - Finder thumbnails and Quick Look playback for particle-effect documents.
 - Distance LOD after the screen-space density path is measured.
-- Niagara-style events and explicit event payloads, including collision-driven
-  events once collision semantics exist.
 
 ## Planned Expansion
 
@@ -94,6 +94,14 @@ and its remaining validation is complete.
 - Treat spatial partitioning as a measured performance decision, informed by
   fast reference implementations such as Box2D or Box3D rather than assumed up
   front.
+
+### 4. Events
+
+- Add Niagara-style events and explicit event payloads as a core system
+  capability.
+- Include collision-driven events once collision semantics exist.
+- Keep this work late in the planned expansion, after particle lifetime, fixed
+  properties, quad rendering, and collision semantics are established.
 
 Emitters, sprites, textures, and post-processing remain outside the current
 roadmap until explicitly brought into scope.

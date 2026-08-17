@@ -1,0 +1,317 @@
+import MetalKit
+import PixlMetal
+import PixlParticles
+import PixlRenderer
+import SwiftUI
+import simd
+
+#if os(macOS)
+private typealias PlatformGestureState = NSGestureRecognizer.State
+#else
+private typealias PlatformGestureState = UIGestureRecognizer.State
+#endif
+
+@MainActor
+final class Coordinator: NSObject, MTKViewDelegate {
+    private weak var view: MTKView?
+    private var renderThread: RenderThread?
+    private var system: System
+    private var systemID: ObjectIdentifier
+    private var isPaused: Bool
+    private var duration: Duration
+    private let navigation: CameraNavigation
+    private var onCameraChange: (SIMD4<Float>, Float, SIMD3<Float>) -> Void
+    private var onTimeChange: (Duration) -> Void
+    private var pointLOD: PointLOD
+    private var isGroundPlaneVisible: Bool
+    private var cullingBounds: CullingBounds
+    private var seekTime: Duration?
+    private var resetID: UInt64
+
+    init(
+        system: System,
+        isPaused: Bool,
+        duration: Duration,
+        preset: CameraPreset,
+        rotation: SIMD4<Float>,
+        zoom: Float,
+        target: SIMD3<Float>,
+        observerCamera: EditorSettings.Camera?,
+        pointLOD: PointLOD,
+        isGroundPlaneVisible: Bool,
+        isFrustumVisible: Bool,
+        cullingBounds: CullingBounds,
+        seekTime: Duration?,
+        resetID: UInt64,
+        onCameraChange: @escaping (SIMD4<Float>, Float, SIMD3<Float>) -> Void,
+        onTimeChange: @escaping (Duration) -> Void
+    ) {
+        self.system = system
+        systemID = ObjectIdentifier(system)
+        self.isPaused = isPaused
+        self.duration = duration
+        navigation = CameraNavigation(
+            preset: preset,
+            rotation: rotation,
+            zoom: zoom,
+            target: target,
+            observerCamera: observerCamera,
+            isFrustumVisible: isFrustumVisible
+        )
+        self.onCameraChange = onCameraChange
+        self.onTimeChange = onTimeChange
+        self.pointLOD = pointLOD
+        self.isGroundPlaneVisible = isGroundPlaneVisible
+        self.cullingBounds = cullingBounds
+        self.seekTime = seekTime
+        self.resetID = resetID
+    }
+
+    func configure(_ view: ParticleMTKView) {
+        self.view = view
+        let layer = PixlMetal.Platform.configure(view)
+        renderThread = RenderThread(layer: layer, system: system)
+        view.delegate = self
+        view.isPaused = isPaused
+        view.enableSetNeedsDisplay = true
+        view.installCameraGestures(target: self)
+        view.onScroll = { [weak self] delta in self?.scroll(delta) }
+    }
+
+    func update(
+        system: System,
+        isPaused: Bool,
+        duration: Duration,
+        preset: CameraPreset,
+        observerCamera: EditorSettings.Camera?,
+        pointLOD: PointLOD,
+        isGroundPlaneVisible: Bool,
+        isFrustumVisible: Bool,
+        cullingBounds: CullingBounds,
+        seekTime: Duration?,
+        resetID: UInt64,
+        onCameraChange: @escaping (SIMD4<Float>, Float, SIMD3<Float>) -> Void,
+        onTimeChange: @escaping (Duration) -> Void
+    ) {
+        let replacement = ObjectIdentifier(system) != systemID
+        if replacement {
+            self.system = system
+            systemID = ObjectIdentifier(system)
+            renderThread?.replaceSystem(system)
+        }
+        self.isPaused = isPaused
+        if duration != self.duration {
+            self.duration = duration
+            renderThread?.setDuration(duration)
+        }
+        navigation.update(
+            preset: preset,
+            observerCamera: observerCamera,
+            isFrustumVisible: isFrustumVisible
+        )
+        self.pointLOD = pointLOD
+        self.isGroundPlaneVisible = isGroundPlaneVisible
+        self.cullingBounds = cullingBounds
+        if resetID != self.resetID {
+            renderThread?.seek(to: .zero)
+        } else if let seekTime, replacement || seekTime != self.seekTime {
+            renderThread?.seek(to: seekTime)
+        }
+        self.seekTime = seekTime
+        self.resetID = resetID
+        self.onCameraChange = onCameraChange
+        self.onTimeChange = onTimeChange
+    }
+
+    func draw(in view: MTKView) {
+        guard let renderThread else { return }
+        let result = renderThread.result()
+        if let failure = result.failure {
+            fatalError("Unable to render particles: \(failure)")
+        }
+        if let time = result.time { onTimeChange(time) }
+        if navigation.advanceTransition() { commit() }
+        let observerCamera = navigation.observerCamera
+        let sceneCamera = navigation.sceneCamera
+        guard
+            let observerViewport = observerCamera.viewport(for: view.drawableSize),
+            let sceneViewport = sceneCamera.viewport(for: view.drawableSize)
+        else { return }
+        let viewProjection = Matrix4x4(observerViewport.viewProjection)
+        let cullingViewProjection = Matrix4x4(sceneViewport.viewProjection)
+        let cameraFrustum = navigation.frustum(
+            viewport: sceneViewport,
+            size: view.drawableSize
+        )
+        renderThread.submit(
+            .init(
+                isPaused: isPaused,
+                pointLOD: pointLOD,
+                groundPlane: .init(
+                    isVisible: isGroundPlaneVisible,
+                    style: navigation.preset.groundPlaneStyle,
+                    viewProjection: viewProjection
+                ),
+                cullingBounds: cullingBounds,
+                cameraFrustum: cameraFrustum,
+                cullingViewProjection: cullingViewProjection,
+                viewProjection: viewProjection,
+                viewport: .init(
+                    width: UInt32(view.drawableSize.width.rounded(.up)),
+                    height: UInt32(view.drawableSize.height.rounded(.up))
+                )
+            )
+        )
+        if navigation.isTransitioning, view.isPaused {
+            DispatchQueue.main.async { [weak self] in self?.redraw() }
+        }
+    }
+
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        guard view.isPaused else { return }
+#if os(macOS)
+        view.setNeedsDisplay(view.bounds)
+#else
+        view.setNeedsDisplay()
+#endif
+    }
+
+    private func redraw() {
+        guard let view, view.isPaused else { return }
+#if os(macOS)
+        view.setNeedsDisplay(view.bounds)
+#else
+        view.setNeedsDisplay()
+#endif
+    }
+
+    private func commit() {
+        onCameraChange(
+            navigation.persistedPose.0,
+            navigation.persistedPose.1,
+            navigation.persistedPose.2
+        )
+    }
+
+    private func scroll(_ delta: Float) {
+        guard let view else { return }
+        navigation.scroll(delta, viewportSize: view.bounds.size)
+        redraw()
+        commit()
+    }
+
+#if os(macOS)
+    @objc func orbit(_ gesture: NSPanGestureRecognizer) {
+        handlePan(
+            state: gesture.state,
+            x: Float(gesture.translation(in: gesture.view).x),
+            y: -Float(gesture.translation(in: gesture.view).y)
+        )
+    }
+
+    @objc func magnify(_ gesture: NSMagnificationGestureRecognizer) {
+        handleZoom(
+            state: gesture.state,
+            scale: exp(Float(gesture.magnification))
+        )
+    }
+
+    @objc func translate(_ gesture: NSPanGestureRecognizer) {
+        let translation = gesture.translation(in: gesture.view)
+        handleTranslation(
+            state: gesture.state,
+            translation: [Float(translation.x), Float(-translation.y)]
+        )
+    }
+#else
+    @objc func orbit(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: gesture.view)
+        handlePan(state: gesture.state, x: Float(translation.x), y: Float(translation.y))
+    }
+
+    @objc func magnify(_ gesture: UIPinchGestureRecognizer) {
+        handleZoom(
+            state: gesture.state,
+            scale: Float(gesture.scale)
+        )
+    }
+
+    @objc func translate(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: gesture.view)
+        handleTranslation(
+            state: gesture.state,
+            translation: [Float(translation.x), Float(translation.y)]
+        )
+    }
+#endif
+
+    private func handlePan(state: PlatformGestureState, x: Float, y: Float) {
+        switch state {
+        case .began:
+            navigation.beginOrbit()
+        case .changed:
+            navigation.orbit(x: x, y: y)
+            redraw()
+        case .ended, .cancelled:
+            navigation.endOrbit()
+            commit()
+        default:
+            break
+        }
+    }
+
+    private func handleZoom(
+        state: PlatformGestureState,
+        scale: Float
+    ) {
+        switch state {
+        case .began:
+            navigation.beginZoom()
+        case .changed:
+            guard let view else { return }
+            navigation.zoom(scale: scale, viewportSize: view.bounds.size)
+            redraw()
+        case .ended, .cancelled:
+            navigation.endZoom()
+            commit()
+        default:
+            break
+        }
+    }
+
+    private func handleTranslation(
+        state: PlatformGestureState,
+        translation: SIMD2<Float>
+    ) {
+        switch state {
+        case .began:
+            navigation.beginTranslation()
+        case .changed:
+            guard let view else { return }
+            navigation.translate(translation, viewportSize: view.bounds.size)
+            redraw()
+        case .ended, .cancelled:
+            navigation.endTranslation()
+            commit()
+        default:
+            break
+        }
+    }
+
+}
+
+#if os(macOS)
+extension Coordinator: NSGestureRecognizerDelegate {
+    func gestureRecognizer(
+        _ gestureRecognizer: NSGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: NSGestureRecognizer
+    ) -> Bool { true }
+}
+#else
+extension Coordinator: UIGestureRecognizerDelegate {
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool { true }
+}
+#endif

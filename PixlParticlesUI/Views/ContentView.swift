@@ -38,9 +38,11 @@ struct ContentView: View {
                     isScrubbing: isScrubbing,
                     duration: .seconds(document.snapshot.duration),
                     camera: $settings.camera,
+                    observerCamera: $settings.observerCamera,
                     fraction: $fraction,
                     pointLOD: pointLOD,
                     isGroundPlaneVisible: settings.visibility.isGroundPlaneVisible,
+                    isFrustumVisible: settings.visibility.isFrustumVisible,
                     cullingBounds: cullingBounds,
                     playbackResetID: playbackResetID,
                     onPlaybackComplete: completePlayback
@@ -143,6 +145,11 @@ struct ContentView: View {
                             "Culling Bounds",
                             isOn: $settings.visibility.isCullingVisible
                         )
+                        Toggle(
+                            "Camera Frustum",
+                            isOn: $settings.visibility.isFrustumVisible
+                        )
+                        .disabled(settings.camera.preset != .perspective)
                     }
                 }
 

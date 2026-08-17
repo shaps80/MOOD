@@ -71,6 +71,23 @@ struct Orbit {
         viewportSize: CGSize,
         zoom: Float
     ) {
+        clamp(
+            points: [
+                [-extent, height, -extent],
+                [extent, height, -extent],
+                [-extent, height, extent],
+                [extent, height, extent],
+            ],
+            viewportSize: viewportSize,
+            zoom: zoom
+        )
+    }
+
+    mutating func clamp(
+        points: [Vec3],
+        viewportSize: CGSize,
+        zoom: Float
+    ) {
         let midpoint = CGPoint(
             x: viewportSize.width / 2,
             y: viewportSize.height / 2
@@ -80,19 +97,13 @@ struct Orbit {
             guard let viewport = camera(zoom: zoom).viewport(for: viewportSize) else {
                 return
             }
-            let corners: [Vec3] = [
-                [-extent, height, -extent],
-                [extent, height, -extent],
-                [-extent, height, extent],
-                [extent, height, extent],
-            ]
-            let points = corners.compactMap(viewport.project)
-            guard points.count == corners.count else { return }
+            let projected = points.compactMap(viewport.project)
+            guard projected.count == points.count else { return }
 
-            let minimumX = points.map(\.x).min()!
-            let maximumX = points.map(\.x).max()!
-            let minimumY = points.map(\.y).min()!
-            let maximumY = points.map(\.y).max()!
+            let minimumX = projected.map(\.x).min()!
+            let maximumX = projected.map(\.x).max()!
+            let minimumY = projected.map(\.y).min()!
+            let maximumY = projected.map(\.y).max()!
             let correction = SIMD2<Float>(
                 Float(midpoint.x < minimumX
                     ? midpoint.x - minimumX

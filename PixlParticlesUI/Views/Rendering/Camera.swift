@@ -106,6 +106,26 @@ extension Camera {
         let viewProjection: simd_float4x4
         let size: CGSize
 
+        var frustumCorners: [Vec3] {
+            let inverse = simd_inverse(viewProjection)
+            return [Float(0), 1].flatMap { depth in
+                [
+                    SIMD2<Float>(-1, -1),
+                    SIMD2<Float>(1, -1),
+                    SIMD2<Float>(1, 1),
+                    SIMD2<Float>(-1, 1),
+                ].map { point in
+                    let world = inverse * SIMD4<Float>(
+                        point.x,
+                        point.y,
+                        depth,
+                        1
+                    )
+                    return Vec3(world.x, world.y, world.z) / world.w
+                }
+            }
+        }
+
         func project(_ position: Vec3) -> CGPoint? {
             let clipPosition = viewProjection
                 * SIMD4<Float>(position, 1)
