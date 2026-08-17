@@ -92,17 +92,15 @@ struct Inspector: View {
                     }
                 }
 
-                if areCullingBoundsVisible || areCullingBoundsEnabled {
-                    Section("Culling") {
-                        Toggle("Cull to Bounds", isOn: $areCullingBoundsEnabled)
+                Section("Culling") {
+                    Toggle("Cull to Bounds", isOn: $areCullingBoundsEnabled)
 
-                        LabeledContent("Bounds Scale") {
-                            Field(
-                                value: $cullingBoundsScale,
-                                step: 25,
-                                range: 1 ... 10_000
-                            )
-                        }
+                    LabeledContent("Bounds Scale") {
+                        Field(
+                            value: $cullingBoundsScale,
+                            step: 25,
+                            range: 1 ... 10_000
+                        )
                     }
                 }
             }
