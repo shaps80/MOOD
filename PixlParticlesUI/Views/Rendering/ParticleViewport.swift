@@ -36,11 +36,15 @@ struct ParticleViewport: View {
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
             cullingBounds: cullingBounds,
-            seekTime: isScrubbing ? duration * fraction : nil,
+            seekTime: isScrubbing ? scrubDuration * fraction : nil,
             resetID: playbackResetID,
             onCameraChange: persistCamera,
             onTimeChange: updateFraction
         )
+    }
+
+    private var scrubDuration: Duration {
+        duration == .zero ? .seconds(30) : duration
     }
 
     private func persistCamera(
@@ -59,9 +63,10 @@ struct ParticleViewport: View {
     }
 
     private func updateFraction(_ time: Duration) {
-        guard !isScrubbing, duration > .zero else { return }
+        guard !isScrubbing else { return }
         let wasComplete = fraction >= 1
-        fraction = time / duration
+        fraction = min(time / scrubDuration, 1)
+        guard duration > .zero else { return }
         if !wasComplete, time >= duration {
             onPlaybackComplete()
         }

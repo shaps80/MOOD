@@ -21,7 +21,7 @@ final class EditorPass {
                 into: encoder
             )
         }
-        if bounds.isEnabled {
+        if bounds.isVisible {
             cullingBounds.encode(
                 bounds: bounds,
                 viewProjection: viewProjection,

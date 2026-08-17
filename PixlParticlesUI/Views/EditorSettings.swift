@@ -17,6 +17,7 @@ struct EditorSettings: Equatable, RawRepresentable {
     struct Visibility: Codable, Equatable {
         var isGroundPlaneVisible = true
         var isInspectorVisible = true
+        var areCullingBoundsVisible = false
     }
 
     struct Inspector: Codable, Equatable {

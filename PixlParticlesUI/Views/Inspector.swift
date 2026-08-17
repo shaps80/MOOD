@@ -12,6 +12,7 @@ struct Inspector: View {
     @Binding var lodMaximum: Double
     @Binding var lodTileSize: Double
     @Binding var lodPointsPerPixel: Double
+    let areCullingBoundsVisible: Bool
     @Binding var areCullingBoundsEnabled: Bool
     @Binding var cullingBoundsScale: Double
 
@@ -91,7 +92,7 @@ struct Inspector: View {
                     }
                 }
 
-                if areCullingBoundsEnabled {
+                if areCullingBoundsVisible || areCullingBoundsEnabled {
                     Section("Culling Bounds") {
                         LabeledContent("Scale") {
                             Field(
@@ -171,6 +172,7 @@ struct Divided<Content: View>: View {
     @Previewable @State var lodMaximum = 1_000_000.0
     @Previewable @State var lodTileSize = 16.0
     @Previewable @State var lodPointsPerPixel = 1.0
+    @Previewable @State var areCullingBoundsVisible = true
     @Previewable @State var areCullingBoundsEnabled = true
     @Previewable @State var cullingBoundsScale = 500.0
 
@@ -185,6 +187,7 @@ struct Divided<Content: View>: View {
         lodMaximum: $lodMaximum,
         lodTileSize: $lodTileSize,
         lodPointsPerPixel: $lodPointsPerPixel,
+        areCullingBoundsVisible: areCullingBoundsVisible,
         areCullingBoundsEnabled: $areCullingBoundsEnabled,
         cullingBoundsScale: $cullingBoundsScale
     )

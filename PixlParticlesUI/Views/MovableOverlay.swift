@@ -6,7 +6,6 @@ struct MovableOverlay<Content: View>: View {
     @State private var contentSize = CGSize.zero
     @State private var position: CGPoint?
     @State private var dragOrigin: CGPoint?
-    @State private var isPresented: Bool = false
     @ViewBuilder let content: Content
 
     init(
@@ -38,9 +37,6 @@ struct MovableOverlay<Content: View>: View {
                     .frame(width: 36, height: 5)
                     .frame(width: 64, height: 28)
                     .contentShape(.rect)
-                    .onTapGesture {
-                        withAnimation(.snappy) { isPresented.toggle() }
-                    }
                     .gesture(drag(in: geometry.size))
 
                     content
@@ -67,7 +63,7 @@ struct MovableOverlay<Content: View>: View {
     }
 
     private func drag(in containerSize: CGSize) -> some Gesture {
-        DragGesture(coordinateSpace: .global)
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .onChanged { value in
                 if dragOrigin == nil {
                     dragOrigin = position ?? CGPoint(
