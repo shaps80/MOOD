@@ -39,4 +39,12 @@ final class MetalRenderTarget: PixlRenderer.RenderTarget {
         self.descriptor = descriptor
         self.drawable = drawable
     }
+
+    func addPresentedHandler(
+        _ handler: @escaping @Sendable (_ presentationTime: Double) -> Void
+    ) {
+        drawable.addPresentedHandler { drawable in
+            handler(drawable.presentedTime)
+        }
+    }
 }

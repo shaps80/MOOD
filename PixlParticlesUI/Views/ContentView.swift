@@ -6,13 +6,11 @@ import simd
 struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
     @Bindable var document: ParticleDocument
-    @State private var isPaused: Bool = true
-    @State private var fraction: Double = 0
-    @State private var isScrubbing: Bool = false
     @SceneStorage("editor.settings") private var settings = EditorSettings()
 
     @State private var system: System
-    @State private var playbackResetID: UInt64 = 0
+    @State private var playback = PlaybackState()
+    @State private var metrics = RenderMetrics()
     init(document: ParticleDocument) {
         self.document = document
         let snapshot = document.snapshot
@@ -34,17 +32,16 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 ParticleViewport(
                     system: system,
-                    isPaused: isPaused,
-                    isScrubbing: isScrubbing,
+                    playback: playback,
                     duration: .seconds(document.snapshot.duration),
                     camera: $settings.camera,
                     observerCamera: $settings.observerCamera,
-                    fraction: $fraction,
                     pointLOD: pointLOD,
                     isGroundPlaneVisible: settings.visibility.isGroundPlaneVisible,
                     isFrustumVisible: settings.visibility.isFrustumVisible,
                     cullingBounds: cullingBounds,
-                    playbackResetID: playbackResetID,
+                    capturesDiagnostics: settings.visibility.isDataVisible,
+                    metrics: metrics,
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
@@ -67,16 +64,23 @@ struct ContentView: View {
                         cullingBoundsScale: binding(\.cullingBoundsScale, "Change Culling Bounds")
                     )
                 }
+                .draggableInspector(
+                    id: "data",
+                    placement: .bottomLeading,
+                    isPresented: $settings.visibility.isDataVisible
+                ) {
+                    DataInspector(
+                        simulatedCount: Int(document.snapshot.particleCount),
+                        metrics: metrics
+                    )
+                }
 
                 VStack {
                     Spacer(minLength: 0)
 
                     ParticleTimeline(
-                        fraction: $fraction,
-                        isScrubbing: $isScrubbing,
-                        isPaused: isPaused,
+                        playback: playback,
                         playMode: $settings.playMode,
-                        playbackSystemImage: playbackSystemImage,
                         togglePlayback: togglePlayback
                     )
                     .frame(maxWidth: 500)
@@ -140,6 +144,10 @@ struct ContentView: View {
                             "Inspector",
                             isOn: $settings.visibility.isInspectorVisible
                         )
+                        Toggle(
+                            "Metrics",
+                            isOn: $settings.visibility.isDataVisible
+                        )
 
                         Toggle(
                             "Culling Bounds",
@@ -178,7 +186,7 @@ struct ContentView: View {
             duration: .seconds(snapshot.duration),
             storesRewindState: false
         )
-        fraction = 0
+        playback.fraction = 0
     }
 
     private var pointLOD: PointLOD {
@@ -203,23 +211,18 @@ struct ContentView: View {
 
     private func completePlayback() {
         if settings.playMode == .loop {
-            playbackResetID &+= 1
+            playback.resetID &+= 1
         } else {
-            isPaused = true
+            playback.isPaused = true
         }
     }
 
     private func togglePlayback() {
-        if isPaused, fraction >= 1 {
-            fraction = 0
-            playbackResetID &+= 1
+        if playback.isPaused, playback.fraction >= 1 {
+            playback.fraction = 0
+            playback.resetID &+= 1
         }
-        isPaused.toggle()
-    }
-
-    private var playbackSystemImage: String {
-        if !isPaused { return "pause" }
-        return settings.playMode == .loop ? "repeat" : "play"
+        playback.isPaused.toggle()
     }
 
     private func binding<Value>(

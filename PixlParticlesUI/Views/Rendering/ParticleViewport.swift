@@ -4,23 +4,22 @@ import SwiftUI
 
 struct ParticleViewport: View {
     let system: System
-    let isPaused: Bool
-    let isScrubbing: Bool
+    let playback: PlaybackState
     let duration: Duration
     @Binding var camera: EditorSettings.Camera
     @Binding var observerCamera: EditorSettings.Camera?
-    @Binding var fraction: Double
     let pointLOD: PointLOD
     let isGroundPlaneVisible: Bool
     let isFrustumVisible: Bool
     let cullingBounds: CullingBounds
-    let playbackResetID: UInt64
+    let capturesDiagnostics: Bool
+    let metrics: RenderMetrics
     let onPlaybackComplete: () -> Void
 
     var body: some View {
         ParticleMetalView(
             system: system,
-            isPaused: isPaused || isScrubbing,
+            isPaused: playback.isPaused || playback.isScrubbing,
             duration: duration,
             cameraPreset: camera.preset,
             rotation: [
@@ -38,12 +37,16 @@ struct ParticleViewport: View {
             observerCamera: observerCamera,
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
-            isFrustumVisible: isFrustumVisible && camera.preset == .perspective,
+            isFrustumVisible: isFrustumVisible,
             cullingBounds: cullingBounds,
-            seekTime: isScrubbing ? scrubDuration * fraction : nil,
-            resetID: playbackResetID,
+            capturesDiagnostics: capturesDiagnostics,
+            seekTime: playback.isScrubbing
+                ? scrubDuration * playback.fraction
+                : nil,
+            resetID: playback.resetID,
             onCameraChange: persistCamera,
-            onTimeChange: updateFraction
+            onTimeChange: updateFraction,
+            onFrame: metrics.record
         )
     }
 
@@ -57,7 +60,7 @@ struct ParticleViewport: View {
         _ target: SIMD3<Float>
     ) {
         var value = EditorSettings.Camera()
-        value.preset = .perspective
+        value.preset = camera.preset
         value.rotationX = Double(rotation.x)
         value.rotationY = Double(rotation.y)
         value.rotationZ = Double(rotation.z)
@@ -66,7 +69,7 @@ struct ParticleViewport: View {
         value.targetX = Double(target.x)
         value.targetY = Double(target.y)
         value.targetZ = Double(target.z)
-        if isFrustumVisible {
+        if isFrustumVisible, camera.preset == .perspective {
             observerCamera = value
         } else {
             camera = value
@@ -74,9 +77,9 @@ struct ParticleViewport: View {
     }
 
     private func updateFraction(_ time: Duration) {
-        guard !isScrubbing else { return }
-        let wasComplete = fraction >= 1
-        fraction = min(time / scrubDuration, 1)
+        guard !playback.isScrubbing else { return }
+        let wasComplete = playback.fraction >= 1
+        playback.fraction = min(time / scrubDuration, 1)
         guard duration > .zero else { return }
         if !wasComplete, time >= duration {
             onPlaybackComplete()

@@ -25,8 +25,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
     private var pointLOD: PointLOD
     private var isGroundPlaneVisible: Bool
     private var cullingBounds: CullingBounds
+    private var capturesDiagnostics: Bool
     private var seekTime: Duration?
     private var resetID: UInt64
+    private var onFrame: (RenderDiagnostics) -> Void
 
     init(
         system: System,
@@ -41,10 +43,12 @@ final class Coordinator: NSObject, MTKViewDelegate {
         isGroundPlaneVisible: Bool,
         isFrustumVisible: Bool,
         cullingBounds: CullingBounds,
+        capturesDiagnostics: Bool,
         seekTime: Duration?,
         resetID: UInt64,
         onCameraChange: @escaping (SIMD4<Float>, Float, SIMD3<Float>) -> Void,
-        onTimeChange: @escaping (Duration) -> Void
+        onTimeChange: @escaping (Duration) -> Void,
+        onFrame: @escaping (RenderDiagnostics) -> Void
     ) {
         self.system = system
         systemID = ObjectIdentifier(system)
@@ -63,8 +67,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
         self.pointLOD = pointLOD
         self.isGroundPlaneVisible = isGroundPlaneVisible
         self.cullingBounds = cullingBounds
+        self.capturesDiagnostics = capturesDiagnostics
         self.seekTime = seekTime
         self.resetID = resetID
+        self.onFrame = onFrame
     }
 
     func configure(_ view: ParticleMTKView) {
@@ -88,10 +94,12 @@ final class Coordinator: NSObject, MTKViewDelegate {
         isGroundPlaneVisible: Bool,
         isFrustumVisible: Bool,
         cullingBounds: CullingBounds,
+        capturesDiagnostics: Bool,
         seekTime: Duration?,
         resetID: UInt64,
         onCameraChange: @escaping (SIMD4<Float>, Float, SIMD3<Float>) -> Void,
-        onTimeChange: @escaping (Duration) -> Void
+        onTimeChange: @escaping (Duration) -> Void,
+        onFrame: @escaping (RenderDiagnostics) -> Void
     ) {
         let replacement = ObjectIdentifier(system) != systemID
         if replacement {
@@ -112,6 +120,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
         self.pointLOD = pointLOD
         self.isGroundPlaneVisible = isGroundPlaneVisible
         self.cullingBounds = cullingBounds
+        self.capturesDiagnostics = capturesDiagnostics
         if resetID != self.resetID {
             renderThread?.seek(to: .zero)
         } else if let seekTime, replacement || seekTime != self.seekTime {
@@ -121,6 +130,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
         self.resetID = resetID
         self.onCameraChange = onCameraChange
         self.onTimeChange = onTimeChange
+        self.onFrame = onFrame
     }
 
     func draw(in view: MTKView) {
@@ -129,7 +139,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
         if let failure = result.failure {
             fatalError("Unable to render particles: \(failure)")
         }
-        if let time = result.time { onTimeChange(time) }
+        if let time = result.time {
+            onTimeChange(time)
+        }
+        if let diagnostics = result.diagnostics { onFrame(diagnostics) }
         if navigation.advanceTransition() { commit() }
         let observerCamera = navigation.observerCamera
         let sceneCamera = navigation.sceneCamera
@@ -146,6 +159,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
         renderThread.submit(
             .init(
                 isPaused: isPaused,
+                capturesDiagnostics: capturesDiagnostics,
+                frameBudget: 1 / Double(max(view.preferredFramesPerSecond, 1)),
                 pointLOD: pointLOD,
                 groundPlane: .init(
                     isVisible: isGroundPlaneVisible,

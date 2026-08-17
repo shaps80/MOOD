@@ -22,10 +22,12 @@ struct ParticleMetalView: PlatformViewRepresentable {
     let isGroundPlaneVisible: Bool
     let isFrustumVisible: Bool
     let cullingBounds: CullingBounds
+    let capturesDiagnostics: Bool
     let seekTime: Duration?
     let resetID: UInt64
     let onCameraChange: (SIMD4<Float>, Float, SIMD3<Float>) -> Void
     let onTimeChange: (Duration) -> Void
+    let onFrame: (RenderDiagnostics) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -41,10 +43,12 @@ struct ParticleMetalView: PlatformViewRepresentable {
             isGroundPlaneVisible: isGroundPlaneVisible,
             isFrustumVisible: isFrustumVisible,
             cullingBounds: cullingBounds,
+            capturesDiagnostics: capturesDiagnostics,
             seekTime: seekTime,
             resetID: resetID,
             onCameraChange: onCameraChange,
-            onTimeChange: onTimeChange
+            onTimeChange: onTimeChange,
+            onFrame: onFrame
         )
     }
 
@@ -73,10 +77,12 @@ struct ParticleMetalView: PlatformViewRepresentable {
             isGroundPlaneVisible: isGroundPlaneVisible,
             isFrustumVisible: isFrustumVisible,
             cullingBounds: cullingBounds,
+            capturesDiagnostics: capturesDiagnostics,
             seekTime: seekTime,
             resetID: resetID,
             onCameraChange: onCameraChange,
-            onTimeChange: onTimeChange
+            onTimeChange: onTimeChange,
+            onFrame: onFrame
         )
         if view.isPaused != isPaused { view.isPaused = isPaused }
         guard isPaused else { return }

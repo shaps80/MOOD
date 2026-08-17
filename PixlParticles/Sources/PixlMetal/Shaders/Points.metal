@@ -168,6 +168,13 @@ kernel void finishVisibilityScan(
     arguments.baseInstance = 0;
 }
 
+kernel void captureVisibleCount(
+    const device DrawArguments &arguments [[buffer(0)]],
+    device uint &count [[buffer(1)]]
+) {
+    count = arguments.vertexCount;
+}
+
 kernel void scatterVisibleIndices(
     const device uint *localOffsets [[buffer(0)]],
     const device uint *blockOffsets [[buffer(1)]],

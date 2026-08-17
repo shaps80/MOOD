@@ -1,11 +1,8 @@
 import SwiftUI
 
 struct ParticleTimeline: View {
-    @Binding var fraction: Double
-    @Binding var isScrubbing: Bool
-    let isPaused: Bool
+    @Bindable var playback: PlaybackState
     @Binding var playMode: PlayMode
-    let playbackSystemImage: String
     let togglePlayback: () -> Void
 
     var body: some View {
@@ -19,7 +16,7 @@ struct ParticleTimeline: View {
                 .pickerStyle(.inline)
             } label: {
                 Label(
-                    isPaused ? "Play" : "Pause",
+                    playback.isPaused ? "Play" : "Pause",
                     systemImage: playbackSystemImage
                 )
                 .labelStyle(.iconOnly)
@@ -31,8 +28,8 @@ struct ParticleTimeline: View {
             .symbolVariant(.fill)
             .buttonStyle(.plain)
 
-            Slider(value: $fraction, in: 0...1) { isEditing in
-                isScrubbing = isEditing
+            Slider(value: $playback.fraction, in: 0...1) { isEditing in
+                playback.isScrubbing = isEditing
             }
             .tint(.primary)
             .sliderThumbVisibility(.hidden)
@@ -42,5 +39,10 @@ struct ParticleTimeline: View {
         .glassEffect(.regular.interactive(), in: .capsule)
         .scenePadding()
         .animation(.bouncy, value: playMode)
+    }
+
+    private var playbackSystemImage: String {
+        if !playback.isPaused { return "pause" }
+        return playMode == .loop ? "repeat" : "play"
     }
 }

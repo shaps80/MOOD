@@ -13,6 +13,11 @@ public final class DeviceBackend: Backend {
     public var groundPlane = GroundPlane()
     public var cullingBounds = CullingBounds()
     public var cameraFrustum = CameraFrustum()
+    public var capturesDiagnostics = false
+    public private(set) var visibleCount: Int?
+    public private(set) var cpuRenderTime: Double?
+    public var onGPUTime: (@Sendable (Double?) -> Void)?
+    public var onPresented: (@Sendable (Double) -> Void)?
 
     public init(
         platform: any Platform,
@@ -44,6 +49,7 @@ public final class DeviceBackend: Backend {
         precondition(interpolation >= 0 && interpolation <= 1)
 
         platform.acquireFrame()
+        let renderStart = capturesDiagnostics ? ContinuousClock.now : nil
         var submitted = false
         defer {
             if !submitted { platform.releaseFrame() }
@@ -58,6 +64,9 @@ public final class DeviceBackend: Backend {
             writePositions: writePositions,
             writeIDs: writeIDs
         )
+        visibleCount = capturesDiagnostics
+            ? resources.culling.capturedVisibleCount
+            : nil
         guard let commandBuffer = platform.makeCommandBuffer() else {
             throw RenderError.commandBuffer
         }
@@ -86,7 +95,22 @@ public final class DeviceBackend: Backend {
             )
         }
 
+        if capturesDiagnostics {
+            try culling.encodeVisibleCountCapture(
+                arguments: resources.lod?.drawArguments
+                    ?? resources.culling.indirectArguments,
+                destination: resources.culling.diagnosticCount,
+                into: commandBuffer
+            )
+            if let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
+        }
+
+        let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
         guard let target = platform.currentRenderTarget() else { return }
+        let drawableWaitEnd = capturesDiagnostics ? ContinuousClock.now : nil
+        if capturesDiagnostics, let onPresented {
+            target.addPresentedHandler(onPresented)
+        }
         guard let encoder = commandBuffer.makeRenderEncoder(target: target) else {
             throw RenderError.encoder
         }
@@ -112,6 +136,23 @@ public final class DeviceBackend: Backend {
         commandBuffer.present(target)
         submitted = true
         platform.submit(commandBuffer)
+        if let renderStart, let drawableWaitStart, let drawableWaitEnd {
+            let beforeDrawable = Self.seconds(
+                renderStart.duration(to: drawableWaitStart)
+            )
+            let afterDrawable = Self.seconds(
+                drawableWaitEnd.duration(to: .now)
+            )
+            cpuRenderTime = beforeDrawable + afterDrawable
+        } else {
+            cpuRenderTime = nil
+        }
+    }
+
+    private static func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) / 1e18
     }
 }
 

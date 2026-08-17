@@ -8,6 +8,7 @@ final class CullingPass {
     private let addOffsets: any ComputePipeline
     private let finishScan: any ComputePipeline
     private let scatter: any ComputePipeline
+    private let captureCount: any ComputePipeline
 
     init(platform: any Platform) throws {
         guard let classify = platform.makeComputePipeline(
@@ -20,6 +21,8 @@ final class CullingPass {
             function: "finishVisibilityScan"
         ), let scatter = platform.makeComputePipeline(
             function: "scatterVisibleIndices"
+        ), let captureCount = platform.makeComputePipeline(
+            function: "captureVisibleCount"
         ) else {
             throw RenderError.pipeline
         }
@@ -28,6 +31,7 @@ final class CullingPass {
         self.addOffsets = addOffsets
         self.finishScan = finishScan
         self.scatter = scatter
+        self.captureCount = captureCount
     }
 
     func encode(
@@ -96,6 +100,22 @@ final class CullingPass {
             )
             encoder.endEncoding()
         }
+    }
+
+    func encodeVisibleCountCapture(
+        arguments: any Buffer,
+        destination: any Buffer,
+        into commandBuffer: any CommandBuffer
+    ) throws {
+        guard let encoder = commandBuffer.makeComputeEncoder() else {
+            throw RenderError.encoder
+        }
+        encoder.label = "Capture Visible Count"
+        encoder.setPipeline(captureCount)
+        encoder.setBuffer(arguments, index: 0)
+        encoder.setBuffer(destination, index: 1)
+        encoder.dispatchThreads(.init(width: 1), threads: .init(width: 1))
+        encoder.endEncoding()
     }
 
     private func encodeScan(

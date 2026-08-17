@@ -10,4 +10,8 @@ public protocol Buffer: AnyObject {
 public protocol ComputePipeline: AnyObject {}
 public protocol RenderPipeline: AnyObject {}
 public protocol DepthState: AnyObject {}
-public protocol RenderTarget: AnyObject {}
+public protocol RenderTarget: AnyObject {
+    func addPresentedHandler(
+        _ handler: @escaping @Sendable (_ presentationTime: Double) -> Void
+    )
+}

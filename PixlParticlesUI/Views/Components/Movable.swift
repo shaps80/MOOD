@@ -1,8 +1,20 @@
 import SwiftUI
 
 extension View {
-    func draggableInspector<Content: View>(id: String = "inspector", isPresented: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
-        modifier(MovableModifier(id: id, isPresented: isPresented, movableContent: content()))
+    func draggableInspector<Content: View>(
+        id: String = "inspector",
+        placement: UnitPoint = .topTrailing,
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        modifier(
+            MovableModifier(
+                id: id,
+                placement: placement,
+                isPresented: isPresented,
+                movableContent: content()
+            )
+        )
     }
 }
 
@@ -18,10 +30,15 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
     @Binding var isPresented: Bool
     let movableContent: MovableContent
 
-    init(id: String, isPresented: Binding<Bool>, movableContent: MovableContent) {
+    init(
+        id: String,
+        placement: UnitPoint,
+        isPresented: Binding<Bool>,
+        movableContent: MovableContent
+    ) {
         self.movableContent = movableContent
-        _horizontalPosition = .init(wrappedValue: 1, "\(id)-h")
-        _verticalPosition = .init(wrappedValue: 0, "\(id)-v")
+        _horizontalPosition = .init(wrappedValue: placement.x, "\(id)-h")
+        _verticalPosition = .init(wrappedValue: placement.y, "\(id)-v")
         _isPresented = isPresented
     }
 
@@ -50,6 +67,11 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
                                     .frame(width: 36, height: 5)
                                     .contentShape(.rect.inset(by: -10))
                                     .gesture(drag(in: geometry.size))
+                                    .simultaneousGesture(
+                                        TapGesture().onEnded {
+                                            isPresented = false
+                                        }
+                                    )
 
                                 movableContent
                             }

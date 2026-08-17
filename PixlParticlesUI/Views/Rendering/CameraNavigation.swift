@@ -4,6 +4,10 @@ import QuartzCore
 import simd
 
 final class CameraNavigation {
+    private static let minimumZoom: Float = 0.001
+    private static let maximumZoom: Float = 10
+    private static let observerFarPadding: Float = 25_000
+
     private(set) var preset: CameraPreset
     private(set) var orbit: Orbit
     private(set) var zoom: Float
@@ -34,13 +38,14 @@ final class CameraNavigation {
         self.orbit = orbit
         self.zoom = zoom
         self.isFrustumVisible = isFrustumVisible
-        cullingCamera = isFrustumVisible ? orbit.camera(zoom: zoom) : nil
-        if isFrustumVisible {
+        let isFrustumActive = isFrustumVisible && preset == .perspective
+        cullingCamera = isFrustumActive ? orbit.camera(zoom: zoom) : nil
+        if isFrustumActive {
             scenePose = Pose(orbit: orbit, zoom: zoom)
             let destination = if let observerCamera {
                 Self.pose(observerCamera)
             } else {
-                Pose(orbit: orbit, zoom: max(zoom * 0.7, 0.1))
+                Pose(orbit: orbit, zoom: max(zoom * 0.7, Self.minimumZoom))
             }
             transition = Transition(
                 from: Pose(orbit: orbit, zoom: zoom),
@@ -56,10 +61,19 @@ final class CameraNavigation {
             camera.projection = camera.projection.magnified(by: zoom)
             return camera
         }
-        return orbit.camera(zoom: zoom)
+        var camera = orbit.camera(zoom: zoom)
+        if cullingCamera != nil {
+            let observerDistance = orbit.distance / zoom
+            camera.projection = camera.projection.extendingFarPlane(
+                to: observerDistance + Self.observerFarPadding
+            )
+        }
+        return camera
     }
 
-    var sceneCamera: Camera { cullingCamera ?? observerCamera }
+    var sceneCamera: Camera {
+        isFrustumActive ? cullingCamera ?? observerCamera : observerCamera
+    }
     var isTransitioning: Bool { transition != nil }
     var persistedPose: (SIMD4<Float>, Float, SIMD3<Float>) {
         (orbit.rotation.vector, zoom, orbit.target)
@@ -70,20 +84,38 @@ final class CameraNavigation {
         observerCamera: EditorSettings.Camera?,
         isFrustumVisible: Bool
     ) {
-        self.preset = preset
-        if isFrustumVisible, !self.isFrustumVisible {
+        let wasActive = isFrustumActive
+        let willBeActive = isFrustumVisible && preset == .perspective
+        let resumesAfterUnavailable = self.isFrustumVisible
+            && self.preset != .perspective
+            && willBeActive
+
+        if resumesAfterUnavailable {
+            if cullingCamera == nil {
+                cullingCamera = orbit.camera(zoom: zoom)
+                scenePose = Pose(orbit: orbit, zoom: zoom)
+            }
+            if let observerCamera {
+                let pose = Self.pose(observerCamera)
+                orbit = pose.orbit
+                zoom = pose.zoom
+            }
+        } else if !willBeActive, wasActive, isFrustumVisible {
+            transition = nil
+        } else if willBeActive, !wasActive {
             cullingCamera = self.observerCamera
             cachedFrustum = nil
             scenePose = Pose(orbit: orbit, zoom: zoom)
             let destination = if let observerCamera {
                 Self.pose(observerCamera)
             } else {
-                Pose(orbit: orbit, zoom: max(zoom * 0.7, 0.1))
+                Pose(orbit: orbit, zoom: max(zoom * 0.7, Self.minimumZoom))
             }
             beginTransition(to: destination, clearsCulling: false)
-        } else if !isFrustumVisible, self.isFrustumVisible, let scenePose {
+        } else if !willBeActive, wasActive, !isFrustumVisible, let scenePose {
             beginTransition(to: scenePose, clearsCulling: true)
         }
+        self.preset = preset
         self.isFrustumVisible = isFrustumVisible
     }
 
@@ -113,7 +145,7 @@ final class CameraNavigation {
         viewport: Camera.Viewport,
         size: CGSize
     ) -> CameraFrustum {
-        guard cullingCamera != nil else { return .init() }
+        guard isFrustumActive, cullingCamera != nil else { return .init() }
         if let cachedFrustum, cachedFrustum.size == size {
             return cachedFrustum.value
         }
@@ -131,7 +163,10 @@ final class CameraNavigation {
 
     func scroll(_ delta: Float, viewportSize: CGSize) {
         interruptTransition()
-        zoom = min(max(zoom * exp(delta * 0.01), 0.1), 10)
+        zoom = min(
+            max(zoom * exp(delta * 0.01), Self.minimumZoom),
+            Self.maximumZoom
+        )
         clamp(viewportSize: viewportSize)
     }
 
@@ -155,7 +190,10 @@ final class CameraNavigation {
 
     func zoom(scale: Float, viewportSize: CGSize) {
         guard let startZoom else { return }
-        zoom = min(max(startZoom * scale, 0.1), 10)
+        zoom = min(
+            max(startZoom * scale, Self.minimumZoom),
+            Self.maximumZoom
+        )
         clamp(viewportSize: viewportSize)
     }
 
@@ -221,6 +259,10 @@ final class CameraNavigation {
         cullingCamera = nil
         cachedFrustum = nil
         scenePose = nil
+    }
+
+    private var isFrustumActive: Bool {
+        isFrustumVisible && preset == .perspective
     }
 
     private static func pose(_ camera: EditorSettings.Camera) -> Pose {

@@ -5,6 +5,8 @@ import PixlRenderer
 nonisolated final class Mailbox: @unchecked Sendable {
     struct Frame {
         let isPaused: Bool
+        let capturesDiagnostics: Bool
+        let frameBudget: Double
         let pointLOD: PointLOD
         let groundPlane: GroundPlane
         let cullingBounds: CullingBounds
@@ -30,6 +32,10 @@ nonisolated final class Mailbox: @unchecked Sendable {
     private var hasSeek = false
     private var shouldStop = false
     private var completedTime: Duration?
+    private var diagnostics: RenderDiagnostics?
+    private var gpuTime: Double?
+    private var presentationCount: UInt64 = 0
+    private var presentationTime: Double?
     private var failure: String?
 
     init(system: System) {
@@ -87,16 +93,47 @@ nonisolated final class Mailbox: @unchecked Sendable {
         return work
     }
 
-    func complete(at time: Duration) {
+    func complete(
+        at time: Duration,
+        visibleCount: Int?,
+        cpuSimulationTime: Double,
+        cpuRenderTime: Double?,
+        frameBudget: Double?
+    ) {
         condition.lock()
         completedTime = time
+        diagnostics = frameBudget.map {
+            RenderDiagnostics(
+                visibleCount: visibleCount,
+                cpuSimulationTime: cpuSimulationTime,
+                cpuRenderTime: cpuRenderTime,
+                gpuTime: gpuTime,
+                frameBudget: $0,
+                presentationCount: presentationCount,
+                presentationTime: presentationTime
+            )
+        }
         condition.unlock()
     }
 
-    func result() -> (time: Duration?, failure: String?) {
+    func recordGPUTime(_ duration: Double?) {
         condition.lock()
-        let result = (completedTime, failure)
+        gpuTime = duration
+        condition.unlock()
+    }
+
+    func recordPresentation(at time: Double) {
+        condition.lock()
+        presentationCount &+= 1
+        presentationTime = time
+        condition.unlock()
+    }
+
+    func result() -> (time: Duration?, diagnostics: RenderDiagnostics?, failure: String?) {
+        condition.lock()
+        let result = (completedTime, diagnostics, failure)
         completedTime = nil
+        diagnostics = nil
         condition.unlock()
         return result
     }

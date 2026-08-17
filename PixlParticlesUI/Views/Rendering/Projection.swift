@@ -28,6 +28,20 @@ enum Projection: Hashable {
         }
     }
 
+    func extendingFarPlane(to distance: Float) -> Self {
+        switch self {
+        case let .perspective(fieldOfView, near, far):
+            return .perspective(
+                verticalFieldOfView: fieldOfView,
+                near: near,
+                far: max(far, distance)
+            )
+
+        case .orthographic:
+            return self
+        }
+    }
+
     func matrix(aspectRatio: Float) -> simd_float4x4 {
         switch self {
         case let .perspective(fieldOfView, near, far):

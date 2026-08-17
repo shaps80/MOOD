@@ -31,4 +31,13 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
         }
         value.present(target.drawable)
     }
+
+    func addCompletedHandler(
+        _ handler: @escaping @Sendable (_ gpuDuration: Double?) -> Void
+    ) {
+        value.addCompletedHandler { commandBuffer in
+            let duration = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+            handler(duration > 0 ? duration : nil)
+        }
+    }
 }

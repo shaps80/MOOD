@@ -30,7 +30,7 @@ struct Inspector: View {
                     LabeledContent("Particles") {
                         Field(
                             value: $particleCount,
-                            step: 1_000,
+                            step: particleCount > 100_000 ? 100_000 : 1_000,
                             range: 0 ... .infinity
                         )
                     }

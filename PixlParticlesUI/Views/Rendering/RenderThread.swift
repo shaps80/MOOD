@@ -41,7 +41,7 @@ final class RenderThread {
         mailbox.setDuration(duration)
     }
 
-    func result() -> (time: Duration?, failure: String?) {
+    func result() -> (time: Duration?, diagnostics: RenderDiagnostics?, failure: String?) {
         mailbox.result()
     }
 }
@@ -64,6 +64,12 @@ private nonisolated final class Worker: @unchecked Sendable {
         do {
             let platform = try PixlMetal.Platform(device: device, layer: layer)
             let backend = try DeviceBackend(platform: platform)
+            backend.onGPUTime = { [mailbox] duration in
+                mailbox.recordGPUTime(duration)
+            }
+            backend.onPresented = { [mailbox] time in
+                mailbox.recordPresentation(at: time)
+            }
             let renderer = PixlParticles.Renderer(backend: backend)
             var system: System?
 
@@ -79,7 +85,14 @@ private nonisolated final class Worker: @unchecked Sendable {
                 backend.groundPlane = frame.groundPlane
                 backend.cullingBounds = frame.cullingBounds
                 backend.cameraFrustum = frame.cameraFrustum
+                backend.capturesDiagnostics = frame.capturesDiagnostics
+                let simulationStart = frame.capturesDiagnostics
+                    ? ContinuousClock.now
+                    : nil
                 let sample = system.sample(at: .now, isPaused: frame.isPaused)
+                let simulationTime = simulationStart.map {
+                    Self.seconds($0.duration(to: .now))
+                } ?? 0
                 try renderer.render(
                     system,
                     interpolation: sample.interpolation,
@@ -88,10 +101,24 @@ private nonisolated final class Worker: @unchecked Sendable {
                     viewProjection: frame.viewProjection,
                     viewport: frame.viewport
                 )
-                mailbox.complete(at: sample.time)
+                mailbox.complete(
+                    at: sample.time,
+                    visibleCount: backend.visibleCount,
+                    cpuSimulationTime: simulationTime,
+                    cpuRenderTime: backend.cpuRenderTime,
+                    frameBudget: frame.capturesDiagnostics
+                        ? frame.frameBudget
+                        : nil
+                )
             }
         } catch {
             mailbox.fail(String(describing: error))
         }
+    }
+
+    private static func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) / 1e18
     }
 }

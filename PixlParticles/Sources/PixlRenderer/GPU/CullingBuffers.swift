@@ -7,6 +7,7 @@ struct CullingBuffers {
     let blockOffsets: any Buffer
     let visibleIndices: any Buffer
     let indirectArguments: any Buffer
+    let diagnosticCount: any Buffer
     let scan: ScanBuffers
 
     init?(
@@ -30,6 +31,9 @@ struct CullingBuffers {
         ), let indirectArguments = platform.makeBuffer(
             length: 4 * integer,
             memory: .gpuOnly
+        ), let diagnosticCount = platform.makeBuffer(
+            length: integer,
+            memory: .cpuVisible
         ), let scan = ScanBuffers(
             platform: platform,
             blockCapacity: blockCapacity,
@@ -44,6 +48,18 @@ struct CullingBuffers {
         self.blockOffsets = blockOffsets
         self.visibleIndices = visibleIndices
         self.indirectArguments = indirectArguments
+        self.diagnosticCount = diagnosticCount
         self.scan = scan
+        diagnosticCount.withMutableBytes { bytes in
+            bytes.storeBytes(of: UInt32.zero, as: UInt32.self)
+        }
+    }
+
+    var capturedVisibleCount: Int {
+        var count: UInt32 = 0
+        diagnosticCount.withMutableBytes { bytes in
+            count = bytes.load(as: UInt32.self)
+        }
+        return Int(count)
     }
 }
