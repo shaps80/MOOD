@@ -21,7 +21,7 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
     init(id: String, isPresented: Binding<Bool>, movableContent: MovableContent) {
         self.movableContent = movableContent
         _horizontalPosition = .init(wrappedValue: 1, "\(id)-h")
-        _verticalPosition = .init(wrappedValue: 0.5, "\(id)-v")
+        _verticalPosition = .init(wrappedValue: 0, "\(id)-v")
         _isPresented = isPresented
     }
 
@@ -44,7 +44,7 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
                 ZStack(alignment: .topLeading) {
                     ZStack(alignment: .topLeading) {
                         if isPresented && isVisible {
-                            VStack(spacing: 0) {
+                            VStack {
                                 Capsule()
                                     .glassEffect(.regular.interactive())
                                     .frame(width: 36, height: 5)
