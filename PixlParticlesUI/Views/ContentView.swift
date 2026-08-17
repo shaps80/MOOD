@@ -6,11 +6,13 @@ import simd
 struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
     @Bindable var document: ParticleDocument
-    @State private var commands = ParticleCommandTarget()
+    @State private var isPaused: Bool = true
+    @State private var fraction: Double = 0
     @State private var isScrubbing: Bool = false
     @SceneStorage("editor.settings") private var settings = EditorSettings()
 
     @State private var system: System
+    @State private var playbackResetID: UInt64 = 0
     init(document: ParticleDocument) {
         self.document = document
         let snapshot = document.snapshot
@@ -32,19 +34,21 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 ParticleViewport(
                     system: system,
-                    isPaused: commands.isPaused,
+                    isPaused: isPaused,
                     isScrubbing: isScrubbing,
                     duration: .seconds(document.snapshot.duration),
                     camera: $settings.camera,
-                    fraction: $commands.fraction,
+                    fraction: $fraction,
                     pointLOD: pointLOD,
                     isGroundPlaneVisible: settings.visibility.isGroundPlaneVisible,
                     cullingBounds: cullingBounds,
-                    playbackResetID: commands.playbackResetID,
+                    playbackResetID: playbackResetID,
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
-                .draggableInspector(isPresented: $commands.isInspectorVisible) {
+                .draggableInspector(
+                    isPresented: $settings.visibility.isInspectorVisible
+                ) {
                     Inspector(
                         duration: binding(\.duration, "Change Duration"),
                         particleCount: binding(\.particleCount, "Change Particle Count"),
@@ -66,29 +70,18 @@ struct ContentView: View {
                     Spacer(minLength: 0)
 
                     ParticleTimeline(
-                        fraction: $commands.fraction,
+                        fraction: $fraction,
                         isScrubbing: $isScrubbing,
-                        isPaused: commands.isPaused,
+                        isPaused: isPaused,
                         playMode: $settings.playMode,
                         playbackSystemImage: playbackSystemImage,
-                        togglePlayback: commands.togglePlayback
+                        togglePlayback: togglePlayback
                     )
                     .frame(maxWidth: 500)
                 }
                 .ignoresSafeArea()
             }
             .background(.quinary)
-            .onAppear {
-                commands.isInspectorVisible = settings.visibility.isInspectorVisible
-                commands.cameraPreset = settings.camera.preset
-                commands.undoManager = undoManager
-            }
-            .onChange(of: commands.isInspectorVisible) { _, isVisible in
-                settings.visibility.isInspectorVisible = isVisible
-            }
-            .onChange(of: commands.cameraPreset) { _, preset in
-                settings.camera.preset = preset
-            }
             .onChange(of: document.snapshot.duration) { _, duration in
                 let duration = max(duration, 0)
 
@@ -123,7 +116,7 @@ struct ContentView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .secondaryAction) {
-                    Picker("Camera", selection: $commands.cameraPreset) {
+                    Picker("Camera", selection: $settings.camera.preset) {
                         Text("Perspective").tag(CameraPreset.perspective)
                         Text("Isometric").tag(CameraPreset.isometric)
                         Text("Front").tag(CameraPreset.front)
@@ -143,7 +136,7 @@ struct ContentView: View {
                         )
                         Toggle(
                             "Inspector",
-                            isOn: $commands.isInspectorVisible
+                            isOn: $settings.visibility.isInspectorVisible
                         )
 
                         Toggle(
@@ -157,18 +150,16 @@ struct ContentView: View {
 
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button("Undo", systemImage: "arrow.uturn.backward") {
-                        commands.undo()
+                        undoManager?.undo()
                     }
-                    .disabled(!commands.canUndo)
+                    .disabled(!(undoManager?.canUndo ?? false))
 
                     Button("Redo", systemImage: "arrow.uturn.forward") {
-                        commands.redo()
+                        undoManager?.redo()
                     }
-                    .disabled(!commands.canRedo)
                 }
             }
         }
-        .focusedValue(\.particleCommandTarget, commands)
     }
 
     private func updateSystem() {
@@ -180,7 +171,7 @@ struct ContentView: View {
             duration: .seconds(snapshot.duration),
             storesRewindState: false
         )
-        commands.fraction = 0
+        fraction = 0
     }
 
     private var pointLOD: PointLOD {
@@ -204,11 +195,23 @@ struct ContentView: View {
     }
 
     private func completePlayback() {
-        commands.completePlayback(for: settings.playMode)
+        if settings.playMode == .loop {
+            playbackResetID &+= 1
+        } else {
+            isPaused = true
+        }
+    }
+
+    private func togglePlayback() {
+        if isPaused, fraction >= 1 {
+            fraction = 0
+            playbackResetID &+= 1
+        }
+        isPaused.toggle()
     }
 
     private var playbackSystemImage: String {
-        if !commands.isPaused { return "pause" }
+        if !isPaused { return "pause" }
         return settings.playMode == .loop ? "repeat" : "play"
     }
 

@@ -14,11 +14,8 @@ import SwiftUI
         DocumentGroup { document in
             ContentView(document: document)
                 .preferredColorScheme(.dark)
-        } makeDocument: { _, _ in
+        } makeDocument: { _, _ in 
             ParticleDocument()
-        }
-        .commands {
-            ParticleCommands()
         }
         #if os(macOS)
             .defaultSize(width: 1280, height: 720)

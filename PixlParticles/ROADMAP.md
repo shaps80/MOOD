@@ -51,12 +51,49 @@ point-primitive rendering path.
   making that integration a current design constraint.
 - Extend the diagnostic with bloom comparisons when bloom enters scope.
 
-## Later
+## Deferred
 
 - Finder thumbnails and Quick Look playback for particle-effect documents.
-- Collisions.
-- Niagara-style events and event payloads, including collision-driven events.
+- Distance LOD after the screen-space density path is measured.
+- Niagara-style events and explicit event payloads, including collision-driven
+  events once collision semantics exist.
 
-Emitters, quads, sprites, textures, post-processing, and additional particle
-properties are deliberately outside the current roadmap. Distance LOD remains
-later work after the screen-space density path is measured.
+## Planned Expansion
+
+Do not begin this work until the current point-rendering roadmap is reconciled
+and its remaining validation is complete.
+
+### 1. Particle Lifetime and Fixed Properties
+
+- Define per-particle birth time, lifetime, normalized age, and alive/dead
+  behaviour.
+- Preserve deterministic restart, rewind, seeking, and inspection semantics.
+- Establish Swift authoring APIs for fixed semantic properties, beginning with
+  constants, deterministic ranges, and values evolving over normalized
+  lifetime.
+- Add properties one at a time and validate their authoring semantics, AoSoA
+  storage, specialized whole-buffer passes, interpolation, lowering, and
+  performance end to end.
+- Keep public particles independent of internal storage. Do not introduce a
+  generic runtime property dictionary or dynamic dispatch in hot paths.
+
+### 2. Quad Rendering
+
+- Retain point primitives and add coloured quads as a separate rendering path.
+- Add camera-facing billboards alongside ordinary oriented quads.
+- Keep quad expansion, camera-facing transforms, packing, culling policy, and
+  draw submission in renderer and UI layers. Simulation owns only authored
+  particle values required by those renderers, such as size and rotation.
+
+### 3. Collisions
+
+- Resolve collision semantics through small reference implementations before
+  committing them to production architecture.
+- Begin with analytic collision shapes and response behaviour before mesh or
+  scene collision.
+- Treat spatial partitioning as a measured performance decision, informed by
+  fast reference implementations such as Box2D or Box3D rather than assumed up
+  front.
+
+Emitters, sprites, textures, and post-processing remain outside the current
+roadmap until explicitly brought into scope.
