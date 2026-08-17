@@ -29,7 +29,6 @@ struct ParticleTimeline: View {
                 togglePlayback()
             }
             .symbolVariant(.fill)
-            .keyboardShortcut(.space, modifiers: [])
             .buttonStyle(.plain)
 
             Slider(value: $fraction, in: 0...1) { isEditing in

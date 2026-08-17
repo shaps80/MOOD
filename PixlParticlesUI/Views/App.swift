@@ -1,25 +1,28 @@
 import SwiftUI
 
 @main struct MyApp: App {
-  var body: some Scene {
-    #if os(iOS) || os(visionOS)
-    DocumentGroupLaunchScene("Pixl Particles") {
-      NewDocumentButton(
-        "New Particle Effect",
-        contentType: .pixlParticles
-      )
-    }
-    #endif
+    var body: some Scene {
+        #if os(iOS) || os(visionOS)
+        DocumentGroupLaunchScene("Pixl Particles") {
+            NewDocumentButton(
+                "New Particle Effect",
+                contentType: .pixlParticles
+            )
+        }
+        #endif
 
-    DocumentGroup { document in
-      ContentView(document: document)
-        .preferredColorScheme(.dark)
-    } makeDocument: { _, _ in
-      ParticleDocument()
+        DocumentGroup { document in
+            ContentView(document: document)
+                .preferredColorScheme(.dark)
+        } makeDocument: { _, _ in
+            ParticleDocument()
+        }
+        .commands {
+            ParticleCommands()
+        }
+        #if os(macOS)
+            .defaultSize(width: 1280, height: 720)
+            .defaultPosition(.center)
+        #endif
     }
-    #if os(macOS)
-      .defaultSize(width: 1280, height: 720)
-      .defaultPosition(.center)
-    #endif
-  }
 }
