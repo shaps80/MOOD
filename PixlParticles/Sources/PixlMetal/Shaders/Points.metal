@@ -13,6 +13,27 @@ struct PositionPair {
     packed_float3 current;
 };
 
+struct ColorBatch {
+    float4 red;
+    float4 green;
+    float4 blue;
+    float4 alpha;
+};
+
+static float4 particleColor(
+    const device ColorBatch *colors,
+    uint particleIndex
+) {
+    uint batch = particleIndex / 4;
+    uint lane = particleIndex % 4;
+    return float4(
+        colors[batch].red[lane],
+        colors[batch].green[lane],
+        colors[batch].blue[lane],
+        colors[batch].alpha[lane]
+    );
+}
+
 struct DrawArguments {
     uint vertexCount;
     uint instanceCount;
@@ -390,7 +411,9 @@ vertex PointVertex pointVertex(
     const device PositionPair *positions [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]],
-    constant float &interpolation [[buffer(3)]]
+    constant float &interpolation [[buffer(3)]],
+    const device ColorBatch *previousColors [[buffer(6)]],
+    const device ColorBatch *currentColors [[buffer(7)]]
 ) {
     uint particleIndex = visibleIndices[vertexID];
     PointVertex output;
@@ -401,7 +424,11 @@ vertex PointVertex pointVertex(
     );
     output.position = viewProjection * float4(position, 1);
     output.pointSize = 1;
-    output.color = half4(1);
+    output.color = half4(mix(
+        particleColor(previousColors, particleIndex),
+        particleColor(currentColors, particleIndex),
+        interpolation
+    ));
     return output;
 }
 
@@ -412,7 +439,9 @@ vertex PointVertex pointLODVertex(
     constant float4x4 &viewProjection [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
     const device uint *lodVisibleIndices [[buffer(4)]],
-    const device PointLODState &state [[buffer(5)]]
+    const device PointLODState &state [[buffer(5)]],
+    const device ColorBatch *previousColors [[buffer(6)]],
+    const device ColorBatch *currentColors [[buffer(7)]]
 ) {
     uint particleIndex = state.active
         ? lodVisibleIndices[vertexID]
@@ -425,7 +454,11 @@ vertex PointVertex pointLODVertex(
     );
     output.position = viewProjection * float4(position, 1);
     output.pointSize = 1;
-    output.color = half4(1);
+    output.color = half4(mix(
+        particleColor(previousColors, particleIndex),
+        particleColor(currentColors, particleIndex),
+        interpolation
+    ));
     return output;
 }
 

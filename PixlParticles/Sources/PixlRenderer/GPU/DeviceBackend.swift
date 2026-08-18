@@ -38,13 +38,16 @@ public final class DeviceBackend: Backend {
     public func renderPoints(
         count: Int,
         positionsChanged: Bool,
+        colorsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
-        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void
+        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void,
+        writePreviousColors: (UnsafeMutableRawBufferPointer) -> Void,
+        writeCurrentColors: (UnsafeMutableRawBufferPointer) -> Void
     ) throws {
         precondition(interpolation >= 0 && interpolation <= 1)
 
@@ -58,11 +61,14 @@ public final class DeviceBackend: Backend {
         let resources = try buffers.prepare(
             count: count,
             positionsChanged: positionsChanged,
+            colorsChanged: colorsChanged,
             idsChanged: idsChanged,
             lod: pointLOD,
             viewport: viewport,
             writePositions: writePositions,
-            writeIDs: writeIDs
+            writeIDs: writeIDs,
+            writePreviousColors: writePreviousColors,
+            writeCurrentColors: writeCurrentColors
         )
         visibleCount = capturesDiagnostics
             ? resources.culling.capturedVisibleCount
@@ -124,6 +130,8 @@ public final class DeviceBackend: Backend {
         )
         points.encode(
             positions: resources.positions,
+            previousColors: resources.previousColors,
+            currentColors: resources.currentColors,
             visibleIndices: resources.culling.visibleIndices,
             indirectArguments: resources.culling.indirectArguments,
             lod: resources.lod,

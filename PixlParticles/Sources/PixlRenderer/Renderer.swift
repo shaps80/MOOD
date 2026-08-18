@@ -13,30 +13,38 @@ package final class Renderer {
         ids: Span<SIMD4<UInt64>>,
         count: Int,
         positionsChanged: Bool,
+        colorsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        viewport: ViewportSize,
+        writePreviousColors: (UnsafeMutableRawBufferPointer) -> Void,
+        writeCurrentColors: (UnsafeMutableRawBufferPointer) -> Void
     ) throws {
         try backend.renderPoints(
             count: count,
             positionsChanged: positionsChanged,
+            colorsChanged: colorsChanged,
             idsChanged: idsChanged,
             interpolation: interpolation,
             cullingViewProjection: cullingViewProjection,
             viewProjection: viewProjection,
-            viewport: viewport
-        ) { destination in
-            Self.lowerPositionPairs(
-                previous: previous,
-                current: current,
-                count: count,
-                into: destination
-            )
-        } writeIDs: { destination in
-            Self.lowerIDs(ids, count: count, into: destination)
-        }
+            viewport: viewport,
+            writePositions: { destination in
+                Self.lowerPositionPairs(
+                    previous: previous,
+                    current: current,
+                    count: count,
+                    into: destination
+                )
+            },
+            writeIDs: { destination in
+                Self.lowerIDs(ids, count: count, into: destination)
+            },
+            writePreviousColors: writePreviousColors,
+            writeCurrentColors: writeCurrentColors
+        )
     }
 
     @discardableResult

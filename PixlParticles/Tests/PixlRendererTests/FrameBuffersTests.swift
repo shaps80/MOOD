@@ -11,6 +11,7 @@ struct FrameBuffersTests {
         _ = try buffers.prepare(
             count: 600,
             positionsChanged: true,
+            colorsChanged: true,
             idsChanged: true,
             lod: .init(
                 activationCount: 500,
@@ -18,15 +19,23 @@ struct FrameBuffersTests {
             ),
             viewport: .init(width: 100, height: 100),
             writePositions: { _ in },
-            writeIDs: { _ in }
+            writeIDs: { _ in },
+            writePreviousColors: { _ in },
+            writeCurrentColors: { _ in }
         )
 
         let idLength = 600 * MemoryLayout<UInt64>.stride
+        let colorLength = ((600 + 3) / 4) * 64
         let visibleLength = 200 * MemoryLayout<UInt32>.stride
         #expect(
             platform.allocations.filter {
                 $0.length == idLength && $0.memory.isCPUVisible
             }.count == 1
+        )
+        #expect(
+            platform.allocations.filter {
+                $0.length == colorLength && $0.memory.isCPUVisible
+            }.count == 4
         )
         #expect(
             platform.allocations.filter {

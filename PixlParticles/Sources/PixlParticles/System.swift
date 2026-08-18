@@ -10,6 +10,7 @@ public final class System {
 
     private let random: RandomSource
     private let spawnRegion: SpawnRegion
+    private let color: Color
     private var loop: Loop
     private var durationInTicks: UInt64
     private var storage: ParticleStorage
@@ -22,6 +23,7 @@ public final class System {
         seed: UInt64,
         particleCount: Int,
         spawnRegion: SpawnRegion,
+        color: Color = .white,
         duration: Duration,
         storesRewindState: Bool = true
     ) {
@@ -39,13 +41,15 @@ public final class System {
         self.durationInTicks = durationInTicks
         random = randomSource
         self.spawnRegion = region
+        self.color = color
         self.loop = loop
 
         storage = ParticleStorage(count: particleCount) { index in
             Self.spawn(
                 id: Particle.ID(index),
                 random: randomSource,
-                region: region
+                region: region,
+                color: color
             )
         }
         initialState = storesRewindState ? storage.initialState() : nil
@@ -118,7 +122,8 @@ public final class System {
                     Self.spawn(
                         id: Particle.ID(index),
                         random: random,
-                        region: spawnRegion
+                        region: spawnRegion,
+                        color: color
                     )
                 }
             }
@@ -142,10 +147,12 @@ public final class System {
         tick += 1
     }
 
-    package func withRenderingData<Result: ~Copyable>(
+    func withRenderingData<Result: ~Copyable>(
         _ body: (
             Span<Vector3Batch>,
             Span<Vector3Batch>,
+            UnsafeBufferPointer<ColorBatch>,
+            UnsafeBufferPointer<ColorBatch>,
             Span<SIMD4<UInt64>>,
             Int
         ) throws -> Result
@@ -156,7 +163,8 @@ public final class System {
     private static func spawn(
         id: Particle.ID,
         random: RandomSource,
-        region: SpawnRegion
+        region: SpawnRegion,
+        color: Color
     ) -> Particle {
         let velocityBlock = random.block(
             at: id,
@@ -171,7 +179,8 @@ public final class System {
                 RandomSource.float(from: velocityBlock.x0, in: velocityRange),
                 RandomSource.float(from: velocityBlock.x1, in: velocityRange),
                 RandomSource.float(from: velocityBlock.x2, in: velocityRange),
-            ]
+            ],
+            color: color
         )
     }
 

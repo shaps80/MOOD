@@ -21,6 +21,7 @@ struct ContentView: View {
                 spawnRegion: snapshot.spawnPreset.region(
                     domain: snapshot.spawnDomain
                 ),
+                color: snapshot.color,
                 duration: .seconds(snapshot.duration),
                 storesRewindState: false
             )
@@ -114,6 +115,9 @@ struct ContentView: View {
                     updateSystem()
                 }
             }
+            .onChange(of: document.snapshot.color) {
+                updateSystem()
+            }
             .onChange(of: document.snapshot.spawnPreset) {
                 updateSystem()
             }
@@ -183,6 +187,7 @@ struct ContentView: View {
             seed: UInt64(snapshot.seed),
             particleCount: Int(snapshot.particleCount),
             spawnRegion: snapshot.spawnPreset.region(domain: snapshot.spawnDomain),
+            color: snapshot.color,
             duration: .seconds(snapshot.duration),
             storesRewindState: false
         )

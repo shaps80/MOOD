@@ -36,7 +36,7 @@ struct Inspector: View {
                     }
 
                     LabeledContent("Seed") {
-                        Field(value: $seed)
+                        Field(value: $seed, range: 0 ... .infinity)
                     }
                 }
 

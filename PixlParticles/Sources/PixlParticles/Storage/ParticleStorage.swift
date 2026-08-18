@@ -8,6 +8,8 @@ final class ParticleStorage {
     private let ids: UnsafeMutableBufferPointer<SIMD4<Particle.ID>>
     private let positions: UnsafeMutableBufferPointer<Vector3Batch>
     private let previousPositions: UnsafeMutableBufferPointer<Vector3Batch>
+    private let colors: UnsafeMutableBufferPointer<ColorBatch>
+    private let previousColors: UnsafeMutableBufferPointer<ColorBatch>
     private let velocities: UnsafeMutableBufferPointer<Vector3Batch>
 
     init(
@@ -19,12 +21,16 @@ final class ParticleStorage {
         ids = .allocate(capacity: batchCount)
         positions = .allocate(capacity: batchCount)
         previousPositions = .allocate(capacity: batchCount)
+        colors = .allocate(capacity: batchCount)
+        previousColors = .allocate(capacity: batchCount)
         velocities = .allocate(capacity: batchCount)
 
         for batchIndex in 0..<batchCount {
             var batchIDs = SIMD4<Particle.ID>(repeating: 0)
             var batchPositions = Vector3Batch(repeating: .zero)
             var batchPreviousPositions = Vector3Batch(repeating: .zero)
+            var batchColors = ColorBatch(repeating: .white)
+            var batchPreviousColors = ColorBatch(repeating: .white)
             var batchVelocities = Vector3Batch(repeating: .zero)
 
             for lane in 0..<4 {
@@ -35,6 +41,8 @@ final class ParticleStorage {
                 batchIDs[lane] = particle.id
                 batchPositions[lane] = particle.position
                 batchPreviousPositions[lane] = particle.previousPosition
+                batchColors[lane] = particle.color
+                batchPreviousColors[lane] = particle.previousColor
                 batchVelocities[lane] = particle.velocity
             }
 
@@ -44,6 +52,11 @@ final class ParticleStorage {
                 at: batchIndex,
                 to: batchPreviousPositions
             )
+            colors.initializeElement(at: batchIndex, to: batchColors)
+            previousColors.initializeElement(
+                at: batchIndex,
+                to: batchPreviousColors
+            )
             velocities.initializeElement(at: batchIndex, to: batchVelocities)
         }
     }
@@ -52,6 +65,8 @@ final class ParticleStorage {
         ids.deallocate()
         positions.deallocate()
         previousPositions.deallocate()
+        colors.deallocate()
+        previousColors.deallocate()
         velocities.deallocate()
     }
 
@@ -76,6 +91,7 @@ final class ParticleStorage {
     func advance(by delta: Float) {
         for index in 0..<batchCount {
             previousPositions[index] = positions[index]
+            previousColors[index] = colors[index]
             positions[index].x += velocities[index].x * delta
             positions[index].y += velocities[index].y * delta
             positions[index].z += velocities[index].z * delta
@@ -85,6 +101,7 @@ final class ParticleStorage {
     func resetInterpolation() {
         for index in 0..<batchCount {
             previousPositions[index] = positions[index]
+            previousColors[index] = colors[index]
         }
     }
 
@@ -99,7 +116,9 @@ final class ParticleStorage {
                         id: ids[batch][lane],
                         previousPosition: previousPositions[batch][lane],
                         position: positions[batch][lane],
-                        velocity: velocities[batch][lane]
+                        velocity: velocities[batch][lane],
+                        previousColor: previousColors[batch][lane],
+                        color: colors[batch][lane]
                     )
                 )
             }
@@ -112,6 +131,8 @@ final class ParticleStorage {
         _ body: (
             Span<Vector3Batch>,
             Span<Vector3Batch>,
+            UnsafeBufferPointer<ColorBatch>,
+            UnsafeBufferPointer<ColorBatch>,
             Span<SIMD4<UInt64>>,
             Int
         ) throws -> Result
@@ -128,10 +149,20 @@ final class ParticleStorage {
             start: self.ids.baseAddress,
             count: batchCount
         )
+        let previousColors = UnsafeBufferPointer(
+            start: self.previousColors.baseAddress,
+            count: batchCount
+        )
+        let colors = UnsafeBufferPointer(
+            start: self.colors.baseAddress,
+            count: batchCount
+        )
 
         return try body(
             unsafe Span(_unsafeElements: previous),
             unsafe Span(_unsafeElements: current),
+            previousColors,
+            colors,
             unsafe Span(_unsafeElements: ids),
             count
         )

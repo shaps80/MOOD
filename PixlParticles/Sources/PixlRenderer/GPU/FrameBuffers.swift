@@ -4,6 +4,8 @@ final class FrameBuffers {
     private let platform: any Platform
     private let frameCount: Int
     private var positions: [any Buffer] = []
+    private var previousColors: [any Buffer] = []
+    private var currentColors: [any Buffer] = []
     private var culling: [CullingBuffers] = []
     private var ids: (any Buffer)?
     private var lod: [LODBuffers] = []
@@ -13,6 +15,7 @@ final class FrameBuffers {
     private var lodVisibleCapacity = 0
     private var tileCapacity = 0
     private var positionIndex = -1
+    private var colorIndex = -1
     private var frameIndex = 0
 
     init(platform: any Platform, frameCount: Int) {
@@ -23,11 +26,14 @@ final class FrameBuffers {
     func prepare(
         count: Int,
         positionsChanged: Bool,
+        colorsChanged: Bool,
         idsChanged: Bool,
         lod settings: PointLOD,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
-        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void
+        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void,
+        writePreviousColors: (UnsafeMutableRawBufferPointer) -> Void,
+        writeCurrentColors: (UnsafeMutableRawBufferPointer) -> Void
     ) throws -> FrameResources {
         try ensureCapacity(max(count, 1))
         let usesLOD = settings.isEnabled
@@ -51,6 +57,17 @@ final class FrameBuffers {
             }
         }
 
+        if colorsChanged || colorIndex < 0 {
+            colorIndex = (colorIndex + 1) % frameCount
+            let colorByteCount = ((count + 3) / 4) * 64
+            previousColors[colorIndex].withMutableBytes { bytes in
+                writePreviousColors(.init(rebasing: bytes[..<colorByteCount]))
+            }
+            currentColors[colorIndex].withMutableBytes { bytes in
+                writeCurrentColors(.init(rebasing: bytes[..<colorByteCount]))
+            }
+        }
+
         if idsChanged {
             initializedIDs = false
         }
@@ -64,6 +81,8 @@ final class FrameBuffers {
 
         let resources = FrameResources(
             positions: positions[positionIndex],
+            previousColors: previousColors[colorIndex],
+            currentColors: currentColors[colorIndex],
             culling: culling[frameIndex],
             ids: usesLOD ? ids : nil,
             lod: usesLOD ? lod[frameIndex] : nil
@@ -78,13 +97,23 @@ final class FrameBuffers {
         let blockCapacity = (required + CullingPass.threadCount - 1)
             / CullingPass.threadCount
         var positions: [any Buffer] = []
+        var previousColors: [any Buffer] = []
+        var currentColors: [any Buffer] = []
         var culling: [CullingBuffers] = []
         positions.reserveCapacity(frameCount)
+        previousColors.reserveCapacity(frameCount)
+        currentColors.reserveCapacity(frameCount)
         culling.reserveCapacity(frameCount)
 
         for _ in 0..<frameCount {
             guard let positionBuffer = platform.makeBuffer(
                 length: required * MemoryLayout<PositionPair>.stride,
+                memory: .cpuVisible
+            ), let previousColorBuffer = platform.makeBuffer(
+                length: ((required + 3) / 4) * 64,
+                memory: .cpuVisible
+            ), let currentColorBuffer = platform.makeBuffer(
+                length: ((required + 3) / 4) * 64,
                 memory: .cpuVisible
             ), let cullingBuffers = CullingBuffers(
                 platform: platform,
@@ -94,13 +123,18 @@ final class FrameBuffers {
                 throw RenderError.buffer
             }
             positions.append(positionBuffer)
+            previousColors.append(previousColorBuffer)
+            currentColors.append(currentColorBuffer)
             culling.append(cullingBuffers)
         }
 
         self.positions = positions
+        self.previousColors = previousColors
+        self.currentColors = currentColors
         self.culling = culling
         capacity = required
         positionIndex = -1
+        colorIndex = -1
         frameIndex = 0
         releaseLOD()
     }
@@ -161,6 +195,8 @@ final class FrameBuffers {
 
 struct FrameResources {
     let positions: any Buffer
+    let previousColors: any Buffer
+    let currentColors: any Buffer
     let culling: CullingBuffers
     let ids: (any Buffer)?
     let lod: LODBuffers?

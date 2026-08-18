@@ -5,12 +5,9 @@ point-primitive rendering path.
 
 ## 1. Point Colour
 
-- Introduce particle colour without weakening the existing position hot path.
-- Lower premultiplied linear HDR colour into the portable `RGBA16Float` layout.
-- Decide interleaved versus parallel position/colour buffers through isolated
-  measurements once the real lowering paths exist.
-- Add standalone release benchmarks for interpolation and render-data packing,
-  separate from simulation and GPU rendering measurements.
+- Validate the production raw-Float colour buffers on iPad at the accepted
+  1-million and 6-million workloads. Record the GPU and memory delta against
+  the colour-free trace before considering any further packing experiment.
 
 ## 2. Colour Diagnostics
 

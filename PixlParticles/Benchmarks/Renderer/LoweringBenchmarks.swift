@@ -88,7 +88,7 @@ struct LoweringBenchmarks {
         print(
             "\(particleCount) particles: \(throughput) million particles/s, "
                 + "\(nanoseconds) ns/particle, "
-                + "\(milliseconds) ms/frame [\(combinedChecksum)]"
+                + "\(milliseconds) ms/tick [\(combinedChecksum)]"
         )
     }
 
@@ -123,6 +123,8 @@ struct LoweringBenchmarks {
 
 private final class BenchmarkBackend: Backend {
     let positions: UnsafeMutableBufferPointer<PositionPair>
+    let previousColors: UnsafeMutableRawBufferPointer
+    let currentColors: UnsafeMutableRawBufferPointer
 
     init(capacity: Int) {
         positions = .allocate(capacity: capacity)
@@ -132,26 +134,44 @@ private final class BenchmarkBackend: Backend {
                 current: Position(x: 0, y: 0, z: 0)
             )
         )
+        let colorByteCount = ((capacity + 3) / 4) * 64
+        previousColors = .allocate(
+            byteCount: colorByteCount,
+            alignment: MemoryLayout<SIMD4<Float>>.alignment
+        )
+        currentColors = .allocate(
+            byteCount: colorByteCount,
+            alignment: MemoryLayout<SIMD4<Float>>.alignment
+        )
     }
 
     deinit {
         positions.deinitialize()
         positions.deallocate()
+        previousColors.deallocate()
+        currentColors.deallocate()
     }
 
     func renderPoints(
         count: Int,
         positionsChanged: Bool,
+        colorsChanged: Bool,
         idsChanged: Bool,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
         viewport: ViewportSize,
         writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
-        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void
+        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void,
+        writePreviousColors: (UnsafeMutableRawBufferPointer) -> Void,
+        writeCurrentColors: (UnsafeMutableRawBufferPointer) -> Void
     ) throws {
         if positionsChanged {
             writePositions(.init(rebasing: positions[..<count]))
+        }
+        if colorsChanged {
+            writePreviousColors(previousColors)
+            writeCurrentColors(currentColors)
         }
     }
 }

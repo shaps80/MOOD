@@ -27,6 +27,7 @@ final class ParticleDocument: Document {
         var duration: Double
         var particleCount: Double
         var seed: Double
+        var color: PixlParticles.Color
         var spawnPreset: SpawnPreset
         var spawnDomain: SpawnDomain
         var isLODEnabled: Bool
@@ -41,6 +42,7 @@ final class ParticleDocument: Document {
             duration: Double = 30,
             particleCount: Double = 10_000,
             seed: Double = 0,
+            color: PixlParticles.Color = .white,
             spawnPreset: SpawnPreset = .sphere,
             spawnDomain: SpawnDomain = .surface,
             isLODEnabled: Bool = false,
@@ -54,6 +56,7 @@ final class ParticleDocument: Document {
             self.duration = duration
             self.particleCount = particleCount
             self.seed = seed
+            self.color = color
             self.spawnPreset = spawnPreset
             self.spawnDomain = spawnDomain
             self.isLODEnabled = isLODEnabled
@@ -63,6 +66,35 @@ final class ParticleDocument: Document {
             self.lodPointsPerPixel = lodPointsPerPixel
             self.isCullingEnabled = isCullingEnabled
             self.cullingBoundsScale = cullingBoundsScale
+        }
+
+        init(from decoder: any Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            duration = try values.decode(Double.self, forKey: .duration)
+            particleCount = try values.decode(Double.self, forKey: .particleCount)
+            seed = try values.decode(Double.self, forKey: .seed)
+            color = try values.decodeIfPresent(
+                PixlParticles.Color.self,
+                forKey: .color
+            ) ?? .white
+            spawnPreset = try values.decode(SpawnPreset.self, forKey: .spawnPreset)
+            spawnDomain = try values.decode(SpawnDomain.self, forKey: .spawnDomain)
+            isLODEnabled = try values.decode(Bool.self, forKey: .isLODEnabled)
+            lodActivation = try values.decode(Double.self, forKey: .lodActivation)
+            lodMaximum = try values.decode(Double.self, forKey: .lodMaximum)
+            lodTileSize = try values.decode(Double.self, forKey: .lodTileSize)
+            lodPointsPerPixel = try values.decode(
+                Double.self,
+                forKey: .lodPointsPerPixel
+            )
+            isCullingEnabled = try values.decode(
+                Bool.self,
+                forKey: .isCullingEnabled
+            )
+            cullingBoundsScale = try values.decode(
+                Double.self,
+                forKey: .cullingBoundsScale
+            )
         }
     }
 

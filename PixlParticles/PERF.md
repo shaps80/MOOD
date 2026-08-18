@@ -271,6 +271,36 @@ million against 0.780 ms, and 1.547 ms at two million against 1.633 ms. No CPU
 regression was detected; the two-million lowering improvement is approximately
 5.3% in this session. GPU results require a matched post-change Metal trace.
 
+## GPU-Interpolated Point Colour
+
+Measured 2026-08-18 on the macOS M1 Max environment. Particle colour remains
+premultiplied linear HDR `Float` state. Previous and current four-particle AoSoA
+batches are copied into separate renderer buffers only when the simulation tick
+changes; the vertex shader interpolates them at render frequency.
+
+An isolated comparison rejected HDR-safe `Float16` packing: previous/current
+packing cost 3.94 ms per million-particle tick, while two raw `Float` copies
+cost 0.66 ms. Raw colour uses 32 bytes per particle across the two active colour
+buffers but avoids CPU conversion and preserves the simulation representation.
+
+The retained production lowering harness measures position-pair lowering plus
+both raw colour copies. Three sequential runs measured 1.463, 1.490, and 1.480
+ms per million-particle tick; the median is 1.480 ms with checksum
+`802251268102`. Position-only lowering previously measured 0.780 ms, making the
+colour upload delta approximately 0.700 ms per million-particle tick.
+
+The retained system harness includes copying current colour into previous colour
+state each fixed update. Three sequential runs measured 1.003, 0.994, and 0.987
+ms per million-particle tick; the median is 0.994 ms with unchanged checksum
+`1295003598899`. The position-only simulation baseline was 0.643 ms, making the
+colour-history delta approximately 0.351 ms per million-particle tick.
+
+At 30 Hz simulation and 60 Hz rendering, simulation plus lowering therefore
+averages approximately 1.237 ms per rendered frame per million particles,
+versus the previous 0.712 ms position-only baseline. GPU vertex and memory costs
+remain to be measured on iPad before this point-colour path becomes the accepted
+end-to-end baseline.
+
 ## Metal Point Rendering
 
 Measured 2026-08-16 on the macOS M1 Max environment using Release builds and

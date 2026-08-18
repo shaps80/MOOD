@@ -20,24 +20,40 @@ public final class Renderer {
     ) throws {
         let systemID = ObjectIdentifier(system)
         let positionsChanged = stateSystem != systemID || stateTick != tick
+        let colorsChanged = positionsChanged
         let idsChanged = stateSystem != systemID
-        if positionsChanged {
-            stateSystem = systemID
-            stateTick = tick
-        }
+        stateSystem = systemID
+        stateTick = tick
 
-        try system.withRenderingData { previous, current, ids, count in
+        try system.withRenderingData {
+            previousPositions,
+            currentPositions,
+            previousColors,
+            currentColors,
+            ids,
+            count in
             try renderer.render(
-                previous: previous,
-                current: current,
+                previous: previousPositions,
+                current: currentPositions,
                 ids: ids,
                 count: count,
                 positionsChanged: positionsChanged,
+                colorsChanged: colorsChanged,
                 idsChanged: idsChanged,
                 interpolation: interpolation,
                 cullingViewProjection: cullingViewProjection,
                 viewProjection: viewProjection,
-                viewport: viewport
+                viewport: viewport,
+                writePreviousColors: { destination in
+                    destination.copyMemory(
+                        from: UnsafeRawBufferPointer(previousColors)
+                    )
+                },
+                writeCurrentColors: { destination in
+                    destination.copyMemory(
+                        from: UnsafeRawBufferPointer(currentColors)
+                    )
+                }
             )
         }
     }
