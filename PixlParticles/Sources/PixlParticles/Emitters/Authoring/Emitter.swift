@@ -31,7 +31,7 @@ public struct Emitter: Equatable, Sendable {
     public var position: SpawnRegion
     public var velocity: Velocity
     public var color: Color
-    public var size: SIMD2<Float>
+    public var size: Vec2
     public var rotation: Float
     public var renderers: [ParticleRenderer]
 
@@ -40,7 +40,7 @@ public struct Emitter: Equatable, Sendable {
         position: SpawnRegion,
         velocity: Velocity = .random(-20 ..< 20),
         color: Color = .white,
-        size: SIMD2<Float> = [1, 2],
+        size: Vec2 = [1, 2],
         rotation: Float = 0,
         renderers: [ParticleRenderer] = [.init()]
     ) {

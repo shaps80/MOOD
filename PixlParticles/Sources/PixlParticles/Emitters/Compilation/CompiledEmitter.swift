@@ -6,7 +6,7 @@ struct CompiledEmitter: Equatable, Sendable {
         let position: SpawnRegion
         let velocity: Emitter.Velocity
         let color: Color
-        let size: SIMD2<Float>
+        let size: Vec2
         let rotation: Float
     }
 

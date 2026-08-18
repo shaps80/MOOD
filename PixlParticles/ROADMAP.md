@@ -47,6 +47,9 @@ validated.
   or while scrubbing.
 - Define birth time, lifetime, normalized age, spawn rate, and alive/dead
   behaviour while preserving deterministic restart, rewind, and seeking.
+- [x] Define the isolated collection-backed authored property model, including
+  ordered modifiers, composable operations, constants, deterministic random
+  values, keyframed interpolation, and life/speed/distance/emitter-time inputs.
 - Begin property authoring with constants, deterministic ranges, and normalized
   lifetime functions. Derive analytically on GPU whenever possible; materialize
   AoSoA previous/current storage only for stateful or interpolated semantics.

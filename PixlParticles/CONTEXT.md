@@ -248,3 +248,13 @@
   position/velocity hot path, while stationary emitters omit velocity and
   previous-position storage. This is the extraction seam for multiple emitter
   slices without changing the public simulation model again.
+- The isolated authored property model is `Property<Value>`, an ordered mutable
+  random-access collection of namespaced `Property<Value>.Modifier` values.
+  Each modifier has a stable portable `UInt64` ID, an operation, a typed value,
+  and optional `variesWith` input. Values support constants, deterministic
+  proportional or per-value random ranges, and keyframed curves whose individual
+  values may also be random. Keyframe interpolation supports step, linear,
+  ease-in, ease-out, and ease-in-out. Life, bounded speed, referenced distance,
+  total emitter age, and normalized emitter-loop inputs are authored explicitly.
+  The complete model is Codable document data and currently has no runtime,
+  storage, simulation-loop, or GPU integration.
