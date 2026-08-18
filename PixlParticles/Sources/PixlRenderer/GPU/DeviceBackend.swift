@@ -37,17 +37,11 @@ public final class DeviceBackend: Backend {
 
     public func renderPoints(
         count: Int,
-        positionsChanged: Bool,
-        colorsChanged: Bool,
-        idsChanged: Bool,
+        buffers pointBuffers: PointBuffers,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
-        viewport: ViewportSize,
-        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
-        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void,
-        writePreviousColors: (UnsafeMutableRawBufferPointer) -> Void,
-        writeCurrentColors: (UnsafeMutableRawBufferPointer) -> Void
+        viewport: ViewportSize
     ) throws {
         precondition(interpolation >= 0 && interpolation <= 1)
 
@@ -60,15 +54,9 @@ public final class DeviceBackend: Backend {
 
         let resources = try buffers.prepare(
             count: count,
-            positionsChanged: positionsChanged,
-            colorsChanged: colorsChanged,
-            idsChanged: idsChanged,
+            buffers: pointBuffers,
             lod: pointLOD,
-            viewport: viewport,
-            writePositions: writePositions,
-            writeIDs: writeIDs,
-            writePreviousColors: writePreviousColors,
-            writeCurrentColors: writeCurrentColors
+            viewport: viewport
         )
         visibleCount = capturesDiagnostics
             ? resources.culling.capturedVisibleCount
@@ -82,7 +70,8 @@ public final class DeviceBackend: Backend {
             interpolation: interpolation,
             viewProjection: cullingViewProjection,
             cullingBounds: cullingBounds,
-            positions: resources.positions,
+            previousPositions: resources.previousPositions,
+            currentPositions: resources.currentPositions,
             buffers: resources.culling,
             into: commandBuffer
         )
@@ -93,7 +82,8 @@ public final class DeviceBackend: Backend {
                 viewport: viewport,
                 interpolation: interpolation,
                 viewProjection: cullingViewProjection,
-                positions: resources.positions,
+                previousPositions: resources.previousPositions,
+                currentPositions: resources.currentPositions,
                 ids: ids,
                 culling: resources.culling,
                 lod: lodBuffers,
@@ -129,7 +119,8 @@ public final class DeviceBackend: Backend {
             into: encoder
         )
         points.encode(
-            positions: resources.positions,
+            previousPositions: resources.previousPositions,
+            currentPositions: resources.currentPositions,
             previousColors: resources.previousColors,
             currentColors: resources.currentColors,
             visibleIndices: resources.culling.visibleIndices,

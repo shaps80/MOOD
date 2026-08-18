@@ -3,40 +3,30 @@ import Testing
 
 @Suite("Frame buffers")
 struct FrameBuffersTests {
-    @Test("Shares immutable IDs and caps LOD output storage")
+    @Test("Shares particle storage and caps LOD output storage")
     func lodStorage() throws {
         let platform = RecordingPlatform()
         let buffers = FrameBuffers(platform: platform, frameCount: 2)
+        let source = PointBuffers(
+            previousPositions: .init(byteCount: 150 * 48),
+            currentPositions: .init(byteCount: 150 * 48),
+            previousColors: .init(byteCount: 150 * 64),
+            currentColors: .init(byteCount: 150 * 64),
+            ids: .init(byteCount: 150 * 32)
+        )
 
         _ = try buffers.prepare(
             count: 600,
-            positionsChanged: true,
-            colorsChanged: true,
-            idsChanged: true,
+            buffers: source,
             lod: .init(
                 activationCount: 500,
                 maximumVisibleCount: 200
             ),
-            viewport: .init(width: 100, height: 100),
-            writePositions: { _ in },
-            writeIDs: { _ in },
-            writePreviousColors: { _ in },
-            writeCurrentColors: { _ in }
+            viewport: .init(width: 100, height: 100)
         )
 
-        let idLength = 600 * MemoryLayout<UInt64>.stride
-        let colorLength = ((600 + 3) / 4) * 64
         let visibleLength = 200 * MemoryLayout<UInt32>.stride
-        #expect(
-            platform.allocations.filter {
-                $0.length == idLength && $0.memory.isCPUVisible
-            }.count == 1
-        )
-        #expect(
-            platform.allocations.filter {
-                $0.length == colorLength && $0.memory.isCPUVisible
-            }.count == 4
-        )
+        #expect(platform.sharedBuffers.count == 5)
         #expect(
             platform.allocations.filter {
                 $0.length == visibleLength && !$0.memory.isCPUVisible
@@ -52,6 +42,7 @@ private final class RecordingPlatform: Platform {
     }
 
     var allocations: [Allocation] = []
+    var sharedBuffers: [HostBuffer] = []
 
     func acquireFrame() {}
     func releaseFrame() {}
@@ -60,6 +51,11 @@ private final class RecordingPlatform: Platform {
     func makeBuffer(length: Int, memory: BufferMemory) -> (any Buffer)? {
         allocations.append(.init(length: length, memory: memory))
         return RecordingBuffer(length: length)
+    }
+
+    func makeBuffer(sharing storage: HostBuffer) -> (any Buffer)? {
+        sharedBuffers.append(storage)
+        return RecordingBuffer(length: storage.allocatedByteCount)
     }
 
     func makeComputePipeline(function: String) -> (any ComputePipeline)? { nil }

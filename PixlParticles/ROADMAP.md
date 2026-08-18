@@ -5,9 +5,11 @@ point-primitive rendering path.
 
 ## 1. Point Colour
 
-- Validate the production raw-Float colour buffers on iPad at the accepted
-  1-million and 6-million workloads. Record the GPU and memory delta against
-  the colour-free trace before considering any further packing experiment.
+- Validate direct shared AoSoA position, colour, and ID buffers on iPad at the
+  accepted 1-million and 6-million workloads. Confirm there are no CPU/GPU
+  synchronization artifacts before introducing any additional in-flight source
+  storage. Record process memory, Metal allocation, GPU work, and presentation
+  cadence against the previous copied-buffer trace.
 
 ## 2. Colour Diagnostics
 

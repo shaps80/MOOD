@@ -213,6 +213,9 @@ no simulation regression was detected.
 
 ## GPU-Interpolated Position-Pair Lowering
 
+> Superseded 2026-08-18 by direct AoSoA GPU handoff below. Retained as the
+> matched copied-buffer baseline.
+
 Measured 2026-08-16 on the same macOS M1 Max environment after moving visual
 interpolation into the point vertex shader. Production lowering now packs one
 24-byte `{ previous, current }` pair per particle only when the simulation tick
@@ -273,6 +276,9 @@ regression was detected; the two-million lowering improvement is approximately
 
 ## GPU-Interpolated Point Colour
 
+> Superseded 2026-08-18 by direct AoSoA GPU handoff below. Retained as the
+> matched copied-buffer baseline.
+
 Measured 2026-08-18 on the macOS M1 Max environment. Particle colour remains
 premultiplied linear HDR `Float` state. Previous and current four-particle AoSoA
 batches are copied into separate renderer buffers only when the simulation tick
@@ -300,6 +306,66 @@ averages approximately 1.237 ms per rendered frame per million particles,
 versus the previous 0.712 ms position-only baseline. GPU vertex and memory costs
 remain to be measured on iPad before this point-colour path becomes the accepted
 end-to-end baseline.
+
+## Direct AoSoA GPU Handoff
+
+Measured 2026-08-18 on the same macOS M1 Max environment. The authoritative
+previous/current positions, previous/current colours, and stable IDs now live
+in aligned portable host buffers using the simulation's existing four-particle
+AoSoA layout. Metal wraps those allocations with no-copy shared `MTLBuffer`
+resources. Culling, LOD, and point shaders index the source batch and lane
+directly. The former renderer position-pair packing and raw-colour/ID copies no
+longer exist.
+
+The retained `Benchmarks/Renderer/HandoffBenchmarks.swift` harness measures the
+complete `PixlParticles.Renderer` to `PixlRenderer.Backend` handoff. It warms up
+1,000 calls and reports the median of five samples containing one million calls.
+Three sequential complete runs remained effectively constant from 10,000 to 6
+million particles.
+
+| Particles | Previous copied lowering | Direct handoff | Reduction |
+| ---: | ---: | ---: | ---: |
+| 1 M | 1.507 ms | 0.0000291 ms | 99.9981% · 51,788× |
+| 2 M | 3.020 ms | 0.0000285 ms | 99.9991% · 105,880× |
+| 6 M | linear extrapolation: ~9.06 ms | 0.0000287 ms | effectively constant-time |
+
+The exact copied-buffer figures are the median of three immediately preceding
+production lowering runs. Direct-handoff medians were 29.098 ns at one million,
+28.527 ns at two million, and 28.719 ns at six million. The handoff performs no
+particle traversal; particle count no longer determines its cost.
+
+The removed renderer source snapshots accounted for 112 bytes per particle
+without LOD and 120 bytes per particle with LOD: two 24-byte position-pair
+frames, two previous-colour frames, two current-colour frames, and the optional
+linear ID buffer. This structurally removes approximately 106.8 MiB per million
+particles without LOD or 114.4 MiB with LOD. At six million, the reductions are
+approximately 640.9 MiB and 686.6 MiB respectively. The five host allocations
+replace existing simulation allocations and add less than 80 KiB total page
+padding.
+
+At 30 simulation ticks per second, eliminating the previous/current position
+and colour copies removes approximately 3.36 GB/s of CPU memory traffic per
+million particles, or 20.16 GB/s at six million. IDs were already copied only
+when the system changed and are not included in those steady-state figures.
+
+Native simulation regression checks remained within noise and retained matching
+checksums:
+
+| Particles | Before | Direct-host storage | Difference |
+| ---: | ---: | ---: | ---: |
+| 1 M | 1.000 ms/tick | 1.007 ms/tick | +0.69% |
+| 2 M | 2.066 ms/tick | 2.074 ms/tick | +0.40% |
+
+Point initialization measured 27.919 ns/particle versus 27.914 ns before the
+change, a +0.02% difference. Production `PixlRenderer` and `PixlParticles`
+modules also compile directly for `wasm32-unknown-wasip1` with the accepted
+Swift 6.4 WMO and SIMD settings.
+
+No additional in-flight source storage was introduced. This environment could
+compile the full Metal shader/app path but exposed no Metal device, so iPad
+runtime validation remains required to prove shared-source synchronization and
+measure actual process memory, Metal allocation, GPU work, and presentation
+cadence.
 
 ## Metal Point Rendering
 

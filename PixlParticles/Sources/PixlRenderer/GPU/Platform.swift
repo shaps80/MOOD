@@ -8,6 +8,9 @@ public protocol Platform: AnyObject {
         length: Int,
         memory: BufferMemory
     ) -> (any Buffer)?
+    func makeBuffer(
+        sharing storage: HostBuffer
+    ) -> (any Buffer)?
     func makeComputePipeline(
         function: String
     ) -> (any ComputePipeline)?

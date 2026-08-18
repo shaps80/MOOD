@@ -148,14 +148,7 @@ public final class System {
     }
 
     func withRenderingData<Result: ~Copyable>(
-        _ body: (
-            Span<Vector3Batch>,
-            Span<Vector3Batch>,
-            UnsafeBufferPointer<ColorBatch>,
-            UnsafeBufferPointer<ColorBatch>,
-            Span<SIMD4<UInt64>>,
-            Int
-        ) throws -> Result
+        _ body: (PointBuffers, Int) throws -> Result
     ) rethrows -> Result {
         try storage.withRenderingData(body)
     }

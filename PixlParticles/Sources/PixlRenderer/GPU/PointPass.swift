@@ -34,7 +34,8 @@ final class PointPass {
     }
 
     func encode(
-        positions: any Buffer,
+        previousPositions: any Buffer,
+        currentPositions: any Buffer,
         previousColors: any Buffer,
         currentColors: any Buffer,
         visibleIndices: any Buffer,
@@ -46,12 +47,13 @@ final class PointPass {
     ) {
         encoder.setPipeline(lod == nil ? pipeline : lodPipeline)
         encoder.setDepthState(depth)
-        encoder.setVertexBuffer(positions, index: 0)
+        encoder.setVertexBuffer(previousPositions, index: 0)
         encoder.setVertexBuffer(visibleIndices, index: 1)
         encoder.setVertexValue(viewProjection, index: 2)
         encoder.setVertexValue(interpolation, index: 3)
         encoder.setVertexBuffer(previousColors, index: 6)
         encoder.setVertexBuffer(currentColors, index: 7)
+        encoder.setVertexBuffer(currentPositions, index: 8)
         if let lod {
             encoder.setVertexBuffer(lod.visibleIndices, index: 4)
             encoder.setVertexBuffer(lod.state, index: 5)

@@ -82,9 +82,13 @@
   `PixlRenderer.DeviceBackend` → `PixlMetal.Platform`. Future Pixl integration
   replaces only the final adapter with `PixlPlatform`.
 - `PixlParticlesUI` imports `PixlParticles` and supports iOS, macOS, and visionOS.
-- Simulation, renderer-facing data lowering, and platform drawing are separate
-  concerns. Renderer-side code owns buffer packing and rendering policy;
-  platform targets own concrete GPU resources and command translation.
+- Simulation state and platform drawing remain separate concerns. Render-facing
+  particle state uses the simulation's authoritative four-particle AoSoA layout
+  inside aligned `PixlRenderer.HostBuffer` storage. Renderer code defines that
+  portable storage contract and rendering policy; platform targets wrap it in
+  concrete GPU resources and own command translation. Metal uses no-copy shared
+  buffers and indexes particle batch/lane directly in shaders, eliminating the
+  former CPU position, colour, and ID lowering copies.
 - Metal visibility uses stable GPU compaction: block-local scans, deterministic
   block offsets, stable index scatter, and indirect drawing. Culling never
   mutates authoritative simulation or changes particle order.
@@ -117,11 +121,11 @@
 - Portable particle and renderer code is nonisolated by default. Actor or thread
   ownership belongs at composition boundaries. The editor main actor configures
   `MTKView`; a dedicated serial thread owns simulation sampling, seeking,
-  lowering, Metal resources, culling, and submission. Its latest-value mailbox
+  Metal resources, culling, and submission. Its latest-value mailbox
   uses `NSCondition`, never queues stale frames, and introduces no concurrency
   dependency into `PixlRenderer`.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
-  after buffer availability, position-pair lowering, and culling encoding.
+  after buffer availability and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU
   execution budget.
 - Camera state, input gestures, and scene restoration belong to
@@ -184,10 +188,17 @@
 - With a 2-million visible ceiling, manual Release testing improved from the
   previous approximately 30 FPS to close to 60 FPS. Process memory fell from
   approximately 1.18 GiB to 960 MiB–1.0 GiB.
-- CPU regression measurements remain clean: one-million simulation and lowering
-  measured 0.642 ms and 0.778 ms; two-million measured 1.285 ms and 1.547 ms.
+- CPU renderer handoff is now constant-time and directly shares authoritative
+  AoSoA storage with the GPU. The former per-tick position, colour, and ID
+  lowering buffers are gone; `FrameBuffers` retains only culling and optional
+  LOD scratch. No additional in-flight source storage has been introduced.
+- Native regression measurements remain clean: one-million simulation measured
+  1.007 ms versus 1.000 ms immediately before the change; two-million measured
+  2.074 ms versus 2.066 ms. Direct handoff measured approximately 29 ns at both
+  one and six million particles.
 - Dedicated render ownership is validated across playback, camera input,
   pausing, backward and forward scrubbing, and system replacement.
 - The final matched 6-million-particle trace sustained the 60 Hz submission
   tier with 5.958 ms median and 8.550 ms p95 effective GPU work. Renderer
-  validation is complete; point colour is the next roadmap foundation.
+  validation is complete. Direct shared-source lifetime and synchronization
+  still require an iPad app run before point-colour validation is complete.

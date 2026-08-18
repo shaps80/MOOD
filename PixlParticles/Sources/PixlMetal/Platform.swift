@@ -70,7 +70,23 @@ public final class Platform: PixlRenderer.Platform {
         case .cpuVisible: .storageModeShared
         case .gpuOnly: .storageModePrivate
         }
-        return device.makeBuffer(length: length, options: options).map(MetalBuffer.init)
+        return device.makeBuffer(length: length, options: options).map {
+            MetalBuffer($0)
+        }
+    }
+
+    public func makeBuffer(
+        sharing storage: HostBuffer
+    ) -> (any PixlRenderer.Buffer)? {
+        storage.withUnsafeMutableAllocatedBytes { bytes in
+            guard let address = bytes.baseAddress else { return nil }
+            return device.makeBuffer(
+                bytesNoCopy: address,
+                length: storage.allocatedByteCount,
+                options: .storageModeShared,
+                deallocator: nil
+            ).map { MetalBuffer($0, host: storage) }
+        }
     }
 
     public func makeComputePipeline(

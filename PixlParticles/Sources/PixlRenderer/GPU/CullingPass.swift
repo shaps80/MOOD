@@ -39,7 +39,8 @@ final class CullingPass {
         interpolation: Float,
         viewProjection: Matrix4x4,
         cullingBounds: CullingBounds,
-        positions: any Buffer,
+        previousPositions: any Buffer,
+        currentPositions: any Buffer,
         buffers: CullingBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
@@ -54,7 +55,7 @@ final class CullingPass {
             }
             encoder.label = "Culling Classify and Local Scan"
             encoder.setPipeline(classify)
-            encoder.setBuffer(positions, index: 0)
+            encoder.setBuffer(previousPositions, index: 0)
             encoder.setBuffer(buffers.localOffsets, index: 1)
             encoder.setBuffer(buffers.blockSums, index: 2)
             encoder.setValue(viewProjection, index: 3)
@@ -71,6 +72,7 @@ final class CullingPass {
                 UInt32(cullingBounds.isEnabled ? 1 : 0),
                 index: 7
             )
+            encoder.setBuffer(currentPositions, index: 8)
             encoder.dispatchThreadgroups(
                 .init(width: Int(blockCount)),
                 threads: .init(width: Self.threadCount)

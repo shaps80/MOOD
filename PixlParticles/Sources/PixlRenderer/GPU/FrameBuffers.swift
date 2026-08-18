@@ -3,19 +3,13 @@ import Swift
 final class FrameBuffers {
     private let platform: any Platform
     private let frameCount: Int
-    private var positions: [any Buffer] = []
-    private var previousColors: [any Buffer] = []
-    private var currentColors: [any Buffer] = []
     private var culling: [CullingBuffers] = []
-    private var ids: (any Buffer)?
     private var lod: [LODBuffers] = []
-    private var initializedIDs = false
+    private var shared: SharedPointBuffers?
     private var capacity = 0
     private var lodCapacity = 0
     private var lodVisibleCapacity = 0
     private var tileCapacity = 0
-    private var positionIndex = -1
-    private var colorIndex = -1
     private var frameIndex = 0
 
     init(platform: any Platform, frameCount: Int) {
@@ -25,17 +19,13 @@ final class FrameBuffers {
 
     func prepare(
         count: Int,
-        positionsChanged: Bool,
-        colorsChanged: Bool,
-        idsChanged: Bool,
+        buffers: PointBuffers,
         lod settings: PointLOD,
-        viewport: ViewportSize,
-        writePositions: (UnsafeMutableBufferPointer<PositionPair>) -> Void,
-        writeIDs: (UnsafeMutableBufferPointer<UInt64>) -> Void,
-        writePreviousColors: (UnsafeMutableRawBufferPointer) -> Void,
-        writeCurrentColors: (UnsafeMutableRawBufferPointer) -> Void
+        viewport: ViewportSize
     ) throws -> FrameResources {
         try ensureCapacity(max(count, 1))
+        try ensureSharedBuffers(buffers)
+
         let usesLOD = settings.isEnabled
             && count > 0
             && count >= settings.activationCount
@@ -49,46 +39,42 @@ final class FrameBuffers {
             releaseLOD()
         }
 
-        if positionsChanged || positionIndex < 0 {
-            positionIndex = (positionIndex + 1) % frameCount
-            positions[positionIndex].withMutableBytes { bytes in
-                let destination = bytes.bindMemory(to: PositionPair.self)
-                writePositions(.init(rebasing: destination[..<count]))
-            }
-        }
-
-        if colorsChanged || colorIndex < 0 {
-            colorIndex = (colorIndex + 1) % frameCount
-            let colorByteCount = ((count + 3) / 4) * 64
-            previousColors[colorIndex].withMutableBytes { bytes in
-                writePreviousColors(.init(rebasing: bytes[..<colorByteCount]))
-            }
-            currentColors[colorIndex].withMutableBytes { bytes in
-                writeCurrentColors(.init(rebasing: bytes[..<colorByteCount]))
-            }
-        }
-
-        if idsChanged {
-            initializedIDs = false
-        }
-        if usesLOD && !initializedIDs, let ids {
-            ids.withMutableBytes { bytes in
-                let destination = bytes.bindMemory(to: UInt64.self)
-                writeIDs(.init(rebasing: destination[..<count]))
-            }
-            initializedIDs = true
-        }
-
+        guard let shared else { throw RenderError.buffer }
         let resources = FrameResources(
-            positions: positions[positionIndex],
-            previousColors: previousColors[colorIndex],
-            currentColors: currentColors[colorIndex],
+            previousPositions: shared.previousPositions,
+            currentPositions: shared.currentPositions,
+            previousColors: shared.previousColors,
+            currentColors: shared.currentColors,
             culling: culling[frameIndex],
-            ids: usesLOD ? ids : nil,
+            ids: usesLOD ? shared.ids : nil,
             lod: usesLOD ? lod[frameIndex] : nil
         )
         frameIndex = (frameIndex + 1) % frameCount
         return resources
+    }
+
+    private func ensureSharedBuffers(_ source: PointBuffers) throws {
+        if let shared, shared.matches(source) { return }
+
+        guard let previousPositions = platform.makeBuffer(
+            sharing: source.previousPositions
+        ), let currentPositions = platform.makeBuffer(
+            sharing: source.currentPositions
+        ), let previousColors = platform.makeBuffer(
+            sharing: source.previousColors
+        ), let currentColors = platform.makeBuffer(
+            sharing: source.currentColors
+        ), let ids = platform.makeBuffer(sharing: source.ids)
+        else { throw RenderError.buffer }
+
+        shared = SharedPointBuffers(
+            source: source,
+            previousPositions: previousPositions,
+            currentPositions: currentPositions,
+            previousColors: previousColors,
+            currentColors: currentColors,
+            ids: ids
+        )
     }
 
     private func ensureCapacity(_ required: Int) throws {
@@ -96,45 +82,20 @@ final class FrameBuffers {
 
         let blockCapacity = (required + CullingPass.threadCount - 1)
             / CullingPass.threadCount
-        var positions: [any Buffer] = []
-        var previousColors: [any Buffer] = []
-        var currentColors: [any Buffer] = []
         var culling: [CullingBuffers] = []
-        positions.reserveCapacity(frameCount)
-        previousColors.reserveCapacity(frameCount)
-        currentColors.reserveCapacity(frameCount)
         culling.reserveCapacity(frameCount)
 
         for _ in 0..<frameCount {
-            guard let positionBuffer = platform.makeBuffer(
-                length: required * MemoryLayout<PositionPair>.stride,
-                memory: .cpuVisible
-            ), let previousColorBuffer = platform.makeBuffer(
-                length: ((required + 3) / 4) * 64,
-                memory: .cpuVisible
-            ), let currentColorBuffer = platform.makeBuffer(
-                length: ((required + 3) / 4) * 64,
-                memory: .cpuVisible
-            ), let cullingBuffers = CullingBuffers(
+            guard let buffers = CullingBuffers(
                 platform: platform,
                 particleCapacity: required,
                 blockCapacity: blockCapacity
-            ) else {
-                throw RenderError.buffer
-            }
-            positions.append(positionBuffer)
-            previousColors.append(previousColorBuffer)
-            currentColors.append(currentColorBuffer)
-            culling.append(cullingBuffers)
+            ) else { throw RenderError.buffer }
+            culling.append(buffers)
         }
 
-        self.positions = positions
-        self.previousColors = previousColors
-        self.currentColors = currentColors
         self.culling = culling
         capacity = required
-        positionIndex = -1
-        colorIndex = -1
         frameIndex = 0
         releaseLOD()
     }
@@ -147,39 +108,30 @@ final class FrameBuffers {
         guard particleCount > lodCapacity
                 || visibleCount > lodVisibleCapacity
                 || tileCount > tileCapacity
-        else {
-            return
-        }
+        else { return }
+
         let particleCapacity = max(particleCount, lodCapacity)
         let visibleCapacity = max(visibleCount, lodVisibleCapacity)
         let tileCapacity = max(tileCount, self.tileCapacity)
         var lod: [LODBuffers] = []
         lod.reserveCapacity(frameCount)
 
-        guard let ids = platform.makeBuffer(
-            length: particleCapacity * MemoryLayout<UInt64>.stride,
-            memory: .cpuVisible
-        ) else { throw RenderError.buffer }
         for _ in 0..<frameCount {
-            guard let lodBuffers = LODBuffers(
+            guard let buffers = LODBuffers(
                 platform: platform,
                 visibleCapacity: visibleCapacity,
                 tileCapacity: max(tileCapacity, 1)
             ) else { throw RenderError.buffer }
-            lod.append(lodBuffers)
+            lod.append(buffers)
         }
-        self.ids = ids
         self.lod = lod
-        initializedIDs = false
         lodCapacity = particleCapacity
         lodVisibleCapacity = visibleCapacity
         self.tileCapacity = tileCapacity
     }
 
     private func releaseLOD() {
-        ids = nil
         lod = []
-        initializedIDs = false
         lodCapacity = 0
         lodVisibleCapacity = 0
         tileCapacity = 0
@@ -193,8 +145,26 @@ final class FrameBuffers {
     }
 }
 
+private struct SharedPointBuffers {
+    let source: PointBuffers
+    let previousPositions: any Buffer
+    let currentPositions: any Buffer
+    let previousColors: any Buffer
+    let currentColors: any Buffer
+    let ids: any Buffer
+
+    func matches(_ other: PointBuffers) -> Bool {
+        source.previousPositions === other.previousPositions
+            && source.currentPositions === other.currentPositions
+            && source.previousColors === other.previousColors
+            && source.currentColors === other.currentColors
+            && source.ids === other.ids
+    }
+}
+
 struct FrameResources {
-    let positions: any Buffer
+    let previousPositions: any Buffer
+    let currentPositions: any Buffer
     let previousColors: any Buffer
     let currentColors: any Buffer
     let culling: CullingBuffers

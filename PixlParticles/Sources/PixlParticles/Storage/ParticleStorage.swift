@@ -5,6 +5,7 @@ final class ParticleStorage {
     let count: Int
 
     private let batchCount: Int
+    private let renderBuffers: PointBuffers
     private let ids: UnsafeMutableBufferPointer<SIMD4<Particle.ID>>
     private let positions: UnsafeMutableBufferPointer<Vector3Batch>
     private let previousPositions: UnsafeMutableBufferPointer<Vector3Batch>
@@ -18,11 +19,43 @@ final class ParticleStorage {
     ) {
         self.count = count
         batchCount = (count + 3) / 4
-        ids = .allocate(capacity: batchCount)
-        positions = .allocate(capacity: batchCount)
-        previousPositions = .allocate(capacity: batchCount)
-        colors = .allocate(capacity: batchCount)
-        previousColors = .allocate(capacity: batchCount)
+        renderBuffers = PointBuffers(
+            previousPositions: HostBuffer(
+                byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
+            ),
+            currentPositions: HostBuffer(
+                byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
+            ),
+            previousColors: HostBuffer(
+                byteCount: batchCount * MemoryLayout<ColorBatch>.stride
+            ),
+            currentColors: HostBuffer(
+                byteCount: batchCount * MemoryLayout<ColorBatch>.stride
+            ),
+            ids: HostBuffer(
+                byteCount: batchCount * MemoryLayout<SIMD4<Particle.ID>>.stride
+            )
+        )
+        ids = renderBuffers.ids.bindMemory(
+            to: SIMD4<Particle.ID>.self,
+            count: batchCount
+        )
+        positions = renderBuffers.currentPositions.bindMemory(
+            to: Vector3Batch.self,
+            count: batchCount
+        )
+        previousPositions = renderBuffers.previousPositions.bindMemory(
+            to: Vector3Batch.self,
+            count: batchCount
+        )
+        colors = renderBuffers.currentColors.bindMemory(
+            to: ColorBatch.self,
+            count: batchCount
+        )
+        previousColors = renderBuffers.previousColors.bindMemory(
+            to: ColorBatch.self,
+            count: batchCount
+        )
         velocities = .allocate(capacity: batchCount)
 
         for batchIndex in 0..<batchCount {
@@ -62,11 +95,12 @@ final class ParticleStorage {
     }
 
     deinit {
-        ids.deallocate()
-        positions.deallocate()
-        previousPositions.deallocate()
-        colors.deallocate()
-        previousColors.deallocate()
+        ids.deinitialize()
+        positions.deinitialize()
+        previousPositions.deinitialize()
+        colors.deinitialize()
+        previousColors.deinitialize()
+        velocities.deinitialize()
         velocities.deallocate()
     }
 
@@ -128,43 +162,8 @@ final class ParticleStorage {
     }
 
     func withRenderingData<Result: ~Copyable>(
-        _ body: (
-            Span<Vector3Batch>,
-            Span<Vector3Batch>,
-            UnsafeBufferPointer<ColorBatch>,
-            UnsafeBufferPointer<ColorBatch>,
-            Span<SIMD4<UInt64>>,
-            Int
-        ) throws -> Result
+        _ body: (PointBuffers, Int) throws -> Result
     ) rethrows -> Result {
-        let previous = UnsafeBufferPointer(
-            start: previousPositions.baseAddress,
-            count: batchCount
-        )
-        let current = UnsafeBufferPointer(
-            start: positions.baseAddress,
-            count: batchCount
-        )
-        let ids = UnsafeBufferPointer(
-            start: self.ids.baseAddress,
-            count: batchCount
-        )
-        let previousColors = UnsafeBufferPointer(
-            start: self.previousColors.baseAddress,
-            count: batchCount
-        )
-        let colors = UnsafeBufferPointer(
-            start: self.colors.baseAddress,
-            count: batchCount
-        )
-
-        return try body(
-            unsafe Span(_unsafeElements: previous),
-            unsafe Span(_unsafeElements: current),
-            previousColors,
-            colors,
-            unsafe Span(_unsafeElements: ids),
-            count
-        )
+        try body(renderBuffers, count)
     }
 }

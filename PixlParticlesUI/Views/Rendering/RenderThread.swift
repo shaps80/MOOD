@@ -96,7 +96,6 @@ private nonisolated final class Worker: @unchecked Sendable {
                 try renderer.render(
                     system,
                     interpolation: sample.interpolation,
-                    tick: sample.tick,
                     cullingViewProjection: frame.cullingViewProjection,
                     viewProjection: frame.viewProjection,
                     viewport: frame.viewport

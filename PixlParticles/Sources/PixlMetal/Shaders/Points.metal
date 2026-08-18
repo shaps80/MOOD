@@ -8,9 +8,10 @@ struct PointVertex {
     half4 color;
 };
 
-struct PositionPair {
-    packed_float3 previous;
-    packed_float3 current;
+struct PositionBatch {
+    float4 x;
+    float4 y;
+    float4 z;
 };
 
 struct ColorBatch {
@@ -32,6 +33,26 @@ static float4 particleColor(
         colors[batch].blue[lane],
         colors[batch].alpha[lane]
     );
+}
+
+static float3 particlePosition(
+    const device PositionBatch *positions,
+    uint particleIndex
+) {
+    uint batch = particleIndex / 4;
+    uint lane = particleIndex % 4;
+    return float3(
+        positions[batch].x[lane],
+        positions[batch].y[lane],
+        positions[batch].z[lane]
+    );
+}
+
+static ulong particleID(
+    const device ulong4 *ids,
+    uint particleIndex
+) {
+    return ids[particleIndex / 4][particleIndex % 4];
 }
 
 struct DrawArguments {
@@ -91,7 +112,7 @@ static uint pointLODHash(ulong value) {
 }
 
 kernel void classifyAndScanVisibility(
-    const device PositionPair *positions [[buffer(0)]],
+    const device PositionBatch *previousPositions [[buffer(0)]],
     device uint *localOffsets [[buffer(1)]],
     device uint *blockSums [[buffer(2)]],
     constant float4x4 &viewProjection [[buffer(3)]],
@@ -99,6 +120,7 @@ kernel void classifyAndScanVisibility(
     constant uint &particleCount [[buffer(5)]],
     constant float2 &cullingBounds [[buffer(6)]],
     constant uint &hasCullingBounds [[buffer(7)]],
+    const device PositionBatch *currentPositions [[buffer(8)]],
     uint index [[thread_position_in_grid]],
     uint lane [[thread_index_in_threadgroup]],
     uint block [[threadgroup_position_in_grid]],
@@ -109,8 +131,8 @@ kernel void classifyAndScanVisibility(
 
     if (index < particleCount) {
         float3 position = mix(
-            float3(positions[index].previous),
-            float3(positions[index].current),
+            particlePosition(previousPositions, index),
+            particlePosition(currentPositions, index),
             interpolation
         );
         float4 clip = viewProjection * float4(position, 1);
@@ -254,7 +276,7 @@ kernel void clearPointLODTiles(
 }
 
 kernel void countPointLODTiles(
-    const device PositionPair *positions [[buffer(0)]],
+    const device PositionBatch *previousPositions [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     const device DrawArguments &visibleArguments [[buffer(2)]],
     device atomic_uint *tileCounts [[buffer(3)]],
@@ -262,13 +284,14 @@ kernel void countPointLODTiles(
     constant float4x4 &viewProjection [[buffer(5)]],
     constant float &interpolation [[buffer(6)]],
     constant PointLODConfiguration &configuration [[buffer(7)]],
+    const device PositionBatch *currentPositions [[buffer(8)]],
     uint index [[thread_position_in_grid]]
 ) {
     if (index >= visibleArguments.vertexCount) return;
     uint particleIndex = visibleIndices[index];
     float3 position = mix(
-        float3(positions[particleIndex].previous),
-        float3(positions[particleIndex].current),
+        particlePosition(previousPositions, particleIndex),
+        particlePosition(currentPositions, particleIndex),
         interpolation
     );
     uint tile = pointLODTile(
@@ -297,7 +320,7 @@ kernel void preparePointLODThresholds(
 }
 
 kernel void classifyPointLOD(
-    const device ulong *ids [[buffer(0)]],
+    const device ulong4 *ids [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     const device DrawArguments &visibleArguments [[buffer(2)]],
     const device uint *tileThresholds [[buffer(3)]],
@@ -318,7 +341,7 @@ kernel void classifyPointLOD(
         uint tile = localOffsets[index];
         uint threshold = min(tileThresholds[tile], state.globalThreshold);
         retained = threshold == UINT_MAX
-            || pointLODHash(ids[particleIndex]) < threshold;
+            || pointLODHash(particleID(ids, particleIndex)) < threshold;
     }
 
     scan[lane] = retained;
@@ -408,18 +431,19 @@ kernel void scatterPointLOD(
 
 vertex PointVertex pointVertex(
     uint vertexID [[vertex_id]],
-    const device PositionPair *positions [[buffer(0)]],
+    const device PositionBatch *previousPositions [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
     const device ColorBatch *previousColors [[buffer(6)]],
-    const device ColorBatch *currentColors [[buffer(7)]]
+    const device ColorBatch *currentColors [[buffer(7)]],
+    const device PositionBatch *currentPositions [[buffer(8)]]
 ) {
     uint particleIndex = visibleIndices[vertexID];
     PointVertex output;
     float3 position = mix(
-        float3(positions[particleIndex].previous),
-        float3(positions[particleIndex].current),
+        particlePosition(previousPositions, particleIndex),
+        particlePosition(currentPositions, particleIndex),
         interpolation
     );
     output.position = viewProjection * float4(position, 1);
@@ -434,22 +458,23 @@ vertex PointVertex pointVertex(
 
 vertex PointVertex pointLODVertex(
     uint vertexID [[vertex_id]],
-    const device PositionPair *positions [[buffer(0)]],
+    const device PositionBatch *previousPositions [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
     const device uint *lodVisibleIndices [[buffer(4)]],
     const device PointLODState &state [[buffer(5)]],
     const device ColorBatch *previousColors [[buffer(6)]],
-    const device ColorBatch *currentColors [[buffer(7)]]
+    const device ColorBatch *currentColors [[buffer(7)]],
+    const device PositionBatch *currentPositions [[buffer(8)]]
 ) {
     uint particleIndex = state.active
         ? lodVisibleIndices[vertexID]
         : visibleIndices[vertexID];
     PointVertex output;
     float3 position = mix(
-        float3(positions[particleIndex].previous),
-        float3(positions[particleIndex].current),
+        particlePosition(previousPositions, particleIndex),
+        particlePosition(currentPositions, particleIndex),
         interpolation
     );
     output.position = viewProjection * float4(position, 1);

@@ -4,9 +4,13 @@ import Swift
 
 final class MetalBuffer: PixlRenderer.Buffer {
     let value: any MTLBuffer
+    private let host: HostBuffer?
     var length: Int { value.length }
 
-    init(_ value: any MTLBuffer) { self.value = value }
+    init(_ value: any MTLBuffer, host: HostBuffer? = nil) {
+        self.value = value
+        self.host = host
+    }
 
     func withMutableBytes(
         _ body: (UnsafeMutableRawBufferPointer) -> Void
