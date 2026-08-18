@@ -3,6 +3,62 @@ import Testing
 
 @Suite("System determinism")
 struct SystemDeterminismTests {
+    @Test("Legacy and emitter initializers produce identical simulation")
+    func emitterInitializer() {
+        let region = SpawnRegion.cube(size: [200, 200, 200])
+        let legacy = System(
+            seed: 42,
+            particleCount: 101,
+            spawnRegion: region,
+            color: .init(red: 2, green: 0.5, blue: 0.25),
+            duration: .seconds(2)
+        )
+        let authored = System(
+            seed: 42,
+            emitter: Emitter(
+                capacity: 101,
+                position: region,
+                velocity: .random(-20 ..< 20),
+                color: .init(red: 2, green: 0.5, blue: 0.25)
+            ),
+            duration: .seconds(2)
+        )
+
+        expectEqualParticles(legacy.particleSnapshot, authored.particleSnapshot)
+
+        legacy.seek(to: .milliseconds(1_500))
+        authored.seek(to: .milliseconds(1_500))
+
+        expectEqualParticles(legacy.particleSnapshot, authored.particleSnapshot)
+    }
+
+    @Test("Stationary emitters remain fixed")
+    func stationaryEmitter() {
+        let system = System(
+            seed: 42,
+            emitter: Emitter(
+                capacity: 101,
+                position: .sphere(radius: 100),
+                velocity: .stationary
+            ),
+            duration: .seconds(2)
+        )
+        let initial = system.particleSnapshot
+
+        system.seek(to: .milliseconds(1_500))
+
+        expectEqualParticles(system.particleSnapshot, initial)
+        #expect(system.particleSnapshot.allSatisfy { $0.velocity == .zero })
+    }
+
+    private func expectEqualParticles(_ lhs: [Particle], _ rhs: [Particle]) {
+        #expect(lhs.map(\.id) == rhs.map(\.id))
+        #expect(lhs.map(\.previousPosition) == rhs.map(\.previousPosition))
+        #expect(lhs.map(\.position) == rhs.map(\.position))
+        #expect(lhs.map(\.velocity) == rhs.map(\.velocity))
+        #expect(lhs.map(\.color) == rhs.map(\.color))
+    }
+
     @Test("A seed reproduces spawned particles")
     func seededSpawn() {
         let first = System(

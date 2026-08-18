@@ -4,22 +4,16 @@ import Swift
 public final class System {
     public private(set) var duration: Duration
 
-    var particleSnapshot: [Particle] { storage.particles() }
+    var particleSnapshot: [Particle] { emitter.particles() }
 
-    package var particleCount: Int { storage.count }
+    package var particleCount: Int { emitter.aliveCount }
 
-    private let random: RandomSource
-    private let spawnRegion: SpawnRegion
-    private let color: Color
+    private var emitter: EmitterInstance
     private var loop: Loop
     private var durationInTicks: UInt64
-    private var storage: ParticleStorage
-    private let initialState: InitialParticleState?
     private var tick: UInt64 = 0
-    private var nextID: Particle.ID = 0
-    private var initialNextID: Particle.ID = 0
 
-    public init(
+    public convenience init(
         seed: UInt64,
         particleCount: Int,
         spawnRegion: SpawnRegion,
@@ -27,34 +21,38 @@ public final class System {
         duration: Duration,
         storesRewindState: Bool = true
     ) {
-        precondition(particleCount >= 0)
+        self.init(
+            seed: seed,
+            emitter: Emitter(
+                capacity: particleCount,
+                position: spawnRegion,
+                velocity: .random(-20 ..< 20),
+                color: color
+            ),
+            duration: duration,
+            storesRewindState: storesRewindState
+        )
+    }
+
+    public init(
+        seed: UInt64,
+        emitter: Emitter,
+        duration: Duration,
+        storesRewindState: Bool = true
+    ) {
         precondition(duration >= .zero)
-        spawnRegion.validate()
 
         let loop = Loop(settings: .default)
         let durationInTicks = Self.ticks(for: duration, using: loop)
 
-        let randomSource = RandomSource(seed: seed)
-        let region = spawnRegion
-
         self.duration = duration
         self.durationInTicks = durationInTicks
-        random = randomSource
-        self.spawnRegion = region
-        self.color = color
         self.loop = loop
-
-        storage = ParticleStorage(count: particleCount) { index in
-            Self.spawn(
-                id: Particle.ID(index),
-                random: randomSource,
-                region: region,
-                color: color
-            )
-        }
-        initialState = storesRewindState ? storage.initialState() : nil
-        nextID = Particle.ID(particleCount)
-        initialNextID = nextID
+        self.emitter = EmitterInstance(
+            compiled: EmitterCompiler().compile(emitter),
+            random: RandomSource(seed: seed),
+            storesRewindState: storesRewindState
+        )
     }
 
     public func setDuration(_ duration: Duration) {
@@ -115,20 +113,8 @@ public final class System {
         )
 
         if targetTick < tick {
-            if let initialState {
-                storage.restore(from: initialState)
-            } else {
-                storage = ParticleStorage(count: storage.count) { index in
-                    Self.spawn(
-                        id: Particle.ID(index),
-                        random: random,
-                        region: spawnRegion,
-                        color: color
-                    )
-                }
-            }
+            emitter.reset()
             tick = 0
-            nextID = initialNextID
         }
 
         let delta = Float(loop.fixedDeltaSeconds)
@@ -137,12 +123,12 @@ public final class System {
             update(by: delta)
         }
 
-        storage.resetInterpolation()
+        emitter.resetInterpolation()
         loop.rebase(to: tick)
     }
 
     func update(by delta: Float) {
-        storage.advance(by: delta)
+        emitter.advance(by: delta)
 
         tick += 1
     }
@@ -150,31 +136,7 @@ public final class System {
     func withRenderingData<Result: ~Copyable>(
         _ body: (ParticleBuffers, Int) throws -> Result
     ) rethrows -> Result {
-        try storage.withRenderingData(body)
-    }
-
-    private static func spawn(
-        id: Particle.ID,
-        random: RandomSource,
-        region: SpawnRegion,
-        color: Color
-    ) -> Particle {
-        let velocityBlock = random.block(
-            at: id,
-            channel: .velocity
-        )
-        let velocityRange: Range<Float> = -20..<20
-
-        return Particle(
-            id: id,
-            position: region.sample(using: random, at: id),
-            velocity: [
-                RandomSource.float(from: velocityBlock.x0, in: velocityRange),
-                RandomSource.float(from: velocityBlock.x1, in: velocityRange),
-                RandomSource.float(from: velocityBlock.x2, in: velocityRange),
-            ],
-            color: color
-        )
+        try emitter.withRenderingData(body)
     }
 
     private static func ticks(for duration: Duration, using loop: Loop) -> UInt64 {

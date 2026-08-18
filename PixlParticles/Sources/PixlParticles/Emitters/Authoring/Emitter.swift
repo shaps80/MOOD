@@ -4,7 +4,7 @@ import Swift
 public struct Emitter: Equatable, Sendable {
     public enum Velocity: Equatable, Sendable {
         case stationary
-        case random(ClosedRange<Float>)
+        case random(Range<Float>)
 
         var requiresStorage: Bool {
             switch self {
@@ -38,7 +38,7 @@ public struct Emitter: Equatable, Sendable {
     public init(
         capacity: Int,
         position: SpawnRegion,
-        velocity: Velocity = .random(-50 ... 50),
+        velocity: Velocity = .random(-20 ..< 20),
         color: Color = .white,
         size: SIMD2<Float> = [1, 2],
         rotation: Float = 0,

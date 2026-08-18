@@ -241,3 +241,10 @@
   persistence, and live inspector editing compile across the macOS app and its
   Metal shader library. Visual validation and point-versus-billboard performance
   measurements remain pending; no billboard benchmark is accepted yet.
+- `System` now coordinates one compiled `EmitterInstance`. The public legacy
+  initializer lowers to an authored `Emitter` and remains bit-identical. A
+  system-owned `ParticleArena` supplies an `EmitterArenaSlice`; with one emitter
+  that slice spans the arena. Moving emitters retain the established AoSoA
+  position/velocity hot path, while stationary emitters omit velocity and
+  previous-position storage. This is the extraction seam for multiple emitter
+  slices without changing the public simulation model again.

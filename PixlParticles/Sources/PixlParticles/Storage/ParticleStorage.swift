@@ -6,24 +6,27 @@ final class ParticleStorage {
 
     private let batchCount: Int
     private let idsStorage: HostBuffer
-    private var previousPositionStorage: HostBuffer
+    private var previousPositionStorage: HostBuffer?
     private var positionStorage: HostBuffer
     private let colorStorage: HostBuffer
     private let ids: UnsafeMutableBufferPointer<SIMD4<Particle.ID>>
     private var positions: UnsafeMutableBufferPointer<Vector3Batch>
-    private var previousPositions: UnsafeMutableBufferPointer<Vector3Batch>
+    private var previousPositions: UnsafeMutableBufferPointer<Vector3Batch>?
     private let colors: UnsafeMutableBufferPointer<ColorBatch>
-    private let velocities: UnsafeMutableBufferPointer<Vector3Batch>
+    private let velocities: UnsafeMutableBufferPointer<Vector3Batch>?
 
     init(
         count: Int,
+        storesVelocity: Bool = true,
         particleAt: (Int) -> Particle
     ) {
         self.count = count
         batchCount = (count + 3) / 4
-        previousPositionStorage = HostBuffer(
-            byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
-        )
+        previousPositionStorage = storesVelocity
+            ? HostBuffer(
+                byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
+            )
+            : nil
         positionStorage = HostBuffer(
             byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
         )
@@ -41,7 +44,7 @@ final class ParticleStorage {
             to: Vector3Batch.self,
             count: batchCount
         )
-        previousPositions = previousPositionStorage.bindMemory(
+        previousPositions = previousPositionStorage?.bindMemory(
             to: Vector3Batch.self,
             count: batchCount
         )
@@ -49,7 +52,7 @@ final class ParticleStorage {
             to: ColorBatch.self,
             count: batchCount
         )
-        velocities = .allocate(capacity: batchCount)
+        velocities = storesVelocity ? .allocate(capacity: batchCount) : nil
 
         for batchIndex in 0..<batchCount {
             var batchIDs = SIMD4<Particle.ID>(repeating: 0)
@@ -72,22 +75,22 @@ final class ParticleStorage {
 
             ids.initializeElement(at: batchIndex, to: batchIDs)
             positions.initializeElement(at: batchIndex, to: batchPositions)
-            previousPositions.initializeElement(
+            previousPositions?.initializeElement(
                 at: batchIndex,
                 to: batchPreviousPositions
             )
             colors.initializeElement(at: batchIndex, to: batchColors)
-            velocities.initializeElement(at: batchIndex, to: batchVelocities)
+            velocities?.initializeElement(at: batchIndex, to: batchVelocities)
         }
     }
 
     deinit {
         ids.deinitialize()
         positions.deinitialize()
-        previousPositions.deinitialize()
+        previousPositions?.deinitialize()
         colors.deinitialize()
-        velocities.deinitialize()
-        velocities.deallocate()
+        velocities?.deinitialize()
+        velocities?.deallocate()
     }
 
     func initialState() -> InitialParticleState {
@@ -103,12 +106,14 @@ final class ParticleStorage {
         for index in 0..<batchCount {
             let initialPosition = state[batch: index]
             positions[index] = initialPosition
-            previousPositions[index] = initialPosition
+            previousPositions?[index] = initialPosition
         }
     }
 
     @inline(__always)
     func advance(by delta: Float) {
+        guard var previousPositions, let velocities else { return }
+
         for index in 0..<batchCount {
             previousPositions[index].x = positions[index].x
                 + velocities[index].x * delta
@@ -121,15 +126,16 @@ final class ParticleStorage {
         let oldPreviousPositions = previousPositions
         previousPositions = positions
         positions = oldPreviousPositions
+        self.previousPositions = previousPositions
 
-        let oldPreviousStorage = previousPositionStorage
+        let oldPreviousStorage = previousPositionStorage!
         previousPositionStorage = positionStorage
         positionStorage = oldPreviousStorage
     }
 
     func resetInterpolation() {
         for index in 0..<batchCount {
-            previousPositions[index] = positions[index]
+            previousPositions?[index] = positions[index]
         }
     }
 
@@ -142,9 +148,10 @@ final class ParticleStorage {
                     at: index,
                     to: Particle(
                         id: ids[batch][lane],
-                        previousPosition: previousPositions[batch][lane],
+                        previousPosition: previousPositions?[batch][lane]
+                            ?? positions[batch][lane],
                         position: positions[batch][lane],
-                        velocity: velocities[batch][lane],
+                        velocity: velocities?[batch][lane] ?? .zero,
                         color: colors[batch][lane]
                     )
                 )
@@ -159,7 +166,7 @@ final class ParticleStorage {
     ) rethrows -> Result {
         try body(
             ParticleBuffers(
-                previousPositions: previousPositionStorage,
+                previousPositions: previousPositionStorage ?? positionStorage,
                 currentPositions: positionStorage,
                 colors: colorStorage,
                 ids: idsStorage

@@ -7,7 +7,7 @@ struct EmitterCompilerTests {
         let emitter = Emitter(
             capacity: 1_001,
             position: .sphere(radius: 10),
-            velocity: .random(-5 ... 15)
+            velocity: .random(-5 ..< 15)
         )
         let compiler = EmitterCompiler()
 
@@ -28,7 +28,7 @@ struct EmitterCompilerTests {
             Emitter(
                 capacity: 1_000,
                 position: .point(.zero),
-                velocity: .random(-1 ... 1)
+                velocity: .random(-1 ..< 1)
             )
         )
 
@@ -47,7 +47,7 @@ struct EmitterCompilerTests {
             Emitter(
                 capacity: 100,
                 position: .point(.zero),
-                velocity: .random(0 ... 0)
+                velocity: .random(0 ..< 0)
             )
         )
 

@@ -32,7 +32,7 @@ struct EmitterInstanceTests {
         let identity = instance.arenaIdentity
         let stationaryByteCount = instance.arenaByteCount
 
-        emitter.velocity = .random(-1 ... 1)
+        emitter.velocity = .random(-1 ..< 1)
 
         #expect(instance.apply(compiler.compile(emitter)) == .rebuiltArena)
         #expect(instance.arenaIdentity != identity)

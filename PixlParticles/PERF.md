@@ -444,6 +444,23 @@ after running, from approximately 140 MB before simulation. The initial
 billboard path therefore adds expected geometry/raster cost without introducing
 mode-specific persistent storage.
 
+## Single-Emitter Extraction Regression Check
+
+Measured 2026-08-18 on the same macOS M1 Max environment after routing `System`
+through the authored/compiled/runtime emitter pipeline and a system-owned arena
+slice. Three sequential release runs retained the existing deterministic
+checksums.
+
+| Particles | Pre-extraction | Emitter pipeline | Difference |
+| ---: | ---: | ---: | ---: |
+| 1 M | 0.481 ms/tick | 0.479 ms/tick | -0.4% |
+| 2 M | 0.872 ms/tick | 0.866 ms/tick | -0.7% |
+
+Both differences are measurement noise. The moving-emitter update remains the
+same specialized AoSoA loop, with no per-particle dispatch or added storage.
+Checksums remained `1295003598899` at one million and `1247850613780` at two
+million particles.
+
 ## Metal Point Rendering
 
 Measured 2026-08-16 on the macOS M1 Max environment using Release builds and

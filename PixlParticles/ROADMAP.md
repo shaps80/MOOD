@@ -41,7 +41,7 @@ validated.
 - [x] Introduce isolated authored, compiled, and running emitter boundaries,
   including deterministic layout compilation, omitted unused storage, and
   arena reuse across layout-compatible edits.
-- Extract the current system-of-one-emitter into a system coordinator with
+- [x] Extract the current system-of-one-emitter into a system coordinator with
   emitter-owned arena slices and one or more renderer definitions per emitter.
 - Compile authored definitions only when structure changes, not per fixed tick
   or while scrubbing.
