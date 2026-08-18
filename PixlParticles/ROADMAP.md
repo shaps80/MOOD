@@ -12,33 +12,19 @@ point-primitive rendering path.
 - Add standalone release benchmarks for interpolation and render-data packing,
   separate from simulation and GPU rendering measurements.
 
-## 2. Complete the Metal Point Path
+## 2. Validate the Metal Point Path
 
-- Add a procedural perspective-frustum editor pass so camera-frustum culling
-  can be inspected from a separate observer camera before validation.
 - Validate stable GPU frustum compaction across empty, partial, and fully visible
-  systems and measure its compute cost against the indirect-draw savings.
-- Expose visible-particle counts and Metal stage timings for diagnostics without
-  adding CPU readback to the production frame loop.
-- Consume packed particle colour in the point shader.
-- Keep colour linear and premultiplied through HDR shading and blending, then
-  encode only for final display presentation.
-- Measure CPU submission and GPU rendering separately from simulation and
-  portable render-data packing.
-- Profile Metal culling and drawing independently; accepted CPU scaling shows
-  simulation plus position-pair lowering consumes only about 1.46 ms per
-  rendered frame at 2 million particles with 30 Hz simulation and 60 Hz
-  rendering.
-- Validate GPU-only screen-space LOD visually and with Metal traces across the
-  activation boundary, dense and sparse tiles, camera motion, and the exact
-  maximum-visible ceiling. Tune defaults only from those results.
+  systems. Measure culling cost against the indirect-draw savings.
+- Validate GPU-only screen-space LOD across its activation boundary, dense and
+  sparse tiles, camera motion, and the exact maximum-visible ceiling. Tune
+  defaults only from those results.
 - Validate dedicated serial render ownership during playback, camera input,
-  pausing, scrubbing, and system replacement. Confirm the main actor no longer
-  performs simulation, lowering, culling, or Metal submission.
-- After validation, capture a matched 6-million-particle Metal trace with LOD
-  enabled and a 2-million visible ceiling. Compare frame cadence, aggregate
-  compute/draw medians and p95, drawable waits, and steady/peak Metal memory
-  against the recorded pre-optimization trace.
+  pausing, scrubbing, and system replacement.
+- Capture a matched 6-million-particle Metal trace with LOD enabled and a
+  2-million visible ceiling. Compare frame cadence, aggregate compute/draw
+  medians and p95, drawable waits, and steady/peak Metal memory against the
+  recorded pre-optimization trace.
 
 ## 3. Colour Diagnostics
 

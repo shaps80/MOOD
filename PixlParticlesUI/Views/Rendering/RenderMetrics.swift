@@ -7,14 +7,14 @@ struct RenderDiagnostics: Sendable {
     let cpuRenderTime: Double?
     let gpuTime: Double?
     let frameBudget: Double
-    let presentationCount: UInt64
-    let presentationTime: Double?
+    let presentationFrameCount: Int
+    let presentationDuration: Double
 }
 
 @MainActor
 @Observable
 final class RenderMetrics {
-    private static let window = 5.0
+    private static let window = 3.0
     private static let publishInterval = 0.25
     private static let capacity = 2_048
 
@@ -23,21 +23,12 @@ final class RenderMetrics {
     private var cpuSimulationTimes = [Double](repeating: 0, count: capacity)
     private var cpuRenderTimes = [Double](repeating: 0, count: capacity)
     private var gpuTimes = [Double](repeating: 0, count: capacity)
-    private var presentationTimestamps = [Double](repeating: 0, count: capacity)
-    private var presentationDurations = [Double](repeating: 0, count: capacity)
-    private var presentationCounts = [UInt64](repeating: 0, count: capacity)
     private var head = 0
     private var count = 0
     private var durationSum = 0.0
     private var cpuSimulationSum = 0.0
     private var cpuRenderSum = 0.0
     private var gpuSum = 0.0
-    private var presentationHead = 0
-    private var presentationSampleCount = 0
-    private var presentationDurationSum = 0.0
-    private var presentationFrameSum: UInt64 = 0
-    private var previousPresentationCount: UInt64?
-    private var previousPresentationTime: Double?
     private var previousTime: Double?
     private var lastPublishTime = 0.0
     private var latestVisibleCount = 0
@@ -59,7 +50,6 @@ final class RenderMetrics {
             latestVisibleCount = visibleCount
         }
         latestFrameBudget = diagnostics.frameBudget
-        recordPresentation(diagnostics)
         if let previousTime {
             let duration = now - previousTime
             if duration <= 1 {
@@ -91,11 +81,12 @@ final class RenderMetrics {
             gpuBudget = gpuTime / latestFrameBudget
             combinedBudget = max(cpuTime, gpuTime) / latestFrameBudget
         }
-        if presentationFrameSum > 0, presentationDurationSum > 0 {
-            framesPerSecond = Double(presentationFrameSum)
-                / presentationDurationSum
-            frameTimeMilliseconds = presentationDurationSum
-                / Double(presentationFrameSum) * 1_000
+        if diagnostics.presentationFrameCount > 0,
+           diagnostics.presentationDuration > 0 {
+            framesPerSecond = Double(diagnostics.presentationFrameCount)
+                / diagnostics.presentationDuration
+            frameTimeMilliseconds = diagnostics.presentationDuration
+                / Double(diagnostics.presentationFrameCount) * 1_000
         }
     }
 
@@ -147,70 +138,4 @@ final class RenderMetrics {
         gpuSum = 0
     }
 
-    private func recordPresentation(_ diagnostics: RenderDiagnostics) {
-        guard
-            let time = diagnostics.presentationTime,
-            let previousCount = previousPresentationCount,
-            let previousTime = previousPresentationTime,
-            diagnostics.presentationCount > previousCount,
-            time > previousTime
-        else {
-            previousPresentationCount = diagnostics.presentationCount
-            previousPresentationTime = diagnostics.presentationTime
-            return
-        }
-
-        let duration = time - previousTime
-        if duration > 1 {
-            resetPresentations()
-            previousPresentationCount = diagnostics.presentationCount
-            previousPresentationTime = time
-            return
-        }
-        appendPresentation(
-            time: time,
-            duration: duration,
-            count: diagnostics.presentationCount - previousCount
-        )
-        previousPresentationCount = diagnostics.presentationCount
-        previousPresentationTime = time
-        removePresentations(olderThan: time - Self.window)
-    }
-
-    private func appendPresentation(
-        time: Double,
-        duration: Double,
-        count: UInt64
-    ) {
-        if presentationSampleCount == Self.capacity {
-            presentationDurationSum -= presentationDurations[presentationHead]
-            presentationFrameSum -= presentationCounts[presentationHead]
-            presentationHead = (presentationHead + 1) % Self.capacity
-            presentationSampleCount -= 1
-        }
-        let index = (presentationHead + presentationSampleCount) % Self.capacity
-        presentationTimestamps[index] = time
-        presentationDurations[index] = duration
-        presentationCounts[index] = count
-        presentationDurationSum += duration
-        presentationFrameSum += count
-        presentationSampleCount += 1
-    }
-
-    private func removePresentations(olderThan cutoff: Double) {
-        while presentationSampleCount > 0,
-              presentationTimestamps[presentationHead] < cutoff {
-            presentationDurationSum -= presentationDurations[presentationHead]
-            presentationFrameSum -= presentationCounts[presentationHead]
-            presentationHead = (presentationHead + 1) % Self.capacity
-            presentationSampleCount -= 1
-        }
-    }
-
-    private func resetPresentations() {
-        presentationHead = 0
-        presentationSampleCount = 0
-        presentationDurationSum = 0
-        presentationFrameSum = 0
-    }
 }

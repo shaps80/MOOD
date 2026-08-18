@@ -4,12 +4,13 @@ import PixlRenderer
 import QuartzCore
 
 public final class Platform: PixlRenderer.Platform {
-    private static let frameCount = 2
+    private static let drawableCount = 3
+    private static let inFlightFrameCount = 2
 
     private let device: any MTLDevice
     private let queue: any MTLCommandQueue
     private let library: any MTLLibrary
-    private let available = DispatchSemaphore(value: frameCount)
+    private let available = DispatchSemaphore(value: inFlightFrameCount)
     private let layer: CAMetalLayer
     private var depthTexture: (any MTLTexture)?
 
@@ -44,7 +45,7 @@ public final class Platform: PixlRenderer.Platform {
         view.framebufferOnly = true
         view.clearColor = .init(red: 0.01, green: 0.01, blue: 0.01, alpha: 1)
         let layer = view.layer as! CAMetalLayer
-        layer.maximumDrawableCount = Self.frameCount
+        layer.maximumDrawableCount = Self.drawableCount
         return layer
     }
 
