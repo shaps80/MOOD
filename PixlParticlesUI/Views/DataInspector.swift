@@ -13,7 +13,6 @@ struct DataInspector: View {
             FrameMetricsSection(metrics: metrics)
             CPUMetricsSection(metrics: metrics)
             GPUMetricsSection(metrics: metrics)
-            BudgetMetricsSection(metrics: metrics)
         }
         .frame(minWidth: 180, alignment: .topLeading)
         .scenePadding()

@@ -18,6 +18,14 @@ struct CPUMetricsSection: View {
                 )
                 .monospacedDigit()
             }
+
+            LabeledContent("Budget") {
+                Text(
+                    metrics.cpuBudget,
+                    format: .percent.precision(.fractionLength(1))
+                )
+                .monospacedDigit()
+            }
         }
     }
 }

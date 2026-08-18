@@ -14,13 +14,6 @@ point-primitive rendering path.
 
 ## 2. Validate the Metal Point Path
 
-- Validate stable GPU frustum compaction across empty, partial, and fully visible
-  systems. Measure culling cost against the indirect-draw savings.
-- Validate GPU-only screen-space LOD across its activation boundary, dense and
-  sparse tiles, camera motion, and the exact maximum-visible ceiling. Tune
-  defaults only from those results.
-- Validate dedicated serial render ownership during playback, camera input,
-  pausing, scrubbing, and system replacement.
 - Capture a matched 6-million-particle Metal trace with LOD enabled and a
   2-million visible ceiling. Compare frame cadence, aggregate compute/draw
   medians and p95, drawable waits, and steady/peak Metal memory against the

@@ -41,8 +41,6 @@ final class RenderMetrics {
     private(set) var cpuRenderMilliseconds = 0.0
     private(set) var gpuMilliseconds = 0.0
     private(set) var cpuBudget = 0.0
-    private(set) var gpuBudget = 0.0
-    private(set) var combinedBudget = 0.0
 
     func record(_ diagnostics: RenderDiagnostics) {
         let now = CACurrentMediaTime()
@@ -75,11 +73,8 @@ final class RenderMetrics {
         cpuRenderMilliseconds = cpuRenderSum / Double(count) * 1_000
         gpuMilliseconds = gpuSum / Double(count) * 1_000
         let cpuTime = (cpuSimulationSum + cpuRenderSum) / Double(count)
-        let gpuTime = gpuSum / Double(count)
         if latestFrameBudget > 0 {
             cpuBudget = cpuTime / latestFrameBudget
-            gpuBudget = gpuTime / latestFrameBudget
-            combinedBudget = max(cpuTime, gpuTime) / latestFrameBudget
         }
         if diagnostics.presentationFrameCount > 0,
            diagnostics.presentationDuration > 0 {
@@ -137,5 +132,4 @@ final class RenderMetrics {
         cpuRenderSum = 0
         gpuSum = 0
     }
-
 }
