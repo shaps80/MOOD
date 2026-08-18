@@ -304,6 +304,22 @@ at 639.08 MiB and peaked at 669.80 MiB while resizing. This is the comparison
 baseline for parallel scans, cached tile indices, precomputed thresholds, and
 reduced LOD storage.
 
+The matched post-optimization Release trace used the same 6 million simulated
+particles, LOD activation at 500,000, a 2-million visible ceiling, 16-pixel
+tiles, and one point per pixel on the M1 Max Mac Studio. Across 748 steady-state
+frames it measured a 16.647 ms median submission interval and 18.869 ms p95,
+approximately 60.1 submissions per second. Aggregate compute measured 3.455 ms
+median and 4.244 ms p95; scene drawing measured 2.679 ms median and 5.100 ms
+p95; effective GPU work measured 5.958 ms median and 8.550 ms p95. Frames that
+blocked for a drawable waited 7.923 ms median and 8.897 ms p95, acting as frame
+pacing rather than limiting submission cadence. Metal allocation settled at
+557.34 MiB; the capture began after allocation and therefore provides no
+separate resize peak.
+
+Against the pre-optimization trace, median compute fell 73.6%, median drawing
+fell 49.9%, the display tier recovered from 30 Hz to 60 Hz, and steady Metal
+allocation fell 81.74 MiB (12.8%).
+
 After those changes, manual Release-app observation at 6 million particles and
 a 2-million visible ceiling measured approximately 960 MiB to 1.0 GiB process
 memory, down from approximately 1.18 GiB before the changes. Treat this as an

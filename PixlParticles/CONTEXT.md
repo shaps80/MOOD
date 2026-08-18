@@ -186,7 +186,8 @@
   approximately 1.18 GiB to 960 MiB–1.0 GiB.
 - CPU regression measurements remain clean: one-million simulation and lowering
   measured 0.642 ms and 0.778 ms; two-million measured 1.285 ms and 1.547 ms.
-- Dedicated render ownership is implemented and awaits manual interaction and
-  scrubbing validation. After validation, collect the final matched 6-million
-  Metal trace. Do not begin GPU simulation until this renderer sequence is
-  measured.
+- Dedicated render ownership is validated across playback, camera input,
+  pausing, backward and forward scrubbing, and system replacement.
+- The final matched 6-million-particle trace sustained the 60 Hz submission
+  tier with 5.958 ms median and 8.550 ms p95 effective GPU work. Renderer
+  validation is complete; point colour is the next roadmap foundation.

@@ -12,14 +12,7 @@ point-primitive rendering path.
 - Add standalone release benchmarks for interpolation and render-data packing,
   separate from simulation and GPU rendering measurements.
 
-## 2. Validate the Metal Point Path
-
-- Capture a matched 6-million-particle Metal trace with LOD enabled and a
-  2-million visible ceiling. Compare frame cadence, aggregate compute/draw
-  medians and p95, drawable waits, and steady/peak Metal memory against the
-  recorded pre-optimization trace.
-
-## 3. Colour Diagnostics
+## 2. Colour Diagnostics
 
 - Add an editor-only diagnostic view driven by the production colour pipeline.
 - Compare correct linear interpolation with an intentionally incorrect
