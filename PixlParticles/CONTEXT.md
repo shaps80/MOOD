@@ -114,7 +114,10 @@
   colour and stationary or deterministic uniform half-open velocity forms, omits
   stationary velocity/history storage and its integration pass, and introduces
   no generic property dispatch into the fixed-tick hot loop. Current constant
-  size and rotation still lower into the existing per-draw GPU constants.
+  size and rotation still lower into the existing per-draw GPU constants. One
+  generic `PropertyCompiler` handles authored initial-value shape for every
+  typed property; emitter compilation retains only semantic validation and the
+  velocity-specific storage/pass decision.
 - Billboard rendering expands four procedural vertices per compacted visible
   particle and submits one indirect triangle-strip draw. It adds no geometry or
   index buffer. Size is a two-component value, rotation is one radian scalar,

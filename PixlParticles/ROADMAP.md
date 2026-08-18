@@ -53,6 +53,9 @@ validated.
 - [x] Migrate authored position, velocity, colour, size, and rotation onto typed emitter
   properties with key-path collection access and internally managed stable
   modifier identity; preserve the existing specialized runtime lowering.
+- [x] Centralize generic initial-value lowering in `PropertyCompiler`; keep
+  property-specific code only where storage, passes, or semantic validation
+  genuinely differ.
 - Begin property authoring with constants, deterministic ranges, and normalized
   lifetime functions. Derive analytically on GPU whenever possible; materialize
   AoSoA previous/current storage only for stateful or interpolated semantics.

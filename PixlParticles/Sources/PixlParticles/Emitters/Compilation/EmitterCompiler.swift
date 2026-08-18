@@ -2,12 +2,24 @@ import Swift
 
 struct EmitterCompiler {
     func compile(_ emitter: Emitter) -> CompiledEmitter {
-        let velocity = compileVelocity(emitter.velocity)
+        let properties = PropertyCompiler()
+        let velocity = compileVelocity(
+            properties.compileInitialValue(emitter.velocity, default: .zero)
+        )
         let storesVelocity = velocity.requiresStorage
+        let size = properties.compileConstant(emitter.size, default: [1, 2])
+        let rotation = properties.compileConstant(
+            emitter.rotation,
+            default: 0
+        )
         precondition(
             emitter.position.isEmpty,
             "Position property lowering has not been integrated yet"
         )
+        precondition(
+            size.x.isFinite && size.y.isFinite && size.x >= 0 && size.y >= 0
+        )
+        precondition(rotation.isFinite)
         var passes: [EmitterPass] = [.spawn]
         if storesVelocity {
             passes.append(.integratePosition)
@@ -21,9 +33,12 @@ struct EmitterCompiler {
             constants: .init(
                 spawnRegion: emitter.spawnRegion,
                 velocity: velocity,
-                color: compileColor(emitter.color),
-                size: compileSize(emitter.size),
-                rotation: compileRotation(emitter.rotation)
+                color: properties.compileConstant(
+                    emitter.color,
+                    default: .white
+                ),
+                size: size,
+                rotation: rotation
             ),
             passes: passes,
             renderers: emitter.renderers
@@ -31,17 +46,9 @@ struct EmitterCompiler {
     }
 
     private func compileVelocity(
-        _ property: Property<Vec3>
+        _ value: PropertyCompiler.InitialValue<Vec3>
     ) -> CompiledEmitter.Velocity {
-        guard let modifier = property.last else { return .stationary }
-        precondition(
-            property.count == 1
-                && modifier.operation == .set
-                && modifier.variesWith == nil,
-            "Velocity modifier lowering has not been integrated yet"
-        )
-
-        switch modifier.value {
+        switch value {
         case let .constant(value):
             precondition(
                 value == .zero,
@@ -69,60 +76,5 @@ struct EmitterCompiler {
                 "Velocity curve lowering has not been integrated yet"
             )
         }
-    }
-
-    private func compileColor(_ property: Property<Color>) -> Color {
-        guard let modifier = property.last else { return .white }
-        precondition(
-            property.count == 1
-                && modifier.operation == .set
-                && modifier.variesWith == nil,
-            "Color modifier lowering has not been integrated yet"
-        )
-        guard case let .constant(color) = modifier.value else {
-            preconditionFailure(
-                "Dynamic color lowering has not been integrated yet"
-            )
-        }
-        return color
-    }
-
-    private func compileSize(_ property: Property<Vec2>) -> Vec2 {
-        let size = compileConstant(property, named: "Size", default: [1, 2])
-        precondition(
-            size.x.isFinite && size.y.isFinite && size.x >= 0 && size.y >= 0
-        )
-        return size
-    }
-
-    private func compileRotation(_ property: Property<Float>) -> Float {
-        let rotation = compileConstant(
-            property,
-            named: "Rotation",
-            default: 0
-        )
-        precondition(rotation.isFinite)
-        return rotation
-    }
-
-    private func compileConstant<Value>(
-        _ property: Property<Value>,
-        named name: StaticString,
-        default defaultValue: Value
-    ) -> Value
-    where Value: Codable & Equatable & Sendable {
-        guard let modifier = property.last else { return defaultValue }
-        precondition(
-            property.count == 1
-                && modifier.operation == .set
-                && modifier.variesWith == nil,
-            "\(name) modifier lowering has not been integrated yet"
-        )
-        guard case let .constant(value) = modifier.value else {
-            preconditionFailure(
-                "Dynamic \(name) lowering has not been integrated yet"
-            )
-        }
-        return value
     }
 }
