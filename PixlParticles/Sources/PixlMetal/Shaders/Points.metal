@@ -435,9 +435,8 @@ vertex PointVertex pointVertex(
     const device uint *visibleIndices [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
-    const device ColorBatch *previousColors [[buffer(6)]],
-    const device ColorBatch *currentColors [[buffer(7)]],
-    const device PositionBatch *currentPositions [[buffer(8)]]
+    const device ColorBatch *colors [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]]
 ) {
     uint particleIndex = visibleIndices[vertexID];
     PointVertex output;
@@ -448,11 +447,7 @@ vertex PointVertex pointVertex(
     );
     output.position = viewProjection * float4(position, 1);
     output.pointSize = 1;
-    output.color = half4(mix(
-        particleColor(previousColors, particleIndex),
-        particleColor(currentColors, particleIndex),
-        interpolation
-    ));
+    output.color = half4(particleColor(colors, particleIndex));
     return output;
 }
 
@@ -464,9 +459,8 @@ vertex PointVertex pointLODVertex(
     constant float &interpolation [[buffer(3)]],
     const device uint *lodVisibleIndices [[buffer(4)]],
     const device PointLODState &state [[buffer(5)]],
-    const device ColorBatch *previousColors [[buffer(6)]],
-    const device ColorBatch *currentColors [[buffer(7)]],
-    const device PositionBatch *currentPositions [[buffer(8)]]
+    const device ColorBatch *colors [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]]
 ) {
     uint particleIndex = state.active
         ? lodVisibleIndices[vertexID]
@@ -479,11 +473,7 @@ vertex PointVertex pointLODVertex(
     );
     output.position = viewProjection * float4(position, 1);
     output.pointSize = 1;
-    output.color = half4(mix(
-        particleColor(previousColors, particleIndex),
-        particleColor(currentColors, particleIndex),
-        interpolation
-    ));
+    output.color = half4(particleColor(colors, particleIndex));
     return output;
 }
 

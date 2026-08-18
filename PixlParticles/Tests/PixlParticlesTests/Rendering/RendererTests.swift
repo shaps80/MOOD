@@ -35,15 +35,28 @@ struct ParticleRendererTests {
         )
         let second = try #require(backend.buffers)
 
-        #expect(backend.renderCount == 2)
+        system.update(by: 1)
+        try renderer.render(
+            system,
+            interpolation: 0.5,
+            cullingViewProjection: .identity,
+            viewProjection: .identity,
+            viewport: .init(width: 100, height: 100)
+        )
+        let third = try #require(backend.buffers)
+
+        #expect(backend.renderCount == 3)
         #expect(first.currentPositions === second.currentPositions)
-        #expect(first.currentColors === second.currentColors)
+        #expect(first.colors === second.colors)
+        #expect(first.currentPositions === third.previousPositions)
+        #expect(first.previousPositions === third.currentPositions)
+        #expect(first.colors === third.colors)
 
         let positions = first.currentPositions.mutableBuffer(
             of: TestPositionBatch.self,
             count: 2
         )
-        let colors = first.currentColors.mutableBuffer(
+        let colors = first.colors.mutableBuffer(
             of: TestColorBatch.self,
             count: 2
         )

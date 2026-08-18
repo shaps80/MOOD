@@ -10,12 +10,11 @@ struct FrameBuffersTests {
         let source = PointBuffers(
             previousPositions: .init(byteCount: 150 * 48),
             currentPositions: .init(byteCount: 150 * 48),
-            previousColors: .init(byteCount: 150 * 64),
-            currentColors: .init(byteCount: 150 * 64),
+            colors: .init(byteCount: 150 * 64),
             ids: .init(byteCount: 150 * 32)
         )
 
-        _ = try buffers.prepare(
+        let first = try buffers.prepare(
             count: 600,
             buffers: source,
             lod: .init(
@@ -24,9 +23,26 @@ struct FrameBuffersTests {
             ),
             viewport: .init(width: 100, height: 100)
         )
+        let swapped = PointBuffers(
+            previousPositions: source.currentPositions,
+            currentPositions: source.previousPositions,
+            colors: source.colors,
+            ids: source.ids
+        )
+        let second = try buffers.prepare(
+            count: 600,
+            buffers: swapped,
+            lod: .init(
+                activationCount: 500,
+                maximumVisibleCount: 200
+            ),
+            viewport: .init(width: 100, height: 100)
+        )
 
         let visibleLength = 200 * MemoryLayout<UInt32>.stride
-        #expect(platform.sharedBuffers.count == 5)
+        #expect(platform.sharedBuffers.count == 4)
+        #expect(first.previousPositions === second.currentPositions)
+        #expect(first.currentPositions === second.previousPositions)
         #expect(
             platform.allocations.filter {
                 $0.length == visibleLength && !$0.memory.isCPUVisible

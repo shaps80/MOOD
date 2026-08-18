@@ -121,8 +121,7 @@ public final class DeviceBackend: Backend {
         points.encode(
             previousPositions: resources.previousPositions,
             currentPositions: resources.currentPositions,
-            previousColors: resources.previousColors,
-            currentColors: resources.currentColors,
+            colors: resources.colors,
             visibleIndices: resources.culling.visibleIndices,
             indirectArguments: resources.culling.indirectArguments,
             lod: resources.lod,

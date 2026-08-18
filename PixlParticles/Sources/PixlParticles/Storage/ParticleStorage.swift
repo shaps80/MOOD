@@ -5,12 +5,14 @@ final class ParticleStorage {
     let count: Int
 
     private let batchCount: Int
-    private let renderBuffers: PointBuffers
+    private let idsStorage: HostBuffer
+    private var previousPositionStorage: HostBuffer
+    private var positionStorage: HostBuffer
+    private let colorStorage: HostBuffer
     private let ids: UnsafeMutableBufferPointer<SIMD4<Particle.ID>>
-    private let positions: UnsafeMutableBufferPointer<Vector3Batch>
-    private let previousPositions: UnsafeMutableBufferPointer<Vector3Batch>
+    private var positions: UnsafeMutableBufferPointer<Vector3Batch>
+    private var previousPositions: UnsafeMutableBufferPointer<Vector3Batch>
     private let colors: UnsafeMutableBufferPointer<ColorBatch>
-    private let previousColors: UnsafeMutableBufferPointer<ColorBatch>
     private let velocities: UnsafeMutableBufferPointer<Vector3Batch>
 
     init(
@@ -19,40 +21,31 @@ final class ParticleStorage {
     ) {
         self.count = count
         batchCount = (count + 3) / 4
-        renderBuffers = PointBuffers(
-            previousPositions: HostBuffer(
-                byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
-            ),
-            currentPositions: HostBuffer(
-                byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
-            ),
-            previousColors: HostBuffer(
-                byteCount: batchCount * MemoryLayout<ColorBatch>.stride
-            ),
-            currentColors: HostBuffer(
-                byteCount: batchCount * MemoryLayout<ColorBatch>.stride
-            ),
-            ids: HostBuffer(
-                byteCount: batchCount * MemoryLayout<SIMD4<Particle.ID>>.stride
-            )
+        previousPositionStorage = HostBuffer(
+            byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
         )
-        ids = renderBuffers.ids.bindMemory(
+        positionStorage = HostBuffer(
+            byteCount: batchCount * MemoryLayout<Vector3Batch>.stride
+        )
+        colorStorage = HostBuffer(
+            byteCount: batchCount * MemoryLayout<ColorBatch>.stride
+        )
+        idsStorage = HostBuffer(
+            byteCount: batchCount * MemoryLayout<SIMD4<Particle.ID>>.stride
+        )
+        ids = idsStorage.bindMemory(
             to: SIMD4<Particle.ID>.self,
             count: batchCount
         )
-        positions = renderBuffers.currentPositions.bindMemory(
+        positions = positionStorage.bindMemory(
             to: Vector3Batch.self,
             count: batchCount
         )
-        previousPositions = renderBuffers.previousPositions.bindMemory(
+        previousPositions = previousPositionStorage.bindMemory(
             to: Vector3Batch.self,
             count: batchCount
         )
-        colors = renderBuffers.currentColors.bindMemory(
-            to: ColorBatch.self,
-            count: batchCount
-        )
-        previousColors = renderBuffers.previousColors.bindMemory(
+        colors = colorStorage.bindMemory(
             to: ColorBatch.self,
             count: batchCount
         )
@@ -63,7 +56,6 @@ final class ParticleStorage {
             var batchPositions = Vector3Batch(repeating: .zero)
             var batchPreviousPositions = Vector3Batch(repeating: .zero)
             var batchColors = ColorBatch(repeating: .white)
-            var batchPreviousColors = ColorBatch(repeating: .white)
             var batchVelocities = Vector3Batch(repeating: .zero)
 
             for lane in 0..<4 {
@@ -75,7 +67,6 @@ final class ParticleStorage {
                 batchPositions[lane] = particle.position
                 batchPreviousPositions[lane] = particle.previousPosition
                 batchColors[lane] = particle.color
-                batchPreviousColors[lane] = particle.previousColor
                 batchVelocities[lane] = particle.velocity
             }
 
@@ -86,10 +77,6 @@ final class ParticleStorage {
                 to: batchPreviousPositions
             )
             colors.initializeElement(at: batchIndex, to: batchColors)
-            previousColors.initializeElement(
-                at: batchIndex,
-                to: batchPreviousColors
-            )
             velocities.initializeElement(at: batchIndex, to: batchVelocities)
         }
     }
@@ -99,7 +86,6 @@ final class ParticleStorage {
         positions.deinitialize()
         previousPositions.deinitialize()
         colors.deinitialize()
-        previousColors.deinitialize()
         velocities.deinitialize()
         velocities.deallocate()
     }
@@ -124,18 +110,26 @@ final class ParticleStorage {
     @inline(__always)
     func advance(by delta: Float) {
         for index in 0..<batchCount {
-            previousPositions[index] = positions[index]
-            previousColors[index] = colors[index]
-            positions[index].x += velocities[index].x * delta
-            positions[index].y += velocities[index].y * delta
-            positions[index].z += velocities[index].z * delta
+            previousPositions[index].x = positions[index].x
+                + velocities[index].x * delta
+            previousPositions[index].y = positions[index].y
+                + velocities[index].y * delta
+            previousPositions[index].z = positions[index].z
+                + velocities[index].z * delta
         }
+
+        let oldPreviousPositions = previousPositions
+        previousPositions = positions
+        positions = oldPreviousPositions
+
+        let oldPreviousStorage = previousPositionStorage
+        previousPositionStorage = positionStorage
+        positionStorage = oldPreviousStorage
     }
 
     func resetInterpolation() {
         for index in 0..<batchCount {
             previousPositions[index] = positions[index]
-            previousColors[index] = colors[index]
         }
     }
 
@@ -151,7 +145,6 @@ final class ParticleStorage {
                         previousPosition: previousPositions[batch][lane],
                         position: positions[batch][lane],
                         velocity: velocities[batch][lane],
-                        previousColor: previousColors[batch][lane],
                         color: colors[batch][lane]
                     )
                 )
@@ -164,6 +157,14 @@ final class ParticleStorage {
     func withRenderingData<Result: ~Copyable>(
         _ body: (PointBuffers, Int) throws -> Result
     ) rethrows -> Result {
-        try body(renderBuffers, count)
+        try body(
+            PointBuffers(
+                previousPositions: previousPositionStorage,
+                currentPositions: positionStorage,
+                colors: colorStorage,
+                ids: idsStorage
+            ),
+            count
+        )
     }
 }

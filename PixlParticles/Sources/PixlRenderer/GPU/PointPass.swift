@@ -36,8 +36,7 @@ final class PointPass {
     func encode(
         previousPositions: any Buffer,
         currentPositions: any Buffer,
-        previousColors: any Buffer,
-        currentColors: any Buffer,
+        colors: any Buffer,
         visibleIndices: any Buffer,
         indirectArguments: any Buffer,
         lod: LODBuffers?,
@@ -51,9 +50,8 @@ final class PointPass {
         encoder.setVertexBuffer(visibleIndices, index: 1)
         encoder.setVertexValue(viewProjection, index: 2)
         encoder.setVertexValue(interpolation, index: 3)
-        encoder.setVertexBuffer(previousColors, index: 6)
-        encoder.setVertexBuffer(currentColors, index: 7)
-        encoder.setVertexBuffer(currentPositions, index: 8)
+        encoder.setVertexBuffer(colors, index: 6)
+        encoder.setVertexBuffer(currentPositions, index: 7)
         if let lod {
             encoder.setVertexBuffer(lod.visibleIndices, index: 4)
             encoder.setVertexBuffer(lod.state, index: 5)

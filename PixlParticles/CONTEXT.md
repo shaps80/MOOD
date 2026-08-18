@@ -87,8 +87,10 @@
   inside aligned `PixlRenderer.HostBuffer` storage. Renderer code defines that
   portable storage contract and rendering policy; platform targets wrap it in
   concrete GPU resources and own command translation. Metal uses no-copy shared
-  buffers and indexes particle batch/lane directly in shaders, eliminating the
-  former CPU position, colour, and ID lowering copies.
+  buffers and indexes particle batch/lane directly in shaders. Position history
+  swaps the roles of two existing buffers after integration rather than copying
+  current state into previous state. Point colour is currently immutable and
+  occupies one shared buffer, so it has no CPU history or shader interpolation.
 - Metal visibility uses stable GPU compaction: block-local scans, deterministic
   block offsets, stable index scatter, and indirect drawing. Culling never
   mutates authoritative simulation or changes particle order.
@@ -192,13 +194,13 @@
   AoSoA storage with the GPU. The former per-tick position, colour, and ID
   lowering buffers are gone; `FrameBuffers` retains only culling and optional
   LOD scratch. No additional in-flight source storage has been introduced.
-- Native regression measurements remain clean: one-million simulation measured
-  1.007 ms versus 1.000 ms immediately before the change; two-million measured
-  2.074 ms versus 2.066 ms. Direct handoff measured approximately 29 ns at both
-  one and six million particles.
+- Position integration now writes the next state into the old previous buffer
+  and swaps roles. Fixed point colour uses one buffer. Native fixed-update
+  medians fell from 1.007 to 0.483 ms at one million particles and from 2.074 to
+  0.877 ms at two million, with unchanged deterministic checksums.
 - Dedicated render ownership is validated across playback, camera input,
   pausing, backward and forward scrubbing, and system replacement.
 - The final matched 6-million-particle trace sustained the 60 Hz submission
   tier with 5.958 ms median and 8.550 ms p95 effective GPU work. Renderer
   validation is complete. Direct shared-source lifetime and synchronization
-  still require an iPad app run before point-colour validation is complete.
+  are also validated on iPad without additional in-flight source storage.

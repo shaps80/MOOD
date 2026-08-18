@@ -361,11 +361,55 @@ change, a +0.02% difference. Production `PixlRenderer` and `PixlParticles`
 modules also compile directly for `wasm32-unknown-wasip1` with the accepted
 Swift 6.4 WMO and SIMD settings.
 
-No additional in-flight source storage was introduced. This environment could
-compile the full Metal shader/app path but exposed no Metal device, so iPad
-runtime validation remains required to prove shared-source synchronization and
-measure actual process memory, Metal allocation, GPU work, and presentation
-cadence.
+No additional in-flight source storage was introduced. Subsequent iPad testing
+validated shared-source synchronization and is recorded below.
+
+## Ping-Pong Positions and Fixed Point Colour
+
+Measured 2026-08-18 on the same macOS M1 Max environment. Position integration
+now writes next state into the old previous-position buffer and swaps the two
+buffer roles after each fixed update. Reset and seek may still copy current into
+previous because those are infrequent interpolation resets. Fixed point colour
+uses one authoritative shared buffer; it has no CPU history, per-tick copy, or
+vertex interpolation.
+
+Three sequential native runs of the retained production system harness produced
+these medians. Deterministic checksums remained unchanged.
+
+| Particles | Direct-host baseline | Ping-pong/fixed colour | Reduction |
+| ---: | ---: | ---: | ---: |
+| 1 M | 1.007 ms/tick | 0.483 ms/tick | 52.0% |
+| 2 M | 2.074 ms/tick | 0.877 ms/tick | 57.7% |
+
+Direct WebAssembly WMO builds used the accepted Swift 6.4 snapshot and
+`-Xcc -msimd128`. Separate processes avoided allocator high-water interference
+between particle counts. Three sequential runs measured 0.602, 0.579, and 0.580
+ms at one million particles, and 1.163, 1.159, and 1.200 ms at two million.
+
+| Particles | WebAssembly median |
+| ---: | ---: |
+| 1 M | 0.580 ms/tick |
+| 2 M | 1.163 ms/tick |
+
+The one-million result is approximately 6.4% faster than the accepted 0.620 ms
+position-only WebAssembly AoSoA baseline, despite the production system now
+also retaining fixed colour and directly shareable render storage.
+
+The removed colour-history buffer saves 16 bytes per particle: approximately
+15.3 MiB per million particles or 91.6 MiB at six million. The position buffers
+already existed, so role swapping adds no storage. Together, removing the
+position-history and colour-history copies avoids 56 bytes of CPU memory traffic
+per particle per fixed tick. At 30 Hz that is approximately 1.68 GB/s per million
+particles, or 10.08 GB/s at six million.
+
+Matched user testing on iPad sustained 60 FPS without culling. At one million
+particles it reported approximately 130 MB process memory, 1.07 ms CPU
+simulation, 0.35 ms CPU render, and 5.17 ms GPU time. At three million it
+reported approximately 400 MB, 2.46 ms CPU simulation, 0.30 ms CPU render, and
+11.39 ms GPU time. Before the direct shared-buffer work, the app exceeded 1 GiB
+at only two million particles. These app measurements are the accepted
+end-to-end comparison; the native harness isolates only the fixed-update hot
+path.
 
 ## Metal Point Rendering
 

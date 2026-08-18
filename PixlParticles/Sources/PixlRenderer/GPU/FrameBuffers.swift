@@ -41,10 +41,9 @@ final class FrameBuffers {
 
         guard let shared else { throw RenderError.buffer }
         let resources = FrameResources(
-            previousPositions: shared.previousPositions,
-            currentPositions: shared.currentPositions,
-            previousColors: shared.previousColors,
-            currentColors: shared.currentColors,
+            previousPositions: shared.previousPositions(for: buffers),
+            currentPositions: shared.currentPositions(for: buffers),
+            colors: shared.colors,
             culling: culling[frameIndex],
             ids: usesLOD ? shared.ids : nil,
             lod: usesLOD ? lod[frameIndex] : nil
@@ -60,10 +59,8 @@ final class FrameBuffers {
             sharing: source.previousPositions
         ), let currentPositions = platform.makeBuffer(
             sharing: source.currentPositions
-        ), let previousColors = platform.makeBuffer(
-            sharing: source.previousColors
-        ), let currentColors = platform.makeBuffer(
-            sharing: source.currentColors
+        ), let colors = platform.makeBuffer(
+            sharing: source.colors
         ), let ids = platform.makeBuffer(sharing: source.ids)
         else { throw RenderError.buffer }
 
@@ -71,8 +68,7 @@ final class FrameBuffers {
             source: source,
             previousPositions: previousPositions,
             currentPositions: currentPositions,
-            previousColors: previousColors,
-            currentColors: currentColors,
+            colors: colors,
             ids: ids
         )
     }
@@ -149,24 +145,39 @@ private struct SharedPointBuffers {
     let source: PointBuffers
     let previousPositions: any Buffer
     let currentPositions: any Buffer
-    let previousColors: any Buffer
-    let currentColors: any Buffer
+    let colors: any Buffer
     let ids: any Buffer
 
     func matches(_ other: PointBuffers) -> Bool {
-        source.previousPositions === other.previousPositions
-            && source.currentPositions === other.currentPositions
-            && source.previousColors === other.previousColors
-            && source.currentColors === other.currentColors
+        let positionsMatch = (
+            source.previousPositions === other.previousPositions
+                && source.currentPositions === other.currentPositions
+        ) || (
+            source.previousPositions === other.currentPositions
+                && source.currentPositions === other.previousPositions
+        )
+        return positionsMatch
+            && source.colors === other.colors
             && source.ids === other.ids
+    }
+
+    func previousPositions(for other: PointBuffers) -> any Buffer {
+        source.previousPositions === other.previousPositions
+            ? previousPositions
+            : currentPositions
+    }
+
+    func currentPositions(for other: PointBuffers) -> any Buffer {
+        source.currentPositions === other.currentPositions
+            ? currentPositions
+            : previousPositions
     }
 }
 
 struct FrameResources {
     let previousPositions: any Buffer
     let currentPositions: any Buffer
-    let previousColors: any Buffer
-    let currentColors: any Buffer
+    let colors: any Buffer
     let culling: CullingBuffers
     let ids: (any Buffer)?
     let lod: LODBuffers?
