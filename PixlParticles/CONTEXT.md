@@ -138,6 +138,10 @@
   clip tests by their physical-pixel radius. Authored cubic bounds deliberately
   remain centre-based. Point LOD is bypassed for billboards without allocating
   or retaining LOD resources.
+- The GPU culling arena grows to the exact required capacity and retains small
+  reductions. At 25% utilisation or less it rebuilds at the current size,
+  releasing substantially oversized visibility storage after a particle-count
+  reduction.
 - Optional authored cubic bounds are fused into the existing GPU visibility
   classification. Particles outside the cube remain simulated but are omitted
   from rendering. Its editor visualization is a generic instanced `WireBox`.

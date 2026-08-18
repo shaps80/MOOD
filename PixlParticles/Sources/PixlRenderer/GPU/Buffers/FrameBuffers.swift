@@ -74,7 +74,9 @@ final class FrameBuffers {
     }
 
     private func ensureCapacity(_ required: Int) throws {
-        guard required > capacity else { return }
+        let needsGrowth = required > capacity
+        let canReleaseExcess = required <= capacity / 4
+        guard needsGrowth || canReleaseExcess else { return }
 
         let blockCapacity = (required + CullingPass.threadCount - 1)
             / CullingPass.threadCount

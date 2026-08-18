@@ -71,6 +71,46 @@ struct FrameBuffersTests {
         #expect(resources.ids == nil)
         #expect(resources.lod == nil)
     }
+
+    @Test("Retains small capacity reductions but releases a substantially oversized arena")
+    func cullingCapacityRecovery() throws {
+        let platform = RecordingPlatform()
+        let buffers = FrameBuffers(platform: platform, frameCount: 2)
+        let source = ParticleBuffers(
+            previousPositions: .init(byteCount: 150 * 48),
+            currentPositions: .init(byteCount: 150 * 48),
+            colors: .init(byteCount: 150 * 64),
+            ids: .init(byteCount: 150 * 32)
+        )
+
+        let peak = try buffers.prepare(
+            count: 1_000,
+            buffers: source,
+            lod: nil,
+            viewport: .init(width: 100, height: 100)
+        )
+        _ = try buffers.prepare(
+            count: 1_000,
+            buffers: source,
+            lod: nil,
+            viewport: .init(width: 100, height: 100)
+        )
+        let retained = try buffers.prepare(
+            count: 251,
+            buffers: source,
+            lod: nil,
+            viewport: .init(width: 100, height: 100)
+        )
+        let recovered = try buffers.prepare(
+            count: 250,
+            buffers: source,
+            lod: nil,
+            viewport: .init(width: 100, height: 100)
+        )
+
+        #expect(retained.culling.localOffsets === peak.culling.localOffsets)
+        #expect(recovered.culling.localOffsets !== peak.culling.localOffsets)
+    }
 }
 
 private final class RecordingPlatform: Platform {
