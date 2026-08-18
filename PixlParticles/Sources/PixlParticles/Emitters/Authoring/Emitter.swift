@@ -15,18 +15,10 @@ public struct Emitter: Equatable, Sendable {
         capacity: Int,
         spawnRegion: SpawnRegion,
         position: Property<Vec3> = .init(),
-        velocity: Property<Vec3> = .init([
-            .set(
-                .random(
-                    from: [-20, -20, -20],
-                    to: [20, 20, 20],
-                    variation: .perValue
-                )
-            ),
-        ]),
-        color: Property<Color> = .init([.set(.white)]),
-        size: Property<Vec2> = .init([.set([1, 2])]),
-        rotation: Property<Float> = .init([.set(0)]),
+        velocity: Property<Vec3> = .init(),
+        color: Property<Color> = .init(),
+        size: Property<Vec2> = .init(),
+        rotation: Property<Float> = .init(),
         renderers: [ParticleRenderer] = [.init()]
     ) {
         precondition(capacity >= 0)
@@ -49,4 +41,5 @@ public struct Emitter: Equatable, Sendable {
         get { self[keyPath: keyPath] }
         set { self[keyPath: keyPath] = newValue }
     }
+
 }

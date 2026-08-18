@@ -55,8 +55,8 @@ struct PropertyTests {
 
         emitter[\.color].append(.set(.white))
         emitter[\.position].append(.set([1, 2, 3]))
-        emitter[\.size][0] = .set([4, 8])
-        emitter[\.rotation][0] = .set(.pi)
+        emitter[\.size].append(.set([4, 8]))
+        emitter[\.rotation].append(.set(.pi))
 
         #expect(emitter[\.color].last?.value == .constant(.white))
         #expect(emitter[\.position].last?.value == .constant([1, 2, 3]))

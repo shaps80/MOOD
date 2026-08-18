@@ -56,6 +56,9 @@ validated.
 - [x] Centralize generic initial-value lowering in `PropertyCompiler`; keep
   property semantics in typed descriptors, then generically aggregate their
   storage requirements and passes without property-specific compiler methods.
+- [x] Keep authored effect presets out of `PixlParticles`; seed new editor
+  systems from the app-owned `EmitterPreset.debris` definition through the
+  public property API.
 - Begin property authoring with constants, deterministic ranges, and normalized
   lifetime functions. Derive analytically on GPU whenever possible; materialize
   AoSoA previous/current storage only for stateful or interpolated semantics.

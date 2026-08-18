@@ -21,13 +21,26 @@ public final class System {
         duration: Duration,
         storesRewindState: Bool = true
     ) {
+        var emitter = Emitter(
+            capacity: particleCount,
+            spawnRegion: spawnRegion
+        )
+        emitter[\.velocity].append(
+            .set(
+                .random(
+                    from: [-20, -20, -20],
+                    to: [20, 20, 20],
+                    variation: .perValue
+                )
+            )
+        )
+        emitter[\.color].append(.set(color))
+        emitter[\.size].append(.set([1, 2]))
+        emitter[\.rotation].append(.set(0))
+
         self.init(
             seed: seed,
-            emitter: Emitter(
-                capacity: particleCount,
-                spawnRegion: spawnRegion,
-                color: .init([.set(color)])
-            ),
+            emitter: emitter,
             duration: duration,
             storesRewindState: storesRewindState
         )

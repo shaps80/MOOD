@@ -13,15 +13,27 @@ struct SystemDeterminismTests {
             color: .init(red: 2, green: 0.5, blue: 0.25),
             duration: .seconds(2)
         )
+        let emitter = Emitter(
+            capacity: 101,
+            spawnRegion: region,
+            velocity: .init([
+                .set(
+                    .random(
+                        from: [-20, -20, -20],
+                        to: [20, 20, 20],
+                        variation: .perValue
+                    )
+                ),
+            ]),
+            color: .init([
+                .set(.init(red: 2, green: 0.5, blue: 0.25)),
+            ]),
+            size: .init([.set([1, 2])]),
+            rotation: .init([.set(0)])
+        )
         let authored = System(
             seed: 42,
-            emitter: Emitter(
-                capacity: 101,
-                spawnRegion: region,
-                color: .init([
-                    .set(.init(red: 2, green: 0.5, blue: 0.25)),
-                ])
-            ),
+            emitter: emitter,
             duration: .seconds(2)
         )
 

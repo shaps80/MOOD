@@ -104,6 +104,10 @@
   lowered into one per-draw constant block. They are not repeated in particle
   storage. This is the initial shape for a future emitter to expose multiple
   renderers over one shared simulation.
+- `PixlParticles` provides no authored effect presets. Bare emitter properties
+  lower from neutral identities only. `PixlParticlesUI` owns the initial
+  `EmitterPreset.debris` starting point and translates the document's current
+  flattened controls into that authored emitter at the app composition boundary.
 - `System` coordinates one authored `Emitter`, its internal deterministic
   `CompiledEmitter`, and a mutable `EmitterInstance` owning an arena slice.
   Emitters expose typed, key-path-addressed position, velocity, colour, size,

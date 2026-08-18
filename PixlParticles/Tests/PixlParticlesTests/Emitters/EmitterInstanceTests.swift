@@ -7,7 +7,10 @@ struct EmitterInstanceTests {
         let compiler = EmitterCompiler()
         var emitter = Emitter(
             capacity: 1_000,
-            spawnRegion: .sphere(radius: 10)
+            spawnRegion: .sphere(radius: 10),
+            color: .init([.set(.white)]),
+            size: .init([.set([1, 2])]),
+            rotation: .init([.set(0)])
         )
         let instance = EmitterInstance(compiled: compiler.compile(emitter))
         let identity = instance.arenaIdentity

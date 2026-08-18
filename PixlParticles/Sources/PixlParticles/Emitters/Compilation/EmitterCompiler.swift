@@ -13,7 +13,7 @@ struct EmitterCompiler {
         )
         let size = properties.compile(
             emitter.size,
-            using: .constant(default: [1, 2]) { size in
+            using: .constant(default: [1, 1]) { size in
                 precondition(
                     size.x.isFinite && size.y.isFinite
                         && size.x >= 0 && size.y >= 0

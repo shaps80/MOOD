@@ -17,11 +17,7 @@ struct ContentView: View {
         _system = .init(
             initialValue: .init(
                 seed: UInt64(snapshot.seed),
-                particleCount: Int(snapshot.particleCount),
-                spawnRegion: snapshot.spawnPreset.region(
-                    domain: snapshot.spawnDomain
-                ),
-                color: snapshot.color,
+                emitter: Self.emitter(from: snapshot),
                 duration: .seconds(snapshot.duration),
                 storesRewindState: false
             )
@@ -209,13 +205,34 @@ struct ContentView: View {
         let snapshot = document.snapshot
         system = System(
             seed: UInt64(snapshot.seed),
-            particleCount: Int(snapshot.particleCount),
-            spawnRegion: snapshot.spawnPreset.region(domain: snapshot.spawnDomain),
-            color: snapshot.color,
+            emitter: Self.emitter(from: snapshot),
             duration: .seconds(snapshot.duration),
             storesRewindState: false
         )
         playback.fraction = 0
+    }
+
+    private static func emitter(
+        from snapshot: ParticleDocument.Snapshot
+    ) -> Emitter {
+        var emitter = EmitterPreset.debris.emitter(
+            capacity: Int(snapshot.particleCount)
+        )
+        emitter.spawnRegion = snapshot.spawnPreset.region(
+            domain: snapshot.spawnDomain
+        )
+        emitter[\.color] = .init([.set(snapshot.color)])
+        emitter[\.size] = .init([
+            .set([
+                max(Float(snapshot.billboardWidth), 0),
+                max(Float(snapshot.billboardHeight), 0),
+            ]),
+        ])
+        emitter[\.rotation] = .init([
+            .set(Float(snapshot.billboardRotation)),
+        ])
+        emitter.renderers = [snapshot.renderer]
+        return emitter
     }
 
     private var pointLOD: PointLOD {
