@@ -7,8 +7,8 @@ public struct Emitter: Equatable, Sendable {
     public var position: Property<Vec3>
     public var velocity: Property<Vec3>
     public var color: Property<Color>
-    public var size: Vec2
-    public var rotation: Float
+    public var size: Property<Vec2>
+    public var rotation: Property<Float>
     public var renderers: [ParticleRenderer]
 
     public init(
@@ -25,14 +25,11 @@ public struct Emitter: Equatable, Sendable {
             ),
         ]),
         color: Property<Color> = .init([.set(.white)]),
-        size: Vec2 = [1, 2],
-        rotation: Float = 0,
+        size: Property<Vec2> = .init([.set([1, 2])]),
+        rotation: Property<Float> = .init([.set(0)]),
         renderers: [ParticleRenderer] = [.init()]
     ) {
         precondition(capacity >= 0)
-        precondition(size.x.isFinite && size.y.isFinite)
-        precondition(size.x >= 0 && size.y >= 0)
-        precondition(rotation.isFinite)
         spawnRegion.validate()
 
         self.capacity = capacity

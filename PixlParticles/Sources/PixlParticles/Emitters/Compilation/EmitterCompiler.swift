@@ -22,8 +22,8 @@ struct EmitterCompiler {
                 spawnRegion: emitter.spawnRegion,
                 velocity: velocity,
                 color: compileColor(emitter.color),
-                size: emitter.size,
-                rotation: emitter.rotation
+                size: compileSize(emitter.size),
+                rotation: compileRotation(emitter.rotation)
             ),
             passes: passes,
             renderers: emitter.renderers
@@ -85,5 +85,44 @@ struct EmitterCompiler {
             )
         }
         return color
+    }
+
+    private func compileSize(_ property: Property<Vec2>) -> Vec2 {
+        let size = compileConstant(property, named: "Size", default: [1, 2])
+        precondition(
+            size.x.isFinite && size.y.isFinite && size.x >= 0 && size.y >= 0
+        )
+        return size
+    }
+
+    private func compileRotation(_ property: Property<Float>) -> Float {
+        let rotation = compileConstant(
+            property,
+            named: "Rotation",
+            default: 0
+        )
+        precondition(rotation.isFinite)
+        return rotation
+    }
+
+    private func compileConstant<Value>(
+        _ property: Property<Value>,
+        named name: StaticString,
+        default defaultValue: Value
+    ) -> Value
+    where Value: Codable & Equatable & Sendable {
+        guard let modifier = property.last else { return defaultValue }
+        precondition(
+            property.count == 1
+                && modifier.operation == .set
+                && modifier.variesWith == nil,
+            "\(name) modifier lowering has not been integrated yet"
+        )
+        guard case let .constant(value) = modifier.value else {
+            preconditionFailure(
+                "Dynamic \(name) lowering has not been integrated yet"
+            )
+        }
+        return value
     }
 }

@@ -106,14 +106,15 @@
   renderers over one shared simulation.
 - `System` coordinates one authored `Emitter`, its internal deterministic
   `CompiledEmitter`, and a mutable `EmitterInstance` owning an arena slice.
-  Emitters expose typed, key-path-addressed position, velocity, and colour
-  properties as ordered modifier collections. Modifier identity is assigned
+  Emitters expose typed, key-path-addressed position, velocity, colour, size,
+  and rotation properties as ordered modifier collections. Modifier identity is assigned
   internally on insertion and retained through document coding and replacement.
   Spawn region remains emitter configuration; position modifiers operate on its
   eventual sampled result. Compilation currently lowers the existing constant
   colour and stationary or deterministic uniform half-open velocity forms, omits
   stationary velocity/history storage and its integration pass, and introduces
-  no generic property dispatch into the fixed-tick hot loop.
+  no generic property dispatch into the fixed-tick hot loop. Current constant
+  size and rotation still lower into the existing per-draw GPU constants.
 - Billboard rendering expands four procedural vertices per compacted visible
   particle and submits one indirect triangle-strip draw. It adds no geometry or
   index buffer. Size is a two-component value, rotation is one radian scalar,

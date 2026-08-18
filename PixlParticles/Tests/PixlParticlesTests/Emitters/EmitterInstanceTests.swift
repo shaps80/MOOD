@@ -13,8 +13,8 @@ struct EmitterInstanceTests {
         let identity = instance.arenaIdentity
 
         emitter[\.color][0] = .set(.init(red: 4, green: 1, blue: 0.25))
-        emitter.size = [3, 6]
-        emitter.rotation = 0.5
+        emitter[\.size][0] = .set([3, 6])
+        emitter[\.rotation][0] = .set(0.5)
 
         #expect(instance.apply(compiler.compile(emitter)) == .reusedArena)
         #expect(instance.arenaIdentity == identity)
