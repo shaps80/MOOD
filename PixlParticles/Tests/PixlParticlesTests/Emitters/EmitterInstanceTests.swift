@@ -7,12 +7,12 @@ struct EmitterInstanceTests {
         let compiler = EmitterCompiler()
         var emitter = Emitter(
             capacity: 1_000,
-            position: .sphere(radius: 10)
+            spawnRegion: .sphere(radius: 10)
         )
         let instance = EmitterInstance(compiled: compiler.compile(emitter))
         let identity = instance.arenaIdentity
 
-        emitter.color = .init(red: 4, green: 1, blue: 0.25)
+        emitter[\.color][0] = .set(.init(red: 4, green: 1, blue: 0.25))
         emitter.size = [3, 6]
         emitter.rotation = 0.5
 
@@ -25,14 +25,16 @@ struct EmitterInstanceTests {
         let compiler = EmitterCompiler()
         var emitter = Emitter(
             capacity: 1_000,
-            position: .point(.zero),
-            velocity: .stationary
+            spawnRegion: .point(.zero),
+            velocity: .init()
         )
         let instance = EmitterInstance(compiled: compiler.compile(emitter))
         let identity = instance.arenaIdentity
         let stationaryByteCount = instance.arenaByteCount
 
-        emitter.velocity = .random(-1 ..< 1)
+        emitter[\.velocity].append(
+            .set(.random(from: [-1, -1, -1], to: [1, 1, 1], variation: .perValue))
+        )
 
         #expect(instance.apply(compiler.compile(emitter)) == .rebuiltArena)
         #expect(instance.arenaIdentity != identity)
@@ -44,7 +46,7 @@ struct EmitterInstanceTests {
         let compiler = EmitterCompiler()
         var emitter = Emitter(
             capacity: 1_000,
-            position: .point(.zero)
+            spawnRegion: .point(.zero)
         )
         let instance = EmitterInstance(compiled: compiler.compile(emitter))
         let identity = instance.arenaIdentity

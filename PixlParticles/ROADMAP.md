@@ -50,6 +50,9 @@ validated.
 - [x] Define the isolated collection-backed authored property model, including
   ordered modifiers, composable operations, constants, deterministic random
   values, keyframed interpolation, and life/speed/distance/emitter-time inputs.
+- [x] Migrate authored position, velocity, and colour onto typed emitter
+  properties with key-path collection access and internally managed stable
+  modifier identity; preserve the existing specialized runtime lowering.
 - Begin property authoring with constants, deterministic ranges, and normalized
   lifetime functions. Derive analytically on GPU whenever possible; materialize
   AoSoA previous/current storage only for stateful or interpolated semantics.

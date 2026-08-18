@@ -133,9 +133,10 @@ final class EmitterInstance {
 
         return Particle(
             id: id,
-            position: constants.position.sample(using: random, at: id),
+            position: constants.spawnRegion.sample(using: random, at: id),
             velocity: velocity,
             color: constants.color
         )
     }
+
 }

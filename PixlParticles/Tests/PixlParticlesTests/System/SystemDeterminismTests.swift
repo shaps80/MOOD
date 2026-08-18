@@ -17,9 +17,10 @@ struct SystemDeterminismTests {
             seed: 42,
             emitter: Emitter(
                 capacity: 101,
-                position: region,
-                velocity: .random(-20 ..< 20),
-                color: .init(red: 2, green: 0.5, blue: 0.25)
+                spawnRegion: region,
+                color: .init([
+                    .set(.init(red: 2, green: 0.5, blue: 0.25)),
+                ])
             ),
             duration: .seconds(2)
         )
@@ -38,8 +39,8 @@ struct SystemDeterminismTests {
             seed: 42,
             emitter: Emitter(
                 capacity: 101,
-                position: .sphere(radius: 100),
-                velocity: .stationary
+                spawnRegion: .sphere(radius: 100),
+                velocity: .init()
             ),
             duration: .seconds(2)
         )

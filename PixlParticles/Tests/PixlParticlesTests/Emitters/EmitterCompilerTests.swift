@@ -6,8 +6,10 @@ struct EmitterCompilerTests {
     func deterministicCompilation() {
         let emitter = Emitter(
             capacity: 1_001,
-            position: .sphere(radius: 10),
-            velocity: .random(-5 ..< 15)
+            spawnRegion: .sphere(radius: 10),
+            velocity: .init([
+                .set(.random(from: [-5, -5, -5], to: [15, 15, 15], variation: .perValue)),
+            ])
         )
         let compiler = EmitterCompiler()
 
@@ -20,15 +22,17 @@ struct EmitterCompilerTests {
         let stationary = compiler.compile(
             Emitter(
                 capacity: 1_000,
-                position: .point(.zero),
-                velocity: .stationary
+                spawnRegion: .point(.zero),
+                velocity: .init()
             )
         )
         let moving = compiler.compile(
             Emitter(
                 capacity: 1_000,
-                position: .point(.zero),
-                velocity: .random(-1 ..< 1)
+                spawnRegion: .point(.zero),
+                velocity: .init([
+                    .set(.random(from: [-1, -1, -1], to: [1, 1, 1], variation: .perValue)),
+                ])
             )
         )
 
@@ -46,8 +50,8 @@ struct EmitterCompilerTests {
         let compiled = EmitterCompiler().compile(
             Emitter(
                 capacity: 100,
-                position: .point(.zero),
-                velocity: .random(0 ..< 0)
+                spawnRegion: .point(.zero),
+                velocity: .init([.set(.zero)])
             )
         )
 

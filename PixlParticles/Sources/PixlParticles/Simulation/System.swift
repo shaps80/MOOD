@@ -25,9 +25,8 @@ public final class System {
             seed: seed,
             emitter: Emitter(
                 capacity: particleCount,
-                position: spawnRegion,
-                velocity: .random(-20 ..< 20),
-                color: color
+                spawnRegion: spawnRegion,
+                color: .init([.set(color)])
             ),
             duration: duration,
             storesRewindState: storesRewindState

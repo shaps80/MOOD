@@ -9,14 +9,12 @@ struct PropertyTests {
         var property = Property<Vec2>()
         property.append(
             .init(
-                id: 1,
                 operation: .set,
                 value: .constant([1, 2])
             )
         )
         property.append(
             .init(
-                id: 2,
                 operation: .multiply,
                 value: .curve([
                     .init(
@@ -34,7 +32,6 @@ struct PropertyTests {
         )
         property.insert(
             .init(
-                id: 3,
                 operation: .lessOrEqual,
                 value: .constant([3, 5])
             ),
@@ -49,10 +46,35 @@ struct PropertyTests {
         #expect(property.map(\.id) == [1, 3])
     }
 
+    @Test("Emitter properties infer their value type from key paths")
+    func emitterKeyPath() {
+        var emitter = Emitter(
+            capacity: 10,
+            spawnRegion: .point(.zero)
+        )
+
+        emitter[\.color].append(.set(.white))
+        emitter[\.position].append(.set([1, 2, 3]))
+
+        #expect(emitter[\.color].last?.value == .constant(.white))
+        #expect(emitter[\.position].last?.value == .constant([1, 2, 3]))
+    }
+
+    @Test("Modifier identity is assigned and retained by its property")
+    func identity() throws {
+        var property = Property<Vec3>()
+        property.append(.set([1, 2, 3]))
+        let id = try #require(property.first?.id)
+
+        property[0] = .set([4, 5, 6])
+
+        #expect(property[0].id == id)
+        #expect(Property(property).first?.id == id)
+    }
+
     @Test("Random keyframe values retain their variation mode")
     func randomKeyframe() {
         let modifier = Property<Vec2>.Modifier(
-            id: 42,
             operation: .add,
             value: .curve([
                 .init(
@@ -99,7 +121,6 @@ struct PropertyTests {
     func coding() throws {
         let property = Property<Color>([
             .init(
-                id: 1,
                 operation: .multiply,
                 value: .curve([
                     .init(

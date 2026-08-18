@@ -5,12 +5,23 @@ where Output: Codable & Equatable & Sendable {
     public struct Modifier: Codable, Equatable, Identifiable, Sendable {
         public typealias ID = UInt64
 
-        public var id: ID
+        public private(set) var id: ID
         public var operation: Operation
         public var value: Value
         public var variesWith: Variation?
 
         public init(
+            operation: Operation,
+            value: Value,
+            variesWith: Variation? = nil
+        ) {
+            id = 0
+            self.operation = operation
+            self.value = value
+            self.variesWith = variesWith
+        }
+
+        init(
             id: ID,
             operation: Operation,
             value: Value,
@@ -20,6 +31,24 @@ where Output: Codable & Equatable & Sendable {
             self.operation = operation
             self.value = value
             self.variesWith = variesWith
+        }
+
+        mutating func assignID(_ id: ID) {
+            self.id = id
+        }
+
+        public static func set(
+            _ value: Value,
+            variesWith: Variation? = nil
+        ) -> Self {
+            .init(operation: .set, value: value, variesWith: variesWith)
+        }
+
+        public static func set(
+            _ value: Output,
+            variesWith: Variation? = nil
+        ) -> Self {
+            .set(.constant(value), variesWith: variesWith)
         }
     }
 
@@ -123,14 +152,37 @@ where Output: Codable & Equatable & Sendable {
         case camera
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case modifiers
+    }
+
     private var modifiers: [Modifier]
+    private var nextModifierID: Modifier.ID
 
     public init() {
         modifiers = []
+        nextModifierID = 1
     }
 
     public init(_ modifiers: some Sequence<Modifier>) {
-        self.modifiers = Array(modifiers)
+        self.init()
+        append(contentsOf: modifiers)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        append(
+            contentsOf: try container.decode(
+                [Modifier].self,
+                forKey: .modifiers
+            )
+        )
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(modifiers, forKey: .modifiers)
     }
 }
 
@@ -142,7 +194,13 @@ extension Property: RandomAccessCollection, MutableCollection,
 
     public subscript(position: Int) -> Modifier {
         get { modifiers[position] }
-        set { modifiers[position] = newValue }
+        set {
+            var replacement = newValue
+            if replacement.id == 0 {
+                replacement.assignID(modifiers[position].id)
+            }
+            modifiers[position] = replacement
+        }
     }
 
     public func index(after index: Int) -> Int {
@@ -157,6 +215,26 @@ extension Property: RandomAccessCollection, MutableCollection,
         _ subrange: Range<Int>,
         with replacement: Replacement
     ) where Replacement: Collection, Modifier == Replacement.Element {
-        modifiers.replaceSubrange(subrange, with: replacement)
+        let retainedIDs = Set(
+            modifiers.indices
+                .filter { !subrange.contains($0) }
+                .map { modifiers[$0].id }
+        )
+        var usedIDs = retainedIDs
+        let assigned = replacement.map { modifier in
+            var modifier = modifier
+            if modifier.id == 0 || usedIDs.contains(modifier.id) {
+                while usedIDs.contains(nextModifierID) {
+                    nextModifierID += 1
+                }
+                modifier.assignID(nextModifierID)
+                nextModifierID += 1
+            } else if modifier.id >= nextModifierID {
+                nextModifierID = modifier.id + 1
+            }
+            usedIDs.insert(modifier.id)
+            return modifier
+        }
+        modifiers.replaceSubrange(subrange, with: assigned)
     }
 }
