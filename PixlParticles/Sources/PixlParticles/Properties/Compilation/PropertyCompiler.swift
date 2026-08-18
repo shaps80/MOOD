@@ -1,6 +1,30 @@
 import Swift
 
 struct PropertyCompiler {
+    struct Descriptor<Output, LoweredValue>
+    where Output: Codable & Equatable & Sendable {
+        let defaultValue: Output
+        let lower: (InitialValue<Output>) -> LoweredValue
+        let effects: (LoweredValue) -> Effects
+    }
+
+    struct Result<Value> {
+        let value: Value
+        let effects: Effects
+    }
+
+    struct Effects {
+        var storage: Set<EmitterStorageRequirement> = []
+        var passes: [EmitterPass] = []
+
+        mutating func formUnion(_ other: Self) {
+            storage.formUnion(other.storage)
+            for pass in other.passes where !passes.contains(pass) {
+                passes.append(pass)
+            }
+        }
+    }
+
     enum InitialValue<Output>
     where Output: Codable & Equatable & Sendable {
         case constant(Output)
@@ -37,17 +61,38 @@ struct PropertyCompiler {
         }
     }
 
-    func compileConstant<Output>(
+    func compile<Output, LoweredValue>(
         _ property: Property<Output>,
-        default defaultValue: Output
-    ) -> Output
+        using descriptor: Descriptor<Output, LoweredValue>
+    ) -> Result<LoweredValue>
     where Output: Codable & Equatable & Sendable {
-        guard case let .constant(value) = compileInitialValue(
-            property,
-            default: defaultValue
-        ) else {
-            preconditionFailure("Dynamic lowering has not been integrated yet")
-        }
-        return value
+        let value = descriptor.lower(
+            compileInitialValue(
+                property,
+                default: descriptor.defaultValue
+            )
+        )
+        return .init(value: value, effects: descriptor.effects(value))
+    }
+}
+
+extension PropertyCompiler.Descriptor where Output == LoweredValue {
+    static func constant(
+        default defaultValue: Output,
+        validate: @escaping (Output) -> Void = { _ in }
+    ) -> Self {
+        .init(
+            defaultValue: defaultValue,
+            lower: { value in
+                guard case let .constant(value) = value else {
+                    preconditionFailure(
+                        "Dynamic lowering has not been integrated yet"
+                    )
+                }
+                validate(value)
+                return value
+            },
+            effects: { _ in .init() }
+        )
     }
 }

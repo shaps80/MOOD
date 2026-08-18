@@ -10,8 +10,12 @@ struct EmitterStorageLayout: Equatable, Sendable {
     let velocities: Range<Int>?
     let colors: Range<Int>
 
-    init(capacity: Int, storesVelocity: Bool) {
+    init(
+        capacity: Int,
+        requirements: Set<EmitterStorageRequirement>
+    ) {
         let batchCount = (capacity + 3) / 4
+        let storesVelocity = requirements.contains(.velocity)
         var builder = Builder()
 
         identifiers = builder.allocate(

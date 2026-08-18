@@ -116,8 +116,9 @@
   no generic property dispatch into the fixed-tick hot loop. Current constant
   size and rotation still lower into the existing per-draw GPU constants. One
   generic `PropertyCompiler` handles authored initial-value shape for every
-  typed property; emitter compilation retains only semantic validation and the
-  velocity-specific storage/pass decision.
+  typed property. Typed descriptors declare semantic validation, storage
+  requirements, and required passes. Emitter compilation generically aggregates
+  those effects; it contains no property-specific lowering methods.
 - Billboard rendering expands four procedural vertices per compacted visible
   particle and submits one indirect triangle-strip draw. It adds no geometry or
   index buffer. Size is a two-component value, rotation is one radian scalar,
