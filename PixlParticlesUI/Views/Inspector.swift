@@ -110,6 +110,7 @@ struct Inspector: View {
             .scenePadding()
             .padding(5)
         }
+        .toggleStyle(.checkmark)
         .labeledContentStyle(.inspector)
         .focusable(false)
         .focusEffectDisabled(true)
