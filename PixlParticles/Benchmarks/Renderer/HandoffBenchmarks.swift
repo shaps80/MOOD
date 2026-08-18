@@ -5,6 +5,13 @@ import Swift
 @main
 @MainActor
 struct HandoffBenchmarks {
+    private static let rendererModes: [(
+        name: String,
+        renderer: ParticleRenderer
+    )] = [
+        ("Point", .init(mode: .point)),
+        ("Billboard", .init(mode: .billboard)),
+    ]
     private static let particleCounts = [
         10_000,
         100_000,
@@ -17,12 +24,22 @@ struct HandoffBenchmarks {
     private static let sampleCount = 5
 
     static func main() {
-        for particleCount in particleCounts {
-            benchmark(particleCount: particleCount)
+        for mode in rendererModes {
+            for particleCount in particleCounts {
+                benchmark(
+                    name: mode.name,
+                    particleRenderer: mode.renderer,
+                    particleCount: particleCount
+                )
+            }
         }
     }
 
-    private static func benchmark(particleCount: Int) {
+    private static func benchmark(
+        name: String,
+        particleRenderer: ParticleRenderer,
+        particleCount: Int
+    ) {
         let system = System(
             seed: 0x0123456789ABCDEF,
             particleCount: particleCount,
@@ -38,14 +55,22 @@ struct HandoffBenchmarks {
             z: [0, 0, 1, 0],
             w: [0, 0, 0, 1]
         )
+        let camera = CameraFrame(
+            viewProjection: matrix,
+            position: .zero,
+            right: [1, 0, 0],
+            up: [0, 1, 0],
+            viewport: .init(width: 1920, height: 1080)
+        )
 
         for _ in 0..<warmupCount {
             try! renderer.render(
                 system,
+                renderer: particleRenderer,
+                values: .init(),
                 interpolation: 0.5,
                 cullingViewProjection: matrix,
-                viewProjection: matrix,
-                viewport: .init(width: 1920, height: 1080)
+                camera: camera
             )
         }
 
@@ -58,10 +83,11 @@ struct HandoffBenchmarks {
             for _ in 0..<iterationCount {
                 try! renderer.render(
                     system,
+                    renderer: particleRenderer,
+                    values: .init(),
                     interpolation: 0.5,
                     cullingViewProjection: matrix,
-                    viewProjection: matrix,
-                    viewport: .init(width: 1920, height: 1080)
+                    camera: camera
                 )
             }
             samples.append(seconds(start.duration(to: clock.now)))
@@ -72,7 +98,7 @@ struct HandoffBenchmarks {
         let nanoseconds = elapsed / Double(iterationCount) * 1_000_000_000
         let checksum = backend.checksum(particleCount: particleCount)
         print(
-            "\(particleCount) particles: \(nanoseconds) ns/handoff "
+            "\(name), \(particleCount) particles: \(nanoseconds) ns/handoff "
                 + "[\(checksum)]"
         )
     }
@@ -92,16 +118,17 @@ private struct PositionBatch {
 }
 
 private final class BenchmarkBackend: Backend {
-    private var buffers: PointBuffers?
+    private var buffers: ParticleBuffers?
     private var countAccumulator: UInt64 = 0
 
-    func renderPoints(
+    func renderParticles(
         count: Int,
-        buffers: PointBuffers,
+        buffers: ParticleBuffers,
+        renderer: ParticleRenderer,
+        values: ParticleRenderValues,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
-        viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        camera: CameraFrame
     ) throws {
         self.buffers = buffers
         countAccumulator &+= UInt64(count)

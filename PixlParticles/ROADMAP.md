@@ -1,72 +1,64 @@
 # PixlParticles Roadmap
 
-Work through one decision at a time. Keep the current scope limited to a fast,
-point-primitive rendering path.
+Work through one decision at a time. Deterministic simulation remains the first
+constraint; GPU execution and data-oriented storage remain the scaling path.
 
-## 1. Colour Diagnostics
+## 1. Quad Billboard Rendering — Complete
 
-- Add an editor-only diagnostic view driven by the production colour pipeline.
+- [x] Keep point rendering as one physical framebuffer pixel.
+- [x] Add one authored standalone renderer definition selecting point or
+  billboard mode.
+- [x] Lower fixed two-component size and scalar radian rotation as per-draw GPU
+  constants rather than repeated particle storage.
+- [x] Add world-unit and physical-pixel billboard size spaces.
+- [x] Add camera, camera-plane, and camera-position/world-up facing modes.
+- [x] Expand procedural four-vertex triangle strips from compacted particle
+  indices and submit one indirect instanced draw.
+- [x] Reuse one GPU culling/compaction path with conservative billboard bounds.
+- [x] Persist all renderer settings and expose live inspector editing without
+  restarting simulation.
+- [x] Complete manual visual validation on the user's machine.
+- [x] After explicit visual approval, compare point and billboard performance;
+  record only accepted results in `PERF.md`.
+
+Sprites, textures, configurable pivots, billboard LOD, picking, and selected
+particle axis/bounds diagnostics remain deferred until the solid-colour path is
+validated.
+
+## 2. Colour Authoring and Diagnostics — Active
+
+- Add the document colour picker with correct display-encoded to linear input
+  conversion and live updates that do not recreate the system unnecessarily.
+- Add an editor-only diagnostic driven by the production colour pipeline.
 - Compare correct linear interpolation with an intentionally incorrect
   gamma-space reference.
-- Visualize premultiplied-alpha overlap on contrasting backgrounds.
-- Show an HDR intensity ladder and expose stored linear colour, pre-tone-map HDR
-  output, and final display-encoded values through a pixel inspector or GPU
-  readback.
-- Keep the diagnostic isolated enough to inform a later Pixl equivalent without
-  making that integration a current design constraint.
-- Extend the diagnostic with bloom comparisons when bloom enters scope.
+- Visualize premultiplied-alpha overlap, HDR intensity, stored linear colour,
+  pre-tone-map output, and final display encoding.
+- Extend with bloom comparisons when bloom enters scope.
 
-## Deferred
+## 3. Emitters, Lifetime, and Properties
 
-- Finder thumbnails and Quick Look playback for particle-effect documents.
-- Distance LOD after the screen-space density path is measured.
-- Disk-backed editor checkpoints; current workloads do not justify them.
+- Extract the current system-of-one-emitter into a system coordinator with
+  emitter-owned arena slices and one or more renderer definitions per emitter.
+- Compile authored definitions only when structure changes, not per fixed tick
+  or while scrubbing.
+- Define birth time, lifetime, normalized age, spawn rate, and alive/dead
+  behaviour while preserving deterministic restart, rewind, and seeking.
+- Begin property authoring with constants, deterministic ranges, and normalized
+  lifetime functions. Derive analytically on GPU whenever possible; materialize
+  AoSoA previous/current storage only for stateful or interpolated semantics.
+- Keep specialized dense passes serial initially, shaped so PixlConcurrency can
+  later schedule independent groups without reorganizing data.
+- Do not introduce a generic runtime property dictionary or dynamic dispatch in
+  hot paths.
 
-## Planned Expansion
+## Later
 
-Do not begin this work until the current point-rendering roadmap is reconciled
-and its remaining validation is complete.
-
-### 1. Particle Lifetime and Fixed Properties
-
-- Define per-particle birth time, lifetime, normalized age, and alive/dead
-  behaviour.
-- Preserve deterministic restart, rewind, seeking, and inspection semantics.
-- Establish Swift authoring APIs for fixed semantic properties, beginning with
-  constants, deterministic ranges, and values evolving over normalized
-  lifetime.
-- Add properties one at a time and validate their authoring semantics, AoSoA
-  storage, specialized whole-buffer passes, interpolation, lowering, and
-  performance end to end.
-- Keep public particles independent of internal storage. Do not introduce a
-  generic runtime property dictionary or dynamic dispatch in hot paths.
-
-### 2. Quad Rendering
-
-- Retain point primitives and add coloured quads as a separate rendering path.
-- Add camera-facing billboards alongside ordinary oriented quads.
-- Keep quad expansion, camera-facing transforms, packing, culling policy, and
-  draw submission in renderer and UI layers. Simulation owns only authored
-  particle values required by those renderers, such as size and rotation.
-
-### 3. Collisions
-
-- Resolve collision semantics through small reference implementations before
-  committing them to production architecture.
-- Begin with analytic collision shapes and response behaviour before mesh or
-  scene collision.
-- Treat spatial partitioning as a measured performance decision, informed by
-  fast reference implementations such as Box2D or Box3D rather than assumed up
-  front.
-
-### 4. Events
-
-- Add Niagara-style events and explicit event payloads as a core system
-  capability.
-- Include collision-driven events once collision semantics exist.
-- Keep this work late in the planned expansion, after particle lifetime, fixed
-  properties, quad rendering, and collision semantics are established.
-
-Emitters are now the next active design stream. Sprites, textures, and
-post-processing remain outside the current roadmap until explicitly brought
-into scope.
+- Make toolbar undo/redo availability observe `UndoManager` changes immediately;
+  document edits already register and execute correctly.
+- Analytic collisions and response semantics, then measured spatial
+  partitioning.
+- Niagara-style events and explicit payloads, including collision-driven events.
+- Distance/projected-coverage billboard LOD after the baseline is measured.
+- Finder thumbnails and Quick Look playback.
+- Disk-backed editor checkpoints if workloads justify them.

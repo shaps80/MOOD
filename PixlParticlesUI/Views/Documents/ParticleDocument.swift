@@ -1,5 +1,6 @@
 import Observation
 import PixlParticles
+import PixlRenderer
 import SwiftUI
 
 @Observable
@@ -28,6 +29,10 @@ final class ParticleDocument: Document {
         var particleCount: Double
         var seed: Double
         var color: PixlParticles.Color
+        var renderer: ParticleRenderer
+        var billboardWidth: Double
+        var billboardHeight: Double
+        var billboardRotation: Double
         var spawnPreset: SpawnPreset
         var spawnDomain: SpawnDomain
         var isLODEnabled: Bool
@@ -43,6 +48,10 @@ final class ParticleDocument: Document {
             particleCount: Double = 10_000,
             seed: Double = 0,
             color: PixlParticles.Color = .white,
+            renderer: ParticleRenderer = .init(),
+            billboardWidth: Double = 1,
+            billboardHeight: Double = 2,
+            billboardRotation: Double = 0,
             spawnPreset: SpawnPreset = .sphere,
             spawnDomain: SpawnDomain = .surface,
             isLODEnabled: Bool = false,
@@ -57,6 +66,10 @@ final class ParticleDocument: Document {
             self.particleCount = particleCount
             self.seed = seed
             self.color = color
+            self.renderer = renderer
+            self.billboardWidth = billboardWidth
+            self.billboardHeight = billboardHeight
+            self.billboardRotation = billboardRotation
             self.spawnPreset = spawnPreset
             self.spawnDomain = spawnDomain
             self.isLODEnabled = isLODEnabled
@@ -77,6 +90,22 @@ final class ParticleDocument: Document {
                 PixlParticles.Color.self,
                 forKey: .color
             ) ?? .white
+            renderer = try values.decodeIfPresent(
+                ParticleRenderer.self,
+                forKey: .renderer
+            ) ?? .init()
+            billboardWidth = try values.decodeIfPresent(
+                Double.self,
+                forKey: .billboardWidth
+            ) ?? 1
+            billboardHeight = try values.decodeIfPresent(
+                Double.self,
+                forKey: .billboardHeight
+            ) ?? 2
+            billboardRotation = try values.decodeIfPresent(
+                Double.self,
+                forKey: .billboardRotation
+            ) ?? 0
             spawnPreset = try values.decode(SpawnPreset.self, forKey: .spawnPreset)
             spawnDomain = try values.decode(SpawnDomain.self, forKey: .spawnDomain)
             isLODEnabled = try values.decode(Bool.self, forKey: .isLODEnabled)

@@ -19,33 +19,39 @@ struct ParticleRendererTests {
 
         try renderer.render(
             system,
+            renderer: .init(),
+            values: .init(),
             interpolation: 0,
             cullingViewProjection: .identity,
-            viewProjection: .identity,
-            viewport: .init(width: 100, height: 100)
+            camera: .identity
         )
         let first = try #require(backend.buffers)
 
         try renderer.render(
             system,
+            renderer: .init(),
+            values: .init(),
             interpolation: 0.5,
             cullingViewProjection: .identity,
-            viewProjection: .identity,
-            viewport: .init(width: 100, height: 100)
+            camera: .identity
         )
         let second = try #require(backend.buffers)
 
         system.update(by: 1)
         try renderer.render(
             system,
+            renderer: .init(mode: .billboard),
+            values: .init(size: [1, 2], rotation: 0.25),
             interpolation: 0.5,
             cullingViewProjection: .identity,
-            viewProjection: .identity,
-            viewport: .init(width: 100, height: 100)
+            camera: .identity
         )
         let third = try #require(backend.buffers)
 
         #expect(backend.renderCount == 3)
+        #expect(backend.renderer?.mode == .billboard)
+        #expect(backend.values?.size == [1, 2])
+        #expect(backend.values?.rotation == 0.25)
         #expect(first.currentPositions === second.currentPositions)
         #expect(first.colors === second.colors)
         #expect(first.currentPositions === third.previousPositions)
@@ -89,20 +95,35 @@ private struct TestColorBatch {
 }
 
 private final class RecordingBackend: Backend {
-    private(set) var buffers: PointBuffers?
+    private(set) var buffers: ParticleBuffers?
+    private(set) var renderer: ParticleRenderer?
+    private(set) var values: ParticleRenderValues?
     private(set) var renderCount = 0
 
-    func renderPoints(
+    func renderParticles(
         count: Int,
-        buffers: PointBuffers,
+        buffers: ParticleBuffers,
+        renderer: ParticleRenderer,
+        values: ParticleRenderValues,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
-        viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        camera: CameraFrame
     ) throws {
         renderCount += 1
         self.buffers = buffers
+        self.renderer = renderer
+        self.values = values
     }
+}
+
+private extension CameraFrame {
+    static let identity = CameraFrame(
+        viewProjection: .identity,
+        position: .zero,
+        right: [1, 0, 0],
+        up: [0, 1, 0],
+        viewport: .init(width: 100, height: 100)
+    )
 }
 
 private extension Matrix4x4 {

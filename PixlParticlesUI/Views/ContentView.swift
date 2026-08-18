@@ -37,6 +37,8 @@ struct ContentView: View {
                     duration: .seconds(document.snapshot.duration),
                     camera: $settings.camera,
                     observerCamera: $settings.observerCamera,
+                    renderer: document.snapshot.renderer,
+                    renderValues: renderValues,
                     pointLOD: pointLOD,
                     isGroundPlaneVisible: settings.visibility.isGroundPlaneVisible,
                     isFrustumVisible: settings.visibility.isFrustumVisible,
@@ -55,6 +57,27 @@ struct ContentView: View {
                         seed: binding(\.seed, "Change Seed"),
                         spawnPreset: binding(\.spawnPreset, "Change Spawn Region"),
                         spawnDomain: binding(\.spawnDomain, "Change Spawn Domain"),
+                        renderMode: binding(\.renderer.mode, "Change Render Mode"),
+                        billboardSizeSpace: binding(
+                            \.renderer.billboard.sizeSpace,
+                            "Change Billboard Size Space"
+                        ),
+                        billboardFacing: binding(
+                            \.renderer.billboard.facing,
+                            "Change Billboard Facing"
+                        ),
+                        billboardWidth: binding(
+                            \.billboardWidth,
+                            "Change Billboard Width"
+                        ),
+                        billboardHeight: binding(
+                            \.billboardHeight,
+                            "Change Billboard Height"
+                        ),
+                        billboardRotation: binding(
+                            \.billboardRotation,
+                            "Change Billboard Rotation"
+                        ),
                         lodEnabled: binding(\.isLODEnabled, "Toggle LOD"),
                         lodActivation: binding(\.lodActivation, "Change LOD Activation"),
                         lodMaximum: binding(\.lodMaximum, "Change LOD Maximum"),
@@ -202,6 +225,17 @@ struct ContentView: View {
             maximumVisibleCount: max(Int(snapshot.lodMaximum), 1),
             tileSize: max(Int(snapshot.lodTileSize), 1),
             targetPointsPerPixel: max(Float(snapshot.lodPointsPerPixel), 0.001)
+        )
+    }
+
+    private var renderValues: ParticleRenderValues {
+        let snapshot = document.snapshot
+        return .init(
+            size: [
+                max(Float(snapshot.billboardWidth), 0),
+                max(Float(snapshot.billboardHeight), 0),
+            ],
+            rotation: Float(snapshot.billboardRotation)
         )
     }
 

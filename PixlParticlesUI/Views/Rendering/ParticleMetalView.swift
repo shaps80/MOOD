@@ -19,6 +19,8 @@ struct ParticleMetalView: PlatformViewRepresentable {
     let zoom: Float
     let target: SIMD3<Float>
     let observerCamera: EditorSettings.Camera?
+    let renderer: ParticleRenderer
+    let renderValues: ParticleRenderValues
     let pointLOD: PointLOD
     let isGroundPlaneVisible: Bool
     let isFrustumVisible: Bool
@@ -40,6 +42,8 @@ struct ParticleMetalView: PlatformViewRepresentable {
             zoom: zoom,
             target: target,
             observerCamera: observerCamera,
+            renderer: renderer,
+            renderValues: renderValues,
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
             isFrustumVisible: isFrustumVisible,
@@ -74,6 +78,8 @@ struct ParticleMetalView: PlatformViewRepresentable {
             duration: duration,
             preset: cameraPreset,
             observerCamera: observerCamera,
+            renderer: renderer,
+            renderValues: renderValues,
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
             isFrustumVisible: isFrustumVisible,

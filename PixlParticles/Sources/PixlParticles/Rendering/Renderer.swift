@@ -10,19 +10,21 @@ public final class Renderer {
 
     public func render(
         _ system: System,
+        renderer definition: ParticleRenderer,
+        values: ParticleRenderValues,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
-        viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        camera: CameraFrame
     ) throws {
         try system.withRenderingData { buffers, count in
             try renderer.render(
                 buffers: buffers,
                 count: count,
+                renderer: definition,
+                values: values,
                 interpolation: interpolation,
                 cullingViewProjection: cullingViewProjection,
-                viewProjection: viewProjection,
-                viewport: viewport
+                camera: camera
             )
         }
     }

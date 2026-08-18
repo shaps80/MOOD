@@ -9,6 +9,8 @@ struct ParticleViewport: View {
     let duration: Duration
     @Binding var camera: EditorSettings.Camera
     @Binding var observerCamera: EditorSettings.Camera?
+    let renderer: ParticleRenderer
+    let renderValues: ParticleRenderValues
     let pointLOD: PointLOD
     let isGroundPlaneVisible: Bool
     let isFrustumVisible: Bool
@@ -36,6 +38,8 @@ struct ParticleViewport: View {
                 Float(camera.targetZ),
             ],
             observerCamera: observerCamera,
+            renderer: renderer,
+            renderValues: renderValues,
             pointLOD: pointLOD,
             isGroundPlaneVisible: isGroundPlaneVisible,
             isFrustumVisible: isFrustumVisible,

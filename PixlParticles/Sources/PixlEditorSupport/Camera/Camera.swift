@@ -20,9 +20,14 @@ public struct Camera: Sendable {
     public func viewport(for size: SIMD2<Float>) -> Viewport? {
         guard size.x > 0, size.y > 0 else { return nil }
         let projection = projection.matrices(aspectRatio: size.x / size.y)
+        let basis = basis
         return Viewport(
-            viewProjection: projection.projection * viewMatrix,
-            inverseViewProjection: inverseViewMatrix * projection.inverse,
+            viewProjection: projection.projection * viewMatrix(basis: basis),
+            inverseViewProjection: inverseViewMatrix(basis: basis)
+                * projection.inverse,
+            cameraPosition: position,
+            cameraRight: basis.right,
+            cameraUp: basis.up,
             size: size
         )
     }
@@ -39,8 +44,13 @@ public struct Camera: Sendable {
         )
     }
 
-    private var viewMatrix: Matrix4x4 {
-        let basis = basis
+    private func viewMatrix(
+        basis: (
+            right: SIMD3<Float>,
+            up: SIMD3<Float>,
+            backward: SIMD3<Float>
+        )
+    ) -> Matrix4x4 {
         return Matrix4x4(
             x: [basis.right.x, basis.up.x, basis.backward.x, 0],
             y: [basis.right.y, basis.up.y, basis.backward.y, 0],
@@ -54,8 +64,13 @@ public struct Camera: Sendable {
         )
     }
 
-    private var inverseViewMatrix: Matrix4x4 {
-        let basis = basis
+    private func inverseViewMatrix(
+        basis: (
+            right: SIMD3<Float>,
+            up: SIMD3<Float>,
+            backward: SIMD3<Float>
+        )
+    ) -> Matrix4x4 {
         return Matrix4x4(
             x: SIMD4<Float>(basis.right, 0),
             y: SIMD4<Float>(basis.up, 0),
@@ -69,6 +84,9 @@ public extension Camera {
     struct Viewport: Sendable {
         public let viewProjection: Matrix4x4
         public let inverseViewProjection: Matrix4x4
+        public let cameraPosition: SIMD3<Float>
+        public let cameraRight: SIMD3<Float>
+        public let cameraUp: SIMD3<Float>
         public let size: SIMD2<Float>
 
         public var frustumCorners: [SIMD3<Float>] {

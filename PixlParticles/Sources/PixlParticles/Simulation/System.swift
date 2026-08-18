@@ -148,7 +148,7 @@ public final class System {
     }
 
     func withRenderingData<Result: ~Copyable>(
-        _ body: (PointBuffers, Int) throws -> Result
+        _ body: (ParticleBuffers, Int) throws -> Result
     ) rethrows -> Result {
         try storage.withRenderingData(body)
     }

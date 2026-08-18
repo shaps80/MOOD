@@ -155,10 +155,10 @@ final class ParticleStorage {
     }
 
     func withRenderingData<Result: ~Copyable>(
-        _ body: (PointBuffers, Int) throws -> Result
+        _ body: (ParticleBuffers, Int) throws -> Result
     ) rethrows -> Result {
         try body(
-            PointBuffers(
+            ParticleBuffers(
                 previousPositions: previousPositionStorage,
                 currentPositions: positionStorage,
                 colors: colorStorage,

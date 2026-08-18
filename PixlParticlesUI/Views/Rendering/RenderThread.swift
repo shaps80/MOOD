@@ -104,10 +104,11 @@ private nonisolated final class Worker: @unchecked Sendable {
                 } ?? 0
                 try renderer.render(
                     system,
+                    renderer: frame.renderer,
+                    values: frame.renderValues,
                     interpolation: sample.interpolation,
                     cullingViewProjection: frame.cullingViewProjection,
-                    viewProjection: frame.viewProjection,
-                    viewport: frame.viewport
+                    camera: frame.camera
                 )
                 mailbox.complete(
                     at: sample.time,

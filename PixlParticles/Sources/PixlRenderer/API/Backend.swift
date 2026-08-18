@@ -1,12 +1,13 @@
 import Swift
 
 public protocol Backend: AnyObject {
-    func renderPoints(
+    func renderParticles(
         count: Int,
-        buffers: PointBuffers,
+        buffers: ParticleBuffers,
+        renderer: ParticleRenderer,
+        values: ParticleRenderValues,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
-        viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        camera: CameraFrame
     ) throws
 }

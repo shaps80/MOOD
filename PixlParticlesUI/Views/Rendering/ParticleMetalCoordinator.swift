@@ -22,6 +22,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
     private let navigation: CameraNavigation
     private var onCameraChange: (SIMD4<Float>, Float, SIMD3<Float>) -> Void
     private var onTimeChange: (Duration) -> Void
+    private var renderer: ParticleRenderer
+    private var renderValues: ParticleRenderValues
     private var pointLOD: PointLOD
     private var isGroundPlaneVisible: Bool
     private var cullingBounds: CullingBounds
@@ -39,6 +41,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
         zoom: Float,
         target: SIMD3<Float>,
         observerCamera: EditorSettings.Camera?,
+        renderer: ParticleRenderer,
+        renderValues: ParticleRenderValues,
         pointLOD: PointLOD,
         isGroundPlaneVisible: Bool,
         isFrustumVisible: Bool,
@@ -64,6 +68,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
         )
         self.onCameraChange = onCameraChange
         self.onTimeChange = onTimeChange
+        self.renderer = renderer
+        self.renderValues = renderValues
         self.pointLOD = pointLOD
         self.isGroundPlaneVisible = isGroundPlaneVisible
         self.cullingBounds = cullingBounds
@@ -90,6 +96,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
         duration: Duration,
         preset: CameraPreset,
         observerCamera: EditorSettings.Camera?,
+        renderer: ParticleRenderer,
+        renderValues: ParticleRenderValues,
         pointLOD: PointLOD,
         isGroundPlaneVisible: Bool,
         isFrustumVisible: Bool,
@@ -117,6 +125,8 @@ final class Coordinator: NSObject, MTKViewDelegate {
             observerPose: observerCamera?.pose,
             isFrustumVisible: isFrustumVisible
         )
+        self.renderer = renderer
+        self.renderValues = renderValues
         self.pointLOD = pointLOD
         self.isGroundPlaneVisible = isGroundPlaneVisible
         self.cullingBounds = cullingBounds
@@ -153,6 +163,17 @@ final class Coordinator: NSObject, MTKViewDelegate {
         else { return }
         let viewProjection = observerViewport.viewProjection
         let cullingViewProjection = sceneViewport.viewProjection
+        let viewport = ViewportSize(
+            width: UInt32(view.drawableSize.width.rounded(.up)),
+            height: UInt32(view.drawableSize.height.rounded(.up))
+        )
+        let camera = CameraFrame(
+            viewProjection: viewProjection,
+            position: observerViewport.cameraPosition,
+            right: observerViewport.cameraRight,
+            up: observerViewport.cameraUp,
+            viewport: viewport
+        )
         let cameraFrustum = navigation.frustum(
             viewport: sceneViewport,
             size: size
@@ -178,15 +199,13 @@ final class Coordinator: NSObject, MTKViewDelegate {
             isPaused: isPaused,
             capturesDiagnostics: capturesDiagnostics,
             frameBudget: 1 / Double(max(view.preferredFramesPerSecond, 1)),
+            renderer: renderer,
+            renderValues: renderValues,
             pointLOD: pointLOD,
             editor: editor,
             cullingBounds: cullingBounds,
             cullingViewProjection: cullingViewProjection,
-            viewProjection: viewProjection,
-            viewport: .init(
-                width: UInt32(view.drawableSize.width.rounded(.up)),
-                height: UInt32(view.drawableSize.height.rounded(.up))
-            )
+            camera: camera
         )
         renderThread.submit(frame)
         if navigation.isTransitioning, view.isPaused {

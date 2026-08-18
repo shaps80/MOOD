@@ -10,8 +10,8 @@
 - Offer expressive, composable Swift authoring types, then lower them into a runtime representation suitable for hot loops and GPU execution.
 - Keep simulation, portable render-data preparation, and platform rendering
   independently measurable and optimizable.
-- Make point primitives the first rendering path: one physical framebuffer
-  pixel with colour and opacity.
+- Retain point primitives as a one-physical-pixel path, and add renderer-selected
+  billboard quads without making simulation renderer-aware.
 
 ## Foundational Constraints
 
@@ -60,8 +60,9 @@
 - Renderer-facing binary16 colour components use portable `UInt16` bit storage.
   Swift `Float16` is unavailable when compiling for Intel macOS, while the byte
   representation consumed by Metal remains `RGBA16Float`.
-- Editor controls currently recreate the system from duration, particle count,
-  seed, spawn region, and supported spawn domain selections.
+- Editor controls recreate the system only for authored simulation inputs such
+  as particle count, seed, colour, and spawn region. Renderer selection and
+  billboard values flow live without restarting or seeking the simulation.
 
 ## Boundaries
 
@@ -97,9 +98,27 @@
   swaps the roles of two existing buffers after integration rather than copying
   current state into previous state. Point colour is currently immutable and
   occupies one shared buffer, so it has no CPU history or shader interpolation.
+- The current document owns one standalone `ParticleRenderer` definition. The
+  definition selects point or billboard rendering and holds renderer-only
+  billboard settings; fixed size and rotation remain semantic particle values
+  lowered into one per-draw constant block. They are not repeated in particle
+  storage. This is the initial shape for a future emitter to expose multiple
+  renderers over one shared simulation.
+- Billboard rendering expands four procedural vertices per compacted visible
+  particle and submits one indirect triangle-strip draw. It adds no geometry or
+  index buffer. Size is a two-component value, rotation is one radian scalar,
+  and world or physical-pixel size spaces are selected per renderer. Camera,
+  camera-plane, and camera-position/world-up facing modes are GPU evaluated from
+  one compact camera frame supplied per draw.
 - Metal visibility uses stable GPU compaction: block-local scans, deterministic
   block offsets, stable index scatter, and indirect drawing. Culling never
   mutates authoritative simulation or changes particle order.
+- Point and billboard rendering share one visibility kernel and compacted-index
+  arena. Point visibility tests particle centres. World-space billboards use a
+  conservative half-diagonal bounding sphere; screen-space billboards expand
+  clip tests by their physical-pixel radius. Authored cubic bounds deliberately
+  remain centre-based. Point LOD is bypassed for billboards without allocating
+  or retaining LOD resources.
 - Optional authored cubic bounds are fused into the existing GPU visibility
   classification. Particles outside the cube remain simulated but are omitted
   from rendering. Its editor visualization is a generic instanced `WireBox`.
@@ -211,3 +230,7 @@
   tier with 5.958 ms median and 8.550 ms p95 effective GPU work. Renderer
   validation is complete. Direct shared-source lifetime and synchronization
   are also validated on iPad without additional in-flight source storage.
+- The initial billboard path, both size spaces, three facing modes, document
+  persistence, and live inspector editing compile across the macOS app and its
+  Metal shader library. Visual validation and point-versus-billboard performance
+  measurements remain pending; no billboard benchmark is accepted yet.

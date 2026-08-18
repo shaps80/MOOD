@@ -5,7 +5,7 @@ final class FrameBuffers {
     private let frameCount: Int
     private var culling: [CullingBuffers] = []
     private var lod: [LODBuffers] = []
-    private var shared: SharedPointBuffers?
+    private var shared: SharedParticleBuffers?
     private var capacity = 0
     private var lodCapacity = 0
     private var lodVisibleCapacity = 0
@@ -19,17 +19,17 @@ final class FrameBuffers {
 
     func prepare(
         count: Int,
-        buffers: PointBuffers,
-        lod settings: PointLOD,
+        buffers: ParticleBuffers,
+        lod settings: PointLOD?,
         viewport: ViewportSize
     ) throws -> FrameResources {
         try ensureCapacity(max(count, 1))
         try ensureSharedBuffers(buffers)
 
-        let usesLOD = settings.isEnabled
-            && count > 0
-            && count >= settings.activationCount
-        if usesLOD {
+        let usesLOD = settings.map {
+            $0.isEnabled && count > 0 && count >= $0.activationCount
+        } ?? false
+        if usesLOD, let settings {
             try ensureLODCapacity(
                 particleCount: max(count, 1),
                 visibleCount: settings.maximumVisibleCount,
@@ -52,7 +52,7 @@ final class FrameBuffers {
         return resources
     }
 
-    private func ensureSharedBuffers(_ source: PointBuffers) throws {
+    private func ensureSharedBuffers(_ source: ParticleBuffers) throws {
         if let shared, shared.matches(source) { return }
 
         guard let previousPositions = platform.makeBuffer(
@@ -64,7 +64,7 @@ final class FrameBuffers {
         ), let ids = platform.makeBuffer(sharing: source.ids)
         else { throw RenderError.buffer }
 
-        shared = SharedPointBuffers(
+        shared = SharedParticleBuffers(
             source: source,
             previousPositions: previousPositions,
             currentPositions: currentPositions,
@@ -141,14 +141,14 @@ final class FrameBuffers {
     }
 }
 
-private struct SharedPointBuffers {
-    let source: PointBuffers
+private struct SharedParticleBuffers {
+    let source: ParticleBuffers
     let previousPositions: any Buffer
     let currentPositions: any Buffer
     let colors: any Buffer
     let ids: any Buffer
 
-    func matches(_ other: PointBuffers) -> Bool {
+    func matches(_ other: ParticleBuffers) -> Bool {
         let positionsMatch = (
             source.previousPositions === other.previousPositions
                 && source.currentPositions === other.currentPositions
@@ -161,13 +161,13 @@ private struct SharedPointBuffers {
             && source.ids === other.ids
     }
 
-    func previousPositions(for other: PointBuffers) -> any Buffer {
+    func previousPositions(for other: ParticleBuffers) -> any Buffer {
         source.previousPositions === other.previousPositions
             ? previousPositions
             : currentPositions
     }
 
-    func currentPositions(for other: PointBuffers) -> any Buffer {
+    func currentPositions(for other: ParticleBuffers) -> any Buffer {
         source.currentPositions === other.currentPositions
             ? currentPositions
             : previousPositions

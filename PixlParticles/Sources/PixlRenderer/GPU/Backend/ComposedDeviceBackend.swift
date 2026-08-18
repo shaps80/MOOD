@@ -34,21 +34,23 @@ public final class ComposedDeviceBackend<Composition: RenderComposition>: Backen
         self.composition = composition
     }
 
-    public func renderPoints(
+    public func renderParticles(
         count: Int,
-        buffers: PointBuffers,
+        buffers: ParticleBuffers,
+        renderer: ParticleRenderer,
+        values: ParticleRenderValues,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
-        viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        camera: CameraFrame
     ) throws {
-        try renderer.renderPoints(
+        try self.renderer.renderParticles(
             count: count,
             buffers: buffers,
+            renderer: renderer,
+            values: values,
             interpolation: interpolation,
             cullingViewProjection: cullingViewProjection,
-            viewProjection: viewProjection,
-            viewport: viewport,
+            camera: camera,
             composition: composition
         )
     }

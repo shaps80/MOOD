@@ -8,6 +8,7 @@ final class DeviceRenderer {
     private let culling: CullingPass
     private let lod: LODPass
     private let points: PointPass
+    private let billboards: BillboardPass
 
     var pointLOD: PointLOD
     var cullingBounds = CullingBounds()
@@ -24,15 +25,17 @@ final class DeviceRenderer {
         culling = try CullingPass(platform: platform)
         lod = try LODPass(platform: platform)
         points = try PointPass(platform: platform)
+        billboards = try BillboardPass(platform: platform)
     }
 
-    func renderPoints<Composition: RenderComposition>(
+    func renderParticles<Composition: RenderComposition>(
         count: Int,
-        buffers pointBuffers: PointBuffers,
+        buffers particleBuffers: ParticleBuffers,
+        renderer: ParticleRenderer,
+        values: ParticleRenderValues,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
-        viewProjection: Matrix4x4,
-        viewport: ViewportSize,
+        camera: CameraFrame,
         composition: Composition
     ) throws {
         precondition(interpolation >= 0 && interpolation <= 1)
@@ -46,9 +49,9 @@ final class DeviceRenderer {
 
         let resources = try buffers.prepare(
             count: count,
-            buffers: pointBuffers,
-            lod: pointLOD,
-            viewport: viewport
+            buffers: particleBuffers,
+            lod: renderer.mode == .point ? pointLOD : nil,
+            viewport: camera.viewportSize
         )
         visibleCount = capturesDiagnostics
             ? resources.culling.capturedVisibleCount
@@ -61,6 +64,9 @@ final class DeviceRenderer {
             count: count,
             interpolation: interpolation,
             viewProjection: cullingViewProjection,
+            renderer: renderer,
+            values: values,
+            viewport: camera.viewportSize,
             cullingBounds: cullingBounds,
             previousPositions: resources.previousPositions,
             currentPositions: resources.currentPositions,
@@ -71,7 +77,7 @@ final class DeviceRenderer {
         if let ids = resources.ids, let lodBuffers = resources.lod {
             try lod.encode(
                 settings: pointLOD,
-                viewport: viewport,
+                viewport: camera.viewportSize,
                 interpolation: interpolation,
                 viewProjection: cullingViewProjection,
                 previousPositions: resources.previousPositions,
@@ -88,6 +94,7 @@ final class DeviceRenderer {
                 arguments: resources.lod?.drawArguments
                     ?? resources.culling.indirectArguments,
                 destination: resources.culling.diagnosticCount,
+                mode: renderer.mode,
                 into: commandBuffer
             )
             if let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
@@ -105,17 +112,33 @@ final class DeviceRenderer {
         }
         encoder.label = "Scene Draw"
         composition.encodeBackground(into: encoder)
-        points.encode(
-            previousPositions: resources.previousPositions,
-            currentPositions: resources.currentPositions,
-            colors: resources.colors,
-            visibleIndices: resources.culling.visibleIndices,
-            indirectArguments: resources.culling.indirectArguments,
-            lod: resources.lod,
-            interpolation: interpolation,
-            viewProjection: viewProjection,
-            into: encoder
-        )
+        switch renderer.mode {
+        case .point:
+            points.encode(
+                previousPositions: resources.previousPositions,
+                currentPositions: resources.currentPositions,
+                colors: resources.colors,
+                visibleIndices: resources.culling.visibleIndices,
+                indirectArguments: resources.culling.indirectArguments,
+                lod: resources.lod,
+                interpolation: interpolation,
+                viewProjection: camera.viewProjection,
+                into: encoder
+            )
+        case .billboard:
+            billboards.encode(
+                previousPositions: resources.previousPositions,
+                currentPositions: resources.currentPositions,
+                colors: resources.colors,
+                visibleIndices: resources.culling.visibleIndices,
+                indirectArguments: resources.culling.indirectArguments,
+                renderer: renderer.billboard,
+                values: values,
+                interpolation: interpolation,
+                camera: camera,
+                into: encoder
+            )
+        }
         composition.encodeOverlay(into: encoder)
         encoder.endEncoding()
 

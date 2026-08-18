@@ -11,12 +11,13 @@ nonisolated final class Mailbox: @unchecked Sendable {
         let isPaused: Bool
         let capturesDiagnostics: Bool
         let frameBudget: Double
+        let renderer: ParticleRenderer
+        let renderValues: ParticleRenderValues
         let pointLOD: PointLOD
         let editor: PixlEditorSupport.Frame
         let cullingBounds: CullingBounds
         let cullingViewProjection: Matrix4x4
-        let viewProjection: Matrix4x4
-        let viewport: ViewportSize
+        let camera: CameraFrame
     }
 
     struct Work {

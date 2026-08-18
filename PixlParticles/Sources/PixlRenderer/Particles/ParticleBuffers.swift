@@ -1,6 +1,6 @@
 import Swift
 
-public struct PointBuffers {
+public struct ParticleBuffers {
     public let previousPositions: HostBuffer
     public let currentPositions: HostBuffer
     public let colors: HostBuffer

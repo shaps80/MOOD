@@ -38,6 +38,9 @@ final class CullingPass {
         count: Int,
         interpolation: Float,
         viewProjection: Matrix4x4,
+        renderer: ParticleRenderer,
+        values: ParticleRenderValues,
+        viewport: ViewportSize,
         cullingBounds: CullingBounds,
         previousPositions: any Buffer,
         currentPositions: any Buffer,
@@ -48,6 +51,10 @@ final class CullingPass {
             / Self.threadCount
         let particleCount = UInt32(count)
         let blockCount = UInt32(integerBlockCount)
+        let cullingMode = CullingMode(renderer: renderer).rawValue
+        let frustum = FrustumPlanes(viewProjection: viewProjection)
+        let radius = 0.5 * (values.size.x * values.size.x
+            + values.size.y * values.size.y).squareRoot()
 
         if particleCount > 0 {
             guard let encoder = commandBuffer.makeComputeEncoder() else {
@@ -73,6 +80,13 @@ final class CullingPass {
                 index: 7
             )
             encoder.setBuffer(currentPositions, index: 8)
+            encoder.setValue(radius, index: 9)
+            encoder.setValue(cullingMode, index: 10)
+            encoder.setValue(
+                SIMD2<UInt32>(viewport.width, viewport.height),
+                index: 11
+            )
+            encoder.setValue(frustum, index: 12)
             encoder.dispatchThreadgroups(
                 .init(width: Int(blockCount)),
                 threads: .init(width: Self.threadCount)
@@ -82,6 +96,7 @@ final class CullingPass {
 
         try encodeScan(
             blockCount: Int(blockCount),
+            cullingMode: cullingMode,
             buffers: buffers,
             into: commandBuffer
         )
@@ -107,6 +122,7 @@ final class CullingPass {
     func encodeVisibleCountCapture(
         arguments: any Buffer,
         destination: any Buffer,
+        mode: ParticleRenderer.Mode,
         into commandBuffer: any CommandBuffer
     ) throws {
         guard let encoder = commandBuffer.makeComputeEncoder() else {
@@ -116,12 +132,14 @@ final class CullingPass {
         encoder.setPipeline(captureCount)
         encoder.setBuffer(arguments, index: 0)
         encoder.setBuffer(destination, index: 1)
+        encoder.setValue(mode.gpuValue, index: 2)
         encoder.dispatchThreads(.init(width: 1), threads: .init(width: 1))
         encoder.endEncoding()
     }
 
     private func encodeScan(
         blockCount: Int,
+        cullingMode: UInt32,
         buffers: CullingBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
@@ -176,6 +194,7 @@ final class CullingPass {
         encoder.setPipeline(finishScan)
         encoder.setBuffer(buffers.scan.sums.last!, index: 0)
         encoder.setBuffer(buffers.indirectArguments, index: 1)
+        encoder.setValue(cullingMode, index: 2)
         encoder.dispatchThreads(.init(width: 1), threads: .init(width: 1))
         encoder.endEncoding()
     }
@@ -223,5 +242,69 @@ final class CullingPass {
             threads: .init(width: Self.threadCount)
         )
         encoder.endEncoding()
+    }
+}
+
+private enum CullingMode: UInt32 {
+    case point
+    case worldBillboard
+    case screenBillboard
+
+    init(renderer: ParticleRenderer) {
+        switch (renderer.mode, renderer.billboard.sizeSpace) {
+        case (.point, _): self = .point
+        case (.billboard, .world): self = .worldBillboard
+        case (.billboard, .screen): self = .screenBillboard
+        }
+    }
+}
+
+extension ParticleRenderer.Mode {
+    var gpuValue: UInt32 {
+        switch self {
+        case .point: 0
+        case .billboard: 1
+        }
+    }
+}
+
+private struct FrustumPlanes: BitwiseCopyable {
+    let left: SIMD4<Float>
+    let right: SIMD4<Float>
+    let bottom: SIMD4<Float>
+    let top: SIMD4<Float>
+    let near: SIMD4<Float>
+    let far: SIMD4<Float>
+
+    init(viewProjection matrix: Matrix4x4) {
+        let x = Self.row(0, matrix: matrix)
+        let y = Self.row(1, matrix: matrix)
+        let z = Self.row(2, matrix: matrix)
+        let w = Self.row(3, matrix: matrix)
+        left = Self.normalized(w + x)
+        right = Self.normalized(w - x)
+        bottom = Self.normalized(w + y)
+        top = Self.normalized(w - y)
+        near = Self.normalized(z)
+        far = Self.normalized(w - z)
+    }
+
+    private static func row(
+        _ index: Int,
+        matrix: Matrix4x4
+    ) -> SIMD4<Float> {
+        [
+            matrix.x[index],
+            matrix.y[index],
+            matrix.z[index],
+            matrix.w[index],
+        ]
+    }
+
+    private static func normalized(_ plane: SIMD4<Float>) -> SIMD4<Float> {
+        let length = (plane.x * plane.x
+            + plane.y * plane.y
+            + plane.z * plane.z).squareRoot()
+        return length > 0 ? plane / length : plane
     }
 }

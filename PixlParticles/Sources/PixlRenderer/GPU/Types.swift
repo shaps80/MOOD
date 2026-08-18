@@ -21,6 +21,7 @@ public enum CompareFunction: Sendable {
 public enum Primitive: Sendable {
     case point
     case line
+    case triangleStrip
 }
 
 public struct ThreadGrid: Sendable {

@@ -21,6 +21,33 @@ struct ColorBatch {
     float4 alpha;
 };
 
+struct CameraFrame {
+    float4x4 viewProjection;
+    float4 position;
+    float4 right;
+    float4 up;
+    float4 viewport;
+};
+
+struct BillboardConfiguration {
+    float4 values;
+    uint4 modes;
+};
+
+struct FrustumPlanes {
+    float4 left;
+    float4 right;
+    float4 bottom;
+    float4 top;
+    float4 near;
+    float4 far;
+};
+
+struct BillboardVertex {
+    float4 position [[position]];
+    half4 color;
+};
+
 static float4 particleColor(
     const device ColorBatch *colors,
     uint particleIndex
@@ -111,6 +138,58 @@ static uint pointLODHash(ulong value) {
     return hash ^ (hash >> 16);
 }
 
+static bool sphereIntersectsFrustum(
+    float3 position,
+    float radius,
+    constant FrustumPlanes &frustum
+) {
+    float4 center = float4(position, 1);
+    float4 planes[6] = {
+        frustum.left,
+        frustum.right,
+        frustum.bottom,
+        frustum.top,
+        frustum.near,
+        frustum.far,
+    };
+    for (uint index = 0; index < 6; ++index) {
+        float4 plane = planes[index];
+        if (dot(plane, center) < -radius) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool pointInsideFrustum(
+    float3 position,
+    float4x4 viewProjection
+) {
+    float4 clip = viewProjection * float4(position, 1);
+    return clip.w > 0
+        && clip.x >= -clip.w && clip.x <= clip.w
+        && clip.y >= -clip.w && clip.y <= clip.w
+        && clip.z >= 0 && clip.z <= clip.w;
+}
+
+static bool screenBillboardIntersectsFrustum(
+    float3 position,
+    float radius,
+    float4x4 viewProjection,
+    uint2 viewport
+) {
+    float4 clip = viewProjection * float4(position, 1);
+    if (clip.w <= 0) return false;
+    float2 expansion = float2(2 * radius)
+        / max(float2(viewport), float2(1));
+    return clip.x >= -clip.w * (1 + expansion.x)
+        && clip.x <= clip.w * (1 + expansion.x)
+        && clip.y >= -clip.w * (1 + expansion.y)
+        && clip.y <= clip.w * (1 + expansion.y)
+        && clip.z >= 0
+        && clip.z <= clip.w;
+}
+
 kernel void classifyAndScanVisibility(
     const device PositionBatch *previousPositions [[buffer(0)]],
     device uint *localOffsets [[buffer(1)]],
@@ -121,6 +200,10 @@ kernel void classifyAndScanVisibility(
     constant float2 &cullingBounds [[buffer(6)]],
     constant uint &hasCullingBounds [[buffer(7)]],
     const device PositionBatch *currentPositions [[buffer(8)]],
+    constant float &billboardRadius [[buffer(9)]],
+    constant uint &cullingMode [[buffer(10)]],
+    constant uint2 &viewport [[buffer(11)]],
+    constant FrustumPlanes &frustum [[buffer(12)]],
     uint index [[thread_position_in_grid]],
     uint lane [[thread_index_in_threadgroup]],
     uint block [[threadgroup_position_in_grid]],
@@ -135,7 +218,6 @@ kernel void classifyAndScanVisibility(
             particlePosition(currentPositions, index),
             interpolation
         );
-        float4 clip = viewProjection * float4(position, 1);
         float halfExtent = cullingBounds.x;
         float baseHeight = cullingBounds.y;
         bool insideBounds = !hasCullingBounds || (
@@ -144,10 +226,24 @@ kernel void classifyAndScanVisibility(
             && position.y >= baseHeight
             && position.y <= baseHeight + halfExtent * 2.0f
         );
-        visible = insideBounds && clip.w > 0 &&
-            clip.x >= -clip.w && clip.x <= clip.w &&
-            clip.y >= -clip.w && clip.y <= clip.w &&
-            clip.z >= 0 && clip.z <= clip.w;
+        bool insideFrustum;
+        if (cullingMode == 0) {
+            insideFrustum = pointInsideFrustum(position, viewProjection);
+        } else if (cullingMode == 1) {
+            insideFrustum = sphereIntersectsFrustum(
+                position,
+                billboardRadius,
+                frustum
+            );
+        } else {
+            insideFrustum = screenBillboardIntersectsFrustum(
+                position,
+                billboardRadius,
+                viewProjection,
+                viewport
+            );
+        }
+        visible = insideBounds && insideFrustum;
     }
 
     scan[lane] = visible;
@@ -203,19 +299,24 @@ kernel void addScannedBlockOffsets(
 
 kernel void finishVisibilityScan(
     const device uint *total [[buffer(0)]],
-    device DrawArguments &arguments [[buffer(1)]]
+    device DrawArguments &arguments [[buffer(1)]],
+    constant uint &cullingMode [[buffer(2)]]
 ) {
-    arguments.vertexCount = total[0];
-    arguments.instanceCount = 1;
+    bool isPoint = cullingMode == 0;
+    arguments.vertexCount = isPoint ? total[0] : 4;
+    arguments.instanceCount = isPoint ? 1 : total[0];
     arguments.vertexStart = 0;
     arguments.baseInstance = 0;
 }
 
 kernel void captureVisibleCount(
     const device DrawArguments &arguments [[buffer(0)]],
-    device uint &count [[buffer(1)]]
+    device uint &count [[buffer(1)]],
+    constant uint &renderMode [[buffer(2)]]
 ) {
-    count = arguments.vertexCount;
+    count = renderMode == 0
+        ? arguments.vertexCount
+        : arguments.instanceCount;
 }
 
 kernel void scatterVisibleIndices(
@@ -477,6 +578,91 @@ vertex PointVertex pointLODVertex(
     return output;
 }
 
+static float3 safeNormalize(float3 value, float3 fallback) {
+    float magnitudeSquared = length_squared(value);
+    return magnitudeSquared > 1e-8f
+        ? value * rsqrt(magnitudeSquared)
+        : fallback;
+}
+
+static void billboardBasis(
+    float3 center,
+    constant CameraFrame &camera,
+    uint facing,
+    thread float3 &right,
+    thread float3 &up
+) {
+    right = camera.right.xyz;
+    up = camera.up.xyz;
+    if (facing == 1) return;
+
+    float3 normal = safeNormalize(
+        camera.position.xyz - center,
+        cross(camera.right.xyz, camera.up.xyz)
+    );
+    float3 referenceUp = facing == 2
+        ? float3(0, 1, 0)
+        : camera.up.xyz;
+    right = safeNormalize(cross(referenceUp, normal), camera.right.xyz);
+    up = safeNormalize(cross(normal, right), referenceUp);
+}
+
+vertex BillboardVertex billboardVertex(
+    uint vertexID [[vertex_id]],
+    uint instanceID [[instance_id]],
+    const device PositionBatch *previousPositions [[buffer(0)]],
+    const device uint *visibleIndices [[buffer(1)]],
+    constant CameraFrame &camera [[buffer(2)]],
+    constant float &interpolation [[buffer(3)]],
+    constant BillboardConfiguration &configuration [[buffer(4)]],
+    const device ColorBatch *colors [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]]
+) {
+    uint particleIndex = visibleIndices[instanceID];
+    float3 center = mix(
+        particlePosition(previousPositions, particleIndex),
+        particlePosition(currentPositions, particleIndex),
+        interpolation
+    );
+    float2 corner = float2(
+        (vertexID & 1) == 0 ? -0.5f : 0.5f,
+        (vertexID & 2) == 0 ? -0.5f : 0.5f
+    );
+    float sine = sin(configuration.values.z);
+    float cosine = cos(configuration.values.z);
+    float2 local = corner * configuration.values.xy;
+    local = float2(
+        local.x * cosine - local.y * sine,
+        local.x * sine + local.y * cosine
+    );
+
+    BillboardVertex output;
+    if (configuration.modes.x == 1) {
+        output.position = camera.viewProjection * float4(center, 1);
+        output.position.xy += local
+            * float2(camera.viewport.z * 2, camera.viewport.w * 2)
+            * output.position.w;
+    } else {
+        float3 right;
+        float3 up;
+        billboardBasis(
+            center,
+            camera,
+            configuration.modes.y,
+            right,
+            up
+        );
+        output.position = camera.viewProjection
+            * float4(center + right * local.x + up * local.y, 1);
+    }
+    output.color = half4(particleColor(colors, particleIndex));
+    return output;
+}
+
 fragment half4 pointFragment(PointVertex input [[stage_in]]) {
+    return input.color;
+}
+
+fragment half4 billboardFragment(BillboardVertex input [[stage_in]]) {
     return input.color;
 }

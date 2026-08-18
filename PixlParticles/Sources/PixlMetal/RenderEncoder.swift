@@ -34,6 +34,7 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         let type: MTLPrimitiveType = switch primitive {
         case .point: .point
         case .line: .line
+        case .triangleStrip: .triangleStrip
         }
         value.drawPrimitives(
             type: type,
@@ -50,6 +51,7 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         let type: MTLPrimitiveType = switch primitive {
         case .point: .point
         case .line: .line
+        case .triangleStrip: .triangleStrip
         }
         value.drawPrimitives(
             type: type,
@@ -67,6 +69,7 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         let type: MTLPrimitiveType = switch primitive {
         case .point: .point
         case .line: .line
+        case .triangleStrip: .triangleStrip
         }
         value.drawPrimitives(
             type: type,

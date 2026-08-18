@@ -411,6 +411,39 @@ at only two million particles. These app measurements are the accepted
 end-to-end comparison; the native harness isolates only the fixed-update hot
 path.
 
+## Billboard CPU Regression Check
+
+Measured 2026-08-18 on the same macOS M1 Max environment after adding the first
+billboard renderer path. Three sequential release runs of each retained harness
+produced these medians. Simulation checksums remained unchanged.
+
+| Particles | Accepted simulation | Current simulation | Difference |
+| ---: | ---: | ---: | ---: |
+| 1 M | 0.483 ms/tick | 0.481 ms/tick | -0.4% |
+| 2 M | 0.877 ms/tick | 0.872 ms/tick | -0.6% |
+
+The handoff harness now reports point and billboard configurations separately:
+
+| Particles | Point handoff | Billboard handoff | Difference |
+| ---: | ---: | ---: | ---: |
+| 1 M | 37.743 ns | 37.862 ns | +0.3% |
+| 2 M | 37.397 ns | 37.470 ns | +0.2% |
+| 6 M | 37.866 ns | 37.464 ns | -1.1% |
+
+Both modes remain constant-time and their differences are measurement noise.
+The wider handoff, which now includes renderer/property configuration and a full
+camera frame, is approximately 9 ns slower than the former 29 ns point-only
+baseline. It still performs no particle traversal and is negligible relative to
+a frame. GPU raster, overdraw, and point-versus-billboard timings require a
+matched live trace and are not represented by this CPU harness.
+
+A matched live user check at 1,015,000 particles under the same camera measured
+billboard rendering at approximately 1 ms more average GPU time than point
+rendering. Process memory was unchanged between modes at approximately 450 MB
+after running, from approximately 140 MB before simulation. The initial
+billboard path therefore adds expected geometry/raster cost without introducing
+mode-specific persistent storage.
+
 ## Metal Point Rendering
 
 Measured 2026-08-16 on the macOS M1 Max environment using Release builds and

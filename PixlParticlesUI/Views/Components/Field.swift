@@ -13,22 +13,33 @@ struct Field: View {
     @Binding var value: Double
     var step: Double?
     var range: ClosedRange<Double>
+    var displayScale: Double
+    var fractionDigits: Int
 
     init(
         value: Binding<Double>,
         step: Double? = nil,
-        range: ClosedRange<Double> = -.infinity ... .infinity
+        range: ClosedRange<Double> = -.infinity ... .infinity,
+        displayScale: Double = 1,
+        fractionDigits: Int = 0
     ) {
+        precondition(displayScale.isFinite && displayScale > 0)
+        precondition(fractionDigits >= 0)
         _value = value
-        _currentValue = .init(initialValue: value.wrappedValue)
+        _currentValue = .init(
+            initialValue: value.wrappedValue * displayScale
+        )
         self.step = step
-        self.range = range
+        self.range = range.lowerBound * displayScale
+            ... range.upperBound * displayScale
+        self.displayScale = displayScale
+        self.fractionDigits = fractionDigits
     }
 
     var body: some View {
         Text(
             currentValue,
-            format: .number.precision(.fractionLength(0))
+            format: .number.precision(.fractionLength(0 ... fractionDigits))
         )
         .foregroundStyle(.foreground)
         .opacity(isShowingField ? 0 : 1)
@@ -36,7 +47,9 @@ struct Field: View {
             TextField(
                 "",
                 value: $currentValue,
-                format: .number.precision(.fractionLength(0)).grouping(.never)
+                format: .number
+                    .precision(.fractionLength(0 ... fractionDigits))
+                    .grouping(.never)
             )
             .focused($focused)
             .textFieldStyle(.plain)
@@ -61,7 +74,7 @@ struct Field: View {
             isShowingField = newValue
         }
         .onChange(of: isShowingField) { _, _ in
-            currentValue = value
+            currentValue = value * displayScale
         }
         .onKeyPress(.escape) {
             focused = false
@@ -72,7 +85,7 @@ struct Field: View {
             focused = false
             isShowingField = false
             currentValue = clamped(currentValue)
-            value = currentValue
+            value = currentValue / displayScale
         }
         .gesture(
             TapGesture()
@@ -84,7 +97,7 @@ struct Field: View {
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { state in
-                    let startValue = dragStartValue ?? value
+                    let startValue = dragStartValue ?? value * displayScale
 
                     if dragStartValue == nil {
                         dragStartValue = startValue
@@ -102,7 +115,7 @@ struct Field: View {
                 .onEnded { _ in
                     isDragging = false
                     dragStartValue = nil
-                    value = currentValue
+                    value = currentValue / displayScale
                 }
         )
     }

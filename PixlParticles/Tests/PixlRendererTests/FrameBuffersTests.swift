@@ -7,7 +7,7 @@ struct FrameBuffersTests {
     func lodStorage() throws {
         let platform = RecordingPlatform()
         let buffers = FrameBuffers(platform: platform, frameCount: 2)
-        let source = PointBuffers(
+        let source = ParticleBuffers(
             previousPositions: .init(byteCount: 150 * 48),
             currentPositions: .init(byteCount: 150 * 48),
             colors: .init(byteCount: 150 * 64),
@@ -23,7 +23,7 @@ struct FrameBuffersTests {
             ),
             viewport: .init(width: 100, height: 100)
         )
-        let swapped = PointBuffers(
+        let swapped = ParticleBuffers(
             previousPositions: source.currentPositions,
             currentPositions: source.previousPositions,
             colors: source.colors,
@@ -48,6 +48,28 @@ struct FrameBuffersTests {
                 $0.length == visibleLength && !$0.memory.isCPUVisible
             }.count == 2
         )
+    }
+
+    @Test("A renderer without point LOD allocates no LOD resources")
+    func noLODStorage() throws {
+        let platform = RecordingPlatform()
+        let buffers = FrameBuffers(platform: platform, frameCount: 2)
+        let source = ParticleBuffers(
+            previousPositions: .init(byteCount: 150 * 48),
+            currentPositions: .init(byteCount: 150 * 48),
+            colors: .init(byteCount: 150 * 64),
+            ids: .init(byteCount: 150 * 32)
+        )
+
+        let resources = try buffers.prepare(
+            count: 600,
+            buffers: source,
+            lod: nil,
+            viewport: .init(width: 100, height: 100)
+        )
+
+        #expect(resources.ids == nil)
+        #expect(resources.lod == nil)
     }
 }
 
