@@ -8,6 +8,8 @@ struct SystemBenchmarks {
     private static let measuredTickCount = 100
     private static let warmupTickCount = 10
     private static let sampleCount = 5
+    private static let latencySampleCount = 51
+    private static let cacheScrubByteCount = 128 * 1_024 * 1_024
     private static let fixedDelta: Float = 1.0 / 30.0
     private static let updateParticleCounts = [
         10_000,
@@ -40,6 +42,69 @@ struct SystemBenchmarks {
         for particleCount in updateParticleCounts {
             benchmarkUpdates(particleCount: particleCount)
         }
+
+        print("Fixed-update latency")
+        benchmarkScheduledUpdates(scrubsCache: false)
+        benchmarkScheduledUpdates(scrubsCache: true)
+    }
+
+    @_optimize(none)
+    private static func benchmarkScheduledUpdates(scrubsCache: Bool) {
+        let system = makeSystem(
+            particleCount: measuredParticleCount,
+            region: .point(.zero)
+        )
+        var cache = scrubsCache
+            ? [UInt64](
+                repeating: 0,
+                count: cacheScrubByteCount / MemoryLayout<UInt64>.stride
+            )
+            : []
+        var instant = ContinuousClock.now
+        var cacheChecksum: UInt64 = 0
+        var samples: [Double] = []
+        samples.reserveCapacity(latencySampleCount)
+
+        _ = system.diagnosticSample(at: instant)
+
+        while samples.count < warmupTickCount + latencySampleCount {
+            if scrubsCache {
+                cacheChecksum &+= scrubCache(&cache)
+            }
+            instant = instant.advanced(by: .seconds(1.0 / 30.0))
+            if let duration = system.diagnosticSample(
+                at: instant
+            ).fixedUpdateTime {
+                samples.append(duration)
+            }
+        }
+
+        samples.removeFirst(warmupTickCount)
+        samples.sort()
+
+        let median = samples[latencySampleCount / 2] * 1_000
+        let stateChecksum = checksum(system)
+        let name = scrubsCache ? "Cache-evicted" : "Scheduled hot-cache"
+        print(
+            "\(name): \(median) ms/tick "
+                + "[\(stateChecksum ^ cacheChecksum)]"
+        )
+    }
+
+    @inline(never)
+    private static func scrubCache(_ storage: inout [UInt64]) -> UInt64 {
+        var checksum: UInt64 = 0
+
+        storage.withUnsafeMutableBufferPointer { buffer in
+            var index = 0
+            while index < buffer.count {
+                buffer[index] &+= UInt64(index) &+ 1
+                checksum &+= buffer[index]
+                index += 8
+            }
+        }
+
+        return checksum
     }
 
     @_optimize(none)

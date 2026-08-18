@@ -2,7 +2,7 @@ import Foundation
 import PixlEditorSupport
 import PixlEditorSupportMetal
 import PixlMetal
-import PixlParticles
+@_spi(EditorDiagnostics) import PixlParticles
 import PixlRenderer
 import QuartzCore
 
@@ -98,7 +98,14 @@ private nonisolated final class Worker: @unchecked Sendable {
                 let simulationStart = frame.capturesDiagnostics
                     ? ContinuousClock.now
                     : nil
-                let sample = system.sample(at: .now, isPaused: frame.isPaused)
+                let diagnosticSample = frame.capturesDiagnostics
+                    ? system.diagnosticSample(
+                        at: .now,
+                        isPaused: frame.isPaused
+                    )
+                    : nil
+                let sample = diagnosticSample?.sample
+                    ?? system.sample(at: .now, isPaused: frame.isPaused)
                 let simulationTime = simulationStart.map {
                     Self.seconds($0.duration(to: .now))
                 } ?? 0
@@ -114,6 +121,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                     at: sample.time,
                     visibleCount: backend.visibleCount,
                     cpuSimulationTime: simulationTime,
+                    fixedUpdateTime: diagnosticSample?.fixedUpdateTime,
                     cpuRenderTime: backend.cpuRenderTime,
                     frameBudget: frame.capturesDiagnostics
                         ? frame.frameBudget

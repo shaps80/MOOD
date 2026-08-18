@@ -155,6 +155,38 @@ between WebAssembly and native execution.
 iPad fixed updates must be remeasured against the production AoSoA
 implementation before replacing its earlier baseline.
 
+### Live fixed-update latency
+
+Measured 2026-08-18 on the macOS M1 Max environment. These retained latency
+cases complement the sustained-throughput benchmark rather than replacing it.
+Each latency distribution contains 51 one-million-particle fixed updates after
+10 warm-ups.
+
+| Configuration | Average | Median | p95 |
+| --- | ---: | ---: | ---: |
+| Sustained direct updates | — | 0.469 ms | — |
+| Synthetic scheduled path, separate SwiftPM module | 0.516 ms | 0.512 ms | 0.555 ms |
+| Synthetic schedule after 128 MB cache eviction | 0.526 ms | 0.516 ms | 0.586 ms |
+| Real 30 Hz wall-clock cadence | 0.790 ms | 0.666 ms | 1.357 ms |
+| Completed Metal read immediately before update | 0.498 ms | 0.482 ms | 0.574 ms |
+| Metal read overlapping update | 0.606 ms | 0.604 ms | 0.695 ms |
+| Real 30 Hz cadence with 60 Hz Metal reads | 2.483 ms | 2.326 ms | 4.673 ms |
+
+`Benchmarks/System/SystemBenchmarks.swift` retains the source-compiled
+scheduled and cache-evicted cases. `LiveTickBenchmarks.swift` imports the
+separately compiled release product, matching the app's module boundary.
+`MetalSharedBufferBenchmarks.swift` makes Metal read the exact shared position
+arenas. Its wall-clock case performs those reads at 60 Hz while CPU simulation
+runs at 30 Hz, matching the editor's broad cadence and shared-memory traffic.
+
+The diagnostic entry point and separate-module compilation preserve sustained
+performance. CPU cache eviction alone adds little. Real wall-clock cadence adds
+wake-up and frequency-residency latency; repeated GPU access to the same unified
+memory arenas raises the average to the approximately 2 ms tick class observed
+in the editor. The editor's Simulation metric amortizes that fixed-update time
+across rendered frames, so a 2 ms update at 30 Hz contributes approximately
+1 ms per rendered frame at 60 Hz.
+
 ## Renderer Buffer Access
 
 Measured 2026-08-16 on the macOS and WebAssembly environments above. The

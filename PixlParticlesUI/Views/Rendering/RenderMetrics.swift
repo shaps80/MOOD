@@ -4,6 +4,7 @@ import QuartzCore
 struct RenderDiagnostics: Sendable {
     let visibleCount: Int?
     let cpuSimulationTime: Double
+    let fixedUpdateTime: Double?
     let cpuRenderTime: Double?
     let gpuTime: Double?
     let frameBudget: Double
@@ -21,12 +22,15 @@ final class RenderMetrics {
     private var timestamps = [Double](repeating: 0, count: capacity)
     private var durations = [Double](repeating: 0, count: capacity)
     private var cpuSimulationTimes = [Double](repeating: 0, count: capacity)
+    private var fixedUpdateTimes = [Double](repeating: 0, count: capacity)
+    private var hasFixedUpdateTimes = [Bool](repeating: false, count: capacity)
     private var cpuRenderTimes = [Double](repeating: 0, count: capacity)
     private var gpuTimes = [Double](repeating: 0, count: capacity)
     private var head = 0
     private var count = 0
     private var durationSum = 0.0
     private var cpuSimulationSum = 0.0
+    private var fixedUpdateSum = 0.0
     private var cpuRenderSum = 0.0
     private var gpuSum = 0.0
     private var previousTime: Double?
@@ -55,6 +59,7 @@ final class RenderMetrics {
                     time: now,
                     duration: duration,
                     cpuSimulationTime: diagnostics.cpuSimulationTime,
+                    fixedUpdateTime: diagnostics.fixedUpdateTime,
                     cpuRenderTime: diagnostics.cpuRenderTime ?? 0,
                     gpuTime: diagnostics.gpuTime ?? 0
                 )
@@ -69,7 +74,7 @@ final class RenderMetrics {
         lastPublishTime = now
         self.visibleCount = latestVisibleCount
         guard count > 0, durationSum > 0 else { return }
-        cpuSimulationMilliseconds = cpuSimulationSum / Double(count) * 1_000
+        cpuSimulationMilliseconds = fixedUpdateSum / Double(count) * 1_000
         cpuRenderMilliseconds = cpuRenderSum / Double(count) * 1_000
         gpuMilliseconds = gpuSum / Double(count) * 1_000
         let cpuTime = (cpuSimulationSum + cpuRenderSum) / Double(count)
@@ -89,12 +94,14 @@ final class RenderMetrics {
         time: Double,
         duration: Double,
         cpuSimulationTime: Double,
+        fixedUpdateTime: Double?,
         cpuRenderTime: Double,
         gpuTime: Double
     ) {
         if count == Self.capacity {
             durationSum -= durations[head]
             cpuSimulationSum -= cpuSimulationTimes[head]
+            removeFixedUpdate(at: head)
             cpuRenderSum -= cpuRenderTimes[head]
             gpuSum -= gpuTimes[head]
             head = (head + 1) % Self.capacity
@@ -104,6 +111,11 @@ final class RenderMetrics {
         timestamps[index] = time
         durations[index] = duration
         cpuSimulationTimes[index] = cpuSimulationTime
+        if let fixedUpdateTime {
+            fixedUpdateTimes[index] = fixedUpdateTime
+            hasFixedUpdateTimes[index] = true
+            fixedUpdateSum += fixedUpdateTime
+        }
         cpuRenderTimes[index] = cpuRenderTime
         gpuTimes[index] = gpuTime
         durationSum += duration
@@ -117,6 +129,7 @@ final class RenderMetrics {
         while count > 0, timestamps[head] < cutoff {
             durationSum -= durations[head]
             cpuSimulationSum -= cpuSimulationTimes[head]
+            removeFixedUpdate(at: head)
             cpuRenderSum -= cpuRenderTimes[head]
             gpuSum -= gpuTimes[head]
             head = (head + 1) % Self.capacity
@@ -129,7 +142,15 @@ final class RenderMetrics {
         count = 0
         durationSum = 0
         cpuSimulationSum = 0
+        fixedUpdateSum = 0
         cpuRenderSum = 0
         gpuSum = 0
+    }
+
+    private func removeFixedUpdate(at index: Int) {
+        guard hasFixedUpdateTimes[index] else { return }
+
+        fixedUpdateSum -= fixedUpdateTimes[index]
+        hasFixedUpdateTimes[index] = false
     }
 }

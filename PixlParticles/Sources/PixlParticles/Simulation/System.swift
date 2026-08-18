@@ -102,6 +102,50 @@ public final class System {
         )
     }
 
+    @_spi(EditorDiagnostics)
+    public func diagnosticSample(
+        at instant: ContinuousClock.Instant,
+        isPaused: Bool = false
+    ) -> (sample: Sample, fixedUpdateTime: Double?) {
+        let isComplete = tick >= durationInTicks
+        let schedule = loop.advance(
+            to: instant,
+            timeScale: isPaused || isComplete ? 0 : 1
+        )
+
+        let delta = Float(schedule.fixedDeltaSeconds)
+        let remainingUpdates = durationInTicks - min(tick, durationInTicks)
+        let updateCount = min(
+            UInt64(schedule.fixedUpdateCount),
+            remainingUpdates
+        )
+        let start = updateCount > 0 ? ContinuousClock.now : nil
+
+        for _ in 0..<updateCount {
+            update(by: delta)
+        }
+
+        let fixedUpdateTime = start.map {
+            Self.seconds($0.duration(to: .now)) / Double(updateCount)
+        }
+        let isNowComplete = tick >= durationInTicks
+        let interpolation = isNowComplete
+            ? 1
+            : Float(schedule.renderTime.interpolation)
+        let time = isNowComplete
+            ? duration
+            : Duration.seconds(Double(tick) * schedule.fixedDeltaSeconds)
+
+        return (
+            .init(
+                interpolation: interpolation,
+                tick: tick,
+                time: time
+            ),
+            fixedUpdateTime
+        )
+    }
+
     public func seek(to time: Duration) {
         precondition(
             time >= .zero && (duration == .zero || time <= duration)
@@ -146,5 +190,11 @@ public final class System {
         ).rounded()
         precondition(ticks <= Double(UInt64.max))
         return UInt64(ticks)
+    }
+
+    private static func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) / 1e18
     }
 }

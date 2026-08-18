@@ -105,6 +105,7 @@ nonisolated final class Mailbox: @unchecked Sendable {
         at time: Duration,
         visibleCount: Int?,
         cpuSimulationTime: Double,
+        fixedUpdateTime: Double?,
         cpuRenderTime: Double?,
         frameBudget: Double?
     ) {
@@ -115,6 +116,7 @@ nonisolated final class Mailbox: @unchecked Sendable {
             return RenderDiagnostics(
                 visibleCount: visibleCount,
                 cpuSimulationTime: cpuSimulationTime,
+                fixedUpdateTime: fixedUpdateTime,
                 cpuRenderTime: cpuRenderTime,
                 gpuTime: gpuTime,
                 frameBudget: $0,
