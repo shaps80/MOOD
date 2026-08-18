@@ -25,3 +25,20 @@ public struct Matrix4x4: BitwiseCopyable, Sendable {
         self.w = w
     }
 }
+
+public extension Matrix4x4 {
+    @inline(__always)
+    static func * (lhs: Self, rhs: SIMD4<Float>) -> SIMD4<Float> {
+        lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w
+    }
+
+    @inline(__always)
+    static func * (lhs: Self, rhs: Self) -> Self {
+        Self(
+            x: lhs * rhs.x,
+            y: lhs * rhs.y,
+            z: lhs * rhs.z,
+            w: lhs * rhs.w
+        )
+    }
+}

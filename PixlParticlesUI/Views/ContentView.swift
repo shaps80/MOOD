@@ -1,7 +1,7 @@
+import PixlEditorSupport
 import PixlParticles
 import PixlRenderer
 import SwiftUI
-import simd
 
 struct ContentView: View {
     @Environment(\.undoManager) private var undoManager

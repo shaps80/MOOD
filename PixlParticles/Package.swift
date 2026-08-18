@@ -18,7 +18,18 @@ let package = Package(
         .library(
             name: "PixlMetal",
             targets: ["PixlMetal"]
+        ),
+        .library(
+            name: "PixlEditorSupport",
+            targets: ["PixlEditorSupport"]
+        ),
+        .library(
+            name: "PixlEditorSupportMetal",
+            targets: ["PixlEditorSupportMetal"]
         )
+    ],
+    dependencies: [
+        .package(path: "../PixlMath")
     ],
     targets: [
         .target(
@@ -38,6 +49,22 @@ let package = Package(
             ],
             swiftSettings: releaseCrossModuleOptimization()
         ),
+        .target(
+            name: "PixlEditorSupport",
+            dependencies: [
+                "PixlRenderer",
+                .product(name: "PixlMath", package: "PixlMath")
+            ],
+            swiftSettings: releaseCrossModuleOptimization()
+        ),
+        .target(
+            name: "PixlEditorSupportMetal",
+            dependencies: ["PixlEditorSupport", "PixlMetal"],
+            resources: [
+                .process("Shaders")
+            ],
+            swiftSettings: releaseCrossModuleOptimization()
+        ),
         .testTarget(
             name: "PixlParticlesTests",
             dependencies: ["PixlParticles", "PixlRenderer"]
@@ -45,6 +72,14 @@ let package = Package(
         .testTarget(
             name: "PixlRendererTests",
             dependencies: ["PixlRenderer"]
+        ),
+        .testTarget(
+            name: "PixlEditorSupportTests",
+            dependencies: [
+                "PixlEditorSupport",
+                "PixlRenderer",
+                .product(name: "PixlMath", package: "PixlMath")
+            ]
         )
     ],
     swiftLanguageModes: [.v6]

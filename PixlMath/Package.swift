@@ -10,7 +10,8 @@ let package = Package(
         .target(
             name: "PixlMath",
             dependencies: ["PixlMathC"],
-            swiftSettings: [.defaultIsolation(nil)]
+            swiftSettings: releaseWholeModuleOptimization()
+                + [.defaultIsolation(nil)]
         ),
         .target(
             name: "PixlMathC",
@@ -24,3 +25,12 @@ let package = Package(
     ],
     swiftLanguageModes: [.v6]
 )
+
+private func releaseWholeModuleOptimization() -> [SwiftSetting] {
+    [
+        .unsafeFlags(
+            ["-whole-module-optimization", "-cross-module-optimization"],
+            .when(configuration: .release)
+        )
+    ]
+}

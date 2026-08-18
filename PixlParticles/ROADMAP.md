@@ -20,6 +20,7 @@ point-primitive rendering path.
 
 - Finder thumbnails and Quick Look playback for particle-effect documents.
 - Distance LOD after the screen-space density path is measured.
+- Disk-backed editor checkpoints; current workloads do not justify them.
 
 ## Planned Expansion
 
@@ -66,5 +67,6 @@ and its remaining validation is complete.
 - Keep this work late in the planned expansion, after particle lifetime, fixed
   properties, quad rendering, and collision semantics are established.
 
-Emitters, sprites, textures, and post-processing remain outside the current
-roadmap until explicitly brought into scope.
+Emitters are now the next active design stream. Sprites, textures, and
+post-processing remain outside the current roadmap until explicitly brought
+into scope.

@@ -1,9 +1,9 @@
 import MetalKit
+import PixlEditorSupport
 import PixlMetal
 import PixlParticles
 import PixlRenderer
 import SwiftUI
-import simd
 
 #if os(macOS)
 private typealias PlatformGestureState = NSGestureRecognizer.State
@@ -59,7 +59,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
             rotation: rotation,
             zoom: zoom,
             target: target,
-            observerCamera: observerCamera,
+            observerPose: observerCamera?.pose,
             isFrustumVisible: isFrustumVisible
         )
         self.onCameraChange = onCameraChange
@@ -114,7 +114,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
         }
         navigation.update(
             preset: preset,
-            observerCamera: observerCamera,
+            observerPose: observerCamera?.pose,
             isFrustumVisible: isFrustumVisible
         )
         self.pointLOD = pointLOD
@@ -146,37 +146,49 @@ final class Coordinator: NSObject, MTKViewDelegate {
         if navigation.advanceTransition() { commit() }
         let observerCamera = navigation.observerCamera
         let sceneCamera = navigation.sceneCamera
+        let size = view.drawableSize.vector
         guard
-            let observerViewport = observerCamera.viewport(for: view.drawableSize),
-            let sceneViewport = sceneCamera.viewport(for: view.drawableSize)
+            let observerViewport = observerCamera.viewport(for: size),
+            let sceneViewport = sceneCamera.viewport(for: size)
         else { return }
-        let viewProjection = Matrix4x4(observerViewport.viewProjection)
-        let cullingViewProjection = Matrix4x4(sceneViewport.viewProjection)
+        let viewProjection = observerViewport.viewProjection
+        let cullingViewProjection = sceneViewport.viewProjection
         let cameraFrustum = navigation.frustum(
             viewport: sceneViewport,
-            size: view.drawableSize
+            size: size
         )
-        renderThread.submit(
-            .init(
-                isPaused: isPaused,
-                capturesDiagnostics: capturesDiagnostics,
-                frameBudget: 1 / Double(max(view.preferredFramesPerSecond, 1)),
-                pointLOD: pointLOD,
-                groundPlane: .init(
-                    isVisible: isGroundPlaneVisible,
-                    style: navigation.preset.groundPlaneStyle,
-                    viewProjection: viewProjection
-                ),
-                cullingBounds: cullingBounds,
-                cameraFrustum: cameraFrustum,
-                cullingViewProjection: cullingViewProjection,
-                viewProjection: viewProjection,
-                viewport: .init(
-                    width: UInt32(view.drawableSize.width.rounded(.up)),
-                    height: UInt32(view.drawableSize.height.rounded(.up))
-                )
+        let editor = PixlEditorSupport.Frame(
+            viewProjection: viewProjection,
+            groundPlane: .init(
+                isVisible: isGroundPlaneVisible,
+                style: navigation.preset.groundPlaneStyle
+            ),
+            wireBox: .init(
+                isVisible: cullingBounds.isVisible,
+                center: [
+                    0,
+                    cullingBounds.baseHeight + cullingBounds.scale * 0.5,
+                    0,
+                ],
+                size: .init(repeating: cullingBounds.scale)
+            ),
+            cameraFrustum: cameraFrustum
+        )
+        let frame = Mailbox.Frame(
+            isPaused: isPaused,
+            capturesDiagnostics: capturesDiagnostics,
+            frameBudget: 1 / Double(max(view.preferredFramesPerSecond, 1)),
+            pointLOD: pointLOD,
+            editor: editor,
+            cullingBounds: cullingBounds,
+            cullingViewProjection: cullingViewProjection,
+            viewProjection: viewProjection,
+            viewport: .init(
+                width: UInt32(view.drawableSize.width.rounded(.up)),
+                height: UInt32(view.drawableSize.height.rounded(.up))
             )
         )
+        renderThread.submit(frame)
         if navigation.isTransitioning, view.isPaused {
             DispatchQueue.main.async { [weak self] in self?.redraw() }
         }
@@ -201,16 +213,17 @@ final class Coordinator: NSObject, MTKViewDelegate {
     }
 
     private func commit() {
+        let pose = navigation.persistedPose
         onCameraChange(
-            navigation.persistedPose.0,
-            navigation.persistedPose.1,
-            navigation.persistedPose.2
+            pose.rotation,
+            pose.zoom,
+            pose.target
         )
     }
 
     private func scroll(_ delta: Float) {
         guard let view else { return }
-        navigation.scroll(delta, viewportSize: view.bounds.size)
+        navigation.scroll(delta, viewportSize: view.bounds.size.vector)
         redraw()
         commit()
     }
@@ -284,7 +297,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
             navigation.beginZoom()
         case .changed:
             guard let view else { return }
-            navigation.zoom(scale: scale, viewportSize: view.bounds.size)
+            navigation.zoom(
+                scale: scale,
+                viewportSize: view.bounds.size.vector
+            )
             redraw()
         case .ended, .cancelled:
             navigation.endZoom()
@@ -303,7 +319,10 @@ final class Coordinator: NSObject, MTKViewDelegate {
             navigation.beginTranslation()
         case .changed:
             guard let view else { return }
-            navigation.translate(translation, viewportSize: view.bounds.size)
+            navigation.translate(
+                translation,
+                viewportSize: view.bounds.size.vector
+            )
             redraw()
         case .ended, .cancelled:
             navigation.endTranslation()
@@ -313,6 +332,25 @@ final class Coordinator: NSObject, MTKViewDelegate {
         }
     }
 
+}
+
+private extension CGSize {
+    var vector: SIMD2<Float> { [Float(width), Float(height)] }
+}
+
+private extension EditorSettings.Camera {
+    var pose: CameraPose {
+        CameraPose(
+            rotation: [
+                Float(rotationX),
+                Float(rotationY),
+                Float(rotationZ),
+                Float(rotationW),
+            ],
+            zoom: Float(zoom),
+            target: [Float(targetX), Float(targetY), Float(targetZ)]
+        )
+    }
 }
 
 #if os(macOS)

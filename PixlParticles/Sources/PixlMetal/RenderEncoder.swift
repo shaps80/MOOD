@@ -58,5 +58,23 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         )
     }
 
+    func drawPrimitives(
+        _ primitive: PixlRenderer.Primitive,
+        vertexStart: Int,
+        vertexCount: Int,
+        instanceCount: Int
+    ) {
+        let type: MTLPrimitiveType = switch primitive {
+        case .point: .point
+        case .line: .line
+        }
+        value.drawPrimitives(
+            type: type,
+            vertexStart: vertexStart,
+            vertexCount: vertexCount,
+            instanceCount: instanceCount
+        )
+    }
+
     func endEncoding() { value.endEncoding() }
 }

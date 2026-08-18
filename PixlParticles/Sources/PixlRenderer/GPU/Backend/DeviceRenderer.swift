@@ -1,47 +1,39 @@
 import Swift
 
-public final class DeviceBackend: Backend {
+final class DeviceRenderer {
     private static let frameCount = 2
 
     private let platform: any Platform
     private let buffers: FrameBuffers
     private let culling: CullingPass
     private let lod: LODPass
-    private let editor: EditorPass
     private let points: PointPass
-    public var pointLOD: PointLOD
-    public var groundPlane = GroundPlane()
-    public var cullingBounds = CullingBounds()
-    public var cameraFrustum = CameraFrustum()
-    public var capturesDiagnostics = false
-    public private(set) var visibleCount: Int?
-    public private(set) var cpuRenderTime: Double?
-    public var onGPUTime: (@Sendable (Double?) -> Void)?
-    public var onPresented: (@Sendable (Double) -> Void)?
 
-    public init(
-        platform: any Platform,
-        pointLOD: PointLOD = .init()
-    ) throws {
+    var pointLOD: PointLOD
+    var cullingBounds = CullingBounds()
+    var capturesDiagnostics = false
+    private(set) var visibleCount: Int?
+    private(set) var cpuRenderTime: Double?
+    var onGPUTime: (@Sendable (Double?) -> Void)?
+    var onPresented: (@Sendable (Double) -> Void)?
+
+    init(platform: any Platform, pointLOD: PointLOD) throws {
         self.platform = platform
         self.pointLOD = pointLOD
-        buffers = FrameBuffers(
-            platform: platform,
-            frameCount: Self.frameCount
-        )
+        buffers = FrameBuffers(platform: platform, frameCount: Self.frameCount)
         culling = try CullingPass(platform: platform)
         lod = try LODPass(platform: platform)
-        editor = try EditorPass(platform: platform)
         points = try PointPass(platform: platform)
     }
 
-    public func renderPoints(
+    func renderPoints<Composition: RenderComposition>(
         count: Int,
         buffers pointBuffers: PointBuffers,
         interpolation: Float,
         cullingViewProjection: Matrix4x4,
         viewProjection: Matrix4x4,
-        viewport: ViewportSize
+        viewport: ViewportSize,
+        composition: Composition
     ) throws {
         precondition(interpolation >= 0 && interpolation <= 1)
 
@@ -101,6 +93,7 @@ public final class DeviceBackend: Backend {
             if let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
         }
 
+        try composition.prepare()
         let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
         guard let target = platform.currentRenderTarget() else { return }
         let drawableWaitEnd = capturesDiagnostics ? ContinuousClock.now : nil
@@ -111,13 +104,7 @@ public final class DeviceBackend: Backend {
             throw RenderError.encoder
         }
         encoder.label = "Scene Draw"
-        editor.encode(
-            groundPlane: groundPlane,
-            cullingBounds: cullingBounds,
-            cameraFrustum: cameraFrustum,
-            viewProjection: viewProjection,
-            into: encoder
-        )
+        composition.encodeBackground(into: encoder)
         points.encode(
             previousPositions: resources.previousPositions,
             currentPositions: resources.currentPositions,
@@ -129,6 +116,7 @@ public final class DeviceBackend: Backend {
             viewProjection: viewProjection,
             into: encoder
         )
+        composition.encodeOverlay(into: encoder)
         encoder.endEncoding()
 
         commandBuffer.present(target)
@@ -152,11 +140,4 @@ public final class DeviceBackend: Backend {
         return Double(components.seconds)
             + Double(components.attoseconds) / 1e18
     }
-}
-
-enum RenderError: Error {
-    case buffer
-    case commandBuffer
-    case encoder
-    case pipeline
 }

@@ -47,17 +47,16 @@
   sphere regions. Cube and sphere support volume and surface domains. Region
   sampling uses stable particle addresses and dedicated random channels so
   unrelated future properties do not perturb existing output.
-- Philox4x32-10, integer-to-float mappings, and deterministic trigonometric
-  functions are isolated and covered by stable bit-pattern tests. The math
-  implementation is intentionally kept movable so it can later become shared
-  cross-platform math infrastructure.
+- Philox4x32-10 and integer-to-float mappings remain particle-owned.
+  Deterministic generic trigonometry now lives in the standalone `PixlMath`
+  package and retains the same stable Float and Double bit-pattern tests.
 - The editor renders point primitives through `PixlMetal` in an `MTKView`. It
   retains perspective, isometric, and front cameras; perspective orbit controls;
   and pinch or scroll zoom. Perspective orbit accumulates and persists a
   quaternion rather than yaw/pitch, allowing continuous rotation through the
   poles. Camera orientation and zoom are restored per scene.
-  Its ground plane is an editor pass composed before particles in the shared
-  render encoder.
+  Portable camera/navigation state and diagnostic descriptions live in
+  `PixlEditorSupport`; Apple gesture translation and persistence remain UI-owned.
 - Renderer-facing binary16 colour components use portable `UInt16` bit storage.
   Swift `Float16` is unavailable when compiling for Intel macOS, while the byte
   representation consumed by Metal remains `RGBA16Float`.
@@ -78,9 +77,16 @@
 - The high-level `PixlRenderer.Backend` seam remains independent of GPU APIs.
   A software renderer such as SwiftUI Canvas can implement it directly;
   GPU-backed rendering composes it with the lower-level platform contract.
-- The temporary Metal composition is `PixlParticles.Renderer` →
-  `PixlRenderer.DeviceBackend` → `PixlMetal.Platform`. Future Pixl integration
-  replaces only the final adapter with `PixlPlatform`.
+- The production Metal composition is `PixlParticles.Renderer` →
+  `PixlRenderer.DeviceBackend` → `PixlMetal.Platform`. It specializes an empty
+  concrete render composition, introducing no editor allocation, branch,
+  resource, pipeline, or draw. The editor instead uses
+  `ComposedDeviceBackend<PixlEditorSupport.Renderer>` and the same command
+  buffer, render target, and render encoder.
+- `PixlEditorSupport` is platform-agnostic. `PixlEditorSupportMetal` contains
+  only its Metal shader library and wraps `PixlMetal.Platform` for pipeline
+  lookup; PixlMetal still creates every buffer, pipeline, encoder, and target.
+  Excluding both editor products excludes all editor code and shader resources.
 - `PixlParticlesUI` imports `PixlParticles` and supports iOS, macOS, and visionOS.
 - Simulation state and platform drawing remain separate concerns. Render-facing
   particle state uses the simulation's authoritative four-particle AoSoA layout
@@ -96,10 +102,10 @@
   mutates authoritative simulation or changes particle order.
 - Optional authored cubic bounds are fused into the existing GPU visibility
   classification. Particles outside the cube remain simulated but are omitted
-  from rendering. The matching editor visualization is one procedural line
-  draw containing 12 edges and no geometry buffer; later multiple bounds can
-  retain that 24-vertex shape and use instancing. The cube is anchored to the
-  ground plane at Y -100 and grows upward as its scale changes.
+  from rendering. Its editor visualization is a generic instanced `WireBox`.
+  Wire boxes and frustum edges share one 24-vertex procedural wire-volume draw.
+  The cube is anchored to the ground plane at Y -100 and grows upward as its
+  scale changes.
 - High-density point rendering uses optional screen-space LOD after frustum
   compaction. The GPU-visible count selects the path without CPU readback.
   Below the activation threshold, the existing visible-index buffer is drawn;
@@ -130,30 +136,31 @@
   after buffer availability and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU
   execution budget.
-- Camera state, input gestures, and scene restoration belong to
-  `PixlParticlesUI`; none are particle simulation responsibilities. Portable
-  editor-pass composition and ground-plane rendering belong to `PixlRenderer`.
-  The ground plane reproduces the former Canvas visualization using one
-  procedural line draw with no geometry buffer: height -100, extent 500,
-  spacing 50, and linear grey at 20 percent opacity.
+- Portable editor cameras, navigation, diagnostic values, and render
+  composition belong to `PixlEditorSupport`; none are particle simulation or
+  production renderer responsibilities. `PixlParticlesUI` owns gesture
+  translation and scene restoration. Ground-plane lines and frustum rays share
+  one procedural guide draw; wire boxes and frustum edges share one instanced
+  wire-volume draw. Hidden diagnostics encode zero draws.
 - Perspective frustum inspection keeps the scene camera frozen for culling,
   LOD, and every other scene decision while a separately persisted
   `observerCamera` controls presentation. Enabling and disabling inspection
   ease between the scene and observer poses; first use pulls the observer back
   slightly so the frustum is immediately visible. Gestures interrupt the
   transition directly.
-- Debug rendering must have effectively zero production impact: keep passes
-  optional, procedural where practical, free of steady-state allocation and
-  readback, and encode no work while disabled. Reusable debug geometry and
-  rendering contracts belong in `PixlRenderer`; editor interaction and camera
-  state belong in `PixlParticlesUI`.
+- Debug rendering must have zero impact when editor products are excluded and
+  effectively zero impact while linked but hidden. It is procedural, performs
+  no steady-state allocation or readback, encodes no hidden work, and batches
+  by primitive category rather than object count. `PixlRenderer` owns only the
+  generic composition seam and instanced draw command.
 - Pixl renderer improvements may be identified, but particle-system design must not change Pixl implicitly.
 - Tests use Swift Testing. XCTest is reserved for performance tests. UI testing is manual only.
 - Never run the app; build it and run valuable non-UI tests only.
 - Backward seeking restores retained initial state when configured, otherwise
   regenerates initial particles deterministically and replays forward. The
-  editor disables retained rewind state by default. Periodic checkpoints remain
-  the intended scalable direction for long effects.
+  editor disables retained rewind state by default. Disk-backed editor
+  checkpoints are deliberately deferred: present team workloads do not justify
+  their complexity.
 - Per-window editor preferences are one Codable `EditorSettings` value persisted
   through `SceneStorage`: camera preset/orientation/target/zoom, ground-plane,
   inspector and timeline visibility, inspector placement, and playback mode.

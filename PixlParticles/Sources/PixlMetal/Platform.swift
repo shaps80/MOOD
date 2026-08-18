@@ -101,6 +101,13 @@ public final class Platform: PixlRenderer.Platform {
     public func makeRenderPipeline(
         _ source: PixlRenderer.RenderPipelineDescriptor
     ) -> (any PixlRenderer.RenderPipeline)? {
+        makeRenderPipeline(source, library: library)
+    }
+
+    public func makeRenderPipeline(
+        _ source: PixlRenderer.RenderPipelineDescriptor,
+        library: any MTLLibrary
+    ) -> (any PixlRenderer.RenderPipeline)? {
         guard let vertex = library.makeFunction(name: source.vertexFunction),
               let fragment = library.makeFunction(name: source.fragmentFunction)
         else { return nil }

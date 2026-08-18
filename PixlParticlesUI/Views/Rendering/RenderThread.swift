@@ -1,4 +1,6 @@
 import Foundation
+import PixlEditorSupport
+import PixlEditorSupportMetal
 import PixlMetal
 import PixlParticles
 import PixlRenderer
@@ -62,8 +64,16 @@ private nonisolated final class Worker: @unchecked Sendable {
         }
 
         do {
-            let platform = try PixlMetal.Platform(device: device, layer: layer)
-            let backend = try DeviceBackend(platform: platform)
+            let metal = try PixlMetal.Platform(device: device, layer: layer)
+            let platform = try PixlEditorSupportMetal.Platform(
+                base: metal,
+                device: device
+            )
+            let editor = try PixlEditorSupport.Renderer(platform: platform)
+            let backend = try ComposedDeviceBackend(
+                platform: platform,
+                composition: editor
+            )
             backend.onGPUTime = { [mailbox] duration in
                 mailbox.recordGPUTime(duration)
             }
@@ -82,10 +92,9 @@ private nonisolated final class Worker: @unchecked Sendable {
                 guard let frame = work.frame, let system else { continue }
 
                 backend.pointLOD = frame.pointLOD
-                backend.groundPlane = frame.groundPlane
                 backend.cullingBounds = frame.cullingBounds
-                backend.cameraFrustum = frame.cameraFrustum
                 backend.capturesDiagnostics = frame.capturesDiagnostics
+                editor.frame = frame.editor
                 let simulationStart = frame.capturesDiagnostics
                     ? ContinuousClock.now
                     : nil

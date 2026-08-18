@@ -1,38 +1,35 @@
-import CoreGraphics
-import PixlRenderer
-import QuartzCore
-import simd
+import PixlMath
+import Swift
 
-final class CameraNavigation {
+public final class CameraNavigation {
     private static let minimumZoom: Float = 0.001
     private static let maximumZoom: Float = 10
     private static let observerFarPadding: Float = 25_000
 
-    private(set) var preset: CameraPreset
-    private(set) var orbit: Orbit
-    private(set) var zoom: Float
-    private(set) var isFrustumVisible: Bool
+    public private(set) var preset: CameraPreset
+    public private(set) var orbit: Orbit
+    public private(set) var zoom: Float
+    public private(set) var isFrustumVisible: Bool
 
     private var cullingCamera: Camera?
-    private var cachedFrustum: (size: CGSize, value: CameraFrustum)?
+    private var cachedFrustum: (size: SIMD2<Float>, value: CameraFrustum)?
     private var scenePose: Pose?
     private var transition: Transition?
     private var startOrbit: Orbit?
     private var startZoom: Float?
     private var startTarget: SIMD3<Float>?
 
-    init(
+    public init(
         preset: CameraPreset,
         rotation: SIMD4<Float>,
         zoom: Float,
         target: SIMD3<Float>,
-        observerCamera: EditorSettings.Camera?,
-        isFrustumVisible: Bool
+        observerPose: CameraPose?,
+        isFrustumVisible: Bool,
+        instant: ContinuousClock.Instant = .now
     ) {
         var orbit = CameraPreset.perspectiveOrbit
-        if simd_length_squared(rotation) > 0 {
-            orbit.rotation = simd_normalize(simd_quatf(vector: rotation))
-        }
+        orbit.rotation = normalize(Quat(vector: rotation))
         orbit.target = target
         self.preset = preset
         self.orbit = orbit
@@ -42,20 +39,21 @@ final class CameraNavigation {
         cullingCamera = isFrustumActive ? orbit.camera(zoom: zoom) : nil
         if isFrustumActive {
             scenePose = Pose(orbit: orbit, zoom: zoom)
-            let destination = if let observerCamera {
-                Self.pose(observerCamera)
-            } else {
-                Pose(orbit: orbit, zoom: max(zoom * 0.7, Self.minimumZoom))
-            }
+            let destination = observerPose.map(Self.pose)
+                ?? Pose(
+                    orbit: orbit,
+                    zoom: max(zoom * 0.7, Self.minimumZoom)
+                )
             transition = Transition(
                 from: Pose(orbit: orbit, zoom: zoom),
                 to: destination,
+                instant: instant,
                 clearsCulling: false
             )
         }
     }
 
-    var observerCamera: Camera {
+    public var observerCamera: Camera {
         guard preset == .perspective else {
             var camera = preset.fixedCamera
             camera.projection = camera.projection.magnified(by: zoom)
@@ -71,18 +69,25 @@ final class CameraNavigation {
         return camera
     }
 
-    var sceneCamera: Camera {
+    public var sceneCamera: Camera {
         isFrustumActive ? cullingCamera ?? observerCamera : observerCamera
     }
-    var isTransitioning: Bool { transition != nil }
-    var persistedPose: (SIMD4<Float>, Float, SIMD3<Float>) {
-        (orbit.rotation.vector, zoom, orbit.target)
+
+    public var isTransitioning: Bool { transition != nil }
+
+    public var persistedPose: CameraPose {
+        CameraPose(
+            rotation: orbit.rotation.vector,
+            zoom: zoom,
+            target: orbit.target
+        )
     }
 
-    func update(
+    public func update(
         preset: CameraPreset,
-        observerCamera: EditorSettings.Camera?,
-        isFrustumVisible: Bool
+        observerPose: CameraPose?,
+        isFrustumVisible: Bool,
+        instant: ContinuousClock.Instant = .now
     ) {
         let wasActive = isFrustumActive
         let willBeActive = isFrustumVisible && preset == .perspective
@@ -95,55 +100,66 @@ final class CameraNavigation {
                 cullingCamera = orbit.camera(zoom: zoom)
                 scenePose = Pose(orbit: orbit, zoom: zoom)
             }
-            if let observerCamera {
-                let pose = Self.pose(observerCamera)
+            if let observerPose {
+                let pose = Self.pose(observerPose)
                 orbit = pose.orbit
                 zoom = pose.zoom
             }
         } else if !willBeActive, wasActive, isFrustumVisible {
             transition = nil
         } else if willBeActive, !wasActive {
-            cullingCamera = self.observerCamera
+            cullingCamera = observerCamera
             cachedFrustum = nil
             scenePose = Pose(orbit: orbit, zoom: zoom)
-            let destination = if let observerCamera {
-                Self.pose(observerCamera)
-            } else {
-                Pose(orbit: orbit, zoom: max(zoom * 0.7, Self.minimumZoom))
-            }
-            beginTransition(to: destination, clearsCulling: false)
+            let destination = observerPose.map(Self.pose)
+                ?? Pose(
+                    orbit: orbit,
+                    zoom: max(zoom * 0.7, Self.minimumZoom)
+                )
+            beginTransition(
+                to: destination,
+                instant: instant,
+                clearsCulling: false
+            )
         } else if !willBeActive, wasActive, !isFrustumVisible, let scenePose {
-            beginTransition(to: scenePose, clearsCulling: true)
+            beginTransition(
+                to: scenePose,
+                instant: instant,
+                clearsCulling: true
+            )
         }
         self.preset = preset
         self.isFrustumVisible = isFrustumVisible
     }
 
-    func advanceTransition() -> Bool {
+    @discardableResult
+    public func advanceTransition(
+        at instant: ContinuousClock.Instant = .now
+    ) -> Bool {
         guard let transition else { return false }
-        let elapsed = Float(CACurrentMediaTime() - transition.startTime)
-        let progress = min(elapsed / transition.duration, 1)
+        let elapsed = Self.seconds(transition.start.duration(to: instant))
+        let progress = min(Float(elapsed) / transition.duration, 1)
         let eased = progress * progress * (3 - 2 * progress)
-        orbit.target = simd_mix(
-            transition.start.orbit.target,
-            transition.end.orbit.target,
-            SIMD3<Float>(repeating: eased)
-        )
-        orbit.rotation = simd_slerp(
-            transition.start.orbit.rotation,
-            transition.end.orbit.rotation,
+        orbit.target = mix(
+            transition.startPose.orbit.target,
+            transition.endPose.orbit.target,
             eased
         )
-        zoom = simd_mix(transition.start.zoom, transition.end.zoom, eased)
+        orbit.rotation = slerp(
+            transition.startPose.orbit.rotation,
+            transition.endPose.orbit.rotation,
+            eased
+        )
+        zoom = mix(transition.startPose.zoom, transition.endPose.zoom, eased)
         guard progress >= 1 else { return false }
         self.transition = nil
         if transition.clearsCulling { clearCullingCamera() }
         return true
     }
 
-    func frustum(
+    public func frustum(
         viewport: Camera.Viewport,
-        size: CGSize
+        size: SIMD2<Float>
     ) -> CameraFrustum {
         guard isFrustumActive, cullingCamera != nil else { return .init() }
         if let cachedFrustum, cachedFrustum.size == size {
@@ -153,15 +169,13 @@ final class CameraNavigation {
             isVisible: isFrustumVisible,
             isPerspective: true,
             position: sceneCamera.position,
-            inverseViewProjection: Matrix4x4(
-                simd_inverse(viewport.viewProjection)
-            )
+            inverseViewProjection: viewport.inverseViewProjection
         )
         cachedFrustum = (size, value)
         return value
     }
 
-    func scroll(_ delta: Float, viewportSize: CGSize) {
+    public func scroll(_ delta: Float, viewportSize: SIMD2<Float>) {
         interruptTransition()
         zoom = min(
             max(zoom * exp(delta * 0.01), Self.minimumZoom),
@@ -170,25 +184,25 @@ final class CameraNavigation {
         clamp(viewportSize: viewportSize)
     }
 
-    func beginOrbit() {
+    public func beginOrbit() {
         interruptTransition()
         startOrbit = orbit
     }
 
-    func orbit(x: Float, y: Float) {
+    public func orbit(x: Float, y: Float) {
         guard preset == .perspective, var start = startOrbit else { return }
         start.rotate(yawBy: -x * 0.005, pitchBy: y * 0.005)
         orbit = start
     }
 
-    func endOrbit() { startOrbit = nil }
+    public func endOrbit() { startOrbit = nil }
 
-    func beginZoom() {
+    public func beginZoom() {
         interruptTransition()
         startZoom = zoom
     }
 
-    func zoom(scale: Float, viewportSize: CGSize) {
+    public func zoom(scale: Float, viewportSize: SIMD2<Float>) {
         guard let startZoom else { return }
         zoom = min(
             max(startZoom * scale, Self.minimumZoom),
@@ -197,31 +211,34 @@ final class CameraNavigation {
         clamp(viewportSize: viewportSize)
     }
 
-    func endZoom() { startZoom = nil }
+    public func endZoom() { startZoom = nil }
 
-    func beginTranslation() {
+    public func beginTranslation() {
         interruptTransition()
         startTarget = orbit.target
     }
 
-    func translate(_ translation: SIMD2<Float>, viewportSize: CGSize) {
+    public func translate(
+        _ translation: SIMD2<Float>,
+        viewportSize: SIMD2<Float>
+    ) {
         guard
             preset == .perspective,
             let startTarget,
-            viewportSize.height > 0
+            viewportSize.y > 0
         else { return }
         orbit.target = startTarget
         orbit.pan(
             by: translation,
-            viewportHeight: Float(viewportSize.height),
+            viewportHeight: viewportSize.y,
             zoom: zoom
         )
         clamp(viewportSize: viewportSize)
     }
 
-    func endTranslation() { startTarget = nil }
+    public func endTranslation() { startTarget = nil }
 
-    private func clamp(viewportSize: CGSize) {
+    private func clamp(viewportSize: SIMD2<Float>) {
         if
             let cullingCamera,
             let viewport = cullingCamera.viewport(for: viewportSize)
@@ -233,18 +250,23 @@ final class CameraNavigation {
             )
         } else {
             orbit.clampToGroundPlane(
-                height: -100,
-                extent: 500,
+                height: GroundPlane.defaultHeight,
+                extent: GroundPlane.defaultExtent,
                 viewportSize: viewportSize,
                 zoom: zoom
             )
         }
     }
 
-    private func beginTransition(to pose: Pose, clearsCulling: Bool) {
+    private func beginTransition(
+        to pose: Pose,
+        instant: ContinuousClock.Instant,
+        clearsCulling: Bool
+    ) {
         transition = Transition(
             from: Pose(orbit: orbit, zoom: zoom),
             to: pose,
+            instant: instant,
             clearsCulling: clearsCulling
         )
     }
@@ -265,23 +287,17 @@ final class CameraNavigation {
         isFrustumVisible && preset == .perspective
     }
 
-    private static func pose(_ camera: EditorSettings.Camera) -> Pose {
+    private static func pose(_ value: CameraPose) -> Pose {
         var orbit = CameraPreset.perspectiveOrbit
-        let rotation = SIMD4<Float>(
-            Float(camera.rotationX),
-            Float(camera.rotationY),
-            Float(camera.rotationZ),
-            Float(camera.rotationW)
-        )
-        if simd_length_squared(rotation) > 0 {
-            orbit.rotation = simd_normalize(simd_quatf(vector: rotation))
-        }
-        orbit.target = [
-            Float(camera.targetX),
-            Float(camera.targetY),
-            Float(camera.targetZ),
-        ]
-        return Pose(orbit: orbit, zoom: Float(camera.zoom))
+        orbit.rotation = normalize(Quat(vector: value.rotation))
+        orbit.target = value.target
+        return Pose(orbit: orbit, zoom: value.zoom)
+    }
+
+    private static func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) / 1e18
     }
 }
 
@@ -291,26 +307,21 @@ private struct Pose {
 }
 
 private struct Transition {
-    let start: Pose
-    let end: Pose
-    let startTime = CACurrentMediaTime()
+    let startPose: Pose
+    let endPose: Pose
+    let start: ContinuousClock.Instant
     let duration: Float = 0.3
     let clearsCulling: Bool
 
-    init(from start: Pose, to end: Pose, clearsCulling: Bool) {
-        self.start = start
-        self.end = end
+    init(
+        from start: Pose,
+        to end: Pose,
+        instant: ContinuousClock.Instant,
+        clearsCulling: Bool
+    ) {
+        startPose = start
+        endPose = end
+        self.start = instant
         self.clearsCulling = clearsCulling
-    }
-}
-
-extension Matrix4x4 {
-    init(_ matrix: simd_float4x4) {
-        self.init(
-            x: matrix.columns.0,
-            y: matrix.columns.1,
-            z: matrix.columns.2,
-            w: matrix.columns.3
-        )
     }
 }

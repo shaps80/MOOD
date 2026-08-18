@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		549480163030BB2100BCB679 /* PixlParticles in Frameworks */ = {isa = PBXBuildFile; productRef = 549480153030BB2100BCB679 /* PixlParticles */; };
 		549480183030BB2100BCB679 /* PixlMetal in Frameworks */ = {isa = PBXBuildFile; productRef = 549480173030BB2100BCB679 /* PixlMetal */; };
+		5494801A3030BB2100BCB679 /* PixlEditorSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 549480193030BB2100BCB679 /* PixlEditorSupport */; };
+		5494801C3030BB2100BCB679 /* PixlEditorSupportMetal in Frameworks */ = {isa = PBXBuildFile; productRef = 5494801B3030BB2100BCB679 /* PixlEditorSupportMetal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +33,8 @@
 			files = (
 				549480163030BB2100BCB679 /* PixlParticles in Frameworks */,
 				549480183030BB2100BCB679 /* PixlMetal in Frameworks */,
+				5494801A3030BB2100BCB679 /* PixlEditorSupport in Frameworks */,
+				5494801C3030BB2100BCB679 /* PixlEditorSupportMetal in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -82,6 +86,8 @@
 			packageProductDependencies = (
 				549480153030BB2100BCB679 /* PixlParticles */,
 				549480173030BB2100BCB679 /* PixlMetal */,
+				549480193030BB2100BCB679 /* PixlEditorSupport */,
+				5494801B3030BB2100BCB679 /* PixlEditorSupportMetal */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* PixlParticlesUI.app */;
@@ -425,6 +431,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */;
 			productName = PixlMetal;
+		};
+		549480193030BB2100BCB679 /* PixlEditorSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */;
+			productName = PixlEditorSupport;
+		};
+		5494801B3030BB2100BCB679 /* PixlEditorSupportMetal */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */;
+			productName = PixlEditorSupportMetal;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

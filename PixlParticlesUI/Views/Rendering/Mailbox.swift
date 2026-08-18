@@ -1,4 +1,5 @@
 import Foundation
+import PixlEditorSupport
 import PixlParticles
 import PixlRenderer
 
@@ -11,9 +12,8 @@ nonisolated final class Mailbox: @unchecked Sendable {
         let capturesDiagnostics: Bool
         let frameBudget: Double
         let pointLOD: PointLOD
-        let groundPlane: GroundPlane
+        let editor: PixlEditorSupport.Frame
         let cullingBounds: CullingBounds
-        let cameraFrustum: CameraFrustum
         let cullingViewProjection: Matrix4x4
         let viewProjection: Matrix4x4
         let viewport: ViewportSize

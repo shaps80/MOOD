@@ -29,6 +29,12 @@ public protocol RenderEncoder: AnyObject {
         vertexStart: Int,
         vertexCount: Int
     )
+    func drawPrimitives(
+        _ primitive: Primitive,
+        vertexStart: Int,
+        vertexCount: Int,
+        instanceCount: Int
+    )
     func endEncoding()
 }
 

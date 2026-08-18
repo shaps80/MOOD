@@ -1,3 +1,4 @@
+import PixlEditorSupport
 import PixlParticles
 import PixlRenderer
 import SwiftUI

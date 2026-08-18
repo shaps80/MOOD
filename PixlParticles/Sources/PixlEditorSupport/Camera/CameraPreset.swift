@@ -1,16 +1,16 @@
-import simd
-import PixlRenderer
+import PixlMath
+import Swift
 
-enum CameraPreset: String, Codable, Hashable {
+public enum CameraPreset: String, Codable, Hashable, Sendable {
     case perspective
     case isometric
     case front
 
-    var groundPlaneStyle: GroundPlane.Style {
+    public var groundPlaneStyle: GroundPlane.Style {
         self == .front ? .horizon : .grid
     }
 
-    static let perspectiveOrbit = Orbit(
+    public static let perspectiveOrbit = Orbit(
         target: .zero,
         distance: 400,
         yaw: .pi * 34 / 180,
@@ -22,24 +22,30 @@ enum CameraPreset: String, Codable, Hashable {
         )
     )
 
-    var fixedCamera: Camera {
+    public static var perspectivePose: CameraPose {
+        CameraPose(
+            rotation: perspectiveOrbit.rotation.vector,
+            zoom: 1,
+            target: perspectiveOrbit.target
+        )
+    }
+
+    public var fixedCamera: Camera {
         switch self {
         case .perspective:
             Self.perspectiveOrbit.camera()
-
         case .isometric:
-            Self.isometricCamera
-
+            Self.isometricOrbit.camera()
         case .front:
-            Self.frontCamera
+            Self.frontOrbit.camera()
         }
     }
 
-    private static let isometricCamera = Camera(
-        orbiting: .zero,
+    private static let isometricOrbit = Orbit(
+        target: .zero,
         distance: 700,
         yaw: .pi / 4,
-        pitch: atan(1 / sqrt(2)),
+        pitch: atan(1 / Float(2).squareRoot()),
         projection: .orthographic(
             halfHeight: 175,
             near: 0.1,
@@ -47,8 +53,8 @@ enum CameraPreset: String, Codable, Hashable {
         )
     )
 
-    private static let frontCamera = Camera(
-        orbiting: .zero,
+    private static let frontOrbit = Orbit(
+        target: .zero,
         distance: 600,
         yaw: 0,
         pitch: 0,

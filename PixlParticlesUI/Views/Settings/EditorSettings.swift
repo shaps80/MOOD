@@ -1,13 +1,13 @@
 import Foundation
-import simd
+import PixlEditorSupport
 
 struct EditorSettings: Equatable, RawRepresentable {
     struct Camera: Codable, Equatable {
         var preset = CameraPreset.perspective
-        var rotationX = Double(CameraPreset.perspectiveOrbit.rotation.vector.x)
-        var rotationY = Double(CameraPreset.perspectiveOrbit.rotation.vector.y)
-        var rotationZ = Double(CameraPreset.perspectiveOrbit.rotation.vector.z)
-        var rotationW = Double(CameraPreset.perspectiveOrbit.rotation.vector.w)
+        var rotationX = Double(CameraPreset.perspectivePose.rotation.x)
+        var rotationY = Double(CameraPreset.perspectivePose.rotation.y)
+        var rotationZ = Double(CameraPreset.perspectivePose.rotation.z)
+        var rotationW = Double(CameraPreset.perspectivePose.rotation.w)
         var targetX = 0.0
         var targetY = 0.0
         var targetZ = 0.0

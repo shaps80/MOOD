@@ -26,6 +26,12 @@ future PixlPhysics -> PixlMath
 
 Domain targets add PixlMath directly when their implementation needs its shared operations; they do not acquire unrelated dependencies merely to anticipate future work.
 
+`PixlMath` is a standalone portable package containing `PixlMath` and its C
+shim target, `PixlMathC`. It owns inlinable generic Float/Double scalar,
+deterministic trigonometric, vector, and quaternion operations. Deterministic
+trigonometry is covered by stable cross-platform bit-pattern corpora; consumers
+must not carry equivalent local implementations.
+
 Portable Pixl targets must not import or rely on APIs carrying operating-system deployment requirements, even when exposed from a Swift-named module. Such availability is evidence of a platform-specific implementation and places the API outside the portable layers. Portable third-party dependencies must support every target platform directly; concrete platform adapters remain the only place for OS-bound APIs.
 
 They define convenient, efficient domain values and algorithms without depending on engine execution infrastructure. `Pixl` is the orchestrator and bridge: it consumes domain values, lowers them into optimized `PixlFoundation` representations and lifetimes, then `PixlFoundation` resolves those through `PixlPlatform`. Domain targets do not depend on `PixlFoundation`; package access does not bypass target dependencies.
