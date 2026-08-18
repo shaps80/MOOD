@@ -7,7 +7,7 @@ struct CPUMetricsSection: View {
         Section("CPU") {
             LabeledContent("Simulation") {
                 Text(
-                    "\(metrics.cpuSimulationMilliseconds, format: .number.precision(.fractionLength(2))) ms"
+                    "\(metrics.cpuSimulationMilliseconds, format: .number.precision(.fractionLength(simulationFractionDigits))) ms"
                 )
                 .monospacedDigit()
             }
@@ -27,5 +27,9 @@ struct CPUMetricsSection: View {
                 .monospacedDigit()
             }
         }
+    }
+
+    private var simulationFractionDigits: Int {
+        metrics.cpuSimulationMilliseconds.magnitude < 0.01 ? 3 : 2
     }
 }

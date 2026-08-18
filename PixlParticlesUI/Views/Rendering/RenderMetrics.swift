@@ -111,6 +111,7 @@ final class RenderMetrics {
         timestamps[index] = time
         durations[index] = duration
         cpuSimulationTimes[index] = cpuSimulationTime
+        hasFixedUpdateTimes[index] = false
         if let fixedUpdateTime {
             fixedUpdateTimes[index] = fixedUpdateTime
             hasFixedUpdateTimes[index] = true
@@ -145,6 +146,10 @@ final class RenderMetrics {
         fixedUpdateSum = 0
         cpuRenderSum = 0
         gpuSum = 0
+
+        for index in hasFixedUpdateTimes.indices {
+            hasFixedUpdateTimes[index] = false
+        }
     }
 
     private func removeFixedUpdate(at index: Int) {
