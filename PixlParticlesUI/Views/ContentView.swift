@@ -55,6 +55,7 @@ struct ContentView: View {
                         duration: binding(\.duration, "Change Duration"),
                         particleCount: binding(\.particleCount, "Change Particle Count"),
                         seed: binding(\.seed, "Change Seed"),
+                        color: binding(\.color, "Change Colour"),
                         spawnPreset: binding(\.spawnPreset, "Change Spawn Region"),
                         spawnDomain: binding(\.spawnDomain, "Change Spawn Domain"),
                         renderMode: binding(\.renderer.mode, "Change Render Mode"),

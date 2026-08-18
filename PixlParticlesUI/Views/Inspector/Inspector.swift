@@ -6,6 +6,7 @@ struct Inspector: View {
     @Binding var duration: Double
     @Binding var particleCount: Double
     @Binding var seed: Double
+    @Binding var color: PixlParticles.Color
     @Binding var spawnPreset: SpawnPreset
     @Binding var spawnDomain: ParticleDocument.SpawnDomain
     @Binding var renderMode: ParticleRenderer.Mode
@@ -34,6 +35,7 @@ struct Inspector: View {
                     preset: $spawnPreset,
                     domain: $spawnDomain
                 )
+                ColorInspectorSection(color: $color)
                 RenderingInspectorSection(
                     mode: $renderMode,
                     sizeSpace: $billboardSizeSpace,
@@ -81,6 +83,7 @@ struct Inspector: View {
     @Previewable @State var duration: Double = 20
     @Previewable @State var particleCount: Double = 200
     @Previewable @State var seed: Double = 0
+    @Previewable @State var color = PixlParticles.Color.white
     @Previewable @State var spawnPreset = SpawnPreset.sphere
     @Previewable @State var spawnDomain = ParticleDocument.SpawnDomain.volume
     @Previewable @State var renderMode = ParticleRenderer.Mode.billboard
@@ -101,6 +104,7 @@ struct Inspector: View {
         duration: $duration,
         particleCount: $particleCount,
         seed: $seed,
+        color: $color,
         spawnPreset: $spawnPreset,
         spawnDomain: $spawnDomain,
         renderMode: $renderMode,

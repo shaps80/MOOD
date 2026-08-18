@@ -27,14 +27,14 @@ validated.
 
 ## 2. Colour Authoring and Diagnostics — Active
 
-- Add the document colour picker with correct display-encoded to linear input
+- [x] Add the document colour picker with correct display-encoded to linear input
   conversion and live updates that do not recreate the system unnecessarily.
-- Add an editor-only diagnostic driven by the production colour pipeline.
-- Compare correct linear interpolation with an intentionally incorrect
+- [ ] Add an editor-only diagnostic driven by the production colour pipeline.
+- [ ] Compare correct linear interpolation with an intentionally incorrect
   gamma-space reference.
-- Visualize premultiplied-alpha overlap, HDR intensity, stored linear colour,
+- [ ] Visualize premultiplied-alpha overlap, HDR intensity, stored linear colour,
   pre-tone-map output, and final display encoding.
-- Extend with bloom comparisons when bloom enters scope.
+- [ ] Extend with bloom comparisons when bloom enters scope.
 
 ## 3. Emitters, Lifetime, and Properties
 
