@@ -30,8 +30,7 @@ extension PanelView {
 
                 let containerWidth = containerSize.width
                 let containerHeight = containerSize.height
-                let measuredWidth = contentSize.width
-                let measuredHeight = contentSize.height
+                let measuredSize = contentSize
 
                 ZStack(alignment: .topLeading) {
                     if visibility == .visible || (visibility == .automatic && defaultVisibility != .hidden) {
@@ -66,7 +65,15 @@ extension PanelView {
                         .onGeometryChange(for: CGSize.self) { proxy in
                             proxy.size
                         } action: { size in
-                            contentSize = size
+                            guard size != .zero, size != contentSize else { return }
+
+                            if contentSize == .zero {
+                                contentSize = size
+                            } else {
+                                withAnimation(.smooth.speed(2)) {
+                                    contentSize = size
+                                }
+                            }
                         }
                         .transition(PanelTransition())
                     }
@@ -79,10 +86,9 @@ extension PanelView {
                     )
                 )
                 .visualEffect { content, proxy in
-                    let contentWidth = max(proxy.size.width, measuredWidth)
-                    let contentHeight = max(proxy.size.height, measuredHeight)
-                    let availableWidth = max(containerWidth - contentWidth, 0)
-                    let availableHeight = max(containerHeight - contentHeight, 0)
+                    let resolvedSize = measuredSize == .zero ? proxy.size : measuredSize
+                    let availableWidth = max(containerWidth - resolvedSize.width, 0)
+                    let availableHeight = max(containerHeight - resolvedSize.height, 0)
 
                     return content.offset(
                         x: min(max(availableWidth * position.x, 0), availableWidth),
