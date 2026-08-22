@@ -1,65 +1,45 @@
 import SwiftUI
 
-nonisolated public struct PanelView<SelectionValue, Content>: View, ~Sendable where SelectionValue: Hashable, Content: View {
-    @State private var internalSelection: SelectionValue
-    @Binding private var customization: PanelCustomization
-    private let externalSelection: Binding<SelectionValue>?
+nonisolated public struct PanelView<ID, Content>: View, ~Sendable where ID: Hashable, Content: View {
+    @Binding private var customization: PanelCustomization<ID>
     private let content: Content
 
-    private var selection: Binding<SelectionValue> {
-        externalSelection ?? $internalSelection
-    }
-
     nonisolated public init<C>(
-        selection: Binding<SelectionValue>,
-        customization: Binding<PanelCustomization> = .constant(.init()),
-        @PanelContentBuilder<SelectionValue> content: () -> C
-    ) where Content == PanelContentBuilder<SelectionValue>.Content<C>, C: PanelContent {
-        _internalSelection = State(initialValue: selection.wrappedValue)
+        customization: Binding<PanelCustomization<ID>> = .constant(.init()),
+        @PanelContentBuilder<ID> content: () -> C
+    ) where Content == PanelContentBuilder<ID>.Content<C>, C: PanelContent {
         _customization = customization
-        externalSelection = selection
         self.content = PanelContentBuilder.Content(content())
     }
 
+    @MainActor
     public var body: some View {
-        VStack {
-            ForEach(subviews: content) { subview in
-                let id = subview.containerValues.panelCustomizationID
-                let isExplicitlyVisible = id.map {
-                    customization[visibility: $0] == .hidden
-                } ?? false
-                let isVisibleByDefault = subview.containerValues.panelDefaultVisibility != .hidden
+        GeometryReader { geometry in
+            Group(subviews: content) { subviews in
+                let orderedSubviews = subviews.ordered(by: customization)
 
-                if !isExplicitlyVisible && isVisibleByDefault {
-                    subview
+                ZStack {
+                    ForEach(orderedSubviews) { subview in
+                        ContentView(
+                            subview: subview,
+                            containerSize: geometry.size,
+                            customization: $customization
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-extension PanelView where SelectionValue == Int {
-    nonisolated public init<C>(
-        customization: Binding<PanelCustomization> = .constant(.init()),
-        @PanelContentBuilder<Int> content: () -> C
-    ) where Content == PanelContentBuilder<Int>.Content<C>, C: PanelContent {
-        _internalSelection = State(initialValue: 0)
-        _customization = customization
-        externalSelection = nil
-        self.content = PanelContentBuilder.Content(content())
-    }
-}
-
-private enum PanelKind: String, Identifiable {
+private enum PanelKind: String, Identifiable, Sendable {
     var id: String { rawValue }
     case properties
     case metrics
 }
 
 #Preview {
-
-    @Previewable @State var customization: PanelCustomization = .init()
-    @Previewable @State var selection: PanelKind = .properties
+    @Previewable @State var customization: PanelCustomization<PanelKind> = .init()
 
     ZStack {
         LinearGradient(
@@ -68,23 +48,20 @@ private enum PanelKind: String, Identifiable {
             endPoint: .bottomTrailing
         ).ignoresSafeArea()
 
-        PanelView(selection: $selection, customization: $customization) {
-            Panel(value: .properties) {
-                Text("Hello")
+        PanelView(customization: $customization) {
+            Panel(id: .properties) {
+                ScrollView {
+                    Text("Hello")
+                        .padding()
+                }
             }
-            .customizationID(PanelKind.properties.rawValue)
-            .width(ideal: 200)
+            .defaultPlacement(.leading)
 
-            Panel(value: .metrics) {
-                Text("World")
-                    .contentShape(.rect)
-                    .onTapGesture {
-                        print("Tapped")
-                        customization[visibility: PanelKind.metrics.rawValue] = .hidden
-                    }
+            Panel(id: .metrics) {
+                Text("Test")
+                    .padding()
             }
-            .width(200)
-            .customizationID(PanelKind.metrics.rawValue)
+            .defaultPlacement(.trailing)
         }
         .animation(.smooth.speed(2), value: customization)
         .scenePadding()

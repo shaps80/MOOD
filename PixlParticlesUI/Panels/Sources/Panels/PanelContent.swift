@@ -25,10 +25,6 @@ public struct _PanelContentBodyAdaptor<Content: PanelContent>: View {
 }
 
 public extension PanelContent {
-    nonisolated func customizationID(_ id: String) -> some PanelContent<PanelValue> {
-        _CustomizationIDPanelContent(content: self, id: id)
-    }
-
     nonisolated func defaultVisibility(_ visibility: Visibility) -> some PanelContent<PanelValue> {
         _DefaultVisibilityPanelContent(content: self, visibility: visibility)
     }
