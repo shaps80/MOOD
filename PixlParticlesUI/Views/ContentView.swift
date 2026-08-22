@@ -11,8 +11,10 @@ struct ContentView: View {
     @State private var system: System
     @State private var playback = PlaybackState()
     @State private var metrics = RenderMetrics()
+
     init(document: ParticleDocument) {
         self.document = document
+        
         let snapshot = document.snapshot
         _system = .init(
             initialValue: .init(
@@ -47,43 +49,12 @@ struct ContentView: View {
                 .draggableInspector(
                     isPresented: $settings.visibility.isInspectorVisible
                 ) {
-                    Inspector(
-                        duration: binding(\.duration, "Change Duration"),
-                        particleCount: binding(\.particleCount, "Change Particle Count"),
-                        seed: binding(\.seed, "Change Seed"),
-                        color: binding(\.color, "Change Colour"),
-                        spawnPreset: binding(\.spawnPreset, "Change Spawn Region"),
-                        spawnDomain: binding(\.spawnDomain, "Change Spawn Domain"),
-                        renderMode: binding(\.renderer.mode, "Change Render Mode"),
-                        billboardSizeSpace: binding(
-                            \.renderer.billboard.sizeSpace,
-                            "Change Billboard Size Space"
-                        ),
-                        billboardFacing: binding(
-                            \.renderer.billboard.facing,
-                            "Change Billboard Facing"
-                        ),
-                        billboardWidth: binding(
-                            \.billboardWidth,
-                            "Change Billboard Width"
-                        ),
-                        billboardHeight: binding(
-                            \.billboardHeight,
-                            "Change Billboard Height"
-                        ),
-                        billboardRotation: binding(
-                            \.billboardRotation,
-                            "Change Billboard Rotation"
-                        ),
-                        lodEnabled: binding(\.isLODEnabled, "Toggle LOD"),
-                        lodActivation: binding(\.lodActivation, "Change LOD Activation"),
-                        lodMaximum: binding(\.lodMaximum, "Change LOD Maximum"),
-                        lodTileSize: binding(\.lodTileSize, "Change LOD Tile Size"),
-                        lodPointsPerPixel: binding(\.lodPointsPerPixel, "Change LOD Density"),
-                        isCullingEnabled: binding(
-                            \.isCullingEnabled, "Toggle Culling Bounds"),
-                        cullingBoundsScale: binding(\.cullingBoundsScale, "Change Culling Bounds")
+                    EditorInspector(
+                        document: document,
+                        system: $system,
+                        playback: $playback
                     )
+                    .animation(.smooth.speed(2), value: document.snapshot)
                 }
                 .draggableInspector(
                     id: "data",
@@ -109,41 +80,6 @@ struct ContentView: View {
                 .ignoresSafeArea()
             }
             .background(.quinary)
-            .onChange(of: document.snapshot.duration) { _, duration in
-                let duration = max(duration, 0)
-
-                if document.snapshot.duration != duration {
-                    edit("Change Duration") { $0.duration = duration }
-                }
-            }
-            .onChange(of: document.snapshot.particleCount) { _, particleCount in
-                let particleCount = max(particleCount.rounded(), 0)
-
-                if document.snapshot.particleCount != particleCount {
-                    edit("Change Particle Count") { $0.particleCount = particleCount }
-                } else {
-                    updateSystem()
-                }
-            }
-            .onChange(of: document.snapshot.seed) { _, seed in
-                let maximumExactInteger = 9_007_199_254_740_991.0
-                let seed = min(max(seed.rounded(), 0), maximumExactInteger)
-
-                if document.snapshot.seed != seed {
-                    edit("Change Seed") { $0.seed = seed }
-                } else {
-                    updateSystem()
-                }
-            }
-            .onChange(of: document.snapshot.color) {
-                updateSystem()
-            }
-            .onChange(of: document.snapshot.spawnPreset) {
-                updateSystem()
-            }
-            .onChange(of: document.snapshot.spawnDomain) {
-                updateSystem()
-            }
             .toolbar {
                 ToolbarItem(placement: .secondaryAction) {
                     Picker("Camera", selection: $settings.camera.preset) {
@@ -164,24 +100,29 @@ struct ContentView: View {
                             "Ground Plane",
                             isOn: $settings.visibility.isGroundPlaneVisible
                         )
-                        Toggle(
-                            "Inspector",
-                            isOn: $settings.visibility.isInspectorVisible
-                        )
-                        Toggle(
-                            "Metrics",
-                            isOn: $settings.visibility.isDataVisible
-                        )
 
-                        Toggle(
-                            "Culling Bounds",
-                            isOn: $settings.visibility.isCullingVisible
-                        )
-                        Toggle(
-                            "Camera Frustum",
-                            isOn: $settings.visibility.isFrustumVisible
-                        )
-                        .disabled(settings.camera.preset != .perspective)
+                        Section("Inspectors") {
+                            Toggle(
+                                "Properties",
+                                isOn: $settings.visibility.isInspectorVisible
+                            )
+                            Toggle(
+                                "Metrics",
+                                isOn: $settings.visibility.isDataVisible
+                            )
+                        }
+
+                        Section("Debugging") {
+                            Toggle(
+                                "Culling Bounds",
+                                isOn: $settings.visibility.isCullingVisible
+                            )
+                            Toggle(
+                                "Camera Frustum",
+                                isOn: $settings.visibility.isFrustumVisible
+                            )
+                            .disabled(settings.camera.preset != .perspective)
+                        }
                     }
                 }
 
@@ -199,40 +140,6 @@ struct ContentView: View {
                 }
             }
         }
-    }
-
-    private func updateSystem() {
-        let snapshot = document.snapshot
-        system = System(
-            seed: UInt64(snapshot.seed),
-            emitter: Self.emitter(from: snapshot),
-            duration: .seconds(snapshot.duration),
-            storesRewindState: false
-        )
-        playback.fraction = 0
-    }
-
-    private static func emitter(
-        from snapshot: ParticleDocument.Snapshot
-    ) -> Emitter {
-        var emitter = EmitterPreset.debris.emitter(
-            capacity: Int(snapshot.particleCount)
-        )
-        emitter.spawnRegion = snapshot.spawnPreset.region(
-            domain: snapshot.spawnDomain
-        )
-        emitter[\.color] = .init([.set(snapshot.color)])
-        emitter[\.size] = .init([
-            .set([
-                max(Float(snapshot.billboardWidth), 0),
-                max(Float(snapshot.billboardHeight), 0),
-            ]),
-        ])
-        emitter[\.rotation] = .init([
-            .set(Float(snapshot.billboardRotation)),
-        ])
-        emitter.renderers = [snapshot.renderer]
-        return emitter
     }
 
     private var pointLOD: PointLOD {
@@ -302,6 +209,29 @@ struct ContentView: View {
             undoManager: undoManager,
             edit
         )
+    }
+
+    private static func emitter(
+        from snapshot: ParticleDocument.Snapshot
+    ) -> Emitter {
+        var emitter = EmitterPreset.debris.emitter(
+            capacity: Int(snapshot.particleCount)
+        )
+        emitter.spawnRegion = snapshot.spawnPreset.region(
+            domain: snapshot.spawnDomain
+        )
+        emitter[\.color] = .init([.set(snapshot.color)])
+        emitter[\.size] = .init([
+            .set([
+                max(Float(snapshot.billboardWidth), 0),
+                max(Float(snapshot.billboardHeight), 0),
+            ]),
+        ])
+        emitter[\.rotation] = .init([
+            .set(Float(snapshot.billboardRotation)),
+        ])
+        emitter.renderers = [snapshot.renderer]
+        return emitter
     }
 }
 

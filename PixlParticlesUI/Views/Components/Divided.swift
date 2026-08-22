@@ -19,10 +19,6 @@ struct Divided<Content: View>: View {
                         Group(subviews: section.content) { subviews in
                             ForEach(subviews: subviews) { subview in
                                 subview
-
-                                if subview.id != subviews.last?.id {
-                                    Divider()
-                                }
                             }
                         }
 
@@ -30,7 +26,7 @@ struct Divided<Content: View>: View {
                             Divider()
                         }
                     }
-                    .padding(2)
+                    .compositingGroup()
                     .clipped()
                 }
             }

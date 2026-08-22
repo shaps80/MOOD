@@ -47,8 +47,7 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
             GeometryReader { geometry in
                 let availableWidth = max(geometry.size.width - contentSize.width, 0)
                 let availableHeight = max(geometry.size.height - contentSize.height, 0)
-                let position =
-                position
+                let position = position
                 ?? CGPoint(
                     x: horizontalPosition,
                     y: verticalPosition
@@ -79,12 +78,12 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
                             .onGeometryChange(for: CGSize.self) { proxy in
                                 proxy.size
                             } action: { size in
-                                withAnimation(.snappy) {
+                                withAnimation(.smooth.speed(2)) {
                                     contentSize = size
                                 }
                             }
                             .transition(PanelTransition())
-                            .animation(.snappy, value: contentSize)
+                            .animation(.smooth.speed(2), value: contentSize)
                         }
                     }
                     .offset(
@@ -154,15 +153,3 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
         min(max(value, range.lowerBound), range.upperBound)
     }
 }
-
-//#Preview {
-//    ZStack {
-//        Movable(
-//            horizontalPosition: <#T##Binding<Double>#>,
-//            verticalPosition: <#T##Binding<Double>#>,
-//            isVisible: <#T##Bool#>,
-//            content: <#T##() -> View#>
-//        )
-//    }
-//    .frame(width: 600, height: 600)
-//}

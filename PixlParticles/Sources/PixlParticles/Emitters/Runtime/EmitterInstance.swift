@@ -1,7 +1,7 @@
 import PixlRenderer
 import Swift
 
-final class EmitterInstance {
+public final class EmitterInstance {
     enum Reconfiguration: Equatable {
         case reusedArena
         case rebuiltArena

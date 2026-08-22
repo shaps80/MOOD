@@ -62,7 +62,7 @@ struct RenderingInspectorSection: View {
                 LabeledContent("Rotation") {
                     Field(
                         value: $rotation,
-                        step: 1,
+                        step: 15,
                         displayScale: 180 / .pi,
                         fractionDigits: 1
                     )

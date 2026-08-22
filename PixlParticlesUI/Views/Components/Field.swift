@@ -70,6 +70,9 @@ struct Field: View {
                 .animation(.snappy, value: isShowingField)
                 .allowsHitTesting(false)
         }
+        .onChange(of: value) { oldValue, newValue in
+            currentValue = newValue
+        }
         .onChange(of: focused) { _, newValue in
             isShowingField = newValue
         }

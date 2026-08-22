@@ -6,10 +6,11 @@ struct SystemInspectorSection: View {
     @Binding var seed: Double
 
     var body: some View {
-        Section("System") {
+        Section {
             LabeledContent("Duration") {
                 Field(value: $duration, step: 5, range: 0 ... .infinity)
             }
+
             LabeledContent("Particles") {
                 Field(
                     value: $particleCount,
@@ -17,6 +18,7 @@ struct SystemInspectorSection: View {
                     range: 0 ... .infinity
                 )
             }
+            
             LabeledContent("Seed") {
                 Field(value: $seed, range: 0 ... .infinity)
             }

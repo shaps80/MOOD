@@ -41,5 +41,4 @@ public struct Emitter: Equatable, Sendable {
         get { self[keyPath: keyPath] }
         set { self[keyPath: keyPath] = newValue }
     }
-
 }

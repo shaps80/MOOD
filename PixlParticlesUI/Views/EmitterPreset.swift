@@ -33,3 +33,26 @@ enum EmitterPreset: String, CaseIterable, Hashable, Sendable {
         }
     }
 }
+
+extension Emitter {
+    func applying(_ snapshot: ParticleDocument.Snapshot) -> Self {
+        var emitter = self
+
+        emitter.capacity = .init(snapshot.particleCount)
+        emitter.spawnRegion = snapshot.spawnPreset.region(
+            domain: snapshot.spawnDomain
+        )
+        emitter.color = .init([.set(snapshot.color)])
+        emitter.size = .init([
+            .set([
+                max(Float(snapshot.billboardWidth), 0),
+                max(Float(snapshot.billboardHeight), 0),
+            ]),
+        ])
+        emitter.rotation = .init([
+            .set(Float(snapshot.billboardRotation)),
+        ])
+        emitter.renderers = [snapshot.renderer]
+        return emitter
+    }
+}

@@ -8,7 +8,7 @@ public final class System {
 
     package var particleCount: Int { emitter.aliveCount }
 
-    private var emitter: EmitterInstance
+    public private(set) var emitter: EmitterInstance
     private var loop: Loop
     private var durationInTicks: UInt64
     private var tick: UInt64 = 0
