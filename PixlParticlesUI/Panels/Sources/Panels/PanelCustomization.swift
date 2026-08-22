@@ -5,12 +5,12 @@ public struct PanelCustomization: Equatable, Sendable, Codable {
     public init() { }
 
     public subscript(visibility id: String) -> Visibility {
-        get { visibility.contains(id) ? .visible : .hidden }
+        get { visibility.contains(id) ? .hidden : .visible }
         set {
             if newValue == .hidden {
-                visibility.remove(id)
-            } else {
                 visibility.insert(id)
+            } else {
+                visibility.remove(id)
             }
         }
     }

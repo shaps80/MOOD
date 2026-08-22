@@ -26,11 +26,11 @@ nonisolated public struct PanelView<SelectionValue, Content>: View, ~Sendable wh
             ForEach(subviews: content) { subview in
                 let id = subview.containerValues.panelCustomizationID
                 let isExplicitlyVisible = id.map {
-                    customization[visibility: $0] == .visible
+                    customization[visibility: $0] == .hidden
                 } ?? false
                 let isVisibleByDefault = subview.containerValues.panelDefaultVisibility != .hidden
 
-                if isExplicitlyVisible || isVisibleByDefault {
+                if !isExplicitlyVisible && isVisibleByDefault {
                     subview
                 }
             }
@@ -72,6 +72,7 @@ private enum PanelKind: String, Identifiable {
             Panel(value: .properties) {
                 Text("Hello")
             }
+            .customizationID(PanelKind.properties.rawValue)
 
             Panel(value: .metrics) {
                 Text("World")
@@ -81,7 +82,9 @@ private enum PanelKind: String, Identifiable {
                         customization[visibility: PanelKind.metrics.rawValue] = .hidden
                     }
             }
+            .customizationID(PanelKind.metrics.rawValue)
         }
+        .animation(.smooth.speed(2), value: customization)
         .scenePadding()
     }
     .frame(width: 800, height: 600)
