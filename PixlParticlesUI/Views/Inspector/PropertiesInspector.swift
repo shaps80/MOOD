@@ -2,7 +2,7 @@ import SwiftUI
 import PixlParticles
 import PixlRenderer
 
-struct EditorInspector: View {
+struct PropertiesInspector: View {
     @Environment(\.undoManager) private var undoManager
 
     @Bindable var document: ParticleDocument

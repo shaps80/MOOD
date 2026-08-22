@@ -54,7 +54,7 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
                 )
                 let origin = CGPoint(
                     x: availableWidth * position.x,
-                    y: geometry.size.height * position.y
+                    y: availableHeight * position.y
                 )
 
                 ZStack(alignment: .topLeading) {
@@ -122,14 +122,15 @@ struct MovableModifier<MovableContent: View>: ViewModifier {
                 }
                 guard let dragOrigin else { return }
                 let availableWidth = max(containerSize.width - contentSize.width, 0)
+                let availableHeight = max(containerSize.height - contentSize.height, 0)
                 position = CGPoint(
                     x: normalized(
                         dragOrigin.x * availableWidth + value.translation.width,
                         within: availableWidth
                     ),
                     y: normalized(
-                        dragOrigin.y * containerSize.height + value.translation.height,
-                        within: containerSize.height
+                        dragOrigin.y * availableHeight + value.translation.height,
+                        within: availableHeight
                     )
                 )
             }

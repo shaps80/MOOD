@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct DataInspector: View {
+struct MetricsInspector: View {
     let simulatedCount: Int
     let metrics: RenderMetrics
 
