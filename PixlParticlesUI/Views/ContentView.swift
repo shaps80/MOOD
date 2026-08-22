@@ -5,7 +5,7 @@ import Panels
 import SwiftUI
 
 struct ContentView: View {
-    enum PanelKind: String {
+    enum PanelKind: String, Codable, Sendable {
         case properties
         case metrics
     }
@@ -13,7 +13,7 @@ struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
     @Bindable var document: ParticleDocument
     @SceneStorage("editor.settings") private var settings = EditorSettings()
-    @State private var customization: PanelCustomization<PanelKind> = .init()
+    @SceneStorage("editor.panels") private var customization: PanelCustomization<PanelKind> = .init()
 
     @State private var system: System
     @State private var playback = PlaybackState()
@@ -33,7 +33,6 @@ struct ContentView: View {
             )
         )
     }
-
 
     var body: some View {
         NavigationStack {
@@ -73,10 +72,12 @@ struct ContentView: View {
                             metrics: metrics
                         )
                     }
+                    .defaultVisibility(.hidden)
                     .defaultPlacement(.leading)
                     .width(250)
                 }
                 .scenePadding()
+                .animation(.smooth.speed(2), value: customization)
 
                 ParticleTimeline(
                     playback: playback,

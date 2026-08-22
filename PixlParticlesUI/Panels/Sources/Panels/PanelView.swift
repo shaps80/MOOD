@@ -1,6 +1,6 @@
 import SwiftUI
 
-nonisolated public struct PanelView<ID, Content>: View, ~Sendable where ID: Hashable, Content: View {
+nonisolated public struct PanelView<ID, Content>: View, ~Sendable where ID: Hashable & Codable & Sendable, Content: View {
     @Binding private var customization: PanelCustomization<ID>
     private let content: Content
 
@@ -37,39 +37,4 @@ nonisolated public struct PanelView<ID, Content>: View, ~Sendable where ID: Hash
             }
         }
     }
-}
-
-private enum PanelKind: String, Identifiable, Sendable {
-    var id: String { rawValue }
-    case properties
-    case metrics
-}
-
-#Preview {
-    @Previewable @State var customization: PanelCustomization<PanelKind> = .init()
-
-    ZStack {
-        LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        ).ignoresSafeArea()
-
-        PanelView(customization: $customization) {
-            Panel(id: .properties) {
-                Text("Hello")
-                    .padding()
-            }
-            .defaultPlacement(.bottomLeading)
-
-            Panel(id: .metrics) {
-                Text("Test")
-                    .padding()
-            }
-            .defaultPlacement(.topTrailing)
-        }
-        .animation(.smooth.speed(2), value: customization)
-        .scenePadding()
-    }
-    .frame(width: 800, height: 600)
 }
