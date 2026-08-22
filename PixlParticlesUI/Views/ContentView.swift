@@ -125,10 +125,6 @@ struct ContentView: View {
                                     set: { customization[visibility: .properties] = $0 ? .visible : .hidden }
                                 )
                             )
-
-                            Button("Reset Panels") {
-                                customization.resetVisibility()
-                            }
                         }
 
                         Section("Debugging") {

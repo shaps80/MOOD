@@ -89,6 +89,12 @@ extension PanelView {
                         y: min(max(availableHeight * position.y, 0), availableHeight)
                     )
                 }
+                .onChange(of: visibility, initial: true) { _, visibility in
+                    guard visibility == .automatic else { return }
+
+                    customization[visibility: id] =
+                    defaultVisibility == .hidden ? .hidden : .visible
+                }
             }
         }
 
