@@ -91,7 +91,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .secondaryAction) {
                     Picker("Camera", selection: $settings.camera.preset) {
-                        Text("Perspective").tag(CameraPreset.perspective)
+                        Text("Orbital").tag(CameraPreset.perspective)
                         Text("Isometric").tag(CameraPreset.isometric)
                         Text("Front").tag(CameraPreset.front)
                     }
