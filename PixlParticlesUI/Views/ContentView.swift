@@ -47,35 +47,35 @@ struct ContentView: View {
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
-                .draggableInspector(
-                    id: "properties",
-                    isPresented: $settings.visibility.isInspectorVisible
-                ) {
-                    PropertiesInspector(
-                        document: document,
-                        system: $system,
-                        playback: $playback
-                    )
-                    .zIndex(topInspector == "properties" ? 100 : 0)
-                    .animation(.smooth.speed(2), value: document.snapshot)
-                    .onTapGesture {
-                        topInspector = "properties"
-                    }
-                }
-                .draggableInspector(
-                    id: "metrics",
-                    placement: .bottomLeading,
-                    isPresented: $settings.visibility.isDataVisible
-                ) {
-                    MetricsInspector(
-                        simulatedCount: Int(document.snapshot.particleCount),
-                        metrics: metrics
-                    )
-                    .zIndex(topInspector == "metrics" ? 100 : 0)
-                    .onTapGesture {
-                        topInspector = "metrics"
-                    }
-                }
+//                .draggableInspector(
+//                    id: "properties",
+//                    isPresented: $settings.visibility.isInspectorVisible
+//                ) {
+//                    PropertiesInspector(
+//                        document: document,
+//                        system: $system,
+//                        playback: $playback
+//                    )
+//                    .zIndex(topInspector == "properties" ? 100 : 0)
+//                    .animation(.smooth.speed(2), value: document.snapshot)
+//                    .onTapGesture {
+//                        topInspector = "properties"
+//                    }
+//                }
+//                .draggableInspector(
+//                    id: "metrics",
+//                    placement: .bottomLeading,
+//                    isPresented: $settings.visibility.isDataVisible
+//                ) {
+//                    MetricsInspector(
+//                        simulatedCount: Int(document.snapshot.particleCount),
+//                        metrics: metrics
+//                    )
+//                    .zIndex(topInspector == "metrics" ? 100 : 0)
+//                    .onTapGesture {
+//                        topInspector = "metrics"
+//                    }
+//                }
 
                 VStack {
                     Spacer(minLength: 0)
