@@ -2,15 +2,9 @@ import Foundation
 import SwiftUI
 
 public struct PanelCustomization<ID>: Equatable where ID: Hashable & Codable & Sendable {
-    private struct Storage: Equatable, Codable, Sendable {
-        var visibility: Set<ID> = []
-        var zOrder: [ID] = []
-        var placement: [ID: UnitPoint] = [:]
-    }
-
     private var storage = Storage()
 
-    private(set) var visibility: Set<ID> {
+    private var visibility: [ID: VisibilityOverride] {
         get { storage.visibility }
         set { storage.visibility = newValue }
     }
@@ -32,12 +26,21 @@ public struct PanelCustomization<ID>: Equatable where ID: Hashable & Codable & S
     }
 
     public subscript(visibility id: ID) -> Visibility {
-        get { visibility.contains(id) ? .hidden : .automatic }
+        get {
+            switch visibility[id] {
+            case .visible: .visible
+            case .hidden: .hidden
+            case nil: .automatic
+            }
+        }
         set {
-            if newValue != .hidden {
-                visibility.remove(id)
-            } else {
-                visibility.insert(id)
+            switch newValue {
+            case .visible:
+                visibility[id] = .visible
+            case .hidden:
+                visibility[id] = .hidden
+            case .automatic:
+                visibility[id] = nil
             }
         }
     }
@@ -91,5 +94,47 @@ extension PanelCustomization: RawRepresentable {
         }
 
         return data.base64EncodedString()
+    }
+}
+
+private extension PanelCustomization {
+    enum VisibilityOverride: String, Equatable, Codable, Sendable {
+        case visible
+        case hidden
+    }
+
+    struct Storage: Equatable, Codable, Sendable {
+        var visibility: [ID: VisibilityOverride] = [:]
+        var zOrder: [ID] = []
+        var placement: [ID: UnitPoint] = [:]
+
+        private enum CodingKeys: String, CodingKey {
+            case visibility
+            case zOrder
+            case placement
+        }
+
+        init() { }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+
+            if let visibility = try? container.decode([ID: VisibilityOverride].self, forKey: .visibility) {
+                self.visibility = visibility
+            } else {
+                let hiddenIDs = try container.decodeIfPresent(Set<ID>.self, forKey: .visibility) ?? []
+                visibility = Dictionary(uniqueKeysWithValues: hiddenIDs.map { ($0, .hidden) })
+            }
+
+            zOrder = try container.decodeIfPresent([ID].self, forKey: .zOrder) ?? []
+            placement = try container.decodeIfPresent([ID: UnitPoint].self, forKey: .placement) ?? [:]
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(visibility, forKey: .visibility)
+            try container.encode(zOrder, forKey: .zOrder)
+            try container.encode(placement, forKey: .placement)
+        }
     }
 }
