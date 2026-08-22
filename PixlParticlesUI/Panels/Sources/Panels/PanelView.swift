@@ -1,14 +1,20 @@
 import SwiftUI
 
 nonisolated public struct PanelView<SelectionValue, Content>: View, ~Sendable where SelectionValue: Hashable, Content: View {
-    @Binding private var selection: SelectionValue
+    @State private var internalSelection: SelectionValue
+    private let externalSelection: Binding<SelectionValue>?
     private let content: Content
+
+    private var selection: Binding<SelectionValue> {
+        externalSelection ?? $internalSelection
+    }
 
     nonisolated public init<C>(
         selection: Binding<SelectionValue>,
         @PanelContentBuilder<SelectionValue> content: () -> C
     ) where Content == PanelContentBuilder<SelectionValue>.Content<C>, C: PanelContent {
-        _selection = selection
+        _internalSelection = State(initialValue: selection.wrappedValue)
+        externalSelection = selection
         self.content = PanelContentBuilder.Content(content())
     }
 
@@ -25,7 +31,9 @@ extension PanelView where SelectionValue == Int {
     nonisolated public init<C>(
         @PanelContentBuilder<Int> content: () -> C
     ) where Content == PanelContentBuilder<Int>.Content<C>, C: PanelContent {
-        self.init(selection: .constant(0), content: content)
+        _internalSelection = State(initialValue: 0)
+        externalSelection = nil
+        self.content = PanelContentBuilder.Content(content())
     }
 }
 

@@ -23,12 +23,12 @@ public struct _PanelContentBodyAdaptor<Content: PanelContent>: View {
     }
 }
 
-public extension PanelContent {
-    nonisolated func defaultVisibility(_ visibility: Visibility) -> some PanelContent<PanelValue> {
-        // LLM to implement
-    }
-
-    nonisolated func defaultPlacement(_ placement: UnitPoint) -> some PanelContent<PanelValue> {
-        // LLM to implement
-    }
-}
+//public extension PanelContent {
+//    nonisolated func defaultVisibility(_ visibility: Visibility) -> some PanelContent<PanelValue> {
+//        // LLM to implement
+//    }
+//
+//    nonisolated func defaultPlacement(_ placement: UnitPoint) -> some PanelContent<PanelValue> {
+//        // LLM to implement
+//    }
+//}
