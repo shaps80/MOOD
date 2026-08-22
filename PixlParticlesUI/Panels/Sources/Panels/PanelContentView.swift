@@ -56,7 +56,7 @@ extension PanelView {
                                     }
                                 )
                                 .clipShape(.rect(cornerRadius: 28))
-                                .glassEffect(.regular, in: .rect(cornerRadius: 28))
+                                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 28))
                                 .frame(
                                     minWidth: widths.min,
                                     idealWidth: widths.ideal,

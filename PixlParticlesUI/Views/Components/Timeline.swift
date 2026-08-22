@@ -38,7 +38,7 @@ struct ParticleTimeline: View {
         .padding(.vertical, 10)
         .glassEffect(.regular.interactive(), in: .capsule)
         .scenePadding()
-        .animation(.bouncy, value: playMode)
+        .animation(.smooth.speed(2), value: playMode)
     }
 
     private var playbackSystemImage: String {

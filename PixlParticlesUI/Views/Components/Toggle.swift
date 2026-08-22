@@ -16,7 +16,7 @@ struct CheckmarkToggleStyle: ToggleStyle {
                 Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                     .imageScale(.large)
                     .fontWeight(configuration.isOn ? .heavy : .regular)
-                    .symbolEffect(.breathe, value: configuration.isOn)
+                    .animation(nil, value: configuration.isOn)
             }
         }
         .buttonStyle(.none)

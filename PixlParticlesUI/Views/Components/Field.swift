@@ -66,8 +66,8 @@ struct Field: View {
             Capsule()
                 .stroke(.tint, lineWidth: 1.5)
                 .opacity(isDragging || isShowingField ? 1 : 0)
-                .animation(.snappy, value: isDragging)
-                .animation(.snappy, value: isShowingField)
+                .animation(.smooth.speed(2), value: isDragging)
+                .animation(.smooth.speed(2), value: isShowingField)
                 .allowsHitTesting(false)
         }
         .onChange(of: value) { oldValue, newValue in
