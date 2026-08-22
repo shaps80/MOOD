@@ -11,7 +11,7 @@ public struct PanelTupleContent<PanelValue, each Content> where PanelValue: Hash
 extension PanelTupleContent: PanelContent {
     public var body: Self { self }
 
-    public var _panelView: TupleView<(repeat (each Content)._PanelView)> {
-        TupleView((repeat (each content)._panelView))
+    public func _panelView(_ inputs: _PanelInputs) -> TupleView<(repeat (each Content)._PanelView)> {
+        TupleView((repeat (each content)._panelView(inputs)))
     }
 }

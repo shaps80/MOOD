@@ -10,7 +10,7 @@ public struct PanelContentBuilder<PanelValue>: ~Sendable where PanelValue: Hasha
         }
 
         @MainActor public var body: some View {
-            content._panelView
+            content._panelView(_PanelInputs())
         }
     }
 }

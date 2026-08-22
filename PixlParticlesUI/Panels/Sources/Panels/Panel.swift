@@ -18,8 +18,12 @@ extension Panel: PanelContent {
 
     public var body: Self { self }
 
-    public var _panelView: some View {
+    public func _panelView(_ inputs: _PanelInputs) -> some View {
         content
             .tag(value)
+            .containerValue(\.panelCustomizationID, inputs.customizationID)
+            .containerValue(\.panelDefaultVisibility, inputs.defaultVisibility)
+            .containerValue(\.panelDefaultPlacement, inputs.defaultPlacement)
+            .containerValue(\.panelWidths, inputs.widths)
     }
 }
