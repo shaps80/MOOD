@@ -25,8 +25,5 @@ struct Inspector<Content: View>: View {
         .labeledContentStyle(.inspector)
         .focusable(false)
         .focusEffectDisabled(true)
-        .clipShape(.rect(cornerRadius: 28))
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 28))
-        .frame(maxWidth: 300)
     }
 }

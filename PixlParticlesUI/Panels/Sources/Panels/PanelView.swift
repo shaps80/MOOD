@@ -25,6 +25,13 @@ nonisolated public struct PanelView<ID, Content>: View, ~Sendable where ID: Hash
                             containerSize: geometry.size,
                             customization: $customization
                         )
+                        .zIndex(
+                            Double(
+                                subview.containerValues.tag(for: ID.self).map {
+                                    customization[zOrder: $0]
+                                } ?? 0
+                            )
+                        )
                     }
                 }
             }
@@ -50,10 +57,8 @@ private enum PanelKind: String, Identifiable, Sendable {
 
         PanelView(customization: $customization) {
             Panel(id: .properties) {
-                ScrollView {
-                    Text("Hello")
-                        .padding()
-                }
+                Text("Hello")
+                    .padding()
             }
             .defaultPlacement(.bottomLeading)
 

@@ -8,7 +8,7 @@ struct Divided<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
+        VStack(alignment: .leading, spacing: 20) {
             Group(sections: content) { sections in
                 ForEach(sections) { section in
                     VStack(alignment: .leading, spacing: 10) {

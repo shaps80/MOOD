@@ -51,6 +51,11 @@ extension PanelView {
                             )
 
                         subview
+                            .simultaneousGesture(
+                                TapGesture().onEnded {
+                                    customization.bringToFront(id)
+                                }
+                            )
                             .clipShape(.rect(cornerRadius: 28))
                             .glassEffect(.regular, in: .rect(cornerRadius: 28))
                             .frame(
@@ -80,6 +85,7 @@ extension PanelView {
             DragGesture(minimumDistance: 0, coordinateSpace: .global)
                 .onChanged { value in
                     if dragOrigin == nil {
+                        customization.bringToFront(id)
                         dragOrigin =
                         position
                         ?? CGPoint(

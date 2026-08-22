@@ -20,7 +20,7 @@ public struct PanelCustomization<ID>: Equatable where ID: Hashable {
     }
 
     public subscript(zOrder id: ID) -> Int {
-        zOrder.firstIndex(of: id) ?? zOrder.count
+        zOrder.firstIndex(of: id) ?? 0
     }
 
     public mutating func bringToFront(_ id: ID) {

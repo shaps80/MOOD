@@ -1,12 +1,19 @@
 import PixlEditorSupport
 import PixlParticles
 import PixlRenderer
+import Panels
 import SwiftUI
 
 struct ContentView: View {
+    enum PanelKind: String {
+        case properties
+        case metrics
+    }
+
     @Environment(\.undoManager) private var undoManager
     @Bindable var document: ParticleDocument
     @SceneStorage("editor.settings") private var settings = EditorSettings()
+    @State private var customization: PanelCustomization<PanelKind> = .init()
 
     @State private var system: System
     @State private var playback = PlaybackState()
@@ -15,7 +22,7 @@ struct ContentView: View {
 
     init(document: ParticleDocument) {
         self.document = document
-        
+
         let snapshot = document.snapshot
         _system = .init(
             initialValue: .init(
@@ -26,6 +33,7 @@ struct ContentView: View {
             )
         )
     }
+
 
     var body: some View {
         NavigationStack {
@@ -47,46 +55,35 @@ struct ContentView: View {
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
-//                .draggableInspector(
-//                    id: "properties",
-//                    isPresented: $settings.visibility.isInspectorVisible
-//                ) {
-//                    PropertiesInspector(
-//                        document: document,
-//                        system: $system,
-//                        playback: $playback
-//                    )
-//                    .zIndex(topInspector == "properties" ? 100 : 0)
-//                    .animation(.smooth.speed(2), value: document.snapshot)
-//                    .onTapGesture {
-//                        topInspector = "properties"
-//                    }
-//                }
-//                .draggableInspector(
-//                    id: "metrics",
-//                    placement: .bottomLeading,
-//                    isPresented: $settings.visibility.isDataVisible
-//                ) {
-//                    MetricsInspector(
-//                        simulatedCount: Int(document.snapshot.particleCount),
-//                        metrics: metrics
-//                    )
-//                    .zIndex(topInspector == "metrics" ? 100 : 0)
-//                    .onTapGesture {
-//                        topInspector = "metrics"
-//                    }
-//                }
 
-                VStack {
-                    Spacer(minLength: 0)
+                PanelView(customization: $customization) {
+                    Panel(id: .properties) {
+                        PropertiesInspector(
+                            document: document,
+                            system: $system,
+                            playback: $playback
+                        )
+                    }
+                    .defaultPlacement(.trailing)
+                    .width(300)
 
-                    ParticleTimeline(
-                        playback: playback,
-                        playMode: $settings.playMode,
-                        togglePlayback: togglePlayback
-                    )
-                    .frame(maxWidth: 500)
+                    Panel(id: .metrics) {
+                        MetricsInspector(
+                            simulatedCount: Int(document.snapshot.particleCount),
+                            metrics: metrics
+                        )
+                    }
+                    .defaultPlacement(.leading)
+                    .width(250)
                 }
+                .scenePadding()
+
+                ParticleTimeline(
+                    playback: playback,
+                    playMode: $settings.playMode,
+                    togglePlayback: togglePlayback
+                )
+                .frame(maxWidth: 500)
                 .ignoresSafeArea()
             }
             .background(.quinary)
@@ -114,11 +111,17 @@ struct ContentView: View {
                         Section("Inspectors") {
                             Toggle(
                                 "Properties",
-                                isOn: $settings.visibility.isInspectorVisible
+                                isOn: .init(
+                                    get: { customization[visibility: .properties] == .visible },
+                                    set: { customization[visibility: .properties] = $0 ? .visible : .hidden }
+                                )
                             )
                             Toggle(
                                 "Metrics",
-                                isOn: $settings.visibility.isDataVisible
+                                isOn: .init(
+                                    get: { customization[visibility: .metrics] == .visible },
+                                    set: { customization[visibility: .metrics] = $0 ? .visible : .hidden }
+                                )
                             )
                         }
 
@@ -225,4 +228,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView(document: ParticleDocument())
+        .frame(width: 800, height: 600)
 }

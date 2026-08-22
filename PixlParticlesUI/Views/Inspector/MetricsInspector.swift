@@ -5,7 +5,7 @@ struct MetricsInspector: View {
     let metrics: RenderMetrics
 
     var body: some View {
-        Divided {
+        Inspector {
             ParticleMetricsSection(
                 simulatedCount: simulatedCount,
                 visibleCount: metrics.visibleCount
@@ -14,14 +14,5 @@ struct MetricsInspector: View {
             CPUMetricsSection(metrics: metrics)
             GPUMetricsSection(metrics: metrics)
         }
-        .frame(minWidth: 180, alignment: .topLeading)
-        .scenePadding()
-        .padding(5)
-        .labeledContentStyle(.inspector)
-        .focusable(false)
-        .focusEffectDisabled(true)
-        .clipShape(.rect(cornerRadius: 28))
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 28))
-        .frame(maxWidth: 250)
     }
 }
