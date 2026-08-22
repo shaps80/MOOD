@@ -11,11 +11,13 @@
 		549480183030BB2100BCB679 /* PixlMetal in Frameworks */ = {isa = PBXBuildFile; productRef = 549480173030BB2100BCB679 /* PixlMetal */; };
 		5494801A3030BB2100BCB679 /* PixlEditorSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 549480193030BB2100BCB679 /* PixlEditorSupport */; };
 		5494801C3030BB2100BCB679 /* PixlEditorSupportMetal in Frameworks */ = {isa = PBXBuildFile; productRef = 5494801B3030BB2100BCB679 /* PixlEditorSupportMetal */; };
+		54CACE92303A067B00CB643C /* Panels in Frameworks */ = {isa = PBXBuildFile; productRef = 54CACE91303A067B00CB643C /* Panels */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* PixlParticlesUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PixlParticlesUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5471DBD13033E19900ADF004 /* PixlParticlesUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PixlParticlesUI.entitlements; sourceTree = "<group>"; };
+		54CACE90303A067100CB643C /* Panels */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Panels; sourceTree = "<group>"; };
 		54CBB8D83031F23E0059E757 /* PixlParticles */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = PixlParticles; path = ../PixlParticles; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -31,6 +33,7 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				54CACE92303A067B00CB643C /* Panels in Frameworks */,
 				549480163030BB2100BCB679 /* PixlParticles in Frameworks */,
 				549480183030BB2100BCB679 /* PixlMetal in Frameworks */,
 				5494801A3030BB2100BCB679 /* PixlEditorSupport in Frameworks */,
@@ -43,6 +46,7 @@
 		000000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				54CACE90303A067100CB643C /* Panels */,
 				5471DBD13033E19900ADF004 /* PixlParticlesUI.entitlements */,
 				54CBB8D83031F23E0059E757 /* PixlParticles */,
 				000000000000000000000010 /* Views */,
@@ -88,6 +92,7 @@
 				549480173030BB2100BCB679 /* PixlMetal */,
 				549480193030BB2100BCB679 /* PixlEditorSupport */,
 				5494801B3030BB2100BCB679 /* PixlEditorSupportMetal */,
+				54CACE91303A067B00CB643C /* Panels */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* PixlParticlesUI.app */;
@@ -441,6 +446,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */;
 			productName = PixlEditorSupportMetal;
+		};
+		54CACE91303A067B00CB643C /* Panels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Panels;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
