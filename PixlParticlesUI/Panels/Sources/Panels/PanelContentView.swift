@@ -21,63 +21,64 @@ extension PanelView {
                 let isExplicitlyHidden = customization[visibility: id] == .hidden
                 let isVisibleByDefault = subview.containerValues.panelDefaultVisibility != .hidden
                 let defaultPlacement = subview.containerValues.panelDefaultPlacement
+                let availableWidth = max(containerSize.width - contentSize.width, 0)
+                let availableHeight = max(containerSize.height - contentSize.height, 0)
 
-                if !isExplicitlyHidden && isVisibleByDefault {
-                    let availableWidth = max(containerSize.width - contentSize.width, 0)
-                    let availableHeight = max(containerSize.height - contentSize.height, 0)
+                let position = position
+                ?? CGPoint(
+                    x: customization.placement[id]?.x ?? defaultPlacement.x,
+                    y: customization.placement[id]?.y ?? defaultPlacement.y
+                )
+                let origin = CGPoint(
+                    x: availableWidth * position.x,
+                    y: availableHeight * position.y
+                )
 
-                    let position = position
-                    ?? CGPoint(
-                        x: customization.placement[id]?.x ?? defaultPlacement.x,
-                        y: customization.placement[id]?.y ?? defaultPlacement.y
-                    )
-                    let origin = CGPoint(
-                        x: availableWidth * position.x,
-                        y: availableHeight * position.y
-                    )
+                ZStack(alignment: .topLeading) {
+                    if !isExplicitlyHidden && isVisibleByDefault {
+                        let widths = subview.containerValues.panelWidths
 
-                    let widths = subview.containerValues.panelWidths
+                        VStack {
+                            Capsule()
+                                .glassEffect(.regular.interactive())
+                                .frame(width: 36, height: 5)
+                                .contentShape(.rect.inset(by: -10))
+                                .gesture(drag(id: id, in: containerSize, defaultPlacement: defaultPlacement))
+                                .simultaneousGesture(
+                                    TapGesture(count: 2).onEnded {
+                                        customization[visibility: id] = .hidden
+                                    }
+                                )
 
-                    VStack {
-                        Capsule()
-                            .glassEffect(.regular.interactive())
-                            .frame(width: 36, height: 5)
-                            .contentShape(.rect.inset(by: -10))
-                            .gesture(drag(id: id, in: containerSize, defaultPlacement: defaultPlacement))
-                            .simultaneousGesture(
-                                TapGesture(count: 2).onEnded {
-                                    customization[visibility: id] = .hidden
-                                }
-                            )
-
-                        subview
-                            .simultaneousGesture(
-                                TapGesture().onEnded {
-                                    customization.bringToFront(id)
-                                }
-                            )
-                            .clipShape(.rect(cornerRadius: 28))
-                            .glassEffect(.regular, in: .rect(cornerRadius: 28))
-                            .frame(
-                                minWidth: widths.min,
-                                idealWidth: widths.ideal,
-                                maxWidth: widths.max
-                            )
-                    }
-                    .onGeometryChange(for: CGSize.self) { proxy in
-                        proxy.size
-                    } action: { size in
-                        withAnimation(.smooth.speed(2)) {
-                            contentSize = size
+                            subview
+                                .simultaneousGesture(
+                                    TapGesture().onEnded {
+                                        customization.bringToFront(id)
+                                    }
+                                )
+                                .clipShape(.rect(cornerRadius: 28))
+                                .glassEffect(.regular, in: .rect(cornerRadius: 28))
+                                .frame(
+                                    minWidth: widths.min,
+                                    idealWidth: widths.ideal,
+                                    maxWidth: widths.max
+                                )
                         }
+                        .onGeometryChange(for: CGSize.self) { proxy in
+                            proxy.size
+                        } action: { size in
+                            withAnimation(.smooth.speed(2)) {
+                                contentSize = size
+                            }
+                        }
+                        .transition(PanelTransition())
+                        .animation(.smooth.speed(2), value: contentSize)
                     }
-                    .transition(PanelTransition())
-                    .animation(.smooth.speed(2), value: contentSize)
-                    .offset(
-                        x: clamped(origin.x, to: 0...availableWidth),
-                        y: clamped(origin.y, to: 0...availableHeight)
-                    )
                 }
+                .offset(
+                    x: clamped(origin.x, to: 0...availableWidth),
+                    y: clamped(origin.y, to: 0...availableHeight)
+                )
             }
         }
 
