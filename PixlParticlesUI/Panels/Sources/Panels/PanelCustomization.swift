@@ -32,12 +32,12 @@ public struct PanelCustomization<ID>: Equatable where ID: Hashable & Codable & S
     }
 
     public subscript(visibility id: ID) -> Visibility {
-        get { visibility.contains(id) ? .hidden : .visible }
+        get { visibility.contains(id) ? .hidden : .automatic }
         set {
-            if newValue == .hidden {
-                visibility.insert(id)
-            } else {
+            if newValue != .hidden {
                 visibility.remove(id)
+            } else {
+                visibility.insert(id)
             }
         }
     }
@@ -49,6 +49,14 @@ public struct PanelCustomization<ID>: Equatable where ID: Hashable & Codable & S
     public mutating func bringToFront(_ id: ID) {
         zOrder.removeAll { $0 == id }
         zOrder.append(id)
+    }
+
+    public mutating func resetVisibility() {
+        visibility.removeAll()
+    }
+
+    public mutating func resetPlacements() {
+        placement.removeAll()
     }
 }
 

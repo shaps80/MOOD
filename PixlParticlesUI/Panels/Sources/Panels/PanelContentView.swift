@@ -18,22 +18,23 @@ extension PanelView {
 
         var body: some View {
             if let id = subview.containerValues.tag(for: ID.self) {
-                let isExplicitlyHidden = customization[visibility: id] == .hidden
-                let isVisibleByDefault = subview.containerValues.panelDefaultVisibility != .hidden
+                let visibility = customization[visibility: id]
                 let defaultPlacement = subview.containerValues.panelDefaultPlacement
+                let defaultVisibility = subview.containerValues.panelDefaultVisibility
 
                 let position = position
                 ?? CGPoint(
                     x: customization.placement[id]?.x ?? defaultPlacement.x,
                     y: customization.placement[id]?.y ?? defaultPlacement.y
                 )
+
                 let containerWidth = containerSize.width
                 let containerHeight = containerSize.height
                 let measuredWidth = contentSize.width
                 let measuredHeight = contentSize.height
 
                 ZStack(alignment: .topLeading) {
-                    if !isExplicitlyHidden && isVisibleByDefault {
+                    if visibility == .visible || (visibility == .automatic && defaultVisibility != .hidden) {
                         let widths = subview.containerValues.panelWidths
 
                         VStack {
@@ -70,6 +71,13 @@ extension PanelView {
                         .transition(PanelTransition())
                     }
                 }
+                .zIndex(
+                    Double(
+                        subview.containerValues.tag(for: ID.self).map {
+                            customization[zOrder: $0]
+                        } ?? 0
+                    )
+                )
                 .visualEffect { content, proxy in
                     let contentWidth = max(proxy.size.width, measuredWidth)
                     let contentHeight = max(proxy.size.height, measuredHeight)

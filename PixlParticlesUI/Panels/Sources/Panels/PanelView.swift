@@ -25,13 +25,6 @@ nonisolated public struct PanelView<ID, Content>: View, ~Sendable where ID: Hash
                             containerSize: geometry.size,
                             customization: $customization
                         )
-                        .zIndex(
-                            Double(
-                                subview.containerValues.tag(for: ID.self).map {
-                                    customization[zOrder: $0]
-                                } ?? 0
-                            )
-                        )
                     }
                 }
             }

@@ -111,19 +111,24 @@ struct ContentView: View {
 
                         Section("Inspectors") {
                             Toggle(
-                                "Properties",
-                                isOn: .init(
-                                    get: { customization[visibility: .properties] == .visible },
-                                    set: { customization[visibility: .properties] = $0 ? .visible : .hidden }
-                                )
-                            )
-                            Toggle(
                                 "Metrics",
                                 isOn: .init(
-                                    get: { customization[visibility: .metrics] == .visible },
+                                    get: { customization[visibility: .metrics] != .hidden },
                                     set: { customization[visibility: .metrics] = $0 ? .visible : .hidden }
                                 )
                             )
+
+                            Toggle(
+                                "Properties",
+                                isOn: .init(
+                                    get: { customization[visibility: .properties] != .hidden },
+                                    set: { customization[visibility: .properties] = $0 ? .visible : .hidden }
+                                )
+                            )
+
+                            Button("Reset Panels") {
+                                customization.resetVisibility()
+                            }
                         }
 
                         Section("Debugging") {
