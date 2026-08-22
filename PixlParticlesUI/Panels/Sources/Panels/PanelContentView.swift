@@ -21,18 +21,16 @@ extension PanelView {
                 let isExplicitlyHidden = customization[visibility: id] == .hidden
                 let isVisibleByDefault = subview.containerValues.panelDefaultVisibility != .hidden
                 let defaultPlacement = subview.containerValues.panelDefaultPlacement
-                let availableWidth = max(containerSize.width - contentSize.width, 0)
-                let availableHeight = max(containerSize.height - contentSize.height, 0)
 
                 let position = position
                 ?? CGPoint(
                     x: customization.placement[id]?.x ?? defaultPlacement.x,
                     y: customization.placement[id]?.y ?? defaultPlacement.y
                 )
-                let origin = CGPoint(
-                    x: availableWidth * position.x,
-                    y: availableHeight * position.y
-                )
+                let containerWidth = containerSize.width
+                let containerHeight = containerSize.height
+                let measuredWidth = contentSize.width
+                let measuredHeight = contentSize.height
 
                 ZStack(alignment: .topLeading) {
                     if !isExplicitlyHidden && isVisibleByDefault {
@@ -67,18 +65,22 @@ extension PanelView {
                         .onGeometryChange(for: CGSize.self) { proxy in
                             proxy.size
                         } action: { size in
-                            withAnimation(.smooth.speed(2)) {
-                                contentSize = size
-                            }
+                            contentSize = size
                         }
                         .transition(PanelTransition())
-                        .animation(.smooth.speed(2), value: contentSize)
                     }
                 }
-                .offset(
-                    x: clamped(origin.x, to: 0...availableWidth),
-                    y: clamped(origin.y, to: 0...availableHeight)
-                )
+                .visualEffect { content, proxy in
+                    let contentWidth = max(proxy.size.width, measuredWidth)
+                    let contentHeight = max(proxy.size.height, measuredHeight)
+                    let availableWidth = max(containerWidth - contentWidth, 0)
+                    let availableHeight = max(containerHeight - contentHeight, 0)
+
+                    return content.offset(
+                        x: min(max(availableWidth * position.x, 0), availableWidth),
+                        y: min(max(availableHeight * position.y, 0), availableHeight)
+                    )
+                }
             }
         }
 
