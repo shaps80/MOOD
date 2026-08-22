@@ -59,6 +59,15 @@ extension PanelView {
                                 maxWidth: widths.max
                             )
                     }
+                    .onGeometryChange(for: CGSize.self) { proxy in
+                        proxy.size
+                    } action: { size in
+                        withAnimation(.smooth.speed(2)) {
+                            contentSize = size
+                        }
+                    }
+                    .transition(PanelTransition())
+                    .animation(.smooth.speed(2), value: contentSize)
                     .offset(
                         x: clamped(origin.x, to: 0...availableWidth),
                         y: clamped(origin.y, to: 0...availableHeight)

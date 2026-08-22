@@ -50,21 +50,46 @@ private enum PanelKind: String, Identifiable, Sendable {
 
         PanelView(customization: $customization) {
             Panel(id: .properties) {
-                ScrollView {
+                FittingScrollView {
                     Text("Hello")
                         .padding()
                 }
             }
-            .defaultPlacement(.leading)
+            .defaultPlacement(.bottomLeading)
 
             Panel(id: .metrics) {
                 Text("Test")
                     .padding()
             }
-            .defaultPlacement(.trailing)
+            .defaultPlacement(.topTrailing)
         }
         .animation(.smooth.speed(2), value: customization)
         .scenePadding()
     }
     .frame(width: 800, height: 600)
+}
+
+struct FittingScrollView<Content: View>: View {
+    @State private var contentHeight = 0.0
+    @ViewBuilder private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView {
+            content
+                .onGeometryChange(for: Double.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    contentHeight = height
+                }
+        }
+        .frame(
+            idealHeight: contentHeight,
+            maxHeight: contentHeight
+        )
+        .scrollBounceBehavior(.basedOnSize)
+    }
 }
