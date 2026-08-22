@@ -25,5 +25,12 @@ extension Panel: PanelContent {
             .containerValue(\.panelDefaultVisibility, inputs.defaultVisibility)
             .containerValue(\.panelDefaultPlacement, inputs.defaultPlacement)
             .containerValue(\.panelWidths, inputs.widths)
+            .frame(
+                minWidth: inputs.widths.min,
+                idealWidth: inputs.widths.ideal,
+                maxWidth: inputs.widths.max
+            )
+            .padding()
+            .glassEffect(.regular, in: .rect(cornerRadius: 28))
     }
 }

@@ -73,6 +73,7 @@ private enum PanelKind: String, Identifiable {
                 Text("Hello")
             }
             .customizationID(PanelKind.properties.rawValue)
+            .width(ideal: 200)
 
             Panel(value: .metrics) {
                 Text("World")
@@ -82,6 +83,7 @@ private enum PanelKind: String, Identifiable {
                         customization[visibility: PanelKind.metrics.rawValue] = .hidden
                     }
             }
+            .width(200)
             .customizationID(PanelKind.metrics.rawValue)
         }
         .animation(.smooth.speed(2), value: customization)
