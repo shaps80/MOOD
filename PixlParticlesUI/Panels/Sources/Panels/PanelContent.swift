@@ -25,6 +25,10 @@ public struct _PanelContentBodyAdaptor<Content: PanelContent>: View {
 }
 
 public extension PanelContent {
+    nonisolated func contentAnimation(_ animation: Animation?) -> some PanelContent<PanelValue> {
+        _AnimatedPanelContent(content: self, animation: animation)
+    }
+
     nonisolated func defaultVisibility(_ visibility: Visibility) -> some PanelContent<PanelValue> {
         _DefaultVisibilityPanelContent(content: self, visibility: visibility)
     }

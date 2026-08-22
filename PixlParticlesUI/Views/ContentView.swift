@@ -227,8 +227,3 @@ struct ContentView: View {
         return emitter
     }
 }
-
-#Preview {
-    ContentView(document: ParticleDocument())
-        .frame(width: 800, height: 600)
-}
