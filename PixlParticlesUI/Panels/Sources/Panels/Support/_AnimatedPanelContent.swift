@@ -16,11 +16,8 @@ extension _AnimatedPanelContent: PanelContent {
     var body: Self { self }
 
     func _panelView(_ inputs: _PanelInputs) -> some View {
-        content
-            ._panelView(inputs)
-            .transaction { transaction in
-                guard transaction.animation == nil else { return }
-                transaction.animation = animation
-            }
+        var inputs = inputs
+        inputs.animation = animation
+        return content._panelView(inputs)
     }
 }

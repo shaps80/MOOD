@@ -20,6 +20,9 @@ extension Panel: PanelContent {
 
     public func _panelView(_ inputs: _PanelInputs) -> some View {
         content
+            .transaction { transaction in
+                transaction.animation = inputs.animation
+            }
             .id(id)
             .tag(id)
             .containerValue(\.panelDefaultVisibility, inputs.defaultVisibility)
