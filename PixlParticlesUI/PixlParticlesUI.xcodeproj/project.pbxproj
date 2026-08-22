@@ -46,8 +46,8 @@
 		000000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				54CACE90303A067100CB643C /* Panels */,
 				5471DBD13033E19900ADF004 /* PixlParticlesUI.entitlements */,
+				54CACE90303A067100CB643C /* Panels */,
 				54CBB8D83031F23E0059E757 /* PixlParticles */,
 				000000000000000000000010 /* Views */,
 				549480143030BB2100BCB679 /* Frameworks */,
