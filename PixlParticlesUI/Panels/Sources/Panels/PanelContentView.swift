@@ -66,16 +66,10 @@ extension PanelView {
                             proxy.size
                         } action: { size in
                             guard size != .zero, size != contentSize else { return }
-
-                            if contentSize == .zero {
-                                contentSize = size
-                            } else {
-                                withAnimation(.smooth.speed(2)) {
-                                    contentSize = size
-                                }
-                            }
+                            contentSize = size
                         }
                         .transition(PanelTransition())
+                        .animation(.smooth.speed(2), value: contentSize)
                     }
                 }
                 .zIndex(
