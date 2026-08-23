@@ -9,12 +9,13 @@ public final class EmitterInstance {
 
     private(set) var compiled: CompiledEmitter
     private(set) var spawnAccumulator: UInt64 = 0
+    private(set) var tick: UInt64 = 0
 
     private let random: RandomSource
     private var arena: ParticleArena
     private var slice: EmitterArenaSlice
     private var metadata: Metadata
-    private var expiredSlots: UnsafeMutableBufferPointer<UInt32>
+    private var birthCohorts: BirthCohorts
 
     init(
         compiled: CompiledEmitter,
@@ -28,7 +29,7 @@ public final class EmitterInstance {
             capacity: compiled.storage.capacity,
             count: 0
         )
-        expiredSlots = .allocate(capacity: compiled.storage.capacity)
+        birthCohorts = BirthCohorts(capacity: compiled.storage.capacity)
         let arena = Self.makeArena(compiled: compiled)
         self.arena = arena
         slice = arena.slice(layout: compiled.storage)
@@ -46,10 +47,6 @@ public final class EmitterInstance {
         )
     }
 
-    deinit {
-        expiredSlots.deallocate()
-    }
-
     @discardableResult
     func apply(_ compiled: CompiledEmitter) -> Reconfiguration {
         guard self.compiled.storage != compiled.storage else {
@@ -63,23 +60,19 @@ public final class EmitterInstance {
             capacity: compiled.storage.capacity,
             count: 0
         )
-        expiredSlots.deallocate()
-        expiredSlots = .allocate(capacity: compiled.storage.capacity)
+        birthCohorts = BirthCohorts(capacity: compiled.storage.capacity)
         arena = Self.makeArena(compiled: compiled)
         slice = arena.slice(layout: compiled.storage)
         spawnAccumulator = 0
+        tick = 0
         return .rebuiltArena
     }
 
     func advance(by delta: Float) {
         var spawnCount = scheduledSpawnCount()
-        let expiredCount = slice.storage.advance(
-            by: delta,
-            collectingExpiredSlotsInto: expiredSlots
-        )
+        slice.storage.advance(by: delta)
 
-        for candidate in 0..<expiredCount {
-            let slot = expiredSlots[candidate]
+        while let slot = birthCohorts.popExpired(at: tick) {
             let index = metadata.indexForKnownLiveSlot(slot)
             if spawnCount > 0 {
                 recycle(slot: slot, at: index, advancedBy: delta)
@@ -93,12 +86,15 @@ public final class EmitterInstance {
             appendSpawn(advancedBy: delta)
             spawnCount -= 1
         }
+        tick &+= 1
     }
 
     func reset() {
         metadata.reset(count: 0)
+        birthCohorts.reset()
         slice.storage.removeAll()
         spawnAccumulator = 0
+        tick = 0
     }
 
     func resetInterpolation() {
@@ -118,13 +114,16 @@ public final class EmitterInstance {
     @discardableResult
     func remove(_ id: Particle.ID) -> Bool {
         guard let removed = metadata.resolve(id) else { return false }
+        birthCohorts.remove(removed.slot)
         remove(slot: removed.slot, at: removed.index)
         return true
     }
 
     @inline(__always)
     func remove(at index: Int) {
-        remove(slot: slice.storage.slot(at: index), at: index)
+        let slot = slice.storage.slot(at: index)
+        birthCohorts.remove(slot)
+        remove(slot: slot, at: index)
     }
 
     @inline(__always)
@@ -162,7 +161,7 @@ public final class EmitterInstance {
     }
 
     var arenaByteCount: Int {
-        slice.layout.byteCount + metadata.byteCount
+        slice.layout.byteCount + metadata.byteCount + birthCohorts.byteCount
     }
 
     @inline(__always)
@@ -192,18 +191,17 @@ public final class EmitterInstance {
             slice.storage.replaceStationary(
                 at: index,
                 with: particle,
-                slot: slot,
-                lifetimeTicks: compiled.constants.lifetimeTicks
+                slot: slot
             )
         } else {
             particle.position += particle.velocity * delta
             slice.storage.replaceMoving(
                 at: index,
                 with: particle,
-                slot: slot,
-                lifetimeTicks: compiled.constants.lifetimeTicks
+                slot: slot
             )
         }
+        scheduleDeath(for: slot)
     }
 
     @inline(__always)
@@ -217,17 +215,16 @@ public final class EmitterInstance {
         if compiled.storage.velocities == nil {
             slice.storage.appendStationary(
                 particle,
-                slot: allocated.slot,
-                lifetimeTicks: compiled.constants.lifetimeTicks
+                slot: allocated.slot
             )
         } else {
             particle.position += particle.velocity * delta
             slice.storage.appendMoving(
                 particle,
-                slot: allocated.slot,
-                lifetimeTicks: compiled.constants.lifetimeTicks
+                slot: allocated.slot
             )
         }
+        scheduleDeath(for: allocated.slot)
     }
 
     @inline(__always)
@@ -240,16 +237,23 @@ public final class EmitterInstance {
         if compiled.storage.velocities == nil {
             slice.storage.appendStationary(
                 particle,
-                slot: allocated.slot,
-                lifetimeTicks: compiled.constants.lifetimeTicks
+                slot: allocated.slot
             )
         } else {
             slice.storage.appendMoving(
                 particle,
-                slot: allocated.slot,
-                lifetimeTicks: compiled.constants.lifetimeTicks
+                slot: allocated.slot
             )
         }
+        scheduleDeath(for: allocated.slot)
+    }
+
+    @inline(__always)
+    private func scheduleDeath(for slot: UInt32) {
+        birthCohorts.schedule(
+            slot,
+            deathTick: tick + UInt64(compiled.constants.lifetimeTicks)
+        )
     }
 
     private static func makeArena(compiled: CompiledEmitter) -> ParticleArena {

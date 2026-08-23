@@ -8,7 +8,6 @@ struct EmitterStorageLayout: Equatable, Sendable {
     let currentPositions: Range<Int>
     let previousPositions: Range<Int>?
     let velocities: Range<Int>?
-    let lifetimes: Range<Int>
     let colors: Range<Int>
 
     init(
@@ -33,10 +32,6 @@ struct EmitterStorageLayout: Equatable, Sendable {
         velocities = storesVelocity
             ? builder.allocate(count: batchCount, of: Vector3Batch.self)
             : nil
-        lifetimes = builder.allocate(
-            count: batchCount,
-            of: SIMD4<UInt32>.self
-        )
         colors = builder.allocate(count: batchCount, of: ColorBatch.self)
 
         self.capacity = capacity
