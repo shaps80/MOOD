@@ -23,7 +23,7 @@ struct LoopSettings: Hashable, Sendable {
     init(
         maximumDeltaSeconds: Double = 0.25,
         fixedStep: FixedStep? = FixedStep(
-            updatesPerSecond: 30,
+            updatesPerSecond: 60,
             maximumUpdatesPerFrame: 4
         )
     ) {

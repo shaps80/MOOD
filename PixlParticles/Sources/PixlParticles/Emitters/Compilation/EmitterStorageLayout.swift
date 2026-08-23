@@ -20,7 +20,7 @@ struct EmitterStorageLayout: Equatable, Sendable {
 
         identifiers = builder.allocate(
             count: batchCount,
-            of: SIMD4<Particle.ID>.self
+            of: SIMD4<UInt32>.self
         )
         currentPositions = builder.allocate(
             count: batchCount,

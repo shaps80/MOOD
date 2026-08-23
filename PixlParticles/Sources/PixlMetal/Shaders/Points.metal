@@ -75,8 +75,8 @@ static float3 particlePosition(
     );
 }
 
-static ulong particleID(
-    const device ulong4 *ids,
+static uint particleID(
+    const device uint4 *ids,
     uint particleIndex
 ) {
     return ids[particleIndex / 4][particleIndex % 4];
@@ -129,8 +129,8 @@ static uint pointLODTile(
     return y * configuration.tileColumns + x;
 }
 
-static uint pointLODHash(ulong value) {
-    uint hash = uint(value) ^ uint(value >> 32);
+static uint pointLODHash(uint value) {
+    uint hash = value;
     hash ^= hash >> 16;
     hash *= 0x85EBCA6Bu;
     hash ^= hash >> 13;
@@ -421,7 +421,7 @@ kernel void preparePointLODThresholds(
 }
 
 kernel void classifyPointLOD(
-    const device ulong4 *ids [[buffer(0)]],
+    const device uint4 *ids [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     const device DrawArguments &visibleArguments [[buffer(2)]],
     const device uint *tileThresholds [[buffer(3)]],

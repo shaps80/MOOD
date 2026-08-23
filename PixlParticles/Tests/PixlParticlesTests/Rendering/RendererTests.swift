@@ -67,7 +67,7 @@ struct ParticleRendererTests {
             count: 2
         )
         let ids = first.ids.mutableBuffer(
-            of: SIMD4<UInt64>.self,
+            of: SIMD4<UInt32>.self,
             count: 2
         )
         #expect(positions[0].x[0] == 1)
