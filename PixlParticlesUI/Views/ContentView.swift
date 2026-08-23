@@ -49,11 +49,19 @@ struct ContentView: View {
                     isGroundPlaneVisible: settings.visibility.isGroundPlaneVisible,
                     isFrustumVisible: settings.visibility.isFrustumVisible,
                     cullingBounds: cullingBounds,
-                    capturesDiagnostics: settings.visibility.isDataVisible,
+                    capturesDiagnostics: true,
                     metrics: metrics,
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
+                .overlay(alignment: .bottomLeading) {
+                    if customization[visibility: .metrics] == .hidden {
+                        MetricsOverlay(metrics: metrics)
+                            .frame(maxWidth: 200, alignment: .bottomLeading)
+                            .transition(.panel(anchor: .bottom))
+                            .scenePadding()
+                    }
+                }
 
                 PanelView(customization: $customization) {
                     Panel(id: .properties) {
@@ -77,7 +85,6 @@ struct ContentView: View {
                     .width(250)
                 }
                 .scenePadding()
-                .animation(.smooth.speed(2), value: customization)
 
                 ParticleTimeline(
                     playback: playback,
@@ -87,6 +94,7 @@ struct ContentView: View {
                 .frame(maxWidth: 500)
                 .ignoresSafeArea()
             }
+            .animation(.smooth.speed(2), value: customization)
             .background(.quinary)
             .toolbar {
                 ToolbarItem(placement: .secondaryAction) {

@@ -68,7 +68,7 @@ extension PanelView {
                             guard size != .zero, size != contentSize else { return }
                             contentSize = size
                         }
-                        .transition(PanelTransition())
+                        .transition(.panel)
                         .animation(.smooth.speed(2), value: contentSize)
                     }
                 }

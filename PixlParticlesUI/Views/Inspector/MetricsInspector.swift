@@ -16,3 +16,16 @@ struct MetricsInspector: View {
         }
     }
 }
+
+struct MetricsOverlay: View {
+    let metrics: RenderMetrics
+
+    var body: some View {
+        Divided {
+            FrameMetricsSection(metrics: metrics)
+            CPUMetricsSection(metrics: metrics)
+            GPUMetricsSection(metrics: metrics)
+        }
+        .font(.subheadline)
+    }
+}
