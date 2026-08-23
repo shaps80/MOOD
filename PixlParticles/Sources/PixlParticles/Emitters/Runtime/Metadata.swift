@@ -72,6 +72,11 @@ final class Metadata {
     }
 
     @inline(__always)
+    func indexForKnownLiveSlot(_ slot: UInt32) -> Int {
+        Int(locations[Int(slot)])
+    }
+
+    @inline(__always)
     func release(_ slot: UInt32) {
         precondition(slot < capacity)
         precondition(locations[Int(slot)] & Self.free == 0)

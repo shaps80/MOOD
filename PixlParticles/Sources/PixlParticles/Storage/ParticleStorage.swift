@@ -118,39 +118,104 @@ final class ParticleStorage {
     }
 
     @inline(__always)
-    func advance(by delta: Float) {
-        guard var previousPositions, let velocities else { return }
-
-        for index in 0..<liveBatchCount {
-            previousPositions[index].x = positions[index].x
-                + velocities[index].x * delta
-            previousPositions[index].y = positions[index].y
-                + velocities[index].y * delta
-            previousPositions[index].z = positions[index].z
-                + velocities[index].z * delta
-        }
-
-        let oldPreviousPositions = previousPositions
-        previousPositions = positions
-        positions = oldPreviousPositions
-        self.previousPositions = previousPositions
-
-        let oldPreviousStorage = previousPositionStorage!
-        previousPositionStorage = positionStorage
-        positionStorage = oldPreviousStorage
-    }
-
-    @inline(__always)
-    func advanceLifetimes() {
+    func advance(
+        by delta: Float,
+        collectingExpiredSlotsInto expiredSlots: UnsafeMutableBufferPointer<UInt32>
+    ) -> Int {
         let one = SIMD4<UInt32>(repeating: 1)
-        for index in 0..<liveBatchCount {
-            lifetimes[index] &-= one
+        let fullBatchCount = count / 4
+        var expiredCount = 0
+
+        if var previousPositions, let velocities {
+            for index in 0..<fullBatchCount {
+                let remaining = lifetimes[index] &- one
+                lifetimes[index] = remaining
+                collectExpiredSlots(
+                    in: remaining,
+                    batch: index,
+                    laneCount: 4,
+                    into: expiredSlots,
+                    count: &expiredCount
+                )
+
+                previousPositions[index].x = positions[index].x
+                    + velocities[index].x * delta
+                previousPositions[index].y = positions[index].y
+                    + velocities[index].y * delta
+                previousPositions[index].z = positions[index].z
+                    + velocities[index].z * delta
+            }
+
+            if fullBatchCount < liveBatchCount {
+                let remaining = lifetimes[fullBatchCount] &- one
+                lifetimes[fullBatchCount] = remaining
+                collectExpiredSlots(
+                    in: remaining,
+                    batch: fullBatchCount,
+                    laneCount: count % 4,
+                    into: expiredSlots,
+                    count: &expiredCount
+                )
+
+                previousPositions[fullBatchCount].x = positions[fullBatchCount].x
+                    + velocities[fullBatchCount].x * delta
+                previousPositions[fullBatchCount].y = positions[fullBatchCount].y
+                    + velocities[fullBatchCount].y * delta
+                previousPositions[fullBatchCount].z = positions[fullBatchCount].z
+                    + velocities[fullBatchCount].z * delta
+            }
+
+            let oldPreviousPositions = previousPositions
+            previousPositions = positions
+            positions = oldPreviousPositions
+            self.previousPositions = previousPositions
+
+            let oldPreviousStorage = previousPositionStorage!
+            previousPositionStorage = positionStorage
+            positionStorage = oldPreviousStorage
+        } else {
+            for index in 0..<fullBatchCount {
+                let remaining = lifetimes[index] &- one
+                lifetimes[index] = remaining
+                collectExpiredSlots(
+                    in: remaining,
+                    batch: index,
+                    laneCount: 4,
+                    into: expiredSlots,
+                    count: &expiredCount
+                )
+            }
+
+            if fullBatchCount < liveBatchCount {
+                let remaining = lifetimes[fullBatchCount] &- one
+                lifetimes[fullBatchCount] = remaining
+                collectExpiredSlots(
+                    in: remaining,
+                    batch: fullBatchCount,
+                    laneCount: count % 4,
+                    into: expiredSlots,
+                    count: &expiredCount
+                )
+            }
         }
+
+        return expiredCount
     }
 
     @inline(__always)
-    func isDead(at index: Int) -> Bool {
-        lifetimes[index / 4][index % 4] == 0
+    private func collectExpiredSlots(
+        in remaining: SIMD4<UInt32>,
+        batch: Int,
+        laneCount: Int,
+        into expiredSlots: UnsafeMutableBufferPointer<UInt32>,
+        count: inout Int
+    ) {
+        guard remaining.min() == 0 else { return }
+
+        for lane in 0..<laneCount where remaining[lane] == 0 {
+            expiredSlots[count] = ids[batch][lane]
+            count += 1
+        }
     }
 
     func resetInterpolation() {

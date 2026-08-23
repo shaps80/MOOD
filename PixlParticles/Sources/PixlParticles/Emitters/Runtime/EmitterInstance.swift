@@ -14,6 +14,7 @@ public final class EmitterInstance {
     private var arena: ParticleArena
     private var slice: EmitterArenaSlice
     private var metadata: Metadata
+    private var expiredSlots: UnsafeMutableBufferPointer<UInt32>
 
     init(
         compiled: CompiledEmitter,
@@ -27,6 +28,7 @@ public final class EmitterInstance {
             capacity: compiled.storage.capacity,
             count: 0
         )
+        expiredSlots = .allocate(capacity: compiled.storage.capacity)
         let arena = Self.makeArena(compiled: compiled)
         self.arena = arena
         slice = arena.slice(layout: compiled.storage)
@@ -44,6 +46,10 @@ public final class EmitterInstance {
         )
     }
 
+    deinit {
+        expiredSlots.deallocate()
+    }
+
     @discardableResult
     func apply(_ compiled: CompiledEmitter) -> Reconfiguration {
         guard self.compiled.storage != compiled.storage else {
@@ -57,6 +63,8 @@ public final class EmitterInstance {
             capacity: compiled.storage.capacity,
             count: 0
         )
+        expiredSlots.deallocate()
+        expiredSlots = .allocate(capacity: compiled.storage.capacity)
         arena = Self.makeArena(compiled: compiled)
         slice = arena.slice(layout: compiled.storage)
         spawnAccumulator = 0
@@ -65,27 +73,26 @@ public final class EmitterInstance {
 
     func advance(by delta: Float) {
         var spawnCount = scheduledSpawnCount()
-        slice.storage.advanceLifetimes()
+        let expiredCount = slice.storage.advance(
+            by: delta,
+            collectingExpiredSlotsInto: expiredSlots
+        )
 
-        var index = slice.storage.count
-        while index > 0 {
-            index -= 1
-            guard slice.storage.isDead(at: index) else { continue }
-
+        for candidate in 0..<expiredCount {
+            let slot = expiredSlots[candidate]
+            let index = metadata.indexForKnownLiveSlot(slot)
             if spawnCount > 0 {
-                recycle(at: index)
+                recycle(slot: slot, at: index, advancedBy: delta)
                 spawnCount -= 1
             } else {
-                remove(at: index)
+                remove(slot: slot, at: index)
             }
         }
 
         while spawnCount > 0 {
-            appendSpawn()
+            appendSpawn(advancedBy: delta)
             spawnCount -= 1
         }
-
-        slice.storage.advance(by: delta)
     }
 
     func reset() {
@@ -170,10 +177,13 @@ public final class EmitterInstance {
     }
 
     @inline(__always)
-    private func recycle(at index: Int) {
-        let slot = slice.storage.slot(at: index)
+    private func recycle(
+        slot: UInt32,
+        at index: Int,
+        advancedBy delta: Float
+    ) {
         let id = metadata.recycle(slot, at: index)
-        let particle = Self.spawn(
+        var particle = Self.spawn(
             id: id,
             random: random,
             constants: compiled.constants
@@ -186,6 +196,7 @@ public final class EmitterInstance {
                 lifetimeTicks: compiled.constants.lifetimeTicks
             )
         } else {
+            particle.position += particle.velocity * delta
             slice.storage.replaceMoving(
                 at: index,
                 with: particle,
@@ -196,9 +207,27 @@ public final class EmitterInstance {
     }
 
     @inline(__always)
-    private func appendSpawn() {
+    private func appendSpawn(advancedBy delta: Float) {
         let allocated = metadata.allocateAvailable(at: slice.storage.count)
-        append(allocated)
+        var particle = Self.spawn(
+            id: allocated.id,
+            random: random,
+            constants: compiled.constants
+        )
+        if compiled.storage.velocities == nil {
+            slice.storage.appendStationary(
+                particle,
+                slot: allocated.slot,
+                lifetimeTicks: compiled.constants.lifetimeTicks
+            )
+        } else {
+            particle.position += particle.velocity * delta
+            slice.storage.appendMoving(
+                particle,
+                slot: allocated.slot,
+                lifetimeTicks: compiled.constants.lifetimeTicks
+            )
+        }
     }
 
     @inline(__always)
