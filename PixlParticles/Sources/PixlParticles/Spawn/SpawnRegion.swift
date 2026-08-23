@@ -105,11 +105,11 @@ public enum SpawnRegion: Hashable, Sendable {
                 channel: .position,
                 index: index
             )
-            let position: Vec3 = [
+            let position = Vec3(
                 Self.component(from: block.x0, extent: 1),
                 Self.component(from: block.x1, extent: 1),
-                Self.component(from: block.x2, extent: 1),
-            ]
+                Self.component(from: block.x2, extent: 1)
+            )
             let xSquared = position.x * position.x
             let ySquared = position.y * position.y
             let zSquared = position.z * position.z
@@ -144,11 +144,11 @@ public enum SpawnRegion: Hashable, Sendable {
 
             if lengthSquared < 1 {
                 let scale = 2 * (1 - lengthSquared).squareRoot()
-                return [
+                return Vec3(
                     x * scale * radius,
                     y * scale * radius,
-                    (1 - 2 * lengthSquared) * radius,
-                ]
+                    (1 - 2 * lengthSquared) * radius
+                )
             }
 
             index &+= 1
@@ -162,11 +162,11 @@ public enum SpawnRegion: Hashable, Sendable {
     ) -> Vec3 {
         let halfSize = size / 2
 
-        return [
+        return Vec3(
             component(from: block.x0, extent: halfSize.x),
             component(from: block.x1, extent: halfSize.y),
-            component(from: block.x2, extent: halfSize.z),
-        ]
+            component(from: block.x2, extent: halfSize.z)
+        )
     }
 
     @inline(__always)
@@ -187,26 +187,26 @@ public enum SpawnRegion: Hashable, Sendable {
         let side: Float = block.x3 & 1 == 0 ? -1 : 1
 
         if selection < xyArea {
-            return [
+            return Vec3(
                 component(from: block.x1, extent: halfSize.x),
                 component(from: block.x2, extent: halfSize.y),
-                side * halfSize.z,
-            ]
+                side * halfSize.z
+            )
         }
 
         if selection < xyArea + xzArea {
-            return [
+            return Vec3(
                 component(from: block.x1, extent: halfSize.x),
                 side * halfSize.y,
-                component(from: block.x2, extent: halfSize.z),
-            ]
+                component(from: block.x2, extent: halfSize.z)
+            )
         }
 
-        return [
+        return Vec3(
             side * halfSize.x,
             component(from: block.x1, extent: halfSize.y),
-            component(from: block.x2, extent: halfSize.z),
-        ]
+            component(from: block.x2, extent: halfSize.z)
+        )
     }
 
     @inline(__always)

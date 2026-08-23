@@ -271,11 +271,11 @@ public final class EmitterInstance {
             velocity = .zero
         case let .random(range):
             let block = random.block(at: id, channel: .velocity)
-            velocity = [
+            velocity = Vec3(
                 RandomSource.float(from: block.x0, in: range),
                 RandomSource.float(from: block.x1, in: range),
-                RandomSource.float(from: block.x2, in: range),
-            ]
+                RandomSource.float(from: block.x2, in: range)
+            )
         }
 
         return Particle(
