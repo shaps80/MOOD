@@ -26,7 +26,8 @@ final class ParticleDocument: Document {
 
     struct Snapshot: Codable, Equatable, Sendable {
         var duration: Double
-        var particleCount: Double
+        var spawnRate: Double
+        var lifetime: Double
         var seed: Double
         var color: PixlParticles.Color
         var renderer: ParticleRenderer
@@ -45,7 +46,8 @@ final class ParticleDocument: Document {
 
         init(
             duration: Double = 30,
-            particleCount: Double = 10_000,
+            spawnRate: Double = 1_000,
+            lifetime: Double = 5,
             seed: Double = 0,
             color: PixlParticles.Color = .white,
             renderer: ParticleRenderer = .init(),
@@ -63,7 +65,8 @@ final class ParticleDocument: Document {
             cullingBoundsScale: Double = 300
         ) {
             self.duration = duration
-            self.particleCount = particleCount
+            self.spawnRate = spawnRate
+            self.lifetime = lifetime
             self.seed = seed
             self.color = color
             self.renderer = renderer
@@ -84,7 +87,8 @@ final class ParticleDocument: Document {
         init(from decoder: any Decoder) throws {
             let values = try decoder.container(keyedBy: CodingKeys.self)
             duration = try values.decode(Double.self, forKey: .duration)
-            particleCount = try values.decode(Double.self, forKey: .particleCount)
+            spawnRate = try values.decode(Double.self, forKey: .spawnRate)
+            lifetime = try values.decode(Double.self, forKey: .lifetime)
             seed = try values.decode(Double.self, forKey: .seed)
             color = try values.decodeIfPresent(
                 PixlParticles.Color.self,

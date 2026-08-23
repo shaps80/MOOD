@@ -2,6 +2,7 @@ import Observation
 import QuartzCore
 
 struct RenderDiagnostics: Sendable {
+    let simulatedCount: Int
     let visibleCount: Int?
     let cpuSimulationTime: Double
     let fixedUpdateTime: Double?
@@ -36,9 +37,11 @@ final class RenderMetrics {
     private var previousTime: Double?
     private var lastPublishTime = 0.0
     private var latestVisibleCount = 0
+    private var latestSimulatedCount = 0
     private var latestFrameBudget = 0.0
 
     private(set) var visibleCount = 0
+    private(set) var simulatedCount = 0
     private(set) var framesPerSecond = 0.0
     private(set) var frameTimeMilliseconds = 0.0
     private(set) var cpuSimulationMilliseconds = 0.0
@@ -48,6 +51,7 @@ final class RenderMetrics {
 
     func record(_ diagnostics: RenderDiagnostics) {
         let now = CACurrentMediaTime()
+        latestSimulatedCount = diagnostics.simulatedCount
         if let visibleCount = diagnostics.visibleCount {
             latestVisibleCount = visibleCount
         }
@@ -72,6 +76,7 @@ final class RenderMetrics {
 
         guard now - lastPublishTime >= Self.publishInterval else { return }
         lastPublishTime = now
+        simulatedCount = latestSimulatedCount
         self.visibleCount = latestVisibleCount
         guard count > 0, durationSum > 0 else { return }
         cpuSimulationMilliseconds = fixedUpdateSum / Double(count) * 1_000

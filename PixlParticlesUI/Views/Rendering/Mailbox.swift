@@ -103,6 +103,7 @@ nonisolated final class Mailbox: @unchecked Sendable {
 
     func complete(
         at time: Duration,
+        simulatedCount: Int,
         visibleCount: Int?,
         cpuSimulationTime: Double,
         fixedUpdateTime: Double?,
@@ -114,6 +115,7 @@ nonisolated final class Mailbox: @unchecked Sendable {
         diagnostics = frameBudget.map {
             let presentation = presentationMetrics()
             return RenderDiagnostics(
+                simulatedCount: simulatedCount,
                 visibleCount: visibleCount,
                 cpuSimulationTime: cpuSimulationTime,
                 fixedUpdateTime: fixedUpdateTime,

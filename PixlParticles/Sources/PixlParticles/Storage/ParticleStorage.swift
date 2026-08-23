@@ -16,16 +16,16 @@ final class ParticleStorage {
     private var previousPositions: UnsafeMutableBufferPointer<Vector3Batch>?
     private let colors: UnsafeMutableBufferPointer<ColorBatch>
     private let velocities: UnsafeMutableBufferPointer<Vector3Batch>?
+    private let lifetimes: UnsafeMutableBufferPointer<SIMD4<UInt32>>
 
     init(
-        count: Int,
-        storesVelocity: Bool = true,
-        particleAt: (Int) -> Particle
+        capacity: Int,
+        storesVelocity: Bool = true
     ) {
-        capacity = count
-        self.count = count
-        capacityBatchCount = (count + 3) / 4
-        liveBatchCount = capacityBatchCount
+        self.capacity = capacity
+        count = 0
+        capacityBatchCount = (capacity + 3) / 4
+        liveBatchCount = 0
         previousPositionStorage = storesVelocity
             ? HostBuffer(
                 byteCount: capacityBatchCount * MemoryLayout<Vector3Batch>.stride
@@ -59,34 +59,33 @@ final class ParticleStorage {
         velocities = storesVelocity
             ? .allocate(capacity: capacityBatchCount)
             : nil
+        lifetimes = .allocate(capacity: capacityBatchCount)
 
         for batchIndex in 0..<capacityBatchCount {
-            var batchIDs = SIMD4<UInt32>(repeating: 0)
-            var batchPositions = Vector3Batch(repeating: .zero)
-            var batchPreviousPositions = Vector3Batch(repeating: .zero)
-            var batchColors = ColorBatch(repeating: .white)
-            var batchVelocities = Vector3Batch(repeating: .zero)
-
-            for lane in 0..<4 {
-                let index = batchIndex * 4 + lane
-                guard index < count else { break }
-
-                let particle = particleAt(index)
-                batchIDs[lane] = UInt32(truncatingIfNeeded: particle.id)
-                batchPositions[lane] = particle.position
-                batchPreviousPositions[lane] = particle.previousPosition
-                batchColors[lane] = particle.color
-                batchVelocities[lane] = particle.velocity
-            }
-
-            ids.initializeElement(at: batchIndex, to: batchIDs)
-            positions.initializeElement(at: batchIndex, to: batchPositions)
+            ids.initializeElement(
+                at: batchIndex,
+                to: SIMD4<UInt32>(repeating: 0)
+            )
+            positions.initializeElement(
+                at: batchIndex,
+                to: Vector3Batch(repeating: .zero)
+            )
             previousPositions?.initializeElement(
                 at: batchIndex,
-                to: batchPreviousPositions
+                to: Vector3Batch(repeating: .zero)
             )
-            colors.initializeElement(at: batchIndex, to: batchColors)
-            velocities?.initializeElement(at: batchIndex, to: batchVelocities)
+            colors.initializeElement(
+                at: batchIndex,
+                to: ColorBatch(repeating: .white)
+            )
+            velocities?.initializeElement(
+                at: batchIndex,
+                to: Vector3Batch(repeating: .zero)
+            )
+            lifetimes.initializeElement(
+                at: batchIndex,
+                to: SIMD4<UInt32>(repeating: 0)
+            )
         }
     }
 
@@ -97,6 +96,8 @@ final class ParticleStorage {
         colors.deinitialize()
         velocities?.deinitialize()
         velocities?.deallocate()
+        lifetimes.deinitialize()
+        lifetimes.deallocate()
     }
 
     func initialState() -> InitialParticleState {
@@ -137,6 +138,19 @@ final class ParticleStorage {
         let oldPreviousStorage = previousPositionStorage!
         previousPositionStorage = positionStorage
         positionStorage = oldPreviousStorage
+    }
+
+    @inline(__always)
+    func advanceLifetimes() {
+        let one = SIMD4<UInt32>(repeating: 1)
+        for index in 0..<liveBatchCount {
+            lifetimes[index] &-= one
+        }
+    }
+
+    @inline(__always)
+    func isDead(at index: Int) -> Bool {
+        lifetimes[index / 4][index % 4] == 0
     }
 
     func resetInterpolation() {
@@ -214,6 +228,8 @@ final class ParticleStorage {
         let destinationLane = destination % 4
 
         ids[destinationBatch][destinationLane] = ids[sourceBatch][sourceLane]
+        lifetimes[destinationBatch][destinationLane] =
+            lifetimes[sourceBatch][sourceLane]
         positions[destinationBatch][destinationLane] =
             positions[sourceBatch][sourceLane]
         colors[destinationBatch][destinationLane] = colors[sourceBatch][sourceLane]
@@ -235,26 +251,36 @@ final class ParticleStorage {
     }
 
     @inline(__always)
-    func appendStationary(_ particle: Particle, slot: UInt32) {
+    func appendStationary(
+        _ particle: Particle,
+        slot: UInt32,
+        lifetimeTicks: UInt32
+    ) {
         precondition(count < capacity)
 
         let index = count
         let batch = index / 4
         let lane = index % 4
         ids[batch][lane] = slot
+        lifetimes[batch][lane] = lifetimeTicks
         positions[batch][lane] = particle.position
         colors[batch][lane] = particle.color
         setCount(index + 1)
     }
 
     @inline(__always)
-    func appendMoving(_ particle: Particle, slot: UInt32) {
+    func appendMoving(
+        _ particle: Particle,
+        slot: UInt32,
+        lifetimeTicks: UInt32
+    ) {
         precondition(count < capacity)
 
         let index = count
         let batch = index / 4
         let lane = index % 4
         ids[batch][lane] = slot
+        lifetimes[batch][lane] = lifetimeTicks
         positions[batch][lane] = particle.position
         colors[batch][lane] = particle.color
         previousPositions![batch][lane] = particle.previousPosition
@@ -262,11 +288,50 @@ final class ParticleStorage {
         setCount(index + 1)
     }
 
+    @inline(__always)
+    func replaceStationary(
+        at index: Int,
+        with particle: Particle,
+        slot: UInt32,
+        lifetimeTicks: UInt32
+    ) {
+        let batch = index / 4
+        let lane = index % 4
+        ids[batch][lane] = slot
+        lifetimes[batch][lane] = lifetimeTicks
+        positions[batch][lane] = particle.position
+        colors[batch][lane] = particle.color
+    }
+
+    @inline(__always)
+    func replaceMoving(
+        at index: Int,
+        with particle: Particle,
+        slot: UInt32,
+        lifetimeTicks: UInt32
+    ) {
+        replaceStationary(
+            at: index,
+            with: particle,
+            slot: slot,
+            lifetimeTicks: lifetimeTicks
+        )
+        let batch = index / 4
+        let lane = index % 4
+        previousPositions![batch][lane] = particle.previousPosition
+        velocities![batch][lane] = particle.velocity
+    }
+
+    func removeAll() {
+        setCount(0)
+    }
+
     func withRenderingData<Result: ~Copyable>(
         _ body: (ParticleBuffers, Int) throws -> Result
     ) rethrows -> Result {
         try body(
             ParticleBuffers(
+                capacity: capacity,
                 previousPositions: previousPositionStorage ?? positionStorage,
                 currentPositions: positionStorage,
                 colors: colorStorage,

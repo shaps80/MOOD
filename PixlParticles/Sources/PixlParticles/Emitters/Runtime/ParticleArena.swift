@@ -4,13 +4,11 @@ final class ParticleArena {
     let storage: ParticleStorage
 
     init(
-        layout: EmitterStorageLayout,
-        particleAt: (Int) -> Particle
+        layout: EmitterStorageLayout
     ) {
         storage = ParticleStorage(
-            count: layout.capacity,
-            storesVelocity: layout.velocities != nil,
-            particleAt: particleAt
+            capacity: layout.capacity,
+            storesVelocity: layout.velocities != nil
         )
     }
 

@@ -83,8 +83,25 @@ final class Metadata {
     }
 
     @inline(__always)
+    func recycle(_ slot: UInt32, at index: Int) -> Particle.ID {
+        precondition(slot < capacity)
+        precondition(index >= 0 && index < Int(Self.end))
+        precondition(locations[Int(slot)] & Self.free == 0)
+
+        let slotIndex = Int(slot)
+        generations[slotIndex] &+= 1
+        locations[slotIndex] = UInt32(index)
+        return id(for: slot)
+    }
+
+    @inline(__always)
     func allocate(at index: Int) -> (slot: UInt32, id: Particle.ID)? {
         guard firstFree != Self.end else { return nil }
+        return allocateAvailable(at: index)
+    }
+
+    @inline(__always)
+    func allocateAvailable(at index: Int) -> (slot: UInt32, id: Particle.ID) {
         precondition(index >= 0 && index < Int(Self.end))
 
         let slot = firstFree

@@ -6,7 +6,8 @@ public final class System {
 
     var particleSnapshot: [Particle] { emitter.particles() }
 
-    package var particleCount: Int { emitter.aliveCount }
+    @_spi(EditorDiagnostics)
+    public var particleCount: Int { emitter.aliveCount }
 
     public private(set) var emitter: EmitterInstance
     private var loop: Loop
@@ -15,16 +16,18 @@ public final class System {
 
     public convenience init(
         seed: UInt64,
-        particleCount: Int,
+        spawnRate: Float,
+        lifetime: Float,
         spawnRegion: SpawnRegion,
         color: Color = .white,
         duration: Duration,
         storesRewindState: Bool = true
     ) {
         var emitter = Emitter(
-            capacity: particleCount,
             spawnRegion: spawnRegion
         )
+        emitter[\.spawnRate].append(.set(spawnRate))
+        emitter[\.lifetime].append(.set(lifetime))
         emitter[\.velocity].append(
             .set(
                 .random(
@@ -61,7 +64,9 @@ public final class System {
         self.durationInTicks = durationInTicks
         self.loop = loop
         self.emitter = EmitterInstance(
-            compiled: EmitterCompiler().compile(emitter),
+            compiled: EmitterCompiler(
+                updatesPerSecond: loop.updatesPerSecond
+            ).compile(emitter),
             random: RandomSource(seed: seed),
             storesRewindState: storesRewindState
         )

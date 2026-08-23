@@ -8,15 +8,12 @@ public final class EmitterInstance {
     }
 
     private(set) var compiled: CompiledEmitter
-    private(set) var spawnAccumulator: Double = 0
+    private(set) var spawnAccumulator: UInt64 = 0
 
     private let random: RandomSource
-    private let storesRewindState: Bool
     private var arena: ParticleArena
     private var slice: EmitterArenaSlice
     private var metadata: Metadata
-    private var initialState: InitialParticleState?
-    private var topologyChanged = false
 
     init(
         compiled: CompiledEmitter,
@@ -25,16 +22,14 @@ public final class EmitterInstance {
     ) {
         self.compiled = compiled
         self.random = random
-        self.storesRewindState = storesRewindState
 
         metadata = Metadata(
             capacity: compiled.storage.capacity,
-            count: compiled.storage.capacity
+            count: 0
         )
-        let arena = Self.makeArena(compiled: compiled, random: random)
+        let arena = Self.makeArena(compiled: compiled)
         self.arena = arena
         slice = arena.slice(layout: compiled.storage)
-        initialState = storesRewindState ? slice.storage.initialState() : nil
     }
 
     convenience init(
@@ -53,42 +48,50 @@ public final class EmitterInstance {
     func apply(_ compiled: CompiledEmitter) -> Reconfiguration {
         guard self.compiled.storage != compiled.storage else {
             self.compiled = compiled
+            reset()
             return .reusedArena
         }
 
         self.compiled = compiled
         metadata = Metadata(
             capacity: compiled.storage.capacity,
-            count: compiled.storage.capacity
+            count: 0
         )
-        arena = Self.makeArena(compiled: compiled, random: random)
+        arena = Self.makeArena(compiled: compiled)
         slice = arena.slice(layout: compiled.storage)
-        initialState = storesRewindState ? slice.storage.initialState() : nil
         spawnAccumulator = 0
-        topologyChanged = false
         return .rebuiltArena
     }
 
     func advance(by delta: Float) {
+        var spawnCount = scheduledSpawnCount()
+        slice.storage.advanceLifetimes()
+
+        var index = slice.storage.count
+        while index > 0 {
+            index -= 1
+            guard slice.storage.isDead(at: index) else { continue }
+
+            if spawnCount > 0 {
+                recycle(at: index)
+                spawnCount -= 1
+            } else {
+                remove(at: index)
+            }
+        }
+
+        while spawnCount > 0 {
+            appendSpawn()
+            spawnCount -= 1
+        }
+
         slice.storage.advance(by: delta)
     }
 
     func reset() {
-        if topologyChanged {
-            metadata = Metadata(
-                capacity: compiled.storage.capacity,
-                count: compiled.storage.capacity
-            )
-            arena = Self.makeArena(compiled: compiled, random: random)
-            slice = arena.slice(layout: compiled.storage)
-            initialState = storesRewindState ? slice.storage.initialState() : nil
-        } else if let initialState {
-            slice.storage.restore(from: initialState)
-        } else {
-            arena = Self.makeArena(compiled: compiled, random: random)
-            slice = arena.slice(layout: compiled.storage)
-        }
-        topologyChanged = false
+        metadata.reset(count: 0)
+        slice.storage.removeAll()
+        spawnAccumulator = 0
     }
 
     func resetInterpolation() {
@@ -131,7 +134,6 @@ public final class EmitterInstance {
         }
 
         metadata.release(slot)
-        topologyChanged = true
     }
 
     @discardableResult
@@ -140,24 +142,7 @@ public final class EmitterInstance {
         guard index < slice.storage.capacity else { return nil }
         guard let allocated = metadata.allocate(at: index) else { return nil }
 
-        let particle = Self.spawn(
-            id: allocated.id,
-            random: random,
-            constants: compiled.constants
-        )
-        if compiled.storage.velocities == nil {
-            slice.storage.appendStationary(
-                particle,
-                slot: allocated.slot
-            )
-        } else {
-            slice.storage.appendMoving(
-                particle,
-                slot: allocated.slot
-            )
-        }
-
-        topologyChanged = true
+        append(allocated)
         return allocated.id
     }
 
@@ -173,17 +158,73 @@ public final class EmitterInstance {
         slice.layout.byteCount + metadata.byteCount
     }
 
-    private static func makeArena(
-        compiled: CompiledEmitter,
-        random: RandomSource
-    ) -> ParticleArena {
-        ParticleArena(layout: compiled.storage) { index in
-            spawn(
-                id: Particle.ID(index),
-                random: random,
-                constants: compiled.constants
+    @inline(__always)
+    private func scheduledSpawnCount() -> Int {
+        let sum = spawnAccumulator + compiled.constants.spawnRate.remainder
+        if sum >= compiled.constants.spawnRate.denominator {
+            spawnAccumulator = sum - compiled.constants.spawnRate.denominator
+            return Int(compiled.constants.spawnRate.whole) + 1
+        }
+        spawnAccumulator = sum
+        return Int(compiled.constants.spawnRate.whole)
+    }
+
+    @inline(__always)
+    private func recycle(at index: Int) {
+        let slot = slice.storage.slot(at: index)
+        let id = metadata.recycle(slot, at: index)
+        let particle = Self.spawn(
+            id: id,
+            random: random,
+            constants: compiled.constants
+        )
+        if compiled.storage.velocities == nil {
+            slice.storage.replaceStationary(
+                at: index,
+                with: particle,
+                slot: slot,
+                lifetimeTicks: compiled.constants.lifetimeTicks
+            )
+        } else {
+            slice.storage.replaceMoving(
+                at: index,
+                with: particle,
+                slot: slot,
+                lifetimeTicks: compiled.constants.lifetimeTicks
             )
         }
+    }
+
+    @inline(__always)
+    private func appendSpawn() {
+        let allocated = metadata.allocateAvailable(at: slice.storage.count)
+        append(allocated)
+    }
+
+    @inline(__always)
+    private func append(_ allocated: (slot: UInt32, id: Particle.ID)) {
+        let particle = Self.spawn(
+            id: allocated.id,
+            random: random,
+            constants: compiled.constants
+        )
+        if compiled.storage.velocities == nil {
+            slice.storage.appendStationary(
+                particle,
+                slot: allocated.slot,
+                lifetimeTicks: compiled.constants.lifetimeTicks
+            )
+        } else {
+            slice.storage.appendMoving(
+                particle,
+                slot: allocated.slot,
+                lifetimeTicks: compiled.constants.lifetimeTicks
+            )
+        }
+    }
+
+    private static func makeArena(compiled: CompiledEmitter) -> ParticleArena {
+        ParticleArena(layout: compiled.storage)
     }
 
     private static func spawn(

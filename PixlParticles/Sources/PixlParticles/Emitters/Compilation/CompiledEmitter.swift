@@ -2,6 +2,12 @@ import PixlRenderer
 import Swift
 
 struct CompiledEmitter: Equatable, Sendable {
+    struct SpawnRate: Equatable, Sendable {
+        let whole: UInt32
+        let remainder: UInt64
+        let denominator: UInt64
+    }
+
     enum Velocity: Equatable, Sendable {
         case stationary
         case random(Range<Float>)
@@ -18,6 +24,8 @@ struct CompiledEmitter: Equatable, Sendable {
 
     struct Constants: Equatable, Sendable {
         let spawnRegion: SpawnRegion
+        let spawnRate: SpawnRate
+        let lifetimeTicks: UInt32
         let velocity: Velocity
         let color: Color
         let size: Vec2

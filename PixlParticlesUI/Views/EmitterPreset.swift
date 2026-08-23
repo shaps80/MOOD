@@ -10,11 +10,10 @@ enum EmitterPreset: String, CaseIterable, Hashable, Sendable {
         }
     }
 
-    func emitter(capacity: Int = 10_000) -> Emitter {
+    func emitter() -> Emitter {
         switch self {
         case .debris:
             var emitter = Emitter(
-                capacity: capacity,
                 spawnRegion: .sphere(radius: 150, domain: .surface)
             )
             emitter[\.velocity].append(
@@ -38,7 +37,12 @@ extension Emitter {
     func applying(_ snapshot: ParticleDocument.Snapshot) -> Self {
         var emitter = self
 
-        emitter.capacity = .init(snapshot.particleCount)
+        emitter.spawnRate = .init([
+            .set(Float(snapshot.spawnRate)),
+        ])
+        emitter.lifetime = .init([
+            .set(Float(snapshot.lifetime)),
+        ])
         emitter.spawnRegion = snapshot.spawnPreset.region(
             domain: snapshot.spawnDomain
         )

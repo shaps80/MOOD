@@ -13,7 +13,8 @@ struct PropertiesInspector: View {
         Inspector {
             SystemInspectorSection(
                 duration: binding(\.duration, "Change Duration"),
-                particleCount: binding(\.particleCount, "Change Particle Count"),
+                spawnRate: binding(\.spawnRate, "Change Spawn Rate"),
+                lifetime: binding(\.lifetime, "Change Lifetime"),
                 seed: binding(\.seed, "Change Seed")
             )
 
@@ -82,11 +83,20 @@ struct PropertiesInspector: View {
                 edit("Change Duration") { $0.duration = duration }
             }
         }
-        .onChange(of: document.snapshot.particleCount) { _, particleCount in
-            let particleCount = max(particleCount.rounded(), 0)
+        .onChange(of: document.snapshot.spawnRate) { _, spawnRate in
+            let spawnRate = max(spawnRate.rounded(), 0)
 
-            if document.snapshot.particleCount != particleCount {
-                edit("Change Particle Count") { $0.particleCount = particleCount }
+            if document.snapshot.spawnRate != spawnRate {
+                edit("Change Spawn Rate") { $0.spawnRate = spawnRate }
+            } else {
+                updateSystem()
+            }
+        }
+        .onChange(of: document.snapshot.lifetime) { _, lifetime in
+            let lifetime = max(lifetime, 0.001)
+
+            if document.snapshot.lifetime != lifetime {
+                edit("Change Lifetime") { $0.lifetime = lifetime }
             } else {
                 updateSystem()
             }

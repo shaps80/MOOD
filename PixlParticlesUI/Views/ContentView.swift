@@ -76,7 +76,6 @@ struct ContentView: View {
 
                     Panel(id: .metrics) {
                         MetricsInspector(
-                            simulatedCount: Int(document.snapshot.particleCount),
                             metrics: metrics
                         )
                     }
@@ -215,23 +214,6 @@ struct ContentView: View {
     private static func emitter(
         from snapshot: ParticleDocument.Snapshot
     ) -> Emitter {
-        var emitter = EmitterPreset.debris.emitter(
-            capacity: Int(snapshot.particleCount)
-        )
-        emitter.spawnRegion = snapshot.spawnPreset.region(
-            domain: snapshot.spawnDomain
-        )
-        emitter[\.color] = .init([.set(snapshot.color)])
-        emitter[\.size] = .init([
-            .set([
-                max(Float(snapshot.billboardWidth), 0),
-                max(Float(snapshot.billboardHeight), 0),
-            ]),
-        ])
-        emitter[\.rotation] = .init([
-            .set(Float(snapshot.billboardRotation)),
-        ])
-        emitter.renderers = [snapshot.renderer]
-        return emitter
+        EmitterPreset.debris.emitter().applying(snapshot)
     }
 }

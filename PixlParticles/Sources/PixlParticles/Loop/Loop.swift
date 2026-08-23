@@ -98,6 +98,13 @@ struct Loop {
         return 1.0 / Double(fixedStep.updatesPerSecond)
     }
 
+    var updatesPerSecond: UInt32 {
+        guard let fixedStep = settings.fixedStep else {
+            preconditionFailure("Particle simulation requires a fixed step")
+        }
+        return fixedStep.updatesPerSecond
+    }
+
     private func schedule(
         fixedUpdateCount: UInt32,
         firstTickIndex: UInt64,

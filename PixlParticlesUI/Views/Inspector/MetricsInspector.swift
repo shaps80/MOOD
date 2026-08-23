@@ -1,13 +1,12 @@
 import SwiftUI
 
 struct MetricsInspector: View {
-    let simulatedCount: Int
     let metrics: RenderMetrics
 
     var body: some View {
         Inspector {
             ParticleMetricsSection(
-                simulatedCount: simulatedCount,
+                simulatedCount: metrics.simulatedCount,
                 visibleCount: metrics.visibleCount
             )
             FrameMetricsSection(metrics: metrics)

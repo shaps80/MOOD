@@ -2,8 +2,9 @@ import PixlRenderer
 import Swift
 
 public struct Emitter: Equatable, Sendable {
-    public var capacity: Int
     public var spawnRegion: SpawnRegion
+    public var spawnRate: Property<Float>
+    public var lifetime: Property<Float>
     public var position: Property<Vec3>
     public var velocity: Property<Vec3>
     public var color: Property<Color>
@@ -12,8 +13,9 @@ public struct Emitter: Equatable, Sendable {
     public var renderers: [ParticleRenderer]
 
     public init(
-        capacity: Int,
         spawnRegion: SpawnRegion,
+        spawnRate: Property<Float> = .init(),
+        lifetime: Property<Float> = .init(),
         position: Property<Vec3> = .init(),
         velocity: Property<Vec3> = .init(),
         color: Property<Color> = .init(),
@@ -21,11 +23,11 @@ public struct Emitter: Equatable, Sendable {
         rotation: Property<Float> = .init(),
         renderers: [ParticleRenderer] = [.init()]
     ) {
-        precondition(capacity >= 0)
         spawnRegion.validate()
 
-        self.capacity = capacity
         self.spawnRegion = spawnRegion
+        self.spawnRate = spawnRate
+        self.lifetime = lifetime
         self.position = position
         self.velocity = velocity
         self.color = color

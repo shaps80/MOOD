@@ -23,7 +23,7 @@ final class FrameBuffers {
         lod settings: PointLOD?,
         viewport: ViewportSize
     ) throws -> FrameResources {
-        try ensureCapacity(max(count, 1))
+        try ensureCapacity(max(buffers.capacity, 1))
         try ensureSharedBuffers(buffers)
 
         let usesLOD = settings.map {
@@ -31,7 +31,7 @@ final class FrameBuffers {
         } ?? false
         if usesLOD, let settings {
             try ensureLODCapacity(
-                particleCount: max(count, 1),
+                particleCount: max(buffers.capacity, 1),
                 visibleCount: settings.maximumVisibleCount,
                 tileCount: tileCount(viewport: viewport, tileSize: settings.tileSize)
             )

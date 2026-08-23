@@ -119,6 +119,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                 )
                 mailbox.complete(
                     at: sample.time,
+                    simulatedCount: system.particleCount,
                     visibleCount: backend.visibleCount,
                     cpuSimulationTime: simulationTime,
                     fixedUpdateTime: diagnosticSample?.fixedUpdateTime,
