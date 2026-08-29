@@ -82,17 +82,15 @@ public extension Vec2 {
         (x * x + y * y).squareRoot()
     }
 
-    /// The unit-length vector in the same direction, or `nil` for zero vectors.
+    /// The unit-length vector in the same direction, or `zero` for zero vectors.
     ///
     /// ```swift
     /// let direction = velocity.normalized
     /// ```
-    var normalized: Vec2? {
-        guard length > 0 else {
-            return nil
-        }
-
-        return self * (1 / length)
+    var normalized: Vec2 {
+        let length = length
+        guard length.isFinite, length > 0 else { return .zero }
+        return self / length
     }
 
     /// Returns the dot product of two vectors.

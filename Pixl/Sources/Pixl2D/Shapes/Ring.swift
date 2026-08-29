@@ -15,7 +15,7 @@ public struct Ring: Hashable, Sendable {
     ///   - direction: Nonzero finite cut direction.
     public init(radius: Float, width: Float, direction: Vec2) {
         precondition(radius.isFinite && radius > 0 && width.isFinite && width > 0)
-        guard let direction = direction.normalized else { preconditionFailure("Ring direction must be nonzero") }
+        let direction = direction.normalized
         self.radius = radius; self.width = width; self.direction = direction
     }
     /// Canonical unit ring.
