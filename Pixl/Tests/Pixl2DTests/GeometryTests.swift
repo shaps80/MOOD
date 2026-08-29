@@ -9,6 +9,7 @@ struct GeometryTests {
         #expect(MemoryLayout<Vec2>.stride == 8)
         #expect(MemoryLayout<Rect>.stride == 16)
         #expect(MemoryLayout<Angle>.stride == 4)
+        #expect(!Vec2.invalid.isValid)
     }
 
     @Test

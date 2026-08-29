@@ -330,18 +330,24 @@ extension GameContext {
             Float(size.height)
         )
         let projection = camera.projection(in: presentationSize)
-        guard let inverseProjection = projection.inverted else {
-            preconditionFailure("Camera projection must be finite and invertible")
+        let boundsMinimum: Vec2
+        let boundsMaximum: Vec2
+        if let inverseProjection = projection.inverted {
+            let visibleBounds = inverseProjection.transformed(
+                bounds: .init(x: -1, y: -1, width: 2, height: 2)
+            )
+            boundsMinimum = visibleBounds.origin
+            boundsMaximum = visibleBounds.origin + visibleBounds.size
+        } else {
+            boundsMinimum = .init(repeating: -.infinity)
+            boundsMaximum = .init(repeating: .infinity)
         }
-        let visibleBounds = inverseProjection.transformed(
-            bounds: .init(x: -1, y: -1, width: 2, height: 2)
-        )
         var view = RenderQueue.View(
             projectionX: projection.x,
             projectionY: projection.y,
             projectionTranslation: projection.translation,
-            boundsMinimum: visibleBounds.origin,
-            boundsMaximum: visibleBounds.origin + visibleBounds.size
+            boundsMinimum: boundsMinimum,
+            boundsMaximum: boundsMaximum
         )
         let encodingMetrics = try withUnsafePointer(to: &view) { pointer in
             try queue.execute(

@@ -88,7 +88,7 @@ public final class MouseInput {
     }
 
     private func location(_ rawLocation: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2 {
-        let size = resolvedPresentationSize
+        guard let size = resolvedPresentationSize else { return .invalid }
 
         switch coordinateSpace {
         case .screen:
@@ -102,8 +102,10 @@ public final class MouseInput {
                 rawLocation.x / size.x * 2 - 1,
                 rawLocation.y / size.y * 2 - 1
             )
-            return inverseProjection(of: camera, in: size)
-                .transformed(point: clip)
+            guard let inverse = inverseProjection(of: camera, in: size) else {
+                return .invalid
+            }
+            return inverse.transformed(point: clip)
         }
     }
 
@@ -111,7 +113,7 @@ public final class MouseInput {
         _ rawTranslation: Vec2,
         in coordinateSpace: CoordinateSpace
     ) -> Vec2 {
-        let size = resolvedPresentationSize
+        guard let size = resolvedPresentationSize else { return .zero }
 
         switch coordinateSpace {
         case .screen:
@@ -125,8 +127,10 @@ public final class MouseInput {
                 rawTranslation.x / size.x * 2,
                 rawTranslation.y / size.y * 2
             )
-            return inverseProjection(of: camera, in: size)
-                .transformed(vector: clip)
+            guard let inverse = inverseProjection(of: camera, in: size) else {
+                return .zero
+            }
+            return inverse.transformed(vector: clip)
         }
     }
 
@@ -136,25 +140,20 @@ public final class MouseInput {
         presentationSize: TextureSize,
         displayScale: Float
     ) {
-        precondition(
-            presentationSize.width > 0 && presentationSize.height > 0,
-            "Presentation dimensions must be greater than zero"
-        )
-        precondition(
-            displayScale.isFinite && displayScale > 0,
-            "Display scale must be finite and greater than zero"
-        )
         self.rawLocation = rawLocation
         self.rawTranslation = rawTranslation
         self.presentationSize = presentationSize
         self.displayScale = displayScale
     }
 
-    private var resolvedPresentationSize: Vec2 {
-        precondition(
-            presentationSize.width > 0 && presentationSize.height > 0,
-            "Mouse coordinates are unavailable before the first presentation frame"
-        )
+    private var resolvedPresentationSize: Vec2? {
+        guard presentationSize.width > 0,
+              presentationSize.height > 0,
+              displayScale.isFinite,
+              displayScale > 0
+        else {
+            return nil
+        }
         return .init(
             Float(presentationSize.width),
             Float(presentationSize.height)
@@ -164,10 +163,7 @@ public final class MouseInput {
     private func inverseProjection(
         of camera: any Camera2D,
         in presentationSize: Vec2
-    ) -> Transform2D {
-        guard let inverse = camera.projection(in: presentationSize).inverted else {
-            preconditionFailure("Camera projection must be finite and invertible")
-        }
-        return inverse
+    ) -> Transform2D? {
+        camera.projection(in: presentationSize).inverted
     }
 }

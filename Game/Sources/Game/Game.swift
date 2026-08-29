@@ -4,7 +4,7 @@ import PixlUI
 
 @main
 struct Game: Pixl.Game {
-    private var player: Character
+    private var character: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 
 //    private let debug = Scene(Debug())
@@ -14,7 +14,7 @@ struct Game: Pixl.Game {
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
 //        shapeCatalogue = .init(context: context)
-        player = try .init(context: context)
+        character = try .init(context: context)
     }
 
     func render(
@@ -46,7 +46,7 @@ struct Game: Pixl.Game {
 //            frame: frame
 //        )
 
-        player.submit(to: context.renderQueue)
+        character.submit(to: context.renderQueue)
 
         try context.render(
             through: camera,
@@ -68,11 +68,11 @@ struct Game: Pixl.Game {
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        player.fixedUpdate(time, context: context)
+        character.fixedUpdate(time, context: context)
     }
 //
     mutating func update(_ time: UpdateTime, context: GameContext) {
-        player.update(time, context: context)
+        character.update(time, context: context)
 
         _ = context.mouse.location(in: .screen)
 //        gameState.update(time, context: context)

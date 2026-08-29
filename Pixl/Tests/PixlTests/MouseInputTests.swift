@@ -82,6 +82,24 @@ struct MouseInputTests {
         #expect(mouse.location(in: .screen, for: sample) == .init(300, 225))
         #expect(mouse.translation(in: .screen, for: sample) == .init(10, 5))
     }
+
+    @Test
+    func invalidResolutionNeverStopsInput() {
+        let mouse = MouseInput(source: Mouse())
+
+        #expect(!mouse.location(in: .screen).isValid)
+        #expect(mouse.translation(in: .screen) == .zero)
+
+        mouse.update(
+            rawLocation: .init(10, 20),
+            rawTranslation: .init(3, 4),
+            presentationSize: .init(width: 100, height: 100),
+            displayScale: 1
+        )
+
+        #expect(!mouse.location(in: .world(SingularCamera())).isValid)
+        #expect(mouse.translation(in: .world(SingularCamera())) == .zero)
+    }
 }
 
 private struct AxisSwappedCamera: Camera2D {
@@ -91,5 +109,11 @@ private struct AxisSwappedCamera: Camera2D {
             y: .init(0.25, 0, 0),
             translation: .init(0, 0, 1)
         )
+    }
+}
+
+private struct SingularCamera: Camera2D {
+    func projection(in presentationSize: Vec2) -> Transform2D {
+        .init(scale: .init(0, 1))
     }
 }

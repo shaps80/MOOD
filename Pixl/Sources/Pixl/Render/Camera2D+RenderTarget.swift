@@ -14,11 +14,8 @@ public extension Camera2D {
     }
 
     /// Returns the world-space axis-aligned bounds visible through a render target.
-    func visibleBounds(for output: RenderTarget) -> Rect {
-        guard let inverse = projection(for: output).inverted else {
-            preconditionFailure("Camera projection must be finite and invertible")
-        }
-        return inverse.transformed(
+    func visibleBounds(for output: RenderTarget) -> Rect? {
+        projection(for: output).inverted?.transformed(
             bounds: .init(x: -1, y: -1, width: 2, height: 2)
         )
     }

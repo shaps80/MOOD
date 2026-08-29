@@ -21,6 +21,14 @@ public extension Vec2 {
         x: 1,
         y: 1
     )
+
+    /// A sentinel vector that cannot represent a usable coordinate.
+    static let invalid: Self = .init(repeating: .nan)
+
+    /// Whether both components are finite usable values.
+    var isValid: Bool {
+        x.isFinite && y.isFinite
+    }
 }
 
 public extension Vec2 {
