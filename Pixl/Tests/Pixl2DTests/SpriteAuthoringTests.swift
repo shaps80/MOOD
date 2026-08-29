@@ -19,6 +19,7 @@ struct SpriteAuthoringTests {
 
         #expect(full.source == Rect(x: 0, y: 0, width: 8, height: 4))
         #expect(selection.source == Rect(x: 2, y: 1, width: 4, height: 2))
+        #expect(Sprite(region: selection).size == .init(4, 2))
     }
 
     @Test

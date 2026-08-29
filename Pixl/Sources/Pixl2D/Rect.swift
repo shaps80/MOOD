@@ -87,6 +87,17 @@ public struct Rect: Equatable, Sendable, CustomDebugStringConvertible {
         size: .zero
     )
 
+    /// A sentinel rectangle that cannot represent usable bounds.
+    public static let invalid: Self = .init(
+        origin: .invalid,
+        size: .zero
+    )
+
+    /// Whether the origin and size contain finite usable values.
+    public var isValid: Bool {
+        origin.isValid && size.isValid
+    }
+
     public var debugDescription: String {
         "origin: (\(origin.x), \(origin.y)), size: (\(size.width), \(size.height))"
     }
@@ -210,6 +221,14 @@ public extension Rect {
             && minY < other.maxY
             && maxY > other.minY
     }
+
+    /// Returns whether a point lies inside or on the edges of this rectangle.
+    func contains(_ point: Point) -> Bool {
+        point.x >= minX
+            && point.x <= maxX
+            && point.y >= minY
+            && point.y <= maxY
+    }
 }
 
 public extension Rect {
@@ -247,4 +266,3 @@ public extension Rect {
         )
     }
 }
-

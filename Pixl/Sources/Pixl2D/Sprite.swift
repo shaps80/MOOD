@@ -20,6 +20,11 @@ public struct Sprite {
         region.asset
     }
 
+    /// Size of the displayed texture region in sprite units.
+    public var size: Vec2 {
+        region.source.size
+    }
+
     /// Creates a sprite from a texture region and optional rendering properties.
     ///
     /// ```swift

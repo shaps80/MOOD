@@ -164,6 +164,9 @@ Keyboard event storage is runtime-owned, fixed-capacity, contiguous, and double-
 `Camera2D`
 : Refines `Camera` to a `Transform2D` projection. Rendering consumes that projection directly, while Pixl package-internally inverts it to derive visible world bounds and resolve pointer points and vectors. If a projection cannot be inverted, rendering remains valid but disables CPU culling for that view; world-coordinate input cannot be resolved. `OrthographicCamera` is the built-in conformance; other finite, invertible affine projections work without camera-specific rendering or input paths.
 
+`GameContext.convert`
+: Converts points and axis-aligned bounds between logical `.screen` coordinates and camera-resolved `.world(camera)` coordinates using the current presentation snapshot. World-to-world and screen-to-screen conversions are identity operations. Unavailable or non-invertible conversions return `.invalid` values rather than stopping execution.
+
 `Mouse`
 : Platform-owned physical mouse state exposed through `Platform`. `rawLocation` is the latest presentation-pixel location using the platform boundary's bottom-left origin and y-up orientation. `rawTranslation` is the total physical movement published for the current presentation frame. Button state and current-frame transitions are independently queryable in constant time.
 

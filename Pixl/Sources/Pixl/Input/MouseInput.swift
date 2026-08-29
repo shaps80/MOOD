@@ -6,8 +6,7 @@ public final class MouseInput {
     private let source: PixlPlatform.Mouse
     private var rawLocation = Vec2.zero
     private var rawTranslation = Vec2.zero
-    private var presentationSize = TextureSize(width: 0, height: 0)
-    private var displayScale: Float = 1
+    private var coordinateConverter: CoordinateConverter?
 
     package init(source: PixlPlatform.Mouse) {
         self.source = source
@@ -88,82 +87,25 @@ public final class MouseInput {
     }
 
     private func location(_ rawLocation: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2 {
-        guard let size = resolvedPresentationSize else { return .invalid }
-
-        switch coordinateSpace {
-        case .screen:
-            return .init(
-                rawLocation.x / displayScale,
-                (size.y - rawLocation.y) / displayScale
-            )
-
-        case .world(let camera):
-            let clip = Vec2(
-                rawLocation.x / size.x * 2 - 1,
-                rawLocation.y / size.y * 2 - 1
-            )
-            guard let inverse = inverseProjection(of: camera, in: size) else {
-                return .invalid
-            }
-            return inverse.transformed(point: clip)
-        }
+        coordinateConverter?.location(rawLocation, in: coordinateSpace)
+            ?? .invalid
     }
 
     private func translation(
         _ rawTranslation: Vec2,
         in coordinateSpace: CoordinateSpace
     ) -> Vec2 {
-        guard let size = resolvedPresentationSize else { return .zero }
-
-        switch coordinateSpace {
-        case .screen:
-            return .init(
-                rawTranslation.x / displayScale,
-                -rawTranslation.y / displayScale
-            )
-
-        case .world(let camera):
-            let clip = Vec2(
-                rawTranslation.x / size.x * 2,
-                rawTranslation.y / size.y * 2
-            )
-            guard let inverse = inverseProjection(of: camera, in: size) else {
-                return .zero
-            }
-            return inverse.transformed(vector: clip)
-        }
+        coordinateConverter?.translation(rawTranslation, in: coordinateSpace)
+            ?? .zero
     }
 
     package func update(
         rawLocation: Vec2,
         rawTranslation: Vec2,
-        presentationSize: TextureSize,
-        displayScale: Float
+        coordinateConverter: CoordinateConverter?
     ) {
         self.rawLocation = rawLocation
         self.rawTranslation = rawTranslation
-        self.presentationSize = presentationSize
-        self.displayScale = displayScale
-    }
-
-    private var resolvedPresentationSize: Vec2? {
-        guard presentationSize.width > 0,
-              presentationSize.height > 0,
-              displayScale.isFinite,
-              displayScale > 0
-        else {
-            return nil
-        }
-        return .init(
-            Float(presentationSize.width),
-            Float(presentationSize.height)
-        )
-    }
-
-    private func inverseProjection(
-        of camera: any Camera2D,
-        in presentationSize: Vec2
-    ) -> Transform2D? {
-        camera.projection(in: presentationSize).inverted
+        self.coordinateConverter = coordinateConverter
     }
 }

@@ -12,6 +12,10 @@ struct Character: Entity {
     private var position: Vec2 = .zero
     private var velocity: Vec2 = .zero
 
+    var bounds: Rect {
+        .init(center: position, size: sprite.size)
+    }
+
     private let bindings: PlayerBindings = .init()
     private let controller: AxisController = .init(
         maxSpeed: 300,

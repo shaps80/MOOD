@@ -32,6 +32,7 @@ public final class GameContext {
     private var spriteRenderWorkspaces: [ObjectIdentifier: SpriteRenderWorkspace] = [:]
     private var sceneCompilations: [ObjectIdentifier: SceneCompilation] = [:]
     private var sceneInputFrames: [ObjectIdentifier: UInt64] = [:]
+    package var coordinateConverter: CoordinateConverter?
     var presentationFrameIndex: UInt64 = 0
     private var renderMetrics = RenderQueue.Metrics()
 

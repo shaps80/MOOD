@@ -11,8 +11,10 @@ struct MouseInputTests {
         mouse.update(
             rawLocation: .init(600, 450),
             rawTranslation: .init(20, -10),
-            presentationSize: .init(width: 1_200, height: 900),
-            displayScale: 2
+            coordinateConverter: .init(
+                presentationSize: .init(width: 1_200, height: 900),
+                displayScale: 2
+            )
         )
 
         #expect(mouse.location(in: .screen) == .init(300, 225))
@@ -25,8 +27,10 @@ struct MouseInputTests {
         mouse.update(
             rawLocation: .init(1_200, 900),
             rawTranslation: .init(120, 90),
-            presentationSize: .init(width: 1_200, height: 900),
-            displayScale: 2
+            coordinateConverter: .init(
+                presentationSize: .init(width: 1_200, height: 900),
+                displayScale: 2
+            )
         )
         let camera = OrthographicCamera(
             center: .init(100, 50),
@@ -43,8 +47,10 @@ struct MouseInputTests {
         mouse.update(
             rawLocation: .init(1_200, 900),
             rawTranslation: .init(150, 112.5),
-            presentationSize: .init(width: 1_200, height: 900),
-            displayScale: 2
+            coordinateConverter: .init(
+                presentationSize: .init(width: 1_200, height: 900),
+                displayScale: 2
+            )
         )
 
         #expect(
@@ -63,8 +69,10 @@ struct MouseInputTests {
         mouse.update(
             rawLocation: .zero,
             rawTranslation: .zero,
-            presentationSize: .init(width: 1_200, height: 900),
-            displayScale: 2
+            coordinateConverter: .init(
+                presentationSize: .init(width: 1_200, height: 900),
+                displayScale: 2
+            )
         )
         let buttonEvent = Mouse.Button.Event(
             timestamp: 1,
@@ -93,8 +101,10 @@ struct MouseInputTests {
         mouse.update(
             rawLocation: .init(10, 20),
             rawTranslation: .init(3, 4),
-            presentationSize: .init(width: 100, height: 100),
-            displayScale: 1
+            coordinateConverter: .init(
+                presentationSize: .init(width: 100, height: 100),
+                displayScale: 1
+            )
         )
 
         #expect(!mouse.location(in: .world(SingularCamera())).isValid)

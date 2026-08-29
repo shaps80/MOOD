@@ -27,6 +27,18 @@ struct GeometryTests {
     }
 
     @Test
+    func rectangleContainsInteriorAndEdgePoints() {
+        let bounds = Rect(x: 10, y: 20, width: 30, height: 40)
+
+        #expect(bounds.contains(.init(20, 30)))
+        #expect(bounds.contains(.init(10, 20)))
+        #expect(bounds.contains(.init(40, 60)))
+        #expect(!bounds.contains(.init(9, 30)))
+        #expect(!bounds.contains(.invalid))
+        #expect(!Rect.invalid.contains(.zero))
+    }
+
+    @Test
     func cameraProjectsFromSizeOrAspectRatio() {
         let camera = OrthographicCamera(center: .init(2, -1), halfHeight: 2)
         let fromSize = camera.projection(in: .init(800, 400))
