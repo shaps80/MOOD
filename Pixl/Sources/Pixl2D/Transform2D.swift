@@ -120,3 +120,80 @@ extension Transform2D {
         scale: .one
     )
 }
+
+public extension Transform2D {
+    /// Returns the affine inverse, or `nil` when this transform cannot be inverted.
+    var inverted: Self? {
+        let determinant = (x.x * y.y) - (y.x * x.y)
+        let reciprocal = 1 / determinant
+        guard x.x.isFinite, x.y.isFinite, x.z == 0,
+              y.x.isFinite, y.y.isFinite, y.z == 0,
+              translation.x.isFinite, translation.y.isFinite,
+              translation.z == 1,
+              determinant.isFinite, determinant != 0,
+              reciprocal.isFinite
+        else { return nil }
+
+        let inverseX = SIMD3<Float>(
+            y.y * reciprocal,
+            -x.y * reciprocal,
+            0
+        )
+        let inverseY = SIMD3<Float>(
+            -y.x * reciprocal,
+            x.x * reciprocal,
+            0
+        )
+        let inverseTranslation = SIMD3<Float>(
+            ((y.x * translation.y) - (y.y * translation.x)) * reciprocal,
+            ((x.y * translation.x) - (x.x * translation.y)) * reciprocal,
+            1
+        )
+        return .init(
+            x: inverseX,
+            y: inverseY,
+            translation: inverseTranslation
+        )
+    }
+}
+
+package extension Transform2D {
+    /// Returns a point transformed by the linear and translation components.
+    func transformed(point: Vec2) -> Vec2 {
+        .init(
+            (x.x * point.x) + (y.x * point.y) + translation.x,
+            (x.y * point.x) + (y.y * point.y) + translation.y
+        )
+    }
+
+    /// Returns a vector transformed by only the linear component.
+    func transformed(vector: Vec2) -> Vec2 {
+        .init(
+            (x.x * vector.x) + (y.x * vector.y),
+            (x.y * vector.x) + (y.y * vector.y)
+        )
+    }
+
+    /// Returns the axis-aligned bounds containing a transformed rectangle.
+    func transformed(bounds: Rect) -> Rect {
+        let bottomLeft = transformed(point: bounds.origin)
+        let bottomRight = transformed(
+            point: .init(bounds.maxX, bounds.minY)
+        )
+        let topLeft = transformed(
+            point: .init(bounds.minX, bounds.maxY)
+        )
+        let topRight = transformed(
+            point: .init(bounds.maxX, bounds.maxY)
+        )
+        let minimum = Vec2(
+            min(min(bottomLeft.x, bottomRight.x), min(topLeft.x, topRight.x)),
+            min(min(bottomLeft.y, bottomRight.y), min(topLeft.y, topRight.y))
+        )
+        let maximum = Vec2(
+            max(max(bottomLeft.x, bottomRight.x), max(topLeft.x, topRight.x)),
+            max(max(bottomLeft.y, bottomRight.y), max(topLeft.y, topRight.y))
+        )
+        return .init(origin: minimum, size: maximum - minimum)
+    }
+}

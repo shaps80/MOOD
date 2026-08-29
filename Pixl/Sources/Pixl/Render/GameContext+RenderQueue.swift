@@ -171,7 +171,7 @@ extension GameContext {
         record(metrics)
     }
 
-    /// Renders the default queue through an orthographic camera while preserving the target.
+    /// Renders the default queue through a 2D camera while preserving the target.
     ///
     /// ```swift
     /// context.renderQueue.submit(player, transform: .init(position))
@@ -190,7 +190,7 @@ extension GameContext {
     ///   - frame: Frame into which drawing commands are recorded.
     /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
-        through camera: OrthographicCamera,
+        through camera: some Camera2D,
         to output: RenderTarget,
         frame: borrowing Frame
     ) throws {
@@ -202,7 +202,7 @@ extension GameContext {
         )
     }
 
-    /// Renders one queue through an orthographic camera into a render target.
+    /// Renders one queue through a 2D camera into a render target.
     ///
     /// The queue resets after rendering finishes or throws.
     ///
@@ -214,7 +214,7 @@ extension GameContext {
     /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
         queue: RenderQueue,
-        through camera: OrthographicCamera,
+        through camera: some Camera2D,
         to output: RenderTarget,
         frame: borrowing Frame
     ) throws {
@@ -242,7 +242,7 @@ extension GameContext {
     ///   - frame: Frame into which drawing commands are recorded.
     /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
-        through camera: OrthographicCamera,
+        through camera: some Camera2D,
         to output: RenderTexture,
         frame: borrowing Frame
     ) throws {
@@ -267,7 +267,7 @@ extension GameContext {
     /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
         queue: RenderQueue,
-        through camera: OrthographicCamera,
+        through camera: some Camera2D,
         to output: RenderTexture,
         frame: borrowing Frame
     ) throws {
@@ -282,7 +282,7 @@ extension GameContext {
         )
     }
 
-    /// Renders the default queue through an orthographic camera into an existing pass.
+    /// Renders the default queue through a 2D camera into an existing pass.
     ///
     /// The pass's existing load action is preserved. The default queue resets
     /// after rendering finishes or throws.
@@ -293,7 +293,7 @@ extension GameContext {
     ///   - pass: Existing encoder receiving drawing commands.
     /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
-        through camera: OrthographicCamera,
+        through camera: some Camera2D,
         to output: RenderTarget,
         on pass: RenderPassEncoder
     ) throws {
@@ -305,7 +305,7 @@ extension GameContext {
         )
     }
 
-    /// Renders one queue through an orthographic camera into an existing pass.
+    /// Renders one queue through a 2D camera into an existing pass.
     ///
     /// The pass's existing load action is preserved. The queue resets after
     /// rendering finishes or throws.
@@ -318,28 +318,30 @@ extension GameContext {
     /// - Throws: An error encountered while resolving resources or recording commands.
     public func render(
         queue: RenderQueue,
-        through camera: OrthographicCamera,
+        through camera: some Camera2D,
         to output: RenderTarget,
         on pass: RenderPassEncoder
     ) throws {
         defer { queue.reset() }
         let workspace = workspace(for: queue)
         let size = output.texture.descriptor.size
-        let aspect = Float(size.width) / Float(size.height)
-        let halfWidth = camera.halfHeight * aspect
-        let projection = camera.projection(aspectRatio: aspect)
+        let presentationSize = Vec2(
+            Float(size.width),
+            Float(size.height)
+        )
+        let projection = camera.projection(in: presentationSize)
+        guard let inverseProjection = projection.inverted else {
+            preconditionFailure("Camera projection must be finite and invertible")
+        }
+        let visibleBounds = inverseProjection.transformed(
+            bounds: .init(x: -1, y: -1, width: 2, height: 2)
+        )
         var view = RenderQueue.View(
             projectionX: projection.x,
             projectionY: projection.y,
             projectionTranslation: projection.translation,
-            boundsMinimum: .init(
-                Float(camera.center.x - halfWidth),
-                Float(camera.center.y - camera.halfHeight)
-            ),
-            boundsMaximum: .init(
-                Float(camera.center.x + halfWidth),
-                Float(camera.center.y + camera.halfHeight)
-            )
+            boundsMinimum: visibleBounds.origin,
+            boundsMaximum: visibleBounds.origin + visibleBounds.size
         )
         let encodingMetrics = try withUnsafePointer(to: &view) { pointer in
             try queue.execute(
@@ -370,4 +372,5 @@ extension GameContext {
             )
         )
     }
+
 }

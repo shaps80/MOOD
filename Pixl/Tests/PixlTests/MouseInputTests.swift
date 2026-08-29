@@ -38,6 +38,26 @@ struct MouseInputTests {
     }
 
     @Test
+    func resolvesThroughAnyTwoDimensionalCameraProjection() {
+        let mouse = MouseInput(source: Mouse())
+        mouse.update(
+            rawLocation: .init(1_200, 900),
+            rawTranslation: .init(150, 112.5),
+            presentationSize: .init(width: 1_200, height: 900),
+            displayScale: 2
+        )
+
+        #expect(
+            mouse.location(in: .world(AxisSwappedCamera()))
+                == .init(8, 4)
+        )
+        #expect(
+            mouse.translation(in: .world(AxisSwappedCamera()))
+                == .init(2, 1)
+        )
+    }
+
+    @Test
     func resolvesEventAndSampleCoordinates() {
         let mouse = MouseInput(source: Mouse())
         mouse.update(
@@ -61,5 +81,15 @@ struct MouseInputTests {
         #expect(mouse.location(in: .screen, for: buttonEvent) == .init(100, 100))
         #expect(mouse.location(in: .screen, for: sample) == .init(300, 225))
         #expect(mouse.translation(in: .screen, for: sample) == .init(10, 5))
+    }
+}
+
+private struct AxisSwappedCamera: Camera2D {
+    func projection(in presentationSize: Vec2) -> Transform2D {
+        .init(
+            x: .init(0, 0.125, 0),
+            y: .init(0.25, 0, 0),
+            translation: .init(0, 0, 1)
+        )
     }
 }

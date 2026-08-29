@@ -102,11 +102,8 @@ public final class MouseInput {
                 rawLocation.x / size.x * 2 - 1,
                 rawLocation.y / size.y * 2 - 1
             )
-            let halfWidth = camera.halfHeight * size.x / size.y
-            return .init(
-                camera.center.x + clip.x * halfWidth,
-                camera.center.y + clip.y * camera.halfHeight
-            )
+            return inverseProjection(of: camera, in: size)
+                .transformed(point: clip)
         }
     }
 
@@ -124,11 +121,12 @@ public final class MouseInput {
             )
 
         case .world(let camera):
-            let halfWidth = camera.halfHeight * size.x / size.y
-            return .init(
-                rawTranslation.x * (halfWidth * 2 / size.x),
-                rawTranslation.y * (camera.halfHeight * 2 / size.y)
+            let clip = Vec2(
+                rawTranslation.x / size.x * 2,
+                rawTranslation.y / size.y * 2
             )
+            return inverseProjection(of: camera, in: size)
+                .transformed(vector: clip)
         }
     }
 
@@ -161,5 +159,15 @@ public final class MouseInput {
             Float(presentationSize.width),
             Float(presentationSize.height)
         )
+    }
+
+    private func inverseProjection(
+        of camera: any Camera2D,
+        in presentationSize: Vec2
+    ) -> Transform2D {
+        guard let inverse = camera.projection(in: presentationSize).inverted else {
+            preconditionFailure("Camera projection must be finite and invertible")
+        }
+        return inverse
     }
 }

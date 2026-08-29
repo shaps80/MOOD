@@ -158,11 +158,17 @@ Keyboard event storage is runtime-owned, fixed-capacity, contiguous, and double-
 
 ## Mouse Input
 
+`Camera`
+: Pixl's dimension-independent camera vocabulary. Its sole requirement produces an associated projection value for a two-dimensional presentation size; both 2D and future 3D cameras ultimately project into a 2D surface.
+
+`Camera2D`
+: Refines `Camera` to a `Transform2D` projection. Rendering consumes that projection directly, while Pixl package-internally inverts it to derive visible world bounds and resolve pointer points and vectors. `OrthographicCamera` is the built-in conformance; other finite, invertible affine projections work without camera-specific rendering or input paths.
+
 `Mouse`
 : Platform-owned physical mouse state exposed through `Platform`. `rawLocation` is the latest presentation-pixel location using the platform boundary's bottom-left origin and y-up orientation. `rawTranslation` is the total physical movement published for the current presentation frame. Button state and current-frame transitions are independently queryable in constant time.
 
 `MouseInput`
-: Pixl's game-facing, frame-resolved mouse facade exposed through `GameContext.mouse`. Before fixed and variable updates run, Pixl snapshots the raw mouse values, current drawable size, and display scale. `location(in: .screen)` and `translation(in: .screen)` return logical top-left, y-down screen values. Passing `.world(camera)` returns y-up world values resolved through that `OrthographicCamera`. Event and motion-sample overloads resolve their captured raw coordinates through the same API without coupling value events back to mutable input state. The game chooses its world origin; a camera centred at zero merely places world zero at the presentation centre. Three-dimensional mouse picking will later produce a world ray through a Pixl3D camera rather than inventing a depthless world position.
+: Pixl's game-facing, frame-resolved mouse facade exposed through `GameContext.mouse`. Before fixed and variable updates run, Pixl snapshots the raw mouse values, current drawable size, and display scale. `location(in: .screen)` and `translation(in: .screen)` return logical top-left, y-down screen values. Passing `.world(camera)` returns y-up world values resolved through any `Camera2D`. Event and motion-sample overloads resolve their captured raw coordinates through the same API without coupling value events back to mutable input state. The game chooses its world origin; a camera centred at zero merely places world zero at the presentation centre. Three-dimensional mouse picking will later produce a world ray through a Pixl3D camera rather than inventing a depthless world position.
 
 `Mouse.Sample`
 : One chronological high-fidelity motion measurement containing a monotonic `Double` timestamp, raw presentation-pixel location, and raw physical translation. macOS disables native mouse-event coalescing; Web adapters recover the browser's ordered coalesced Pointer Event samples. Samples publish through fixed-capacity, double-buffered contiguous storage without steady-state allocation. Overflow preserves final location and total translation by merging excess measurements into the final stored sample.

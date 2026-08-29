@@ -49,4 +49,25 @@ struct GeometryTests {
                 == camera.visibleBounds(aspectRatio: 2)
         )
     }
+
+    @Test
+    func affineInverseTransformsPointsAndVectorsDifferently() throws {
+        let transform = Transform2D(
+            .init(100, 50),
+            rotation: .pi / 2,
+            scale: .init(2, 4)
+        )
+        let inverse = try #require(transform.inverted)
+
+        #expect(
+            inverse.transformed(point: transform.transformed(point: .init(3, 5)))
+                == .init(3, 5)
+        )
+        #expect(
+            inverse.transformed(vector: transform.transformed(vector: .init(3, 5)))
+                == .init(3, 5)
+        )
+        #expect(transform.transformed(point: .zero) != transform.transformed(vector: .zero))
+        #expect(Transform2D(scale: .init(0, 1)).inverted == nil)
+    }
 }
