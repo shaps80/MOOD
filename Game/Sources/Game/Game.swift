@@ -7,14 +7,14 @@ struct Game: Pixl.Game {
     private var player: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 
-    private let debug = Scene(Debug())
-    private var shapeCatalogue: ShapeCatalogue
+//    private let debug = Scene(Debug())
+//    private var shapeCatalogue: ShapeCatalogue
 //    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
+//        shapeCatalogue = .init(context: context)
         player = try .init(context: context)
-        shapeCatalogue = .init(context: context)
     }
 
     func render(
@@ -24,15 +24,15 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-        let pixels = output.texture.descriptor.size
-        let screenSpace = context.screenSpace
-        shapeCatalogue.submit(
-            to: screenSpace,
-            in: .init(
-                width: Float(pixels.width) / context.displayScale,
-                height: Float(pixels.height) / context.displayScale
-            )
-        )
+//        let pixels = output.texture.descriptor.size
+//        let screenSpace = context.screenSpace
+//        shapeCatalogue.submit(
+//            to: screenSpace,
+//            in: .init(
+//                width: Float(pixels.width) / context.displayScale,
+//                height: Float(pixels.height) / context.displayScale
+//            )
+//        )
 
         context.clear(
             target: output,
@@ -40,11 +40,11 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-        try context.render(
-            screenSpace,
-            to: output,
-            frame: frame
-        )
+//        try context.render(
+//            screenSpace,
+//            to: output,
+//            frame: frame
+//        )
 
         player.submit(to: context.renderQueue)
 
@@ -54,11 +54,11 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-        try context.render(
-            scene: debug,
-            to: output,
-            frame: frame
-        )
+//        try context.render(
+//            scene: debug,
+//            to: output,
+//            frame: frame
+//        )
 
         logMetrics(time: time)
     }
