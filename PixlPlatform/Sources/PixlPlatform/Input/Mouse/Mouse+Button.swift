@@ -25,20 +25,20 @@ public extension Mouse.Button {
         public let timestamp: Double
         public let button: Mouse.Button
         public let phase: Phase
-        public let location: SIMD2<Float>
+        public let rawLocation: SIMD2<Float>
         public let modifiers: Key.Modifiers
 
         public init(
             timestamp: Double,
             button: Mouse.Button,
             phase: Phase,
-            location: SIMD2<Float>,
+            rawLocation: SIMD2<Float>,
             modifiers: Key.Modifiers = []
         ) {
             self.timestamp = timestamp
             self.button = button
             self.phase = phase
-            self.location = location
+            self.rawLocation = rawLocation
             self.modifiers = modifiers
         }
     }

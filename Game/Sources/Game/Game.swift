@@ -73,6 +73,8 @@ struct Game: Pixl.Game {
 //
     mutating func update(_ time: UpdateTime, context: GameContext) {
         player.update(time, context: context)
+
+        _ = context.mouse.location(in: .screen)
 //        gameState.update(time, context: context)
 //        shapeCatalogue.update(time, context: context)
     }

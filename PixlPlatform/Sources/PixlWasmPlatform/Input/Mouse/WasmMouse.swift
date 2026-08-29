@@ -85,8 +85,8 @@ final class WasmMouse {
         let scale = displayScale
         mouse.handle(.init(
             timestamp: (event.timeStamp.number ?? 0) / 1_000,
-            location: location(event),
-            translation: SIMD2(
+            rawLocation: location(event),
+            rawTranslation: SIMD2(
                 Float(event.movementX.number ?? 0) * scale,
                 -Float(event.movementY.number ?? 0) * scale
             )
@@ -103,7 +103,7 @@ final class WasmMouse {
             timestamp: (event.timeStamp.number ?? 0) / 1_000,
             button: button(Int(event.button.number ?? 0)),
             phase: phase,
-            location: location(event),
+            rawLocation: location(event),
             modifiers: modifiers(event)
         ))
     }
@@ -116,7 +116,7 @@ final class WasmMouse {
         let scale: Float = unit == .pixel ? displayScale : 1
         mouse.handle(.init(
             timestamp: (event.timeStamp.number ?? 0) / 1_000,
-            location: location(event),
+            rawLocation: location(event),
             translation: SIMD2(
                 Float(event.deltaX.number ?? 0) * scale,
                 -Float(event.deltaY.number ?? 0) * scale

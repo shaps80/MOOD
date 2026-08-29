@@ -89,7 +89,7 @@ final class GameView: MTKView {
         let unit: Mouse.ScrollUnit = event.hasPreciseScrollingDeltas ? .pixel : .line
         mouse?.handle(.init(
             timestamp: event.timestamp,
-            location: mouseLocation(event),
+            rawLocation: mouseLocation(event),
             translation: SIMD2(
                 Float(event.scrollingDeltaX) * scale,
                 Float(event.scrollingDeltaY) * scale
@@ -102,8 +102,8 @@ final class GameView: MTKView {
         let scale = Float(window?.backingScaleFactor ?? 1)
         mouse?.handle(.init(
             timestamp: event.timestamp,
-            location: mouseLocation(event),
-            translation: SIMD2(
+            rawLocation: mouseLocation(event),
+            rawTranslation: SIMD2(
                 Float(event.deltaX) * scale,
                 -Float(event.deltaY) * scale
             )
@@ -115,7 +115,7 @@ final class GameView: MTKView {
             timestamp: event.timestamp,
             button: mouseButton(event.buttonNumber),
             phase: phase,
-            location: mouseLocation(event),
+            rawLocation: mouseLocation(event),
             modifiers: mouseModifiers(event.modifierFlags)
         ))
     }

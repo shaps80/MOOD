@@ -9,18 +9,18 @@ public extension Mouse {
 
     struct ScrollEvent: Hashable, Sendable {
         public let timestamp: Double
-        public let location: SIMD2<Float>
+        public let rawLocation: SIMD2<Float>
         public let translation: SIMD2<Float>
         public let unit: ScrollUnit
 
         public init(
             timestamp: Double,
-            location: SIMD2<Float>,
+            rawLocation: SIMD2<Float>,
             translation: SIMD2<Float>,
             unit: ScrollUnit
         ) {
             self.timestamp = timestamp
-            self.location = location
+            self.rawLocation = rawLocation
             self.translation = translation
             self.unit = unit
         }

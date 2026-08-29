@@ -58,8 +58,10 @@ public final class Mouse {
     private var pressed = ContiguousArray(repeating: UInt64(0), count: 4)
     private var pendingTranslation = SIMD2<Float>.zero
 
-    public private(set) var location = SIMD2<Float>.zero
-    public private(set) var translation = SIMD2<Float>.zero
+    /// Latest presentation-pixel location using a bottom-left, y-up basis.
+    public private(set) var rawLocation = SIMD2<Float>.zero
+    /// Total presentation-pixel movement published for the current frame.
+    public private(set) var rawTranslation = SIMD2<Float>.zero
     public package(set) var isFocused = false
 
     public init() {}
@@ -87,15 +89,15 @@ public final class Mouse {
     }
 
     package func handle(_ sample: Sample) {
-        location = sample.location
-        pendingTranslation += sample.translation
+        rawLocation = sample.rawLocation
+        pendingTranslation += sample.rawTranslation
         guard storage.pendingSamples.count < Self.sampleCapacity else {
             let last = storage.pendingSamples.index(before: storage.pendingSamples.endIndex)
             let previous = storage.pendingSamples[last]
             storage.pendingSamples[last] = Sample(
                 timestamp: sample.timestamp,
-                location: sample.location,
-                translation: previous.translation + sample.translation
+                rawLocation: sample.rawLocation,
+                rawTranslation: previous.rawTranslation + sample.rawTranslation
             )
             return
         }
@@ -103,7 +105,7 @@ public final class Mouse {
     }
 
     package func handle(_ event: Button.Event) {
-        location = event.location
+        rawLocation = event.rawLocation
         let wasDown = isPressed(event.button)
         switch event.phase {
         case .down:
@@ -120,14 +122,14 @@ public final class Mouse {
     }
 
     package func handle(_ event: ScrollEvent) {
-        location = event.location
+        rawLocation = event.rawLocation
         guard storage.pendingScrollEvents.count < Self.scrollCapacity else {
             let last = storage.pendingScrollEvents.index(before: storage.pendingScrollEvents.endIndex)
             let previous = storage.pendingScrollEvents[last]
             guard previous.unit == event.unit else { return }
             storage.pendingScrollEvents[last] = ScrollEvent(
                 timestamp: event.timestamp,
-                location: event.location,
+                rawLocation: event.rawLocation,
                 translation: previous.translation + event.translation,
                 unit: event.unit
             )
@@ -141,7 +143,7 @@ public final class Mouse {
         swap(&storage.buttonEvents, &storage.pendingButtonEvents)
         swap(&storage.scrollEvents, &storage.pendingScrollEvents)
         swap(&storage.eventIndices, &storage.pendingEventIndices)
-        translation = pendingTranslation
+        rawTranslation = pendingTranslation
         pendingTranslation = .zero
         storage.pendingSamples.removeAll(keepingCapacity: true)
         storage.pendingButtonEvents.removeAll(keepingCapacity: true)
@@ -158,7 +160,12 @@ public final class Mouse {
         for rawValue in UInt8.min...UInt8.max {
             let button = Button(rawValue: rawValue)
             if isPressed(button) {
-                handle(.init(timestamp: timestamp, button: button, phase: .up, location: location))
+                handle(.init(
+                    timestamp: timestamp,
+                    button: button,
+                    phase: .up,
+                    rawLocation: rawLocation
+                ))
             }
         }
     }

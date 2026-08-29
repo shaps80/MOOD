@@ -46,6 +46,12 @@ final class GameRuntime<G: Game>: PlatformGame {
         output: RenderTarget,
         frame: borrowing Frame
     ) throws {
+        context.mouse.update(
+            rawLocation: platform.mouse.rawLocation,
+            rawTranslation: platform.mouse.rawTranslation,
+            presentationSize: output.texture.descriptor.size,
+            displayScale: platform.displayScale
+        )
         context.inputs.update()
         let frameStart = ContinuousClock.now
         let schedule = loop.advance(

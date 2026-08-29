@@ -19,6 +19,8 @@ public final class GameContext {
     public let keyboard: Keyboard
     /// Currently connected game controllers.
     public let gamepads: Gamepads
+    /// Mouse state resolved against the current presentation frame.
+    public let mouse: MouseInput
     /// Game-defined semantic input map.
     public let inputs: Input.Map
     /// Default retained queue for render submissions.
@@ -52,6 +54,7 @@ public final class GameContext {
         self.drawableFormat = format
         keyboard = platform.keyboard
         gamepads = platform.gamepads
+        mouse = MouseInput(source: platform.mouse)
         inputs = Input.Map(keyboard: keyboard, gamepads: gamepads)
         audio = Audio(device: platform.audioDevice)
         let assets = Assets(
