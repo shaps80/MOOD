@@ -7,18 +7,12 @@ struct Game: Pixl.Game {
     private var character: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 
-//    private let debug = Scene(Debug())
-//    private var shapeCatalogue: ShapeCatalogue
-//    private var gameState: GameStateHandler
+    private let debug = Scene(Debug())
+    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-//        self.gameState = try .init(context: context)
-//        shapeCatalogue = .init(context: context)
+        self.gameState = try .init(context: context)
         character = try .init(camera: camera, context: context)
-
-        // would be nice for a game to decide what input devices it wants to support
-        // this way mouse events for example could be "switched off" when they're not
-        // required - reducing cost, memory, etc...
     }
 
     func render(
@@ -28,27 +22,11 @@ struct Game: Pixl.Game {
         time: RenderTime,
         context: GameContext
     ) throws {
-//        let pixels = output.texture.descriptor.size
-//        let screenSpace = context.screenSpace
-//        shapeCatalogue.submit(
-//            to: screenSpace,
-//            in: .init(
-//                width: Float(pixels.width) / context.displayScale,
-//                height: Float(pixels.height) / context.displayScale
-//            )
-//        )
-
         context.clear(
             target: output,
             color: .black,
             frame: frame
         )
-
-//        try context.render(
-//            screenSpace,
-//            to: output,
-//            frame: frame
-//        )
 
         character.submit(
             to: context.renderQueue,
@@ -61,28 +39,26 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-//        try context.render(
-//            scene: debug,
-//            to: output,
-//            frame: frame
-//        )
+        try context.render(
+            scene: debug,
+            to: output,
+            frame: frame
+        )
 
         logMetrics(time: time)
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
-//        gameState.didEnter(phase, context: context)
+        gameState.didEnter(phase, context: context)
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
         character.fixedUpdate(time, context: context)
     }
-//
+
     mutating func update(_ time: UpdateTime, context: GameContext) {
         character.update(time, context: context)
-
-//        gameState.update(time, context: context)
-//        shapeCatalogue.update(time, context: context)
+        gameState.update(time, context: context)
     }
 
     private func logMetrics(time: RenderTime) {
@@ -92,7 +68,7 @@ struct Game: Pixl.Game {
         else {
             return
         }
-        print(time.metrics.summary)
+//        print(time.metrics.summary)
     }
 
     private static func seconds(_ duration: Duration) -> Double {

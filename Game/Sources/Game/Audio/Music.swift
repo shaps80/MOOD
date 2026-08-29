@@ -47,7 +47,7 @@ struct GameStateHandler {
         fade.advance(by: time.unscaledDelta)
         let volume = lerp(
             from: fadeStartVolume,
-            to: shouldPause ? 0 : playingVolume,
+            to: shouldPause ? 0.01 : playingVolume,
             by: fade.progress
         )
 

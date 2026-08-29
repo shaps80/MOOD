@@ -33,7 +33,7 @@ final class Mixer {
 
     struct Settings: Codable {
         var master: Float = 0.1
-        var music: Float = 1
+        var music: Float = 0.5
         var effects: Float = 1
         var voices: Float = 1
     }
