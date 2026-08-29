@@ -10,9 +10,11 @@ struct Character: Entity {
     private var timeline: SpriteAnimation.Timeline
 
     private var position: Vec2 = .zero
+    private var rotation: Float = .pi / 4
     private var velocity: Vec2 = .zero
     private let camera: OrthographicCamera
     private var isSelected: Bool = false
+    private var isDragging: Bool = false
 
     var bounds: Rect {
         .init(center: position, size: sprite.size)
@@ -83,17 +85,38 @@ struct Character: Entity {
             timeline.animation = idle
         }
 
+        let world = context.coordinates(for: .world(camera))
         if let event = context.mouse.event(.primary, phase: .down) {
-            let world = context.coordinates(for: .world(camera))
-
             if bounds.contains(world.location(for: event)) {
-                isSelected.toggle()
+                isSelected = true
+                isDragging = true
+            } else {
+                isSelected = false
+            }
+        }
+
+        if isDragging && context.mouse.isPressed(.primary) {
+            position += world.translation(for: context.mouse)
+        }
+
+        if context.mouse.wasReleased(.primary) {
+            isDragging = false
+        }
+
+        if isSelected {
+            for event in context.mouse.scrollEvents {
+                let scale: Float = switch event.unit {
+                case .pixel: 0.002
+                case .line: 0.1
+                case .page: 0.5
+                }
+                rotation -= event.translation.y * scale
             }
         }
     }
 
     func submit(to queue: RenderQueue, context: GameContext) {
-        let transform = Transform2D(position).rotated(by: .pi / 4)
+        let transform = Transform2D(position).rotated(by: rotation)
 
         queue.submit(
             sprite,
@@ -152,4 +175,5 @@ struct Character: Entity {
             )
         }
     }
+
 }
