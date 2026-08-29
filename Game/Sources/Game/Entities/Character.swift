@@ -102,18 +102,6 @@ struct Character: Entity {
 
         if isSelected {
             context.draw(
-                .ellipse(
-                    in: .init(
-                        center: .zero,
-                        size: bounds.size
-                    )
-                ),
-                transform: transform,
-                style: .stroke(.fill, width: 1),
-                layer: .gizmo
-            )
-
-            context.draw(
                 .rect(
                     .init(
                         x: 0,
@@ -138,6 +126,28 @@ struct Character: Entity {
                 ),
                 transform: transform,
                 style: .fill(.green),
+                layer: .gizmo
+            )
+
+            context.draw(
+                .ellipse(
+                    in: .init(
+                        center: .zero,
+                        size: bounds.size
+                    )
+                ),
+                transform: transform,
+                style: .stroke(.fill, width: 1),
+                layer: .gizmo
+            )
+
+            let markerCenter = Vec2(sprite.size.x * 0.5, 0)
+            let markerSize: Float = 4
+
+            context.draw(
+                .ellipse(in: .init(center: markerCenter, size: .init(repeating: markerSize))),
+                transform: transform,
+                style: .fill(.yellow),
                 layer: .gizmo
             )
         }
