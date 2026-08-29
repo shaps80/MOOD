@@ -93,15 +93,52 @@ struct Character: Entity {
     }
 
     func submit(to queue: RenderQueue, context: GameContext) {
+        let transform = Transform2D(position).rotated(by: .pi / 4)
+
         queue.submit(
             sprite,
-            transform: .init(position)
+            transform: transform
         )
 
         if isSelected {
             context.draw(
-                .rect(bounds),
-                style: .stroke(.yellow, width: 1)
+                .ellipse(
+                    in: .init(
+                        center: .zero,
+                        size: bounds.size
+                    )
+                ),
+                transform: transform,
+                style: .stroke(.fill, width: 1),
+                layer: .gizmo
+            )
+
+            context.draw(
+                .rect(
+                    .init(
+                        x: 0,
+                        y: -0.5,
+                        width: sprite.size.x * 0.5,
+                        height: 1
+                    )
+                ),
+                transform: transform,
+                style: .fill(.red),
+                layer: .gizmo
+            )
+
+            context.draw(
+                .rect(
+                    .init(
+                        x: -0.5,
+                        y: 0,
+                        width: 1,
+                        height: sprite.size.y * 0.5
+                    )
+                ),
+                transform: transform,
+                style: .fill(.green),
+                layer: .gizmo
             )
         }
     }

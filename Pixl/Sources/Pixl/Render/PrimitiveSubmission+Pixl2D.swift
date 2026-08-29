@@ -20,7 +20,6 @@ extension PrimitiveSubmission {
             rect = value
             geometry = .ellipse
         }
-        precondition(rect.isValid && rect.size.x > 0 && rect.size.y > 0)
 
         let kind: PrimitiveKind
         let color: SIMD4<Float>
