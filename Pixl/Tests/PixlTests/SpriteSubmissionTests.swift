@@ -94,6 +94,7 @@ struct SpriteSubmissionTests {
         var view = RenderQueue.View(
             projectionX: .init(1, 0, 0), projectionY: .init(0, 1, 0),
             projectionTranslation: .init(0, 0, 1),
+            logicalSize: .init(200, 200),
             boundsMinimum: .init(repeating: -100), boundsMaximum: .init(repeating: 100)
         )
 

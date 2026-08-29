@@ -33,4 +33,8 @@ public extension ShaderFunction {
     static let extendedShapeFragment = Self(name: "pixlExtendedShapeFragment")
     /// Built-in point-defined gradient shape fragment entry point.
     static let gradientExtendedShapeFragment = Self(name: "pixlGradientExtendedShapeFragment")
+    /// Built-in immediate two-dimensional primitive vertex entry point.
+    static let primitiveShapeVertex = Self(name: "pixlPrimitiveShapeVertex")
+    /// Built-in immediate two-dimensional primitive fragment entry point.
+    static let primitiveShapeFragment = Self(name: "pixlPrimitiveShapeFragment")
 }

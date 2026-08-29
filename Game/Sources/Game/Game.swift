@@ -50,7 +50,10 @@ struct Game: Pixl.Game {
 //            frame: frame
 //        )
 
-        character.submit(to: context.renderQueue)
+        character.submit(
+            to: context.renderQueue,
+            context: context
+        )
 
         try context.render(
             through: camera,

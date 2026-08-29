@@ -4,6 +4,11 @@ private struct SpriteViewParameters: BitwiseCopyable {
     let x: SIMD3<Float>
     let y: SIMD3<Float>
     let translation: SIMD3<Float>
+    /// Logical presentation dimensions stored in the first trailing uniform slot.
+    let logicalSize: SIMD2<Float>
+    /// Reserved trailing uniform slot. Keeps the shared Metal/WGSL view ABI at
+    /// 64 bytes; future view data may use this space without growing the buffer.
+    let padding: SIMD2<Float> = .zero
 }
 
 private struct WorkspaceMaterial {
@@ -36,6 +41,7 @@ public final class SpriteRenderWorkspace {
     private let upload: UnsafeMutablePointer<RenderQueue.Instance>
     private let shapeUpload: UnsafeMutablePointer<RenderQueue.ShapeInstance>
     private let extendedShapeUpload: UnsafeMutablePointer<RenderQueue.ExtendedShapeInstance>
+    private let primitiveUpload: UnsafeMutablePointer<RenderQueue.PrimitiveInstance>
 
     package init(resources: SpriteRenderResources, queue: RenderQueue) {
         self.resources = resources
@@ -70,6 +76,11 @@ public final class SpriteRenderWorkspace {
             parameters: .zero, extendedParameters: .zero,
             fillColor: .zero, strokeColor: .zero, style: .zero
         ), count: capacity)
+        primitiveUpload = .allocate(capacity: capacity)
+        primitiveUpload.initialize(repeating: .init(
+            transformX: .zero, transformY: .zero, translation: .zero,
+            origin: .zero, size: .zero, width: 0, colorRGBA8: 0
+        ), count: capacity)
         precondition(
             MemoryLayout<RenderQueue.Instance>.stride == 48,
             "Sprite instance ABI must remain 48 bytes"
@@ -85,6 +96,8 @@ public final class SpriteRenderWorkspace {
         shapeUpload.deallocate()
         extendedShapeUpload.deinitialize(count: capacity)
         extendedShapeUpload.deallocate()
+        primitiveUpload.deinitialize(count: capacity)
+        primitiveUpload.deallocate()
     }
 
     /// Encodes one execution view using shared sprite rendering resources.
@@ -118,14 +131,16 @@ public final class SpriteRenderWorkspace {
         var hasSprites = false
         var hasShapes = false
         var hasExtendedShapes = false
+        var hasPrimitives = false
         var hasGradients = false
         for batch in view.batches {
             switch batch.family {
             case .sprite: hasSprites = true
             case .shape: hasShapes = true
             case .extendedShape: hasExtendedShapes = true
+            case .primitive: hasPrimitives = true
             }
-            if batch.family != .sprite,
+            if (batch.family == .shape || batch.family == .extendedShape),
                 execution.shapeMaterials[Int(batch.material)].usesGradient
             {
                 hasGradients = true
@@ -140,13 +155,17 @@ public final class SpriteRenderWorkspace {
             if hasExtendedShapes {
                 extendedShapeUpload[index] = execution.extendedShapeInstances[ordinal]
             }
+            if hasPrimitives {
+                primitiveUpload[index] = execution.primitiveInstances[ordinal]
+            }
         }
         pass.setVertexBuffer(geometry.vertex, index: 0)
         pass.setVertexBytes(
             of: SpriteViewParameters(
                 x: view.projectionX,
                 y: view.projectionY,
-                translation: view.projectionTranslation
+                translation: view.projectionTranslation,
+                logicalSize: view.logicalSize
             ),
             index: 2
         )
@@ -180,13 +199,29 @@ public final class SpriteRenderWorkspace {
                 index: 4
             )
         }
+        if hasPrimitives {
+            pass.setVertexData(
+                UnsafeRawBufferPointer(
+                    start: primitiveUpload,
+                    count: view.ordinals.count
+                        * MemoryLayout<RenderQueue.PrimitiveInstance>.stride
+                ),
+                index: 5
+            )
+        }
         let metrics = Metrics(instancesSeconds: Self.seconds(since: instanceStart))
         let gradients = try hasGradients ? resources.gradientResources(for: execution) : nil
 
         var start = UInt32(0)
+        var usesPrimitiveGeometry = false
+        var primitiveGeometry: PrimitiveGeometryResources?
         for batch in view.batches {
             switch batch.family {
             case .sprite:
+                if usesPrimitiveGeometry {
+                    pass.setVertexBuffer(geometry.vertex, index: 0)
+                    usesPrimitiveGeometry = false
+                }
                 let materialIndex = Int(batch.material)
                 var material = try resolve(
                     execution.materials[materialIndex], at: materialIndex
@@ -203,6 +238,10 @@ public final class SpriteRenderWorkspace {
                 pass.setFragmentTexture(material.resolved.texture, index: 0)
                 pass.setFragmentSampler(material.resolved.sampler, index: 0)
             case .shape:
+                if usesPrimitiveGeometry {
+                    pass.setVertexBuffer(geometry.vertex, index: 0)
+                    usesPrimitiveGeometry = false
+                }
                 let material = execution.shapeMaterials[Int(batch.material)]
                 pass.setRenderPipeline(try resources.shapePipeline(
                     format: pass.colorFormat,
@@ -214,6 +253,10 @@ public final class SpriteRenderWorkspace {
                     pass.setFragmentSampler(gradients!.sampler, index: 1)
                 }
             case .extendedShape:
+                if usesPrimitiveGeometry {
+                    pass.setVertexBuffer(geometry.vertex, index: 0)
+                    usesPrimitiveGeometry = false
+                }
                 let material = execution.shapeMaterials[Int(batch.material)]
                 pass.setRenderPipeline(try resources.extendedShapePipeline(
                     format: pass.colorFormat,
@@ -224,6 +267,27 @@ public final class SpriteRenderWorkspace {
                     pass.setFragmentTexture(gradients!.texture, index: 1)
                     pass.setFragmentSampler(gradients!.sampler, index: 1)
                 }
+            case .primitive:
+                let primitive = try primitiveGeometry ?? resources.primitiveGeometry()
+                primitiveGeometry = primitive
+                if !usesPrimitiveGeometry {
+                    pass.setVertexBuffer(primitive.vertex, index: 0)
+                    usesPrimitiveGeometry = true
+                }
+                pass.setRenderPipeline(try resources.primitivePipeline(format: pass.colorFormat))
+                let range = primitive.ranges[Int(batch.material)]
+                pass.drawIndexedPrimitives(
+                    .triangle,
+                    indexCount: range.indexCount,
+                    indexType: .uint16,
+                    indexBuffer: primitive.index,
+                    indexBufferOffset: range.indexBufferOffset,
+                    instanceCount: batch.end - start,
+                    baseVertex: range.baseVertex,
+                    baseInstance: start
+                )
+                start = batch.end
+                continue
             }
             pass.drawIndexedPrimitives(
                 .triangle,

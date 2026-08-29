@@ -10,6 +10,7 @@ public final class RenderQueue {
     package enum Submission {
         case sprite(SpriteSubmission)
         case shape(ShapeSubmission)
+        case primitive(PrimitiveSubmission)
     }
 
     /// GPU renderer family for one consecutive batch.
@@ -20,6 +21,8 @@ public final class RenderQueue {
         case shape
         /// Point-defined analytic signed-distance shape instances.
         case extendedShape
+        /// Lightweight filled or stroked immediate primitives.
+        case primitive
     }
     /// Fixed capacities allocated by a render queue.
     public struct Settings: Hashable, Sendable {
@@ -79,6 +82,8 @@ public final class RenderQueue {
         public let projectionY: SIMD3<Float>
         /// Translation column of the world-to-clip affine transform.
         public let projectionTranslation: SIMD3<Float>
+        /// Logical presentation dimensions used for screen-constant geometry.
+        public let logicalSize: SIMD2<Float>
         /// Inclusive world-space minimum used for visibility tests.
         public let boundsMinimum: SIMD2<Float>
         /// Inclusive world-space maximum used for visibility tests.
@@ -95,12 +100,15 @@ public final class RenderQueue {
             projectionX: SIMD3<Float>,
             projectionY: SIMD3<Float>,
             projectionTranslation: SIMD3<Float>,
+            logicalSize: SIMD2<Float>,
             boundsMinimum: SIMD2<Float>,
             boundsMaximum: SIMD2<Float>
         ) {
             self.projectionX = projectionX
             self.projectionY = projectionY
             self.projectionTranslation = projectionTranslation
+            precondition(logicalSize.x > 0 && logicalSize.y > 0)
+            self.logicalSize = logicalSize
             self.boundsMinimum = boundsMinimum
             self.boundsMaximum = boundsMaximum
         }
@@ -166,6 +174,19 @@ public final class RenderQueue {
         public let style: SIMD4<Float>
     }
 
+    /// Compact GPU-facing immediate-primitive instance produced during lowering.
+    public struct PrimitiveInstance: BitwiseCopyable, Sendable {
+        public let transformX: SIMD2<Float>
+        public let transformY: SIMD2<Float>
+        public let translation: SIMD2<Float>
+        public let origin: SIMD2<Float>
+        public let size: SIMD2<Float>
+        /// Stroke width in logical screen units, or zero for a fill.
+        public let width: Float
+        /// Packed premultiplied linear eight-bit RGBA colour.
+        public let colorRGBA8: UInt32
+    }
+
     /// Shape draw compatibility shared by consecutive instances.
     public struct ShapeMaterial: Hashable, Sendable {
         /// Fixed-function colour composition.
@@ -202,6 +223,8 @@ public final class RenderQueue {
         public let projectionY: SIMD3<Float>
         /// World-to-clip translation column.
         public let projectionTranslation: SIMD3<Float>
+        /// Logical presentation dimensions used for screen-constant geometry.
+        public let logicalSize: SIMD2<Float>
         /// Ordered indices into ``Execution/instances``.
         public let ordinals: UnsafeBufferPointer<UInt32>
         /// Consecutive compatible ranges over ``ordinals``.
@@ -217,6 +240,8 @@ public final class RenderQueue {
         public let shapeInstances: UnsafeBufferPointer<ShapeInstance>
         /// Ordinal-aligned point-defined shape instance records.
         public let extendedShapeInstances: UnsafeBufferPointer<ExtendedShapeInstance>
+        /// Ordinal-aligned immediate-primitive instance records.
+        public let primitiveInstances: UnsafeBufferPointer<PrimitiveInstance>
         /// Premultiplied RGBA8 rows for registered gradients.
         public let gradientAtlas: UnsafeBufferPointer<UInt8>
         /// Number of valid 256-pixel rows in ``gradientAtlas``.
@@ -284,6 +309,7 @@ public final class RenderQueue {
     private let instances: UnsafeMutablePointer<Instance>
     private let shapeInstances: UnsafeMutablePointer<ShapeInstance>
     private let extendedShapeInstances: UnsafeMutablePointer<ExtendedShapeInstance>
+    private let primitiveInstances: UnsafeMutablePointer<PrimitiveInstance>
     private let families: UnsafeMutablePointer<Family>
     private let visibilityMasks: UnsafeMutablePointer<UInt64>
     private let visibleUnion: UnsafeMutablePointer<UInt32>
@@ -326,6 +352,7 @@ public final class RenderQueue {
         instances = .allocate(capacity: capacity)
         shapeInstances = .allocate(capacity: capacity)
         extendedShapeInstances = .allocate(capacity: capacity)
+        primitiveInstances = .allocate(capacity: capacity)
         families = .allocate(capacity: capacity)
         visibilityMasks = .allocate(capacity: capacity)
         visibleUnion = .allocate(capacity: capacity)
@@ -384,6 +411,8 @@ public final class RenderQueue {
         shapeInstances.deallocate()
         extendedShapeInstances.deinitialize(count: initializedExecutionCount)
         extendedShapeInstances.deallocate()
+        primitiveInstances.deinitialize(count: initializedExecutionCount)
+        primitiveInstances.deallocate()
         families.deinitialize(count: initializedExecutionCount)
         families.deallocate()
         visibilityMasks.deinitialize(count: settings.capacity)
@@ -451,6 +480,16 @@ public final class RenderQueue {
             "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + 1)"
         )
         submissions.advanced(by: count).initialize(to: .shape(submission))
+        count += 1
+    }
+
+    /// Appends one immediate primitive submission.
+    public func submit(_ submission: PrimitiveSubmission) {
+        precondition(
+            count < settings.capacity,
+            "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + 1)"
+        )
+        submissions.advanced(by: count).initialize(to: .primitive(submission))
         count += 1
     }
 
@@ -605,6 +644,7 @@ public final class RenderQueue {
                     projectionX: views[index].projectionX,
                     projectionY: views[index].projectionY,
                     projectionTranslation: views[index].projectionTranslation,
+                    logicalSize: views[index].logicalSize,
                     ordinals: UnsafeBufferPointer(
                         start: context.ordinals,
                         count: Int(context.state.visibleCount)
@@ -625,6 +665,7 @@ public final class RenderQueue {
                 instances: UnsafeBufferPointer(start: instances, count: count),
                 shapeInstances: UnsafeBufferPointer(start: shapeInstances, count: count),
                 extendedShapeInstances: UnsafeBufferPointer(start: extendedShapeInstances, count: count),
+                primitiveInstances: UnsafeBufferPointer(start: primitiveInstances, count: count),
                 gradientAtlas: UnsafeBufferPointer(
                     start: gradientBytes,
                     count: gradientCount * 256 * 4
@@ -651,6 +692,7 @@ public final class RenderQueue {
             let spriteInstance: Instance
             let shapeInstance: ShapeInstance
             let extendedShapeInstance: ExtendedShapeInstance
+            let primitiveInstance: PrimitiveInstance
             switch source {
             case .sprite(let source):
                 let material = Material(
@@ -675,6 +717,7 @@ public final class RenderQueue {
                 )
                 shapeInstance = Self.emptyShapeInstance
                 extendedShapeInstance = Self.emptyExtendedShapeInstance
+                primitiveInstance = Self.emptyPrimitiveInstance
             case .shape(let source):
                 let isExtended = source.kind == .triangle
                     || source.kind == .quadraticBezier
@@ -725,6 +768,26 @@ public final class RenderQueue {
                         source.rounding
                     )
                 )
+                primitiveInstance = Self.emptyPrimitiveInstance
+            case .primitive(let source):
+                materialSlot = 0x4000_0000 | source.kind.rawValue
+                family = .primitive
+                sourceLayer = source.layer
+                sourceOrder = source.order
+                sourceBoundsMinimum = source.boundsMinimum
+                sourceBoundsMaximum = source.boundsMaximum
+                spriteInstance = Self.emptySpriteInstance
+                shapeInstance = Self.emptyShapeInstance
+                extendedShapeInstance = Self.emptyExtendedShapeInstance
+                primitiveInstance = PrimitiveInstance(
+                    transformX: source.transformX,
+                    transformY: source.transformY,
+                    translation: source.transformTranslation,
+                    origin: source.origin,
+                    size: source.size,
+                    width: source.width,
+                    colorRGBA8: Self.rgba8(source.color)
+                )
             }
             let layerSlot: UInt32
             if index < initializedExecutionCount,
@@ -744,6 +807,7 @@ public final class RenderQueue {
                 instances[index] = spriteInstance
                 shapeInstances[index] = shapeInstance
                 extendedShapeInstances[index] = extendedShapeInstance
+                primitiveInstances[index] = primitiveInstance
                 families[index] = family
             } else {
                 boundsMinimum.advanced(by: index).initialize(to: sourceBoundsMinimum)
@@ -753,6 +817,7 @@ public final class RenderQueue {
                 instances.advanced(by: index).initialize(to: spriteInstance)
                 shapeInstances.advanced(by: index).initialize(to: shapeInstance)
                 extendedShapeInstances.advanced(by: index).initialize(to: extendedShapeInstance)
+                primitiveInstances.advanced(by: index).initialize(to: primitiveInstance)
                 families.advanced(by: index).initialize(to: family)
             }
         }
@@ -990,12 +1055,33 @@ public final class RenderQueue {
         style: .zero
     )
 
+    private static let emptyPrimitiveInstance = PrimitiveInstance(
+        transformX: .zero,
+        transformY: .zero,
+        translation: .zero,
+        origin: .zero,
+        size: .zero,
+        width: 0,
+        colorRGBA8: 0
+    )
+
     private static func family(for encodedMaterial: UInt32) -> Family {
         switch encodedMaterial >> 30 {
         case 0: .sprite
+        case 1: .primitive
         case 2: .shape
         default: .extendedShape
         }
+    }
+
+    private static func rgba8(_ color: SIMD4<Float>) -> UInt32 {
+        func channel(_ value: Float) -> UInt32 {
+            UInt32((min(max(value, 0), 1) * 255).rounded())
+        }
+        return channel(color.x)
+            | channel(color.y) << 8
+            | channel(color.z) << 16
+            | channel(color.w) << 24
     }
 
     private static func materialHash(_ material: Material) -> UInt64 {

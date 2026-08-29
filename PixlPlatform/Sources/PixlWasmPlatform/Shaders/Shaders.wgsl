@@ -173,6 +173,68 @@ fn pixlExtendedShapeVertex(input: ExtendedShapeVertexInput) -> ExtendedShapeVert
     return output;
 }
 
+struct PrimitiveShapeVertexInput {
+    @location(0) position: vec2f,
+    @location(1) previous: vec2f,
+    @location(2) next: vec2f,
+    @location(3) side: f32,
+    @location(4) transformX: vec2f,
+    @location(5) transformY: vec2f,
+    @location(6) translation: vec2f,
+    @location(7) origin: vec2f,
+    @location(8) size: vec2f,
+    @location(9) width: f32,
+    @location(10) color: vec4f,
+}
+
+struct PrimitiveShapeVertexOutput {
+    @builtin(position) position: vec4f,
+    @location(0) @interpolate(flat) color: vec4f,
+}
+
+fn pixlPrimitiveProjected(
+    normalized: vec2f,
+    input: PrimitiveShapeVertexInput
+) -> vec2f {
+    let local = input.origin + normalized * input.size;
+    let world = input.transformX * local.x
+        + input.transformY * local.y
+        + input.translation;
+    return (parameters.transform * vec3f(world, 1.0)).xy;
+}
+
+@vertex
+fn pixlPrimitiveShapeVertex(input: PrimitiveShapeVertexInput) -> PrimitiveShapeVertexOutput {
+    var projected = pixlPrimitiveProjected(input.position, input);
+    if input.side != 0.0 {
+        // Sprite workspaces place logical view size in this shared parameter slot.
+        let logicalSize = parameters.textureOrigin;
+        let current = projected * logicalSize * 0.5;
+        let previous = pixlPrimitiveProjected(input.previous, input) * logicalSize * 0.5;
+        let next = pixlPrimitiveProjected(input.next, input) * logicalSize * 0.5;
+        let incoming = normalize(current - previous);
+        let outgoing = normalize(next - current);
+        let crossValue = incoming.x * outgoing.y - incoming.y * outgoing.x;
+        var orientation = -1.0;
+        if crossValue >= 0.0 { orientation = 1.0; }
+        let incomingNormal = vec2f(incoming.y, -incoming.x) * orientation;
+        let outgoingNormal = vec2f(outgoing.y, -outgoing.x) * orientation;
+        let miter = normalize(incomingNormal + outgoingNormal);
+        let miterLength = input.width * 0.5
+            / max(abs(dot(miter, outgoingNormal)), 0.0001);
+        projected += miter * miterLength * input.side * 2.0 / logicalSize;
+    }
+    var output: PrimitiveShapeVertexOutput;
+    output.position = vec4f(projected, 0.0, 1.0);
+    output.color = input.color;
+    return output;
+}
+
+@fragment
+fn pixlPrimitiveShapeFragment(input: PrimitiveShapeVertexOutput) -> @location(0) vec4f {
+    return input.color;
+}
+
 fn pixlRoundedBoxDistance(point: vec2f, halfSize: vec2f, rounding: f32) -> f32 {
     let q = abs(point) - halfSize + rounding;
     return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - rounding;

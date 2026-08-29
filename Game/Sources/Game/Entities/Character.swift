@@ -86,16 +86,23 @@ struct Character: Entity {
         if let event = context.mouse.event(.primary, phase: .down) {
             let world = context.coordinates(for: .world(camera))
 
-//            if bounds.contains(world.location(for: event)) {
-//                print("Clicked on character")
-//            }
+            if bounds.contains(world.location(for: event)) {
+                isSelected.toggle()
+            }
         }
     }
 
-    func submit(to queue: RenderQueue) {
+    func submit(to queue: RenderQueue, context: GameContext) {
         queue.submit(
             sprite,
             transform: .init(position)
         )
+
+        if isSelected {
+            context.draw(
+                .rect(bounds),
+                style: .stroke(.yellow, width: 1)
+            )
+        }
     }
 }

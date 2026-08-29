@@ -156,6 +156,7 @@ extension GameContext {
             projectionX: .init(2 / logicalSize.width, 0, 0),
             projectionY: .init(0, -2 / logicalSize.height, 0),
             projectionTranslation: .init(-1, 1, 1),
+            logicalSize: logicalSize,
             boundsMinimum: .zero,
             boundsMaximum: logicalSize
         )
@@ -329,6 +330,7 @@ extension GameContext {
             Float(size.width),
             Float(size.height)
         )
+        let logicalSize = presentationSize / displayScale
         let projection = camera.projection(in: presentationSize)
         let boundsMinimum: Vec2
         let boundsMaximum: Vec2
@@ -346,6 +348,7 @@ extension GameContext {
             projectionX: projection.x,
             projectionY: projection.y,
             projectionTranslation: projection.translation,
+            logicalSize: logicalSize,
             boundsMinimum: boundsMinimum,
             boundsMaximum: boundsMaximum
         )

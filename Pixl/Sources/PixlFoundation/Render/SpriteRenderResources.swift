@@ -5,6 +5,25 @@ private struct SpriteVertex: BitwiseCopyable {
     let textureCoordinate: SIMD2<Float>
 }
 
+private struct PrimitiveVertex: BitwiseCopyable {
+    let position: SIMD2<Float>
+    let previous: SIMD2<Float>
+    let next: SIMD2<Float>
+    let side: Float
+}
+
+package struct PrimitiveGeometryRange {
+    let indexCount: UInt32
+    let indexBufferOffset: UInt64
+    let baseVertex: Int32
+}
+
+package struct PrimitiveGeometryResources {
+    let vertex: Buffer
+    let index: Buffer
+    let ranges: [PrimitiveGeometryRange]
+}
+
 package struct ResolvedSpriteMaterial {
     let texture: Texture
     let sampler: Sampler
@@ -29,8 +48,10 @@ public final class SpriteRenderResources {
     private var pipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var shapePipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var extendedShapePipelines: [SpritePipelineKey: RenderPipeline] = [:]
+    private var primitivePipelines: [PixelFormat: RenderPipeline] = [:]
     private var vertexBuffer: Buffer?
     private var indexBuffer: Buffer?
+    private var primitiveGeometryResources: PrimitiveGeometryResources?
     private var gradientAtlas: Texture?
     private var gradientSampler: Sampler?
     private var gradientGeneration = UInt64.max
@@ -52,10 +73,15 @@ public final class SpriteRenderResources {
     deinit {
         if let vertexBuffer { device.destroy(vertexBuffer) }
         if let indexBuffer { device.destroy(indexBuffer) }
+        if let primitiveGeometryResources {
+            device.destroy(primitiveGeometryResources.vertex)
+            device.destroy(primitiveGeometryResources.index)
+        }
         for sampler in samplers.values { device.destroy(sampler) }
         for pipeline in pipelines.values { device.destroy(pipeline) }
         for pipeline in shapePipelines.values { device.destroy(pipeline) }
         for pipeline in extendedShapePipelines.values { device.destroy(pipeline) }
+        for pipeline in primitivePipelines.values { device.destroy(pipeline) }
         if let gradientAtlas { device.destroy(gradientAtlas) }
         for texture in retiredGradientAtlases { device.destroy(texture) }
         if let gradientSampler { device.destroy(gradientSampler) }
@@ -211,6 +237,124 @@ public final class SpriteRenderResources {
         return pipeline
     }
 
+    package func primitivePipeline(format: PixelFormat) throws -> RenderPipeline {
+        if let pipeline = primitivePipelines[format] { return pipeline }
+        let pipeline = try device.makeRenderPipeline(
+            .init(
+                vertex: .primitiveShapeVertex,
+                fragment: .primitiveShapeFragment,
+                vertexLayout: Self.primitiveVertexLayout,
+                colorFormat: format,
+                blendMode: .premultiplied
+            )
+        )
+        primitivePipelines[format] = pipeline
+        return pipeline
+    }
+
+    package func primitiveGeometry() throws -> PrimitiveGeometryResources {
+        if let primitiveGeometryResources { return primitiveGeometryResources }
+
+        var vertices: [PrimitiveVertex] = []
+        var indices: [UInt16] = []
+        var ranges: [PrimitiveGeometryRange] = []
+
+        func appendFill(_ points: [SIMD2<Float>]) {
+            let vertexStart = vertices.count
+            let indexStart = indices.count
+            if points.count == 4 {
+                for point in points {
+                    vertices.append(.init(position: point, previous: point, next: point, side: 0))
+                }
+                indices.append(contentsOf: [0, 1, 2, 0, 2, 3])
+            } else {
+                vertices.append(.init(
+                    position: .init(repeating: 0.5),
+                    previous: .init(repeating: 0.5),
+                    next: .init(repeating: 0.5),
+                    side: 0
+                ))
+                for point in points {
+                    vertices.append(.init(position: point, previous: point, next: point, side: 0))
+                }
+                for index in points.indices {
+                    indices.append(0)
+                    indices.append(UInt16(index + 1))
+                    indices.append(UInt16((index + 1) % points.count + 1))
+                }
+            }
+            ranges.append(.init(
+                indexCount: UInt32(indices.count - indexStart),
+                indexBufferOffset: UInt64(indexStart * MemoryLayout<UInt16>.stride),
+                baseVertex: Int32(vertexStart)
+            ))
+        }
+
+        func appendStroke(_ points: [SIMD2<Float>]) {
+            let vertexStart = vertices.count
+            let indexStart = indices.count
+            for index in points.indices {
+                let previous = points[(index + points.count - 1) % points.count]
+                let point = points[index]
+                let next = points[(index + 1) % points.count]
+                vertices.append(.init(position: point, previous: previous, next: next, side: 1))
+                vertices.append(.init(position: point, previous: previous, next: next, side: -1))
+            }
+            for index in points.indices {
+                let next = (index + 1) % points.count
+                let outer = UInt16(index * 2)
+                let inner = outer + 1
+                let nextOuter = UInt16(next * 2)
+                let nextInner = nextOuter + 1
+                indices.append(contentsOf: [outer, inner, nextInner, outer, nextInner, nextOuter])
+            }
+            ranges.append(.init(
+                indexCount: UInt32(indices.count - indexStart),
+                indexBufferOffset: UInt64(indexStart * MemoryLayout<UInt16>.stride),
+                baseVertex: Int32(vertexStart)
+            ))
+        }
+
+        let rectangle: [SIMD2<Float>] = [
+            .init(0, 0), .init(1, 0), .init(1, 1), .init(0, 1)
+        ]
+        var ellipse: [SIMD2<Float>] = []
+        ellipse.reserveCapacity(32)
+        var ellipsePoint = SIMD2<Float>(0.5, 0)
+        let stepCosine: Float = 0.98078528
+        let stepSine: Float = 0.19509032
+        for _ in 0..<32 {
+            ellipse.append(ellipsePoint + 0.5)
+            ellipsePoint = .init(
+                ellipsePoint.x * stepCosine - ellipsePoint.y * stepSine,
+                ellipsePoint.x * stepSine + ellipsePoint.y * stepCosine
+            )
+        }
+        appendFill(rectangle)
+        appendStroke(rectangle)
+        appendFill(ellipse)
+        appendStroke(ellipse)
+
+        let vertexBuffer = try vertices.withUnsafeBytes {
+            try device.makeBuffer(copying: $0, usage: .vertex, memory: .gpuOnly)
+        }
+        do {
+            let indexBuffer = try indices.withUnsafeBytes {
+                try device.makeBuffer(copying: $0, usage: .index, memory: .gpuOnly)
+            }
+            let resources = PrimitiveGeometryResources(
+                vertex: vertexBuffer,
+                index: indexBuffer,
+                ranges: ranges
+            )
+            primitiveGeometryResources = resources
+            return resources
+        } catch {
+            device.destroy(vertexBuffer)
+            throw error
+        }
+    }
+
     package func gradientResources(
         for execution: RenderQueue.Execution
     ) throws -> (texture: Texture, sampler: Sampler) {
@@ -364,6 +508,34 @@ public final class SpriteRenderResources {
             location: 11, bufferIndex: 4,
             format: .float32x2, offset: 24
         ))
+        return layout
+    }
+
+    private static var primitiveVertexLayout: VertexLayout {
+        let layout = VertexLayout(bufferCapacity: 2, attributeCapacity: 11)
+        layout.append(.init(
+            bufferIndex: 0,
+            stride: UInt64(MemoryLayout<PrimitiveVertex>.stride)
+        ))
+        layout.append(.init(
+            bufferIndex: 5,
+            stride: UInt64(MemoryLayout<RenderQueue.PrimitiveInstance>.stride),
+            stepMode: .perInstance
+        ))
+        layout.append(.init(location: 0, bufferIndex: 0, format: .float32x2, offset: 0))
+        layout.append(.init(location: 1, bufferIndex: 0, format: .float32x2, offset: 8))
+        layout.append(.init(location: 2, bufferIndex: 0, format: .float32x2, offset: 16))
+        layout.append(.init(location: 3, bufferIndex: 0, format: .float32, offset: 24))
+        for index in 0..<5 {
+            layout.append(.init(
+                location: UInt32(index + 4),
+                bufferIndex: 5,
+                format: .float32x2,
+                offset: UInt64(index * 8)
+            ))
+        }
+        layout.append(.init(location: 9, bufferIndex: 5, format: .float32, offset: 40))
+        layout.append(.init(location: 10, bufferIndex: 5, format: .unorm8x4, offset: 44))
         return layout
     }
 

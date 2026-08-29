@@ -64,6 +64,7 @@ struct SpriteVertexOutput {
 
 struct SpriteViewParameters {
     float3x3 projection;
+    float2 logicalSize;
 };
 
 vertex SpriteVertexOutput pixlSpriteVertex(
@@ -180,6 +181,69 @@ vertex ExtendedShapeVertexOutput pixlExtendedShapeVertex(
         input.strokeColor,
         input.style
     };
+}
+
+struct PrimitiveShapeVertexInput {
+    float2 position [[attribute(0)]];
+    float2 previous [[attribute(1)]];
+    float2 next [[attribute(2)]];
+    float side [[attribute(3)]];
+    float2 transformX [[attribute(4)]];
+    float2 transformY [[attribute(5)]];
+    float2 translation [[attribute(6)]];
+    float2 origin [[attribute(7)]];
+    float2 size [[attribute(8)]];
+    float width [[attribute(9)]];
+    float4 color [[attribute(10)]];
+};
+
+struct PrimitiveShapeVertexOutput {
+    float4 position [[position]];
+    float4 color [[flat]];
+};
+
+static float2 pixlPrimitiveProjected(
+    float2 normalized,
+    PrimitiveShapeVertexInput input,
+    constant SpriteViewParameters &view
+) {
+    float2 local = input.origin + normalized * input.size;
+    float2 world = input.transformX * local.x
+        + input.transformY * local.y
+        + input.translation;
+    return (view.projection * float3(world, 1.0)).xy;
+}
+
+vertex PrimitiveShapeVertexOutput pixlPrimitiveShapeVertex(
+    PrimitiveShapeVertexInput input [[stage_in]],
+    constant SpriteViewParameters &view [[buffer(2)]]
+) {
+    float2 projected = pixlPrimitiveProjected(input.position, input, view);
+    if (input.side != 0.0) {
+        float2 current = projected * view.logicalSize * 0.5;
+        float2 previous = pixlPrimitiveProjected(input.previous, input, view)
+            * view.logicalSize * 0.5;
+        float2 next = pixlPrimitiveProjected(input.next, input, view)
+            * view.logicalSize * 0.5;
+        float2 incoming = normalize(current - previous);
+        float2 outgoing = normalize(next - current);
+        float orientation = cross(float3(incoming, 0.0), float3(outgoing, 0.0)).z >= 0.0
+            ? 1.0 : -1.0;
+        float2 incomingNormal = float2(incoming.y, -incoming.x) * orientation;
+        float2 outgoingNormal = float2(outgoing.y, -outgoing.x) * orientation;
+        float2 miter = normalize(incomingNormal + outgoingNormal);
+        float miterLength = input.width * 0.5
+            / max(abs(dot(miter, outgoingNormal)), 0.0001);
+        projected += miter * miterLength * input.side * 2.0 / view.logicalSize;
+    }
+    return {
+        float4(projected, 0.0, 1.0),
+        input.color
+    };
+}
+
+fragment float4 pixlPrimitiveShapeFragment(PrimitiveShapeVertexOutput input [[stage_in]]) {
+    return input.color;
 }
 
 static float pixlRoundedBoxDistance(float2 point, float2 halfSize, float rounding) {
