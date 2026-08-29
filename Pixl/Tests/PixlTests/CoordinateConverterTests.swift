@@ -72,10 +72,46 @@ struct CoordinateConverterTests {
             to: .world(SingularConversionCamera())
         ).isValid)
     }
+
+    @Test
+    func resolvedSpaceProjectsAndInvertsOnlyOnce() throws {
+        let converter = try #require(CoordinateConverter(
+            presentationSize: .init(width: 1_200, height: 900),
+            displayScale: 2
+        ))
+        let counter = ProjectionCounter()
+        let coordinates = converter.resolved(
+            in: .world(CountingCamera(counter: counter))
+        )
+        let sample = Mouse.Sample(
+            timestamp: 1,
+            rawLocation: .init(600, 450),
+            rawTranslation: .init(20, 10)
+        )
+
+        #expect(counter.count == 1)
+        #expect(coordinates.location(for: sample).isValid)
+        #expect(coordinates.translation(for: sample).isValid)
+        #expect(coordinates.location(for: sample).isValid)
+        #expect(counter.count == 1)
+    }
 }
 
 private struct SingularConversionCamera: Camera2D {
     func projection(in presentationSize: Vec2) -> Transform2D {
         .init(scale: .init(0, 1))
+    }
+}
+
+private final class ProjectionCounter: @unchecked Sendable {
+    var count = 0
+}
+
+private struct CountingCamera: Camera2D {
+    let counter: ProjectionCounter
+
+    func projection(in presentationSize: Vec2) -> Transform2D {
+        counter.count += 1
+        return OrthographicCamera().projection(in: presentationSize)
     }
 }

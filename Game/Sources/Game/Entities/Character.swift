@@ -11,6 +11,8 @@ struct Character: Entity {
 
     private var position: Vec2 = .zero
     private var velocity: Vec2 = .zero
+    private let camera: OrthographicCamera
+    private var isSelected: Bool = false
 
     var bounds: Rect {
         .init(center: position, size: sprite.size)
@@ -23,7 +25,12 @@ struct Character: Entity {
         deceleration: 1000
     )
 
-    init(context: GameContext) throws {
+    init(
+        camera: OrthographicCamera,
+        context: GameContext
+    ) throws {
+        self.camera = camera
+
         sprite = try .init(
             named: "character.png",
             context: context
@@ -74,6 +81,14 @@ struct Character: Entity {
             timeline.animation = walk
         } else {
             timeline.animation = idle
+        }
+
+        if let event = context.mouse.event(.primary, phase: .down) {
+            let world = context.coordinates(for: .world(camera))
+
+//            if bounds.contains(world.location(for: event)) {
+//                print("Clicked on character")
+//            }
         }
     }
 

@@ -6,73 +6,58 @@ import Testing
 @Suite("Mouse input")
 struct MouseInputTests {
     @Test
-    func resolvesLogicalScreenLocationAndTranslation() {
+    func resolvesLogicalScreenLocationAndTranslation() throws {
         let mouse = MouseInput(source: Mouse())
         mouse.update(
             rawLocation: .init(600, 450),
-            rawTranslation: .init(20, -10),
-            coordinateConverter: .init(
-                presentationSize: .init(width: 1_200, height: 900),
-                displayScale: 2
-            )
+            rawTranslation: .init(20, -10)
         )
+        let screen = try resolved(.screen)
 
-        #expect(mouse.location(in: .screen) == .init(300, 225))
-        #expect(mouse.translation(in: .screen) == .init(10, 5))
+        #expect(screen.location(for: mouse) == .init(300, 225))
+        #expect(screen.translation(for: mouse) == .init(10, 5))
     }
 
     @Test
-    func resolvesWorldLocationAndTranslationThroughCamera() {
+    func resolvesWorldLocationAndTranslationThroughCamera() throws {
         let mouse = MouseInput(source: Mouse())
         mouse.update(
             rawLocation: .init(1_200, 900),
-            rawTranslation: .init(120, 90),
-            coordinateConverter: .init(
-                presentationSize: .init(width: 1_200, height: 900),
-                displayScale: 2
-            )
+            rawTranslation: .init(120, 90)
         )
         let camera = OrthographicCamera(
             center: .init(100, 50),
             halfHeight: 225
         )
+        let world = try resolved(.world(camera))
 
-        #expect(mouse.location(in: .world(camera)) == .init(400, 275))
-        #expect(mouse.translation(in: .world(camera)) == .init(60, 45))
+        #expect(world.location(for: mouse) == .init(400, 275))
+        #expect(world.translation(for: mouse) == .init(60, 45))
     }
 
     @Test
-    func resolvesThroughAnyTwoDimensionalCameraProjection() {
+    func resolvesThroughAnyTwoDimensionalCameraProjection() throws {
         let mouse = MouseInput(source: Mouse())
         mouse.update(
             rawLocation: .init(1_200, 900),
-            rawTranslation: .init(150, 112.5),
-            coordinateConverter: .init(
-                presentationSize: .init(width: 1_200, height: 900),
-                displayScale: 2
-            )
+            rawTranslation: .init(150, 112.5)
         )
+        let world = try resolved(.world(AxisSwappedCamera()))
 
         #expect(
-            mouse.location(in: .world(AxisSwappedCamera()))
-                == .init(8, 4)
+            world.location(for: mouse) == .init(8, 4)
         )
         #expect(
-            mouse.translation(in: .world(AxisSwappedCamera()))
-                == .init(2, 1)
+            world.translation(for: mouse) == .init(2, 1)
         )
     }
 
     @Test
-    func resolvesEventAndSampleCoordinates() {
+    func resolvesEventAndSampleCoordinates() throws {
         let mouse = MouseInput(source: Mouse())
         mouse.update(
             rawLocation: .zero,
-            rawTranslation: .zero,
-            coordinateConverter: .init(
-                presentationSize: .init(width: 1_200, height: 900),
-                displayScale: 2
-            )
+            rawTranslation: .zero
         )
         let buttonEvent = Mouse.Button.Event(
             timestamp: 1,
@@ -85,30 +70,45 @@ struct MouseInputTests {
             rawLocation: .init(600, 450),
             rawTranslation: .init(20, -10)
         )
+        let screen = try resolved(.screen)
 
-        #expect(mouse.location(in: .screen, for: buttonEvent) == .init(100, 100))
-        #expect(mouse.location(in: .screen, for: sample) == .init(300, 225))
-        #expect(mouse.translation(in: .screen, for: sample) == .init(10, 5))
+        #expect(screen.location(for: buttonEvent) == .init(100, 100))
+        #expect(screen.location(for: sample) == .init(300, 225))
+        #expect(screen.translation(for: sample) == .init(10, 5))
     }
 
     @Test
-    func invalidResolutionNeverStopsInput() {
+    func invalidResolutionNeverStopsInput() throws {
         let mouse = MouseInput(source: Mouse())
+        let unavailable = ResolvedCoordinateSpace()
 
-        #expect(!mouse.location(in: .screen).isValid)
-        #expect(mouse.translation(in: .screen) == .zero)
+        #expect(!unavailable.location(for: mouse).isValid)
+        #expect(unavailable.translation(for: mouse) == .zero)
 
         mouse.update(
             rawLocation: .init(10, 20),
-            rawTranslation: .init(3, 4),
-            coordinateConverter: .init(
-                presentationSize: .init(width: 100, height: 100),
-                displayScale: 1
-            )
+            rawTranslation: .init(3, 4)
+        )
+        let singular = try resolved(
+            .world(SingularCamera()),
+            presentationSize: .init(width: 100, height: 100),
+            displayScale: 1
         )
 
-        #expect(!mouse.location(in: .world(SingularCamera())).isValid)
-        #expect(mouse.translation(in: .world(SingularCamera())) == .zero)
+        #expect(!singular.location(for: mouse).isValid)
+        #expect(singular.translation(for: mouse) == .zero)
+    }
+
+    private func resolved(
+        _ coordinateSpace: CoordinateSpace,
+        presentationSize: TextureSize = .init(width: 1_200, height: 900),
+        displayScale: Float = 2
+    ) throws -> ResolvedCoordinateSpace {
+        let converter = try #require(CoordinateConverter(
+            presentationSize: presentationSize,
+            displayScale: displayScale
+        ))
+        return converter.resolved(in: coordinateSpace)
     }
 }
 

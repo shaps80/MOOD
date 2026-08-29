@@ -14,7 +14,7 @@ struct Game: Pixl.Game {
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
 //        shapeCatalogue = .init(context: context)
-        character = try .init(context: context)
+        character = try .init(camera: camera, context: context)
 
         // would be nice for a game to decide what input devices it wants to support
         // this way mouse events for example could be "switched off" when they're not
@@ -77,14 +77,6 @@ struct Game: Pixl.Game {
 //
     mutating func update(_ time: UpdateTime, context: GameContext) {
         character.update(time, context: context)
-
-        if let event = context.mouse.event(.primary, phase: .down) {
-            let location = context.mouse.location(in: .world(camera), for: event)
-
-            if character.bounds.contains(location) {
-                print("Clicked on character")
-            }
-        }
 
 //        gameState.update(time, context: context)
 //        shapeCatalogue.update(time, context: context)

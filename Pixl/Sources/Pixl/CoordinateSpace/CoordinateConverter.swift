@@ -22,50 +22,14 @@ package struct CoordinateConverter {
         logicalSize = pixelSize * inverseDisplayScale
     }
 
-    package func location(
-        _ rawLocation: Vec2,
+    package func resolved(
         in coordinateSpace: CoordinateSpace
-    ) -> Vec2 {
-        switch coordinateSpace {
-        case .screen:
-            return .init(
-                rawLocation.x * inverseDisplayScale,
-                (pixelSize.y - rawLocation.y) * inverseDisplayScale
-            )
-
-        case .world(let camera):
-            let clip = Vec2(
-                rawLocation.x / pixelSize.x * 2 - 1,
-                rawLocation.y / pixelSize.y * 2 - 1
-            )
-            guard let inverse = camera.projection(in: pixelSize).inverted else {
-                return .invalid
-            }
-            return inverse.transformed(point: clip)
-        }
-    }
-
-    package func translation(
-        _ rawTranslation: Vec2,
-        in coordinateSpace: CoordinateSpace
-    ) -> Vec2 {
-        switch coordinateSpace {
-        case .screen:
-            return .init(
-                rawTranslation.x * inverseDisplayScale,
-                -rawTranslation.y * inverseDisplayScale
-            )
-
-        case .world(let camera):
-            let clip = Vec2(
-                rawTranslation.x / pixelSize.x * 2,
-                rawTranslation.y / pixelSize.y * 2
-            )
-            guard let inverse = camera.projection(in: pixelSize).inverted else {
-                return .zero
-            }
-            return inverse.transformed(vector: clip)
-        }
+    ) -> ResolvedCoordinateSpace {
+        .init(
+            pixelSize: pixelSize,
+            inverseDisplayScale: inverseDisplayScale,
+            coordinateSpace: coordinateSpace
+        )
     }
 
     package func convert(

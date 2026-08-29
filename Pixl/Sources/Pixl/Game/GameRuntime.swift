@@ -52,8 +52,7 @@ final class GameRuntime<G: Game>: PlatformGame {
         )
         context.mouse.update(
             rawLocation: platform.mouse.rawLocation,
-            rawTranslation: platform.mouse.rawTranslation,
-            coordinateConverter: context.coordinateConverter
+            rawTranslation: platform.mouse.rawTranslation
         )
         context.inputs.update()
         let frameStart = ContinuousClock.now

@@ -1,6 +1,12 @@
 import Pixl2D
 
 public extension GameContext {
+    /// Resolves a coordinate space for repeated input conversion this frame.
+    func coordinates(for coordinateSpace: CoordinateSpace) -> ResolvedCoordinateSpace {
+        coordinateConverter?.resolved(in: coordinateSpace)
+            ?? .init()
+    }
+
     /// Converts a point between logical screen and camera-resolved world coordinates.
     func convert(
         _ point: Vec2,

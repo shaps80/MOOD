@@ -1,12 +1,11 @@
 import Pixl2D
 import PixlPlatform
 
-/// Mouse state resolved against the current presentation frame.
+/// Game-facing physical mouse state.
 public final class MouseInput {
     private let source: PixlPlatform.Mouse
-    private var rawLocation = Vec2.zero
-    private var rawTranslation = Vec2.zero
-    private var coordinateConverter: CoordinateConverter?
+    package var rawLocation = Vec2.zero
+    package var rawTranslation = Vec2.zero
 
     package init(source: PixlPlatform.Mouse) {
         self.source = source
@@ -44,68 +43,11 @@ public final class MouseInput {
         source.event(button, phase: phase)
     }
 
-    /// Returns the current pointer location in the requested coordinate space.
-    public func location(in coordinateSpace: CoordinateSpace) -> Vec2 {
-        location(rawLocation, in: coordinateSpace)
-    }
-
-    /// Returns a motion sample's pointer location in the requested coordinate space.
-    public func location(
-        in coordinateSpace: CoordinateSpace,
-        for sample: PixlPlatform.Mouse.Sample
-    ) -> Vec2 {
-        location(sample.rawLocation, in: coordinateSpace)
-    }
-
-    /// Returns a button event's pointer location in the requested coordinate space.
-    public func location(
-        in coordinateSpace: CoordinateSpace,
-        for event: PixlPlatform.Mouse.Button.Event
-    ) -> Vec2 {
-        location(event.rawLocation, in: coordinateSpace)
-    }
-
-    /// Returns a scroll event's pointer location in the requested coordinate space.
-    public func location(
-        in coordinateSpace: CoordinateSpace,
-        for event: PixlPlatform.Mouse.ScrollEvent
-    ) -> Vec2 {
-        location(event.rawLocation, in: coordinateSpace)
-    }
-
-    /// Returns this frame's pointer movement in the requested coordinate space.
-    public func translation(in coordinateSpace: CoordinateSpace) -> Vec2 {
-        translation(rawTranslation, in: coordinateSpace)
-    }
-
-    /// Returns a motion sample's pointer movement in the requested coordinate space.
-    public func translation(
-        in coordinateSpace: CoordinateSpace,
-        for sample: PixlPlatform.Mouse.Sample
-    ) -> Vec2 {
-        translation(sample.rawTranslation, in: coordinateSpace)
-    }
-
-    private func location(_ rawLocation: Vec2, in coordinateSpace: CoordinateSpace) -> Vec2 {
-        coordinateConverter?.location(rawLocation, in: coordinateSpace)
-            ?? .invalid
-    }
-
-    private func translation(
-        _ rawTranslation: Vec2,
-        in coordinateSpace: CoordinateSpace
-    ) -> Vec2 {
-        coordinateConverter?.translation(rawTranslation, in: coordinateSpace)
-            ?? .zero
-    }
-
     package func update(
         rawLocation: Vec2,
-        rawTranslation: Vec2,
-        coordinateConverter: CoordinateConverter?
+        rawTranslation: Vec2
     ) {
         self.rawLocation = rawLocation
         self.rawTranslation = rawTranslation
-        self.coordinateConverter = coordinateConverter
     }
 }

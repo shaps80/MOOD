@@ -167,6 +167,9 @@ Keyboard event storage is runtime-owned, fixed-capacity, contiguous, and double-
 `GameContext.convert`
 : Converts points and axis-aligned bounds between logical `.screen` coordinates and camera-resolved `.world(camera)` coordinates using the current presentation snapshot. World-to-world and screen-to-screen conversions are identity operations. Unavailable or non-invertible conversions return `.invalid` values rather than stopping execution.
 
+`ResolvedCoordinateSpace`
+: A public allocation-free value returned by `GameContext.coordinates(for:)` for input conversion. Resolution performs camera projection dispatch and inversion once; `location(for:)` and `translation(for:)` then apply only the stored transform to typed mouse values, events, or samples. Invalid resolution produces `.invalid` locations and zero translations without stopping execution.
+
 `Mouse`
 : Platform-owned physical mouse state exposed through `Platform`. `rawLocation` is the latest presentation-pixel location using the platform boundary's bottom-left origin and y-up orientation. `rawTranslation` is the total physical movement published for the current presentation frame. Button state and current-frame transitions are independently queryable in constant time.
 
