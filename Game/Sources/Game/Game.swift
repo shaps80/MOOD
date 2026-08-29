@@ -4,14 +4,15 @@ import PixlUI
 
 @main
 struct Game: Pixl.Game {
+    private let worldBounds = WorldBounds()
     private var character: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 
-    private let debug = Scene(Debug())
-    private var gameState: GameStateHandler
+//    private let debug = Scene(Debug())
+//    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-        self.gameState = try .init(context: context)
+//        self.gameState = try .init(context: context)
         character = try .init(camera: camera, context: context)
     }
 
@@ -28,6 +29,11 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
+        worldBounds.submit(
+            to: context.renderQueue,
+            context: context
+        )
+
         character.submit(
             to: context.renderQueue,
             context: context
@@ -39,17 +45,17 @@ struct Game: Pixl.Game {
             frame: frame
         )
 
-        try context.render(
-            scene: debug,
-            to: output,
-            frame: frame
-        )
+//        try context.render(
+//            scene: debug,
+//            to: output,
+//            frame: frame
+//        )
 
         logMetrics(time: time)
     }
 
     mutating func didEnter(_ phase: GamePhase, context: GameContext) {
-        gameState.didEnter(phase, context: context)
+//        gameState.didEnter(phase, context: context)
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
@@ -58,7 +64,7 @@ struct Game: Pixl.Game {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         character.update(time, context: context)
-        gameState.update(time, context: context)
+//        gameState.update(time, context: context)
     }
 
     private func logMetrics(time: RenderTime) {

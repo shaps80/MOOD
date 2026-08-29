@@ -9,7 +9,7 @@ struct Character: Entity {
     private let walk: SpriteAnimation
     private var timeline: SpriteAnimation.Timeline
 
-    private var editable = Editable2D(rotation: .pi / 4)
+    private var editable = Editable2D()
     private var velocity: Vec2 = .zero
     private let camera: OrthographicCamera
 
