@@ -83,6 +83,12 @@ struct Character: Entity {
         editable.update(camera: camera, context: context)
     }
 
+    mutating func resolveCollision(with other: Rect) {
+        let bounds = Rect(center: editable.position, size: editable.size)
+        guard let contact = bounds.contact(with: other) else { return }
+        editable.position -= contact.normal * contact.depth
+    }
+
     func submit(to queue: RenderQueue, context: GameContext) {
         queue.submit(
             sprite,

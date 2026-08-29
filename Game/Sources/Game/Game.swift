@@ -64,6 +64,9 @@ struct Game: Pixl.Game {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         character.update(time, context: context)
+        character.resolveCollision(with: worldBounds.floor)
+        character.resolveCollision(with: worldBounds.leftWall)
+        character.resolveCollision(with: worldBounds.rightWall)
 //        gameState.update(time, context: context)
     }
 
