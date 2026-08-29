@@ -17,7 +17,11 @@ struct Character: Entity {
     private var isDragging: Bool = false
 
     var bounds: Rect {
-        .init(center: position, size: sprite.size)
+        .init(center: .zero, size: sprite.size)
+    }
+
+    private var transform: Transform2D {
+        Transform2D(position).rotated(by: rotation)
     }
 
     private let bindings: PlayerBindings = .init()
@@ -86,8 +90,10 @@ struct Character: Entity {
         }
 
         let world = context.coordinates(for: .world(camera))
+        let local = world.coordinates(relativeTo: transform)
+        
         if let event = context.mouse.event(.primary, phase: .down) {
-            if bounds.contains(world.location(for: event)) {
+            if bounds.contains(local.location(for: event)) {
                 isSelected = true
                 isDragging = true
             } else {
@@ -116,8 +122,6 @@ struct Character: Entity {
     }
 
     func submit(to queue: RenderQueue, context: GameContext) {
-        let transform = Transform2D(position).rotated(by: rotation)
-
         queue.submit(
             sprite,
             transform: transform

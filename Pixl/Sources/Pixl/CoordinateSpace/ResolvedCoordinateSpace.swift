@@ -2,13 +2,7 @@ import Pixl2D
 
 /// A presentation coordinate space prepared for repeated input conversion.
 public struct ResolvedCoordinateSpace: Sendable {
-    private enum Storage: Sendable {
-        case invalid
-        case screen(pixelHeight: Float, inverseDisplayScale: Float)
-        case world(rawToClipScale: Vec2, inverseProjection: Transform2D)
-    }
-
-    private let storage: Storage
+    private let rawToResolved: Transform2D?
 
     package init(
         pixelSize: Vec2,
@@ -17,58 +11,76 @@ public struct ResolvedCoordinateSpace: Sendable {
     ) {
         switch coordinateSpace {
         case .screen:
-            storage = .screen(
-                pixelHeight: pixelSize.y,
-                inverseDisplayScale: inverseDisplayScale
+            rawToResolved = .init(
+                x: .init(inverseDisplayScale, 0, 0),
+                y: .init(0, -inverseDisplayScale, 0),
+                translation: .init(
+                    0,
+                    pixelSize.y * inverseDisplayScale,
+                    1
+                )
             )
         case .world(let camera):
             guard let inverse = camera.projection(in: pixelSize).inverted else {
-                storage = .invalid
+                rawToResolved = nil
                 return
             }
-            storage = .world(
-                rawToClipScale: 2 / pixelSize,
-                inverseProjection: inverse
+            let scale = 2 / pixelSize
+            let rawToClip = Transform2D(
+                x: .init(scale.x, 0, 0),
+                y: .init(0, scale.y, 0),
+                translation: .init(-1, -1, 1)
             )
+            rawToResolved = Self.concatenating(rawToClip, then: inverse)
         }
     }
 
     package init() {
-        storage = .invalid
+        rawToResolved = nil
+    }
+
+    private init(rawToResolved: Transform2D?) {
+        self.rawToResolved = rawToResolved
     }
 
     /// Whether this space can currently resolve coordinates.
     public var isValid: Bool {
-        if case .invalid = storage { false } else { true }
+        rawToResolved != nil
+    }
+
+    /// Returns this coordinate space resolved relative to a local transform.
+    ///
+    /// The transform is inverted once when creating the returned value. Point
+    /// and vector resolution then uses only the resulting composed transform.
+    public func coordinates(relativeTo transform: Transform2D) -> Self {
+        guard let rawToResolved, let inverse = transform.inverted else {
+            return .init(rawToResolved: nil)
+        }
+        return .init(
+            rawToResolved: Self.concatenating(rawToResolved, then: inverse)
+        )
     }
 
     package func location(forRawLocation rawLocation: Vec2) -> Vec2 {
-        switch storage {
-        case .invalid:
-            return .invalid
-        case .screen(let pixelHeight, let inverseDisplayScale):
-            return .init(
-                rawLocation.x * inverseDisplayScale,
-                (pixelHeight - rawLocation.y) * inverseDisplayScale
-            )
-        case .world(let rawToClipScale, let inverseProjection):
-            let clip = rawLocation * rawToClipScale - 1
-            return inverseProjection.transformed(point: clip)
-        }
+        guard let rawToResolved else { return .invalid }
+        return rawToResolved.transformed(point: rawLocation)
     }
 
     package func translation(forRawTranslation rawTranslation: Vec2) -> Vec2 {
-        switch storage {
-        case .invalid:
-            return .zero
-        case .screen(_, let inverseDisplayScale):
-            return .init(
-                rawTranslation.x * inverseDisplayScale,
-                -rawTranslation.y * inverseDisplayScale
-            )
-        case .world(let rawToClipScale, let inverseProjection):
-            let clip = rawTranslation * rawToClipScale
-            return inverseProjection.transformed(vector: clip)
-        }
+        guard let rawToResolved else { return .zero }
+        return rawToResolved.transformed(vector: rawTranslation)
+    }
+
+    private static func concatenating(
+        _ first: Transform2D,
+        then second: Transform2D
+    ) -> Transform2D {
+        .init(
+            x: second.x * first.x.x + second.y * first.x.y,
+            y: second.x * first.y.x + second.y * first.y.y,
+            translation: second.x * first.translation.x
+                + second.y * first.translation.y
+                + second.translation
+        )
     }
 }
