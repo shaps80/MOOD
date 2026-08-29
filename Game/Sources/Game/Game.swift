@@ -39,6 +39,31 @@ struct Game: Pixl.Game {
             context: context
         )
 
+        let world = context.coordinates(for: .world(camera))
+        let location = world.location(for: context.mouse)
+
+        let ray = Ray2D(
+            origin: location,
+            direction: .init(1, 0)
+        )
+
+        if let hit = worldBounds.rightWall.intersection(with: ray) {
+            let point = ray.point(at: hit.distance)
+            let delta = point - ray.origin
+            let direction = ray.normalizedDirection
+
+            context.draw(
+                .rect(.init(x: 0, y: -0.5, width: 1, height: 1)),
+                transform: .init(
+                    x: .init(delta.x, delta.y, 0),
+                    y: .init(-direction.y, direction.x, 0),
+                    translation: .init(ray.origin.x, ray.origin.y, 1)
+                ),
+                style: .fill(.cyan),
+                layer: .gizmo
+            )
+        }
+
         try context.render(
             through: camera,
             to: output,
