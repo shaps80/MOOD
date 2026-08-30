@@ -5,6 +5,8 @@ import PixlUI
 @main
 struct Game: Pixl.Game {
     private let worldBounds = WorldBounds()
+    private let collisions: CollisionWorld2D
+    private let characterCollider: ColliderID
     private var character: Character
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 
@@ -13,7 +15,34 @@ struct Game: Pixl.Game {
 
     init(context: GameContext) throws {
 //        self.gameState = try .init(context: context)
-        character = try .init(camera: camera, context: context)
+        let collisions = CollisionWorld2D()
+        let character = try Character(camera: camera, context: context)
+        characterCollider = collisions.insert(
+            bounds: character.bounds,
+            mode: .dynamic,
+            layer: .character,
+            mask: .world
+        )
+        _ = collisions.insert(
+            bounds: worldBounds.floor,
+            mode: .static,
+            layer: .world,
+            mask: .none
+        )
+        _ = collisions.insert(
+            bounds: worldBounds.leftWall,
+            mode: .static,
+            layer: .world,
+            mask: .none
+        )
+        _ = collisions.insert(
+            bounds: worldBounds.rightWall,
+            mode: .static,
+            layer: .world,
+            mask: .none
+        )
+        self.collisions = collisions
+        self.character = character
     }
 
     func render(
@@ -39,31 +68,6 @@ struct Game: Pixl.Game {
             context: context
         )
 
-        let world = context.coordinates(for: .world(camera))
-        let location = world.location(for: context.mouse)
-
-        let ray = Ray2D(
-            origin: location,
-            direction: .init(1, 0)
-        )
-
-        if let hit = worldBounds.rightWall.intersection(with: ray) {
-            let point = ray.point(at: hit.distance)
-            let delta = point - ray.origin
-            let direction = ray.normalizedDirection
-
-            context.draw(
-                .rect(.init(x: 0, y: -0.5, width: 1, height: 1)),
-                transform: .init(
-                    x: .init(delta.x, delta.y, 0),
-                    y: .init(-direction.y, direction.x, 0),
-                    translation: .init(ray.origin.x, ray.origin.y, 1)
-                ),
-                style: .fill(.cyan),
-                layer: .gizmo
-            )
-        }
-
         try context.render(
             through: camera,
             to: output,
@@ -85,13 +89,17 @@ struct Game: Pixl.Game {
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
         character.fixedUpdate(time, context: context)
+        collisions.update(characterCollider, bounds: character.bounds)
+        collisions.advance()
+        collisions.forEachCollision { collision in
+            guard collision.source.collider == characterCollider else { return }
+            character.onCollision(collision, context: context)
+        }
+        collisions.update(characterCollider, bounds: character.bounds)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         character.update(time, context: context)
-        character.resolveCollision(with: worldBounds.floor)
-        character.resolveCollision(with: worldBounds.leftWall)
-        character.resolveCollision(with: worldBounds.rightWall)
 //        gameState.update(time, context: context)
     }
 

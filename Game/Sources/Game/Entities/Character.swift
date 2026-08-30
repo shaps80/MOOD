@@ -55,19 +55,23 @@ struct Character: Entity {
         bindings.bind(to: context.inputs)
     }
 
-    mutating func update(_ time: UpdateTime, context: GameContext) {
-        timeline.advance(by: time.delta)
-        sprite.region = timeline.region
+    var bounds: Rect {
+        Rect(center: editable.position, size: editable.size)
+    }
 
-        let target = bindings.velocity
-
+    mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
         velocity = controller.velocity(
             source: velocity,
-            target: target,
+            target: bindings.velocity,
             delta: time.delta
         )
 
         editable.position += velocity * Float(time.delta)
+    }
+
+    mutating func update(_ time: UpdateTime, context: GameContext) {
+        timeline.advance(by: time.delta)
+        sprite.region = timeline.region
 
         if velocity.x > 0 {
             sprite.isFlipped = false
@@ -83,9 +87,11 @@ struct Character: Entity {
         editable.update(camera: camera, context: context)
     }
 
-    mutating func resolveCollision(with other: Rect) {
-        let bounds = Rect(center: editable.position, size: editable.size)
-        guard let contact = bounds.contact(with: other) else { return }
+    mutating func onCollision(
+        _ collision: Collision2D,
+        context: GameContext
+    ) {
+        guard let contact = collision.contact else { return }
         editable.position -= contact.normal * contact.depth
     }
 
