@@ -2,6 +2,9 @@ import Pixl
 import Pixl2D
 
 struct WorldBounds: Entity {
+    private let shape = Shape(.rect).fill(.gray6)
+    private let rendering = RenderProperties(layer: .environment)
+
     let floor = Rect(
         x: -400,
         y: -200,
@@ -24,20 +27,16 @@ struct WorldBounds: Entity {
     )
 
     func submit(to queue: RenderQueue, context: GameContext) {
-        context.draw(
-            .rect(floor),
-            style: .fill(.gray3),
-            layer: .environment
-        )
-        context.draw(
-            .rect(leftWall),
-            style: .fill(.gray3),
-            layer: .environment
-        )
-        context.draw(
-            .rect(rightWall),
-            style: .fill(.gray3),
-            layer: .environment
+        submit(floor, to: queue)
+        submit(leftWall, to: queue)
+        submit(rightWall, to: queue)
+    }
+
+    private func submit(_ bounds: Rect, to queue: RenderQueue) {
+        queue.submit(
+            shape,
+            transform: Transform2D(bounds.center, scale: bounds.size),
+            rendering: rendering
         )
     }
 }
