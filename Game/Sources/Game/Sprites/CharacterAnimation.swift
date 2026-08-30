@@ -3,6 +3,7 @@ enum CharacterAnimation: Equatable, Sendable {
     case walk
     case run
     case jump
+    case multiJump
     case fall
     case dash
     case crouchIdle

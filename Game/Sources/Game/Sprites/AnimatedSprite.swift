@@ -4,6 +4,8 @@ struct AnimatedSprite: Sendable {
     private(set) var sprite: Sprite
     private var timeline: SpriteAnimation.Timeline
 
+    var isFinished: Bool { timeline.isFinished }
+
     init(animation: SpriteAnimation) {
         timeline = .init(animation: animation)
         sprite = .init(region: timeline.region)

@@ -27,7 +27,7 @@ struct PlayerBindings {
     @InputMap(
         .key(.s),
         .key(.arrowDown),
-        .button(.west)
+        .button(.north)
     ) var down
 
     @InputMap(
@@ -43,7 +43,7 @@ struct PlayerBindings {
 
     @InputMap(
         .key(.o),
-        .button(.east)
+        .button(.west)
     ) var dash
 }
 

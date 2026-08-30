@@ -68,10 +68,15 @@ struct Character: Entity {
             configuration: controller.configuration.collision,
             in: collisions
         )
-        var displacement = controller.advance(
+        let step = controller.advance(
             delta: Float(time.delta),
             surfaces: surfaces
         )
+        if step.events.contains(.multiJumped) {
+            currentAnimation = .multiJump
+            animatedSprite.play(animations.multiJump)
+        }
+        var displacement = step.displacement
         if controller.state == .dash
             || abs(controller.velocity.x)
                 > controller.configuration.movement.runSpeed
@@ -98,7 +103,11 @@ struct Character: Entity {
         isFlipped = !controller.isFacingRight
 
         let animation = animation(for: controller.state)
-        if animation != currentAnimation {
+        if currentAnimation == .multiJump,
+           isJumping,
+           !animatedSprite.isFinished {
+            animatedSprite.advance(by: time.delta)
+        } else if animation != currentAnimation {
             currentAnimation = animation
             animatedSprite.play(
                 animations[animation],
@@ -159,6 +168,15 @@ struct Character: Entity {
             .dash
         case .wallSliding:
             .wallSlide
+        }
+    }
+
+    private var isJumping: Bool {
+        switch controller.state {
+        case .jumping, .runJumping:
+            true
+        default:
+            false
         }
     }
 

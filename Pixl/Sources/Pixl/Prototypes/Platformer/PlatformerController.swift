@@ -59,12 +59,16 @@ public struct PlatformerController: Sendable {
     }
 
     /// Advances movement by one fixed simulation step.
-    /// - Returns: World-space displacement to apply before collision detection.
+    /// - Returns: Displacement and discrete actions produced by this step.
     public mutating func advance(
         delta: Float,
         surfaces: PlatformerSurfaces
-    ) -> Vec2 {
-        guard delta.isFinite, delta > 0 else { return .zero }
+    ) -> PlatformerStep {
+        guard delta.isFinite, delta > 0 else {
+            return .init(displacement: .zero)
+        }
+
+        var events = PlatformerEvents()
 
         var contacts = PlatformerSensors()
         contacts.include(
@@ -104,7 +108,7 @@ public struct PlatformerController: Sendable {
         } else if shouldStartWallJump(jumpRequested: jumpRequested, contacts: contacts) {
             startWallJump()
         } else if shouldStartJump(jumpRequested: jumpRequested, contacts: contacts) {
-            startJump(running: shouldRun)
+            startJump(running: shouldRun, events: &events)
         } else if shouldStartDash(dashPressed: dashPressed, contacts: contacts) {
             startDash(grounded: contacts.isGrounded)
         }
@@ -115,7 +119,10 @@ public struct PlatformerController: Sendable {
 
         applyCurrentState(contacts: contacts, delta: delta)
         advanceTimers(delta: delta, grounded: contacts.isGrounded)
-        return velocity * delta
+        return .init(
+            displacement: velocity * delta,
+            events: events
+        )
     }
 
     /// Resolves one accepted solid contact and records its surface classification.
@@ -202,7 +209,14 @@ public struct PlatformerController: Sendable {
         return contacts.isGrounded || remainingAirDashes > 0
     }
 
-    private mutating func startJump(running: Bool) {
+    private mutating func startJump(
+        running: Bool,
+        events: inout PlatformerEvents
+    ) {
+        events.insert(.jumped)
+        if remainingJumps < max(0, configuration.jump.maximumCount) {
+            events.insert(.multiJumped)
+        }
         isGrounded = false
         velocity.y = configuration.maximumJumpVelocity
         remainingJumps = max(0, remainingJumps - 1)

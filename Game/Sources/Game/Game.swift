@@ -50,7 +50,7 @@ struct Game: Pixl.Game {
     ) throws {
         context.clear(
             target: output,
-            color: .black,
+            color: .gray6,
             frame: frame
         )
 

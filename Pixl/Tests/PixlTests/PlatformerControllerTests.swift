@@ -245,6 +245,35 @@ struct PlatformerControllerTests {
     }
 
     @Test
+    func multiJumpProducesOneStepEvent() {
+        var controller = PlatformerController()
+        controller.capture(
+            .init(jump: .init(isHeld: true, wasPressed: true))
+        )
+
+        let first = controller.advance(delta: step, surfaces: ground)
+        #expect(first.events.contains(.jumped))
+        #expect(!first.events.contains(.multiJumped))
+
+        controller.capture(
+            .init(jump: .init(wasReleased: true))
+        )
+        let between = controller.advance(delta: step, surfaces: .init())
+        #expect(between.events.isEmpty)
+
+        controller.capture(
+            .init(jump: .init(isHeld: true, wasPressed: true))
+        )
+        let second = controller.advance(delta: step, surfaces: .init())
+        #expect(second.events.contains(.jumped))
+        #expect(second.events.contains(.multiJumped))
+
+        controller.capture(.init(jump: .init(isHeld: true)))
+        let after = controller.advance(delta: step, surfaces: .init())
+        #expect(after.events.isEmpty)
+    }
+
+    @Test
     func repeatedRunIntoLowPlatformDoesNotPassThroughOrLoseGrounding() {
         let scale: Float = 48 / 1.7
         let surfaceLayer = CollisionLayer(0)
@@ -290,7 +319,10 @@ struct PlatformerControllerTests {
                 in: collisions
             )
             controller.capture(.init(movement: .init(1, 0)))
-            position += controller.advance(delta: 1 / 50, surfaces: surfaces)
+            position += controller.advance(
+                delta: 1 / 50,
+                surfaces: surfaces
+            ).displacement
             collisions.update(
                 collider,
                 capsule: configuration.collision.body(for: controller.stance),
@@ -369,7 +401,7 @@ struct PlatformerControllerTests {
             var displacement = controller.advance(
                 delta: 1 / 50,
                 surfaces: surfaces
-            )
+            ).displacement
             if controller.state == .dash
                 || abs(controller.velocity.x)
                     > controller.configuration.movement.runSpeed
@@ -451,7 +483,10 @@ struct PlatformerControllerTests {
                     crouch: .init(isHeld: true)
                 )
             )
-            position += controller.advance(delta: 1 / 50, surfaces: surfaces)
+            position += controller.advance(
+                delta: 1 / 50,
+                surfaces: surfaces
+            ).displacement
             collisions.update(
                 collider,
                 capsule: configuration.collision.body(for: controller.stance),

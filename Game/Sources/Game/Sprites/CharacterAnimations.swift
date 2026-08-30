@@ -6,6 +6,7 @@ struct CharacterAnimations: Sendable {
     let walk: SpriteAnimation
     let run: SpriteAnimation
     let jump: SpriteAnimation
+    let multiJump: SpriteAnimation
     let fall: SpriteAnimation
     let dash: SpriteAnimation
     let crouchIdle: SpriteAnimation
@@ -50,6 +51,11 @@ struct CharacterAnimations: Sendable {
             frames: 6,
             loops: false
         )
+        multiJump = try load(
+            "player/player-multi-jump",
+            frames: 6,
+            loops: false
+        )
 
         let jumpSprite = try Sprite(
             named: "player/player-jump",
@@ -78,6 +84,7 @@ struct CharacterAnimations: Sendable {
         case .walk: walk
         case .run: run
         case .jump: jump
+        case .multiJump: multiJump
         case .fall: fall
         case .dash: dash
         case .crouchIdle: crouchIdle
