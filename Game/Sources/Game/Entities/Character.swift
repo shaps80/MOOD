@@ -4,19 +4,9 @@ import Pixl2D
 struct Character: Entity {
     private static let size: Vec2 = .init(repeating: 48)
 
-    private let idle: AnimatedSprite
-    private let walk: AnimatedSprite
-    private let run: AnimatedSprite
-    private let jump: AnimatedSprite
-    private let dash: AnimatedSprite
-    private let land: AnimatedSprite
-    private let crouchIdle: AnimatedSprite
-    private let crouchWalk: AnimatedSprite
-    private let wallSlide: AnimatedSprite
-    private let wallLand: AnimatedSprite
-
-    private var sprite: Sprite
-    private var timeline: SpriteAnimation.Timeline
+    private let animations: CharacterAnimations
+    private var animatedSprite: AnimatedSprite
+    private var currentAnimation: CharacterAnimation = .idle
 
     private var isFlipped: Bool = true
 
@@ -33,19 +23,9 @@ struct Character: Entity {
     ) throws {
         self.camera = camera
 
-        idle = try .idle(in: context)
-        walk = try .walk(in: context)
-        run = try .run(in: context)
-        jump = try .jump(in: context)
-        dash = try .dash(in: context)
-        land = try .land(in: context)
-        crouchIdle = try .crouchIdle(in: context)
-        crouchWalk = try .crouchWalk(in: context)
-        wallSlide = try .wallSlide(in: context)
-        wallLand = try .wallLand(in: context)
-
-        sprite = idle.sprite
-        timeline = .init(animation: idle.animation)
+        let animations = try CharacterAnimations(context: context)
+        self.animations = animations
+        animatedSprite = .init(animation: animations.idle)
 
         editable.size = Self.size
         controller = .init(
@@ -67,29 +47,17 @@ struct Character: Entity {
     mutating func update(_ time: UpdateTime, context: GameContext) {
         captureInput()
 
-        timeline.advance(by: time.delta)
-        sprite.region = timeline.region
         isFlipped = !controller.isFacingRight
 
-        switch controller.state {
-        case .walking:
-            timeline.animation = walk.animation
-        case .running:
-            timeline.animation = run.animation
-        case .jumping:
-            timeline.animation = jump.animation
-        case .dash:
-            timeline.animation = dash.animation
-        case .crouching:
-            timeline.animation = crouchIdle.animation
-        case .crouchWalking:
-            timeline.animation = crouchWalk.animation
-        case .wallSliding:
-            timeline.animation = wallSlide.animation
-        case .wallFalling:
-            timeline.animation = wallLand.animation
-        default:
-            timeline.animation = idle.animation
+        let animation = animation(for: controller.state)
+        if animation != currentAnimation {
+            currentAnimation = animation
+            animatedSprite.play(
+                animations[animation],
+                speed: animationSpeed(for: animation)
+            )
+        } else {
+            animatedSprite.advance(by: time.delta)
         }
 
         editable.update(camera: camera, context: context)
@@ -124,9 +92,45 @@ struct Character: Entity {
         )
     }
 
+    private func animation(for state: PlatformerState) -> CharacterAnimation {
+        switch state {
+        case .idle:
+            .idle
+        case .walking:
+            .walk
+        case .running:
+            .run
+        case .crouching:
+            .crouchIdle
+        case .crouchWalking, .crouchRolling:
+            .crouchWalk
+        case .jumping, .runJumping, .wallJumping:
+            .jump
+        case .falling, .runFalling, .dashFalling, .wallFalling:
+            .fall
+        case .dash:
+            .dash
+        case .wallSliding:
+            .wallSlide
+        }
+    }
+
+    private func animationSpeed(for animation: CharacterAnimation) -> Double {
+        switch animation {
+        case .dash:
+            let duration = Double(controller.configuration.dash.duration)
+            if duration > 0 {
+                return animations.dash.duration / duration
+            }
+            return 1
+        default:
+            return 1
+        }
+    }
+
     func submit(to queue: RenderQueue, context: GameContext) {
         queue.submit(
-            sprite,
+            animatedSprite.sprite,
             transform: editable.transform
                 .scaled(x: isFlipped ? -1 : 1, y: 1),
             rendering: rendering
