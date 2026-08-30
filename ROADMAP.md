@@ -13,7 +13,7 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts. PixlPlatform supplies allocation-free keyboard, gamepad, and high-fidelity physical mouse state and per-frame events on macOS and Web.
 - Pixl2D provides value-semantic sprites, analytic SDF shapes, gradients, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
 - Spatial, graphical, and normalized input values use compact `Float` storage throughout portable layers; time and accumulated durations remain `Double`.
-- Fixed-capacity immediate submission performs shared culling, ordering, batching, instance compaction, and indexed instanced sprite/shape drawing without steady-state growth by design.
+- Fixed-capacity immediate submission performs shared culling, ordering, batching, instance compaction, and indexed instanced sprite, analytic-shape, and polygon drawing without steady-state growth by design.
 - Game-provided render and queue capacities are authoritative. The current Game sizes them from actual visible submission needs rather than total world population.
 - `OrthographicCamera` exposes visible world bounds. The Game validates game-owned coarse spatial selection with 100,000 animated world sprites while Pixl retains precise final culling.
 - Context-owned render textures support independent offscreen queues, render-then-sample composition, target-format pipeline variants, preserve/clear initial state, and per-sprite filtering on Metal and WebGPU.
