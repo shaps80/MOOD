@@ -8,6 +8,7 @@ struct Game: Pixl.Game {
     private let collisions: CollisionWorld2D
     private let characterCollider: ColliderID
     private var character: Character
+    private var collisionRects: [Rect] = []
     private var camera: OrthographicCamera = .init(halfHeight: 200)
 
 //    private let debug = Scene(Debug())
@@ -68,6 +69,14 @@ struct Game: Pixl.Game {
             context: context
         )
 
+        for collisionRect in collisionRects {
+            context.draw(
+                .rect(collisionRect),
+                style: .fill(.cyan.opacity(0.25)),
+                layer: .gizmo
+            )
+        }
+
         try context.render(
             through: camera,
             to: output,
@@ -88,15 +97,21 @@ struct Game: Pixl.Game {
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
+        collisionRects.removeAll(keepingCapacity: true)
         character.fixedUpdate(time, context: context)
         collisions.update(characterCollider, bounds: character.bounds)
 
         collisions.advance { collision in
-            character.onCollision(
+            let sourceBounds = character.onCollision(
                 collision,
                 collider: characterCollider,
                 context: context
             )
+            if collision.contact != nil, let sourceBounds {
+                collisionRects.append(sourceBounds)
+                collisionRects.append(collision.target.bounds)
+            }
+            return sourceBounds
         }
     }
 
