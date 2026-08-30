@@ -35,10 +35,17 @@ package final class DynamicAABBTree2D {
         pool = .init(proxyCapacity: Self.initialProxyCapacity)
     }
 
-    func insert(_ bounds: Rect) -> ProxyID {
+    func insert(
+        _ bounds: Rect,
+        userData: Int32 = DynamicAABBTreeNode.nullIndex
+    ) -> ProxyID {
         let leaf = pool.allocateNode()
         let generation = nodes[Int(leaf)].generation
-        nodes[Int(leaf)] = .leaf(bounds: bounds, generation: generation)
+        nodes[Int(leaf)] = .leaf(
+            bounds: bounds,
+            generation: generation,
+            userData: userData
+        )
         insertLeaf(leaf)
         proxyCount += 1
         return ProxyID(index: leaf, generation: generation)
@@ -94,7 +101,7 @@ package final class DynamicAABBTree2D {
     @discardableResult
     func query(
         overlapping bounds: Rect,
-        _ visit: (ProxyID) -> Bool
+        _ visit: (ProxyID, Int32) -> Bool
     ) -> TreeQueryStats2D {
         guard root != Self.nullIndex else { return .init() }
 
@@ -114,7 +121,8 @@ package final class DynamicAABBTree2D {
                 } else if node.isLeaf {
                     stats.leafVisits += 1
                     let shouldContinue = visit(
-                        .init(index: current, generation: node.generation)
+                        .init(index: current, generation: node.generation),
+                        node.userData
                     )
                     if !shouldContinue { return stats }
                     next = node.parent
@@ -139,7 +147,7 @@ package final class DynamicAABBTree2D {
     func rayCast(
         _ ray: Ray2D,
         maximumDistance: Float = .infinity,
-        _ visit: (ProxyID, Float) -> RayCastAction
+        _ visit: (ProxyID, Int32, Float) -> RayCastAction
     ) -> TreeQueryStats2D {
         let direction = ray.normalizedDirection
         guard root != Self.nullIndex,
@@ -171,7 +179,7 @@ package final class DynamicAABBTree2D {
                         index: current,
                         generation: node.generation
                     )
-                    switch visit(proxy, clippedDistance) {
+                    switch visit(proxy, node.userData, clippedDistance) {
                     case .ignore:
                         break
                     case .clip(let distance):

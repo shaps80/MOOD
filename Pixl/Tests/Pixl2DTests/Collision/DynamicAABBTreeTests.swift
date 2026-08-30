@@ -220,7 +220,7 @@ struct DynamicAABBTreeTests {
 
         let stats = tree.query(
             overlapping: Rect(x: 0, y: 0, width: 10, height: 10)
-        ) { proxy in
+        ) { proxy, _ in
             sawTouching = sawTouching || proxy == touching
             sawOverlapping = sawOverlapping || proxy == overlapping
             sawOutside = sawOutside || proxy == outside
@@ -234,6 +234,25 @@ struct DynamicAABBTreeTests {
     }
 
     @Test
+    func proxyPreservesOpaqueColliderIndex() {
+        let tree = DynamicAABBTree2D()
+        _ = tree.insert(
+            Rect(x: 0, y: 0, width: 10, height: 10),
+            userData: 42
+        )
+        var received: Int32?
+
+        tree.query(
+            overlapping: Rect(x: 0, y: 0, width: 10, height: 10)
+        ) { _, userData in
+            received = userData
+            return true
+        }
+
+        #expect(received == 42)
+    }
+
+    @Test
     func overlapQueryCanTerminateWithoutVisitingEveryLeaf() {
         let tree = DynamicAABBTree2D()
         for index in 0..<32 {
@@ -243,7 +262,7 @@ struct DynamicAABBTreeTests {
         var callbackCount = 0
         let stats = tree.query(
             overlapping: Rect(x: -1, y: -1, width: 100, height: 100)
-        ) { _ in
+        ) { _, _ in
             callbackCount += 1
             return false
         }
@@ -508,7 +527,7 @@ private extension DynamicAABBTreeTests {
         exactBounds: (ProxyID) -> Rect?
     ) -> TreeHit? {
         var result: TreeHit?
-        tree.rayCast(ray) { proxy, maximumDistance in
+        tree.rayCast(ray) { proxy, _, maximumDistance in
             guard let bounds = exactBounds(proxy),
                   let hit = bounds.intersection(with: ray),
                   hit.distance < maximumDistance
@@ -526,7 +545,7 @@ private extension DynamicAABBTreeTests {
         finds expected: ProxyID
     ) -> Bool {
         var found = false
-        tree.query(overlapping: bounds) { proxy in
+        tree.query(overlapping: bounds) { proxy, _ in
             found = found || proxy == expected
             return true
         }
@@ -616,7 +635,7 @@ private extension DynamicAABBTreeTests {
             defer { seen.deinitialize(count: count) }
             let queryBounds = Self.randomBounds(using: &random)
 
-            tree.query(overlapping: queryBounds) { proxy in
+            tree.query(overlapping: queryBounds) { proxy, _ in
                 var matchedIndex: Int?
                 for index in 0..<count
                 where records[index].isLive && records[index].proxy == proxy {

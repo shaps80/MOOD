@@ -10,6 +10,7 @@ struct DynamicAABBTreeNode {
     var height: Int32
     var nextFree: Int32
     var generation: UInt32
+    var userData: Int32
 
     var isLeaf: Bool { childA == Self.nullIndex }
 
@@ -30,11 +31,16 @@ struct DynamicAABBTreeNode {
             childB: nullIndex,
             height: 0,
             nextFree: nullIndex,
-            generation: generation
+            generation: generation,
+            userData: nullIndex
         )
     }
 
-    static func leaf(bounds: Rect, generation: UInt32) -> Self {
+    static func leaf(
+        bounds: Rect,
+        generation: UInt32,
+        userData: Int32
+    ) -> Self {
         Self(
             bounds: .init(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY),
             parent: nullIndex,
@@ -42,7 +48,8 @@ struct DynamicAABBTreeNode {
             childB: nullIndex,
             height: 0,
             nextFree: nullIndex,
-            generation: generation
+            generation: generation,
+            userData: userData
         )
     }
 
@@ -61,7 +68,8 @@ struct DynamicAABBTreeNode {
             childB: childB,
             height: height,
             nextFree: nullIndex,
-            generation: generation
+            generation: generation,
+            userData: nullIndex
         )
     }
 
@@ -73,7 +81,8 @@ struct DynamicAABBTreeNode {
             childB: nullIndex,
             height: -1,
             nextFree: next,
-            generation: generation
+            generation: generation,
+            userData: nullIndex
         )
     }
 }
