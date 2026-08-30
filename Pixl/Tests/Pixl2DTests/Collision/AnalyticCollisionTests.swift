@@ -189,6 +189,30 @@ struct AnalyticCollisionTests {
     }
 
     @Test
+    func capsuleUpdateReusesColliderIdentityAndRebuildsBounds() {
+        let world = CollisionWorld2D()
+        let capsule = world.insert(
+            Capsule2D(center: .zero, size: .init(4, 10)),
+            transform: Transform2D(.init(10, 20)),
+            mode: .dynamic,
+            layer: .analyticTarget,
+            mask: .none
+        )
+
+        world.update(
+            capsule,
+            capsule: Capsule2D(center: .init(0, -2), size: .init(4, 6)),
+            transform: Transform2D(.init(10, 20))
+        )
+
+        #expect(world.count == 1)
+        #expect(
+            world.bounds(for: capsule)
+                == Rect(x: 8, y: 15, width: 4, height: 6)
+        )
+    }
+
+    @Test
     func queryRejectsCircleBoundsCorner() {
         let world = CollisionWorld2D()
         _ = world.insert(

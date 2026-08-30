@@ -5,7 +5,7 @@ struct WorldBounds: Entity {
     private let shape = Shape(.rect)
         .fill(.gray6)
 
-    private var slope: Polygon
+//    private var slope: Polygon
 
     private let rendering = RenderProperties(layer: .environment)
 
@@ -30,32 +30,41 @@ struct WorldBounds: Entity {
         height: 400
     )
 
+    let crouchPlatform = Rect(
+        x: 80,
+        y: -160,
+        width: 160,
+        height: 16
+    )
+
     init(context: GameContext) throws {
-        let asset = try context.assets.load(texture: "world")
-        let sheet = SpriteSheet(asset: asset, columns: 10, rows: 10)
-        let region = sheet.region(column: 0, row: 1)
+//        let asset = try context.assets.load(texture: "world")
+//        let sheet = SpriteSheet(asset: asset, columns: 10, rows: 10)
+//        let region = sheet.region(column: 0, row: 1)
 
-        slope = .init(
-            triangle: .init(800, 20),
-            paint: .texture(.init(region: region))
-        )
+//        slope = .init(
+//            triangle: .init(800, 20),
+//            paint: .texture(.init(region: region))
+//        )
     }
 
-    var slopeGeometry: Polygon2D { slope.geometry }
-
-    var slopeTransform: Transform2D {
-        .init(floor.center).scaled(x: -1, y: 1)
-    }
+//    var slopeGeometry: Polygon2D { slope.geometry }
+//
+//    var slopeTransform: Transform2D {
+//        .init(floor.center).scaled(x: -1, y: 1)
+//    }
 
     func submit(to queue: RenderQueue, context: GameContext) {
         submit(leftWall, to: queue)
         submit(rightWall, to: queue)
+        submit(floor, to: queue)
+        submit(crouchPlatform, to: queue)
 
-        queue.submit(
-            slope,
-            transform: slopeTransform,
-            rendering: rendering
-        )
+//        queue.submit(
+//            slope,
+//            transform: slopeTransform,
+//            rendering: rendering
+//        )
     }
 
     private func submit(_ bounds: Rect, to queue: RenderQueue) {

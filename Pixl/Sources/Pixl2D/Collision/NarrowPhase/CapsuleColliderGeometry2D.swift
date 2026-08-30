@@ -2,7 +2,7 @@ import Swift
 
 /// Collision-ready world-space lowering of one immutable local-space capsule.
 final class CapsuleColliderGeometry2D {
-    let geometry: Capsule2D
+    private(set) var geometry: Capsule2D
 
     private(set) var segment: Segment
     private(set) var radius: Float = 0
@@ -25,6 +25,18 @@ final class CapsuleColliderGeometry2D {
     @discardableResult
     func setTransform(_ transform: Transform2D) -> Bool {
         guard pendingTransform.differs(from: transform) else { return false }
+        pendingTransform = transform
+        return true
+    }
+
+    @discardableResult
+    func setGeometry(
+        _ capsule: Capsule2D,
+        transform: Transform2D
+    ) -> Bool {
+        guard geometry != capsule || pendingTransform.differs(from: transform)
+        else { return false }
+        geometry = capsule
         pendingTransform = transform
         return true
     }

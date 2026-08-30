@@ -26,7 +26,6 @@ public struct PlatformerController: Sendable {
 
     private var horizontalVelocity: Float = 0
     private var input = PlatformerInputBuffer()
-    private var sensors = PlatformerSensors()
     private var wasGrounded = false
     private var previousWallDirection: Float = 0
     private var wallDirection: Float = 0
@@ -61,14 +60,28 @@ public struct PlatformerController: Sendable {
 
     /// Advances movement by one fixed simulation step.
     /// - Returns: World-space displacement to apply before collision detection.
-    public mutating func advance(delta: Float) -> Vec2 {
+    public mutating func advance(
+        delta: Float,
+        surfaces: PlatformerSurfaces
+    ) -> Vec2 {
         guard delta.isFinite, delta > 0 else { return .zero }
 
-        let contacts = sensors
-        sensors.reset()
-        isGrounded = false
-        isTouchingWall = false
-        bumpedHead = false
+        var contacts = PlatformerSensors()
+        contacts.include(
+            surfaceNormal: surfaces.groundNormal,
+            minimumGroundNormalY: configuration.collision.minimumGroundNormalY
+        )
+        contacts.include(
+            surfaceNormal: surfaces.ceilingNormal,
+            minimumGroundNormalY: configuration.collision.minimumGroundNormalY
+        )
+        contacts.include(
+            surfaceNormal: surfaces.wallNormal,
+            minimumGroundNormalY: configuration.collision.minimumGroundNormalY
+        )
+        isGrounded = contacts.isGrounded
+        isTouchingWall = contacts.wallDirection != 0
+        bumpedHead = contacts.bumpedHead
 
         prepareContacts(contacts)
         updateFacing()
@@ -109,23 +122,9 @@ public struct PlatformerController: Sendable {
     /// - Returns: World-space position correction for the controlled entity.
     @discardableResult
     public mutating func resolve(_ contact: Contact2D) -> Vec2 {
-        sensors.include(
-            contact,
-            minimumGroundNormalY: configuration.collision.minimumGroundNormalY
-        )
-
         let inwardSpeed = velocity.dot(contact.normal)
         if inwardSpeed > 0 {
             velocity -= contact.normal * inwardSpeed
-        }
-
-        let surfaceNormal = -contact.normal
-        if surfaceNormal.y >= configuration.collision.minimumGroundNormalY {
-            isGrounded = true
-        } else if surfaceNormal.y <= -configuration.collision.minimumGroundNormalY {
-            bumpedHead = true
-        } else {
-            isTouchingWall = true
         }
 
         return -contact.normal * contact.depth
@@ -191,7 +190,7 @@ public struct PlatformerController: Sendable {
         jumpRequested: Bool,
         contacts: PlatformerSensors
     ) -> Bool {
-        guard jumpRequested else { return false }
+        guard jumpRequested, !contacts.bumpedHead else { return false }
         return contacts.isGrounded || coyote.isRunning || remainingJumps > 0
     }
 
@@ -204,6 +203,7 @@ public struct PlatformerController: Sendable {
     }
 
     private mutating func startJump(running: Bool) {
+        isGrounded = false
         velocity.y = configuration.maximumJumpVelocity
         remainingJumps = max(0, remainingJumps - 1)
         consumedWalkOffJump = true
@@ -284,7 +284,10 @@ public struct PlatformerController: Sendable {
     }
 
     private mutating func applyGroundMovement(delta: Float) {
-        stance = input.crouch.isHeld ? .crouching : .standing
+        let mustRemainCrouched = stance == .crouching && bumpedHead
+        stance = input.crouch.isHeld || mustRemainCrouched
+            ? .crouching
+            : .standing
 
         let speed: Float
         let acceleration: Float
@@ -459,14 +462,11 @@ public struct PlatformerController: Sendable {
     }
 
     private var normalizedDashDirection: Vec2 {
-        var direction = Vec2(
-            input.movement.x > 0 ? 1 : (input.movement.x < 0 ? -1 : 0),
-            input.movement.y > 0 ? 1 : (input.movement.y < 0 ? -1 : 0)
+        let horizontal = normalizedHorizontalInput
+        return .init(
+            horizontal == 0 ? (isFacingRight ? 1 : -1) : horizontal,
+            0
         )
-        if direction == .zero {
-            direction.x = isFacingRight ? 1 : -1
-        }
-        return direction.normalized
     }
 
     private func move(_ value: Float, toward target: Float, by amount: Float) -> Float {

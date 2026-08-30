@@ -6,9 +6,12 @@ import PixlUI
 struct Game: Pixl.Game {
     private let worldBounds: WorldBounds
     private let collisions: CollisionWorld2D
-    private let characterCollider: ColliderID
+    private let bindings: GameBindings = .init()
     private var character: Character
-    private var camera: OrthographicCamera = .init(halfHeight: 200)
+    private var showsCollisionDebug = false
+    private var camera: OrthographicCamera = .init(
+        halfHeight: Character.referenceCameraHalfHeight
+    )
 
 //    private let debug = Scene(Debug())
 //    private var gameState: GameStateHandler
@@ -17,16 +20,13 @@ struct Game: Pixl.Game {
         self.worldBounds = try .init(context: context)
 //        self.gameState = try .init(context: context)
         let collisions = CollisionWorld2D()
-        let character = try Character(camera: camera, context: context)
-        characterCollider = collisions.insert(
-            bounds: character.bounds,
-            mode: .dynamic,
-            layer: .character,
-            mask: .world
+        let character = try Character(
+            camera: camera,
+            collisions: collisions,
+            context: context
         )
         _ = collisions.insert(
-            worldBounds.slopeGeometry,
-            transform: worldBounds.slopeTransform,
+            bounds: worldBounds.floor,
             mode: .static,
             layer: .world,
             mask: .none
@@ -43,6 +43,13 @@ struct Game: Pixl.Game {
             layer: .world,
             mask: .none
         )
+        _ = collisions.insert(
+            bounds: worldBounds.crouchPlatform,
+            mode: .static,
+            layer: .world,
+            mask: .none
+        )
+        bindings.bind(to: context.inputs)
         self.collisions = collisions
         self.character = character
     }
@@ -67,6 +74,7 @@ struct Game: Pixl.Game {
 
         character.submit(
             to: context.renderQueue,
+            showsCollisionDebug: showsCollisionDebug,
             context: context
         )
 
@@ -90,19 +98,23 @@ struct Game: Pixl.Game {
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        character.fixedUpdate(time, context: context)
-        collisions.update(characterCollider, bounds: character.bounds)
-
+        character.fixedUpdate(
+            time,
+            collisions: collisions,
+            context: context
+        )
         collisions.advance { collision in
             character.onCollision(
                 collision,
-                collider: characterCollider,
                 context: context
             )
         }
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
+        if bindings.collisionDebug.is(.down) {
+            showsCollisionDebug.toggle()
+        }
         character.update(time, context: context)
 //        gameState.update(time, context: context)
     }
@@ -127,6 +139,13 @@ struct Game: Pixl.Game {
 import PixlPlatform
 
 extension Game {
+    static let loopSettings = LoopSettings(
+        fixedStep: .init(
+            updatesPerSecond: 50,
+            maximumUpdatesPerFrame: 8
+        )
+    )
+
     static var gameSettings: GameSettings {
         .init(
             title: "Pixl",

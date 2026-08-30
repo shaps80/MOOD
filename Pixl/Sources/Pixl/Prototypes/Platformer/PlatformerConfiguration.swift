@@ -70,13 +70,22 @@ public struct PlatformerConfiguration: Equatable, Sendable {
         public var speed: Float
         public var acceleration: Float
         public var deceleration: Float
-        public var heightScale: Float
+        /// Complete local-space height of the crouching body capsule.
+        public var height: Float
         public var centerOffset: Float
         public var rollSpeed: Float
         public var rollDuration: Float
     }
 
     public struct Collision: Equatable, Sendable {
+        /// Standing body geometry in the controlled entity's local space.
+        public var standingBody: Capsule2D
+        /// Crouching body geometry in the controlled entity's local space.
+        public var crouchingBody: Capsule2D
+        /// Ground-sensing bounds in the controlled entity's local space.
+        public var feet: Rect
+        /// Layers treated as solid platformer surfaces by probes and sweeps.
+        public var surfaceMask: CollisionMask
         /// Minimum upward component that classifies a surface as walkable.
         public var minimumGroundNormalY: Float
         /// Distance beneath the feet used by the game's ground sensor.
@@ -84,6 +93,14 @@ public struct PlatformerConfiguration: Equatable, Sendable {
         public var headProbeDistance: Float
         public var wallProbeDistance: Float
         public var wallProbeHeightScale: Float
+
+        /// Returns the local-space body geometry for `stance`.
+        public func body(for stance: PlatformerStance) -> Capsule2D {
+            switch stance {
+            case .standing: standingBody
+            case .crouching: crouchingBody
+            }
+        }
     }
 
     public var movement: Movement
@@ -159,12 +176,38 @@ public struct PlatformerConfiguration: Equatable, Sendable {
             speed: 5 * scale,
             acceleration: 150 * scale,
             deceleration: 150 * scale,
-            heightScale: 0.6,
+            height: 0.6 * scale,
             centerOffset: 0.2 * scale,
             rollSpeed: 10 * scale,
             rollDuration: 0.25
         )
+        let bodyCenter = Vec2(
+            0.002660205 * 0.6 * scale,
+            0.06919146 * scale
+        )
+        let bodyWidth = 0.9884307 * 0.6 * scale
+        let standingBody = Capsule2D(
+            center: bodyCenter,
+            size: .init(bodyWidth, 1.079322 * scale)
+        )
+        let feetHeight = 0.13807607 * scale
         collision = .init(
+            standingBody: standingBody,
+            crouchingBody: .init(
+                center: .init(bodyCenter.x, -crouch.centerOffset),
+                size: .init(bodyWidth, crouch.height)
+            ),
+            feet: .init(
+                center: .init(
+                    -0.00199249 * 0.6 * scale,
+                    standingBody.bounds.minY + (feetHeight * 0.5)
+                ),
+                size: .init(
+                    0.9086599 * 0.6 * scale,
+                    feetHeight
+                )
+            ),
+            surfaceMask: .all,
             minimumGroundNormalY: 0.7,
             groundProbeDistance: 0.02 * scale,
             headProbeDistance: 0.02 * scale,

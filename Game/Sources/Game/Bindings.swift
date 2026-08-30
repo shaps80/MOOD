@@ -27,21 +27,23 @@ struct PlayerBindings {
     @InputMap(
         .key(.s),
         .key(.arrowDown),
-        .button(.down),
-        .axis(.leftStickY, direction: .negative, deadZone: 0.12)
+        .button(.west)
     ) var down
 
     @InputMap(
-        .key(.space)
+        .key(.space),
+        .button(.south)
     ) var space
 
     @InputMap(
         .key(.leftShift),
-        .key(.rightShift)
+        .key(.rightShift),
+        .button(.leftStick)
     ) var run
 
     @InputMap(
-        .key(.o)
+        .key(.o),
+        .button(.east)
     ) var dash
 }
 
@@ -68,6 +70,8 @@ struct GameBindings {
         .key(.escape),
         .button(.menu)
     ) var menu
+
+    @InputMap(.key(.backquote)) var collisionDebug
 }
 
 @InputProfile

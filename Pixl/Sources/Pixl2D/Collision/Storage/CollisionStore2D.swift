@@ -142,6 +142,22 @@ final class CollisionStore2D {
     }
 
     @discardableResult
+    func update(
+        _ id: ColliderID,
+        capsule: Capsule2D,
+        transform: Transform2D
+    ) -> Bool {
+        guard let index = pool.liveIndex(for: id),
+              case .capsule(let geometry) = pool.records[index].geometry
+        else { return false }
+        guard geometry.setGeometry(capsule, transform: transform) else {
+            return true
+        }
+        markDirty(index)
+        return true
+    }
+
+    @discardableResult
     func update(_ id: ColliderID, transform: Transform2D) -> Bool {
         guard let index = pool.liveIndex(for: id) else { return false }
         switch pool.records[index].geometry {

@@ -3,6 +3,8 @@ import Pixl2D
 
 struct Character: Entity {
     private static let size: Vec2 = .init(repeating: 48)
+    static let referenceScale = size.y / 1.7
+    static let referenceCameraHalfHeight: Float = 11.25 * referenceScale
 
     private let animations: CharacterAnimations
     private var animatedSprite: AnimatedSprite
@@ -12,6 +14,8 @@ struct Character: Entity {
 
     private var editable = Editable()
     private var controller: PlatformerController
+    private var collisionProbes = PlatformerCollisionProbes()
+    private let collision: ColliderID
     private let camera: OrthographicCamera
     private let rendering = RenderProperties(layer: .entity)
 
@@ -19,6 +23,7 @@ struct Character: Entity {
 
     init(
         camera: OrthographicCamera,
+        collisions: CollisionWorld2D,
         context: GameContext
     ) throws {
         self.camera = camera
@@ -28,20 +33,63 @@ struct Character: Entity {
         animatedSprite = .init(animation: animations.idle)
 
         editable.size = Self.size
-        controller = .init(
-            configuration: .flexible(scale: Self.size.x)
+        var configuration = PlatformerConfiguration.flexible(
+            scale: Self.referenceScale
+        )
+        configuration.collision.surfaceMask = .world
+        controller = .init(configuration: configuration)
+        collision = collisions.insert(
+            configuration.collision.standingBody,
+            mode: .dynamic,
+            layer: .character,
+            mask: .world
         )
 
         bindings.bind(to: context.inputs)
     }
 
-    var bounds: Rect {
-        Rect(center: editable.position, size: editable.size)
+    private var collider: Capsule2D {
+        controller.configuration.collision.body(for: controller.stance)
     }
 
-    mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
+    private var colliderTransform: Transform2D {
+        Transform2D(editable.position)
+    }
+
+    mutating func fixedUpdate(
+        _ time: FixedTime,
+        collisions: CollisionWorld2D,
+        context: GameContext
+    ) {
         captureInput()
-        editable.position += controller.advance(delta: Float(time.delta))
+        let surfaces = collisionProbes.update(
+            stance: controller.stance,
+            transform: colliderTransform,
+            configuration: controller.configuration.collision,
+            in: collisions
+        )
+        var displacement = controller.advance(
+            delta: Float(time.delta),
+            surfaces: surfaces
+        )
+        if controller.state == .dash
+            || abs(controller.velocity.x)
+                > controller.configuration.movement.runSpeed
+        {
+            displacement = collisionProbes.constrainDash(
+                displacement,
+                stance: controller.stance,
+                transform: colliderTransform,
+                configuration: controller.configuration.collision,
+                in: collisions
+            )
+        }
+        editable.position += displacement
+        collisions.update(
+            collision,
+            capsule: collider,
+            transform: colliderTransform
+        )
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
@@ -65,16 +113,15 @@ struct Character: Entity {
 
     mutating func onCollision(
         _ collision: Collision2D,
-        collider: ColliderID,
         context: GameContext
     ) -> Transform2D? {
-        guard collision.source.collider == collider,
+        guard collision.source.collider == self.collision,
               let contact = collision.contact
         else { return nil }
 
         editable.position += controller.resolve(contact)
 
-        return editable.transform
+        return colliderTransform
     }
 
     private mutating func captureInput() {
@@ -128,7 +175,11 @@ struct Character: Entity {
         }
     }
 
-    func submit(to queue: RenderQueue, context: GameContext) {
+    func submit(
+        to queue: RenderQueue,
+        showsCollisionDebug: Bool,
+        context: GameContext
+    ) {
         queue.submit(
             animatedSprite.sprite,
             transform: editable.transform
@@ -136,5 +187,23 @@ struct Character: Entity {
             rendering: rendering
         )
         editable.drawGizmo(context: context)
+        if showsCollisionDebug {
+            collisionProbes.submitDebug(
+                stance: controller.stance,
+                transform: colliderTransform,
+                configuration: controller.configuration.collision,
+                layer: .gizmo,
+                to: queue,
+                context: context
+            )
+        }
+    }
+
+    func submit(to queue: RenderQueue, context: GameContext) {
+        submit(
+            to: queue,
+            showsCollisionDebug: false,
+            context: context
+        )
     }
 }

@@ -113,6 +113,19 @@ public final class CollisionWorld2D {
         store.update(collider, bounds: bounds)
     }
 
+    /// Replaces local-space capsule geometry and its model-to-world transform.
+    ///
+    /// The collider identity, mode, layer, mask, and allocated storage remain
+    /// unchanged. Cached geometry is rebuilt with the other dirty colliders.
+    /// Stale identities and non-capsule colliders are ignored.
+    public func update(
+        _ collider: ColliderID,
+        capsule: Capsule2D,
+        transform: Transform2D
+    ) {
+        store.update(collider, capsule: capsule, transform: transform)
+    }
+
     /// Updates a collider's model-to-world transform and invalidates its cache.
     ///
     /// Polygon geometry applies the complete affine transform. Circles and

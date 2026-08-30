@@ -5,21 +5,20 @@ struct PlatformerSensors: Equatable, Sendable {
     var bumpedHead = false
     var wallDirection: Float = 0
 
-    mutating func reset() {
-        self = .init()
-    }
-
     mutating func include(
-        _ contact: Contact2D,
+        surfaceNormal: Vec2,
         minimumGroundNormalY: Float
     ) {
-        let surfaceNormal = -contact.normal
+        guard surfaceNormal.isValid else { return }
+        let surfaceNormal = surfaceNormal.normalized
+        guard surfaceNormal != .zero else { return }
+
         if surfaceNormal.y >= minimumGroundNormalY {
             isGrounded = true
         } else if surfaceNormal.y <= -minimumGroundNormalY {
             bumpedHead = true
-        } else if contact.normal.x != 0 {
-            wallDirection = contact.normal.x < 0 ? -1 : 1
+        } else if surfaceNormal.x != 0 {
+            wallDirection = surfaceNormal.x < 0 ? 1 : -1
         }
     }
 }
