@@ -351,6 +351,8 @@ public final class RenderQueue {
     private let activeLayerSlots: UnsafeMutablePointer<UInt32>
     private let layerRegistry: UnsafeMutablePointer<RegistryEntry>
     private let spriteBatchKeyRegistry: UnsafeMutablePointer<RegistryEntry>
+    private let polygonBatchKeyRegistry: UnsafeMutablePointer<RegistryEntry>
+    private let polygonGeometryRegistry: UnsafeMutablePointer<RegistryEntry>
     private let spriteBatchKeys: UnsafeMutablePointer<SpriteBatchKey>
     private let shapeBatchKeys: UnsafeMutablePointer<ShapeBatchKey>
     private let polygonBatchKeys: UnsafeMutablePointer<PolygonBatchKey>
@@ -399,6 +401,8 @@ public final class RenderQueue {
         activeLayerSlots = .allocate(capacity: capacity)
         layerRegistry = .allocate(capacity: registryCapacity)
         spriteBatchKeyRegistry = .allocate(capacity: registryCapacity)
+        polygonBatchKeyRegistry = .allocate(capacity: registryCapacity)
+        polygonGeometryRegistry = .allocate(capacity: registryCapacity)
         spriteBatchKeys = .allocate(capacity: capacity)
         shapeBatchKeys = .allocate(capacity: capacity)
         polygonBatchKeys = .allocate(capacity: capacity)
@@ -420,6 +424,8 @@ public final class RenderQueue {
         activeLayerSlots.initialize(repeating: 0, count: capacity)
         layerRegistry.initialize(repeating: .empty, count: registryCapacity)
         spriteBatchKeyRegistry.initialize(repeating: .empty, count: registryCapacity)
+        polygonBatchKeyRegistry.initialize(repeating: .empty, count: registryCapacity)
+        polygonGeometryRegistry.initialize(repeating: .empty, count: registryCapacity)
         radixCounts.initialize(repeating: 0, count: 256)
 
         for index in 0..<settings.viewCapacity {
@@ -472,6 +478,10 @@ public final class RenderQueue {
         layerRegistry.deallocate()
         spriteBatchKeyRegistry.deinitialize(count: registryCapacity)
         spriteBatchKeyRegistry.deallocate()
+        polygonBatchKeyRegistry.deinitialize(count: registryCapacity)
+        polygonBatchKeyRegistry.deallocate()
+        polygonGeometryRegistry.deinitialize(count: registryCapacity)
+        polygonGeometryRegistry.deallocate()
         spriteBatchKeys.deinitialize(count: spriteBatchKeyCount)
         spriteBatchKeys.deallocate()
         shapeBatchKeys.deinitialize(count: shapeBatchKeyCount)
@@ -554,9 +564,17 @@ public final class RenderQueue {
         vertices: UnsafeBufferPointer<SIMD2<Float>>,
         indices: UnsafeBufferPointer<UInt32>
     ) -> UInt32 {
-        for index in 0..<polygonGeometryCount
-        where polygonGeometries[index].owner === owner {
-            return UInt32(index)
+        let identity = UInt64(UInt(bitPattern: Unmanaged.passUnretained(owner).toOpaque()))
+        let hash = Self.mix(identity)
+        var registryIndex = Int(truncatingIfNeeded: hash) & (registryCapacity - 1)
+        while polygonGeometryRegistry[registryIndex].occupied {
+            let entry = polygonGeometryRegistry[registryIndex]
+            if entry.value == identity,
+                polygonGeometries[Int(entry.slot)].owner === owner
+            {
+                return entry.slot
+            }
+            registryIndex = (registryIndex + 1) & (registryCapacity - 1)
         }
         precondition(
             polygonGeometryCount < settings.capacity,
@@ -571,6 +589,11 @@ public final class RenderQueue {
             )
         )
         polygonGeometryCount += 1
+        polygonGeometryRegistry[registryIndex] = RegistryEntry(
+            value: identity,
+            slot: slot,
+            occupied: true
+        )
         return slot
     }
 
@@ -1145,8 +1168,18 @@ public final class RenderQueue {
     }
 
     private func resolvePolygonBatchKey(_ key: PolygonBatchKey) -> UInt32 {
-        for index in 0..<polygonBatchKeyCount where polygonBatchKeys[index] == key {
-            return UInt32(index)
+        let value = UInt64(key.geometry)
+            | UInt64(Self.blendCode(key.blendMode)) << 32
+        let hash = Self.mix(value)
+        var registryIndex = Int(truncatingIfNeeded: hash) & (registryCapacity - 1)
+        while polygonBatchKeyRegistry[registryIndex].occupied {
+            let entry = polygonBatchKeyRegistry[registryIndex]
+            if entry.value == value,
+                polygonBatchKeys[Int(entry.slot)] == key
+            {
+                return entry.slot
+            }
+            registryIndex = (registryIndex + 1) & (registryCapacity - 1)
         }
         precondition(
             polygonBatchKeyCount < settings.capacity,
@@ -1155,6 +1188,11 @@ public final class RenderQueue {
         let slot = UInt32(polygonBatchKeyCount)
         polygonBatchKeys.advanced(by: polygonBatchKeyCount).initialize(to: key)
         polygonBatchKeyCount += 1
+        polygonBatchKeyRegistry[registryIndex] = RegistryEntry(
+            value: value,
+            slot: slot,
+            occupied: true
+        )
         return slot
     }
 
@@ -1240,6 +1278,14 @@ public final class RenderQueue {
             value ^= 0xc2b2_ae3d_27d4_eb4f
         }
         return mix(value)
+    }
+
+    private static func blendCode(_ value: BlendMode) -> UInt32 {
+        switch value {
+        case .replace: 0
+        case .normal: 1
+        case .premultiplied: 2
+        }
     }
 
     private static func samplerCode(_ value: SamplerDescriptor) -> UInt32 {

@@ -38,6 +38,7 @@ public final class SpriteRenderWorkspace {
     private let queue: RenderQueue
     private let capacity: Int
     private let resolved: UnsafeMutablePointer<WorkspaceSpriteResources?>
+    private let resolvedPolygonGeometry: UnsafeMutablePointer<PolygonGeometryResources?>
     private let upload: UnsafeMutablePointer<RenderQueue.Instance>
     private let shapeUpload: UnsafeMutablePointer<RenderQueue.ShapeInstance>
     private let extendedShapeUpload: UnsafeMutablePointer<RenderQueue.ExtendedShapeInstance>
@@ -51,6 +52,8 @@ public final class SpriteRenderWorkspace {
         self.capacity = capacity
         resolved = .allocate(capacity: capacity)
         resolved.initialize(repeating: nil, count: capacity)
+        resolvedPolygonGeometry = .allocate(capacity: capacity)
+        resolvedPolygonGeometry.initialize(repeating: nil, count: capacity)
         upload = .allocate(capacity: capacity)
         upload.initialize(
             repeating: RenderQueue.Instance(
@@ -102,6 +105,8 @@ public final class SpriteRenderWorkspace {
     deinit {
         resolved.deinitialize(count: capacity)
         resolved.deallocate()
+        resolvedPolygonGeometry.deinitialize(count: capacity)
+        resolvedPolygonGeometry.deallocate()
         upload.deinitialize(count: capacity)
         upload.deallocate()
         shapeUpload.deinitialize(count: capacity)
@@ -324,8 +329,10 @@ public final class SpriteRenderWorkspace {
                 continue
             case .polygon:
                 let key = execution.polygonBatchKeys[Int(batch.key)]
-                let polygon = try resources.polygonGeometry(
-                    execution.polygonGeometries[Int(key.geometry)]
+                let geometryIndex = Int(key.geometry)
+                let polygon = try resolvePolygonGeometry(
+                    execution.polygonGeometries[geometryIndex],
+                    at: geometryIndex
                 )
                 pass.setVertexBuffer(polygon.vertex, index: 0)
                 usesSharedGeometry = false
@@ -369,6 +376,16 @@ public final class SpriteRenderWorkspace {
             pipeline: nil
         )
         resolved[index] = value
+        return value
+    }
+
+    private func resolvePolygonGeometry(
+        _ source: RenderQueue.PolygonGeometry,
+        at index: Int
+    ) throws -> PolygonGeometryResources {
+        if let value = resolvedPolygonGeometry[index] { return value }
+        let value = try resources.polygonGeometry(source)
+        resolvedPolygonGeometry[index] = value
         return value
     }
 

@@ -13,7 +13,7 @@ extension PolygonSubmission {
     ) {
         _ = material
         #warning("Polygon gradient and texture paints currently use temporary solid-colour fallbacks")
-        let color: Color
+        let color: PixlGraphics.Color
         switch polygon.paint {
         case .color(let value):
             color = value
@@ -42,7 +42,7 @@ extension PolygonSubmission {
     }
 }
 
-private extension Color {
+private extension PixlGraphics.Color {
     var premultiplied: SIMD4<Float> {
         .init(red * opacity, green * opacity, blue * opacity, opacity)
     }

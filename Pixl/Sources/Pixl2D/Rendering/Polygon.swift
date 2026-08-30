@@ -1,3 +1,5 @@
+import PixlGraphics
+
 /// Mutable, value-semantic polygon-backed renderable content.
 public struct Polygon: Renderable, Equatable, Sendable {
     /// Immutable local-space polygon geometry.

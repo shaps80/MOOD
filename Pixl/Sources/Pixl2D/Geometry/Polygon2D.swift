@@ -16,14 +16,20 @@ public struct Polygon2D: Equatable, Sendable, RandomAccessCollection {
             vertices: ContiguousArray<Vec2>,
             indices: ContiguousArray<UInt32>
         ) {
-            vertexStorage = .allocate(capacity: vertices.count)
-            indexStorage = .allocate(capacity: indices.count)
+            let vertexStorage = UnsafeMutablePointer<Vec2>.allocate(
+                capacity: vertices.count
+            )
+            let indexStorage = UnsafeMutablePointer<UInt32>.allocate(
+                capacity: indices.count
+            )
             vertices.withUnsafeBufferPointer {
                 vertexStorage.initialize(from: $0.baseAddress!, count: $0.count)
             }
             indices.withUnsafeBufferPointer {
                 indexStorage.initialize(from: $0.baseAddress!, count: $0.count)
             }
+            self.vertexStorage = vertexStorage
+            self.indexStorage = indexStorage
             self.vertices = .init(start: vertexStorage, count: vertices.count)
             self.indices = .init(start: indexStorage, count: indices.count)
         }

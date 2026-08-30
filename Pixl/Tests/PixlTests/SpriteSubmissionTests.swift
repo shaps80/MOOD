@@ -234,6 +234,38 @@ struct SpriteSubmissionTests {
         #expect(passthroughSubmission.blendMode == .normal)
     }
 
+    @Test
+    func repeatedPolygonGeometrySharesRegistrationAndBatching() {
+        let queue = RenderQueue(settings: .init(capacity: 4))
+        let polygon = Polygon(
+            triangle: .init(width: 20, height: 10),
+            paint: .color(.cyan)
+        )
+        queue.submit(polygon, transform: identity)
+        queue.submit(
+            polygon,
+            transform: identity.translated(by: .init(30, 0))
+        )
+        var view = RenderQueue.View(
+            projectionX: .init(1, 0, 0),
+            projectionY: .init(0, 1, 0),
+            projectionTranslation: .init(0, 0, 1),
+            logicalSize: .init(200, 200),
+            boundsMinimum: .init(repeating: -100),
+            boundsMaximum: .init(repeating: 100)
+        )
+
+        withUnsafePointer(to: &view) { pointer in
+            queue.execute(views: .init(start: pointer, count: 1)) { execution in
+                #expect(execution.polygonGeometries.count == 1)
+                #expect(execution.polygonBatchKeys.count == 1)
+                #expect(execution.views[0].batches.count == 1)
+                #expect(execution.views[0].batches[0].family == .polygon)
+                #expect(execution.views[0].batches[0].end == 2)
+            }
+        }
+    }
+
     private var identity: Transform2D {
         Transform2D(
             x: SIMD3(1, 0, 0),

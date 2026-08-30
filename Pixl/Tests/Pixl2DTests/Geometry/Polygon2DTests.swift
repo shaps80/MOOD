@@ -53,6 +53,7 @@ struct Polygon2DTests {
 
         #expect(polygon.count == 5)
         #expect(polygon[2] == Vec2(5, 5))
+        #expect(polygon.storage.indices.count == 9)
     }
 
     @Test
