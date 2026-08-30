@@ -38,6 +38,7 @@ public final class SpriteRenderWorkspace {
     private let queue: RenderQueue
     private let capacity: Int
     private let resolved: UnsafeMutablePointer<WorkspaceSpriteResources?>
+    private let resolvedPolygonTextures: UnsafeMutablePointer<ResolvedSpriteResources?>
     private let resolvedPolygonGeometry: UnsafeMutablePointer<PolygonGeometryResources?>
     private let upload: UnsafeMutablePointer<RenderQueue.Instance>
     private let shapeUpload: UnsafeMutablePointer<RenderQueue.ShapeInstance>
@@ -52,6 +53,8 @@ public final class SpriteRenderWorkspace {
         self.capacity = capacity
         resolved = .allocate(capacity: capacity)
         resolved.initialize(repeating: nil, count: capacity)
+        resolvedPolygonTextures = .allocate(capacity: capacity)
+        resolvedPolygonTextures.initialize(repeating: nil, count: capacity)
         resolvedPolygonGeometry = .allocate(capacity: capacity)
         resolvedPolygonGeometry.initialize(repeating: nil, count: capacity)
         upload = .allocate(capacity: capacity)
@@ -87,24 +90,28 @@ public final class SpriteRenderWorkspace {
         ), count: capacity)
         polygonUpload = .allocate(capacity: capacity)
         polygonUpload.initialize(repeating: .init(
+            paintParameters: .zero,
             transformX: .zero,
             transformY: .zero,
             translation: .zero,
-            colorRGBA8: 0
+            colorRGBA8: 0,
+            style: 0
         ), count: capacity)
         precondition(
             MemoryLayout<RenderQueue.Instance>.stride == 48,
             "Sprite instance ABI must remain 48 bytes"
         )
         precondition(
-            MemoryLayout<RenderQueue.PolygonInstance>.stride == 32,
-            "Polygon instance ABI must remain 32 bytes"
+            MemoryLayout<RenderQueue.PolygonInstance>.stride == 48,
+            "Polygon instance ABI must remain 48 bytes"
         )
     }
 
     deinit {
         resolved.deinitialize(count: capacity)
         resolved.deallocate()
+        resolvedPolygonTextures.deinitialize(count: capacity)
+        resolvedPolygonTextures.deallocate()
         resolvedPolygonGeometry.deinitialize(count: capacity)
         resolvedPolygonGeometry.deallocate()
         upload.deinitialize(count: capacity)
@@ -143,6 +150,7 @@ public final class SpriteRenderWorkspace {
         )
         precondition(execution.instances.count <= capacity)
         precondition(execution.spriteBatchKeys.count <= capacity)
+        precondition(execution.polygonBatchKeys.count <= capacity)
         precondition(execution.views.indices.contains(viewIndex))
         let view = execution.views[viewIndex]
         guard !view.ordinals.isEmpty else { return Metrics() }
@@ -163,6 +171,11 @@ public final class SpriteRenderWorkspace {
             }
             if (batch.family == .shape || batch.family == .extendedShape),
                 execution.shapeBatchKeys[Int(batch.key)].usesGradient
+            {
+                hasGradients = true
+            }
+            if batch.family == .polygon,
+                execution.polygonBatchKeys[Int(batch.key)].paintKind == .gradient
             {
                 hasGradients = true
             }
@@ -339,8 +352,20 @@ public final class SpriteRenderWorkspace {
                 usesPrimitiveGeometry = false
                 pass.setRenderPipeline(try resources.polygonPipeline(
                     format: pass.colorFormat,
-                    blendMode: key.blendMode
+                    blendMode: key.blendMode,
+                    paintKind: key.paintKind
                 ))
+                switch key.paintKind {
+                case .color:
+                    break
+                case .gradient:
+                    pass.setFragmentTexture(gradients!.texture, index: 1)
+                    pass.setFragmentSampler(gradients!.sampler, index: 1)
+                case .texture:
+                    let texture = try resolvePolygonTexture(key, at: Int(batch.key))
+                    pass.setFragmentTexture(texture.texture, index: 0)
+                    pass.setFragmentSampler(texture.sampler, index: 0)
+                }
                 pass.drawIndexedPrimitives(
                     .triangle,
                     indexCount: polygon.indexCount,
@@ -376,6 +401,16 @@ public final class SpriteRenderWorkspace {
             pipeline: nil
         )
         resolved[index] = value
+        return value
+    }
+
+    private func resolvePolygonTexture(
+        _ source: RenderQueue.PolygonBatchKey,
+        at index: Int
+    ) throws -> ResolvedSpriteResources {
+        if let value = resolvedPolygonTextures[index] { return value }
+        let value = try resources.resolve(source)
+        resolvedPolygonTextures[index] = value
         return value
     }
 

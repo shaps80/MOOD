@@ -5,6 +5,11 @@ private struct SpriteVertex: BitwiseCopyable {
     let textureCoordinate: SIMD2<Float>
 }
 
+private struct PolygonVertex: BitwiseCopyable {
+    let position: SIMD2<Float>
+    let normalizedPosition: SIMD2<Float>
+}
+
 private struct PrimitiveVertex: BitwiseCopyable {
     let position: SIMD2<Float>
     let previous: SIMD2<Float>
@@ -41,6 +46,12 @@ private struct SpritePipelineKey: Hashable {
     let usesGradient: Bool
 }
 
+private struct PolygonPipelineKey: Hashable {
+    let format: PixelFormat
+    let blendMode: BlendMode
+    let paintKind: PolygonPaintKind
+}
+
 /// Device-wide 2D rendering resources shared by render-queue workspaces.
 ///
 /// This owner retains the logical texture store and lazily owns the geometry,
@@ -55,7 +66,7 @@ public final class SpriteRenderResources {
     private var shapePipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var extendedShapePipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var primitivePipelines: [PixelFormat: RenderPipeline] = [:]
-    private var polygonPipelines: [SpritePipelineKey: RenderPipeline] = [:]
+    private var polygonPipelines: [PolygonPipelineKey: RenderPipeline] = [:]
     private var vertexBuffer: Buffer?
     private var indexBuffer: Buffer?
     private var primitiveGeometryResources: PrimitiveGeometryResources?
@@ -127,6 +138,26 @@ public final class SpriteRenderResources {
             sampler: sampler
         )
         return value
+    }
+
+    package func resolve(
+        _ source: RenderQueue.PolygonBatchKey
+    ) throws -> ResolvedSpriteResources {
+        guard let textureID = source.texture,
+              let texture = textures.texture(for: textureID)
+        else {
+            preconditionFailure(
+                "Polygon texture does not belong to these render resources"
+            )
+        }
+        let sampler: Sampler
+        if let existing = samplers[source.sampler] {
+            sampler = existing
+        } else {
+            sampler = try device.makeSampler(source.sampler)
+            samplers[source.sampler] = sampler
+        }
+        return ResolvedSpriteResources(texture: texture, sampler: sampler)
     }
 
     package func pipeline(
@@ -267,18 +298,24 @@ public final class SpriteRenderResources {
 
     package func polygonPipeline(
         format: PixelFormat,
-        blendMode: BlendMode
+        blendMode: BlendMode,
+        paintKind: PolygonPaintKind
     ) throws -> RenderPipeline {
-        let key = SpritePipelineKey(
+        let key = PolygonPipelineKey(
             format: format,
             blendMode: blendMode,
-            usesGradient: false
+            paintKind: paintKind
         )
         if let pipeline = polygonPipelines[key] { return pipeline }
+        let fragment: ShaderFunction = switch paintKind {
+        case .color: .polygonFragment
+        case .gradient: .gradientPolygonFragment
+        case .texture: .texturedPolygonFragment
+        }
         let pipeline = try device.makeRenderPipeline(
             .init(
                 vertex: .polygonVertex,
-                fragment: .polygonFragment,
+                fragment: fragment,
                 vertexLayout: Self.polygonVertexLayout,
                 colorFormat: format,
                 blendMode: blendMode
@@ -294,12 +331,26 @@ public final class SpriteRenderResources {
         let identity = ObjectIdentifier(source.owner)
         if let geometry = polygonGeometryResources[identity] { return geometry }
 
-        let vertexBytes = UnsafeRawBufferPointer(
-            start: source.vertices.baseAddress,
-            count: source.vertices.count * MemoryLayout<SIMD2<Float>>.stride
+        let vertices = UnsafeMutablePointer<PolygonVertex>.allocate(
+            capacity: source.vertices.count
         )
+        defer { vertices.deallocate() }
+        for index in source.vertices.indices {
+            let position = source.vertices[index]
+            var normalizedPosition = (position - source.boundsMinimum)
+                * source.inverseBoundsSize
+            // Polygon local space is Y-up; texture coordinates are Y-down.
+            normalizedPosition.y = 1 - normalizedPosition.y
+            vertices.advanced(by: index).initialize(to: PolygonVertex(
+                position: position,
+                normalizedPosition: normalizedPosition
+            ))
+        }
         let vertex = try device.makeBuffer(
-            copying: vertexBytes,
+            copying: UnsafeRawBufferPointer(
+                start: vertices,
+                count: source.vertices.count * MemoryLayout<PolygonVertex>.stride
+            ),
             usage: .vertex,
             memory: .gpuOnly
         )
@@ -614,10 +665,10 @@ public final class SpriteRenderResources {
     }
 
     private static var polygonVertexLayout: VertexLayout {
-        let layout = VertexLayout(bufferCapacity: 2, attributeCapacity: 5)
+        let layout = VertexLayout(bufferCapacity: 2, attributeCapacity: 8)
         layout.append(.init(
             bufferIndex: 0,
-            stride: UInt64(MemoryLayout<SIMD2<Float>>.stride)
+            stride: UInt64(MemoryLayout<PolygonVertex>.stride)
         ))
         layout.append(.init(
             bufferIndex: 6,
@@ -630,19 +681,37 @@ public final class SpriteRenderResources {
             format: .float32x2,
             offset: 0
         ))
+        layout.append(.init(
+            location: 2,
+            bufferIndex: 0,
+            format: .float32x2,
+            offset: 8
+        ))
         for index in 0..<3 {
             layout.append(.init(
                 location: UInt32(index + 3),
                 bufferIndex: 6,
                 format: .float32x2,
-                offset: UInt64(index * 8)
+                offset: UInt64(16 + index * 8)
             ))
         }
         layout.append(.init(
             location: 6,
             bufferIndex: 6,
+            format: .float32x4,
+            offset: 0
+        ))
+        layout.append(.init(
+            location: 7,
+            bufferIndex: 6,
             format: .unorm8x4,
-            offset: 24
+            offset: 40
+        ))
+        layout.append(.init(
+            location: 8,
+            bufferIndex: 6,
+            format: .uint32,
+            offset: 44
         ))
         return layout
     }

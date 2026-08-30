@@ -82,6 +82,7 @@ struct SpriteSubmissionTests {
         #expect(MemoryLayout<RenderQueue.Instance>.stride == 48)
         #expect(MemoryLayout<RenderQueue.ShapeInstance>.stride == 96)
         #expect(MemoryLayout<RenderQueue.ExtendedShapeInstance>.stride == 112)
+        #expect(MemoryLayout<RenderQueue.PolygonInstance>.stride == 48)
     }
 
     @Test
@@ -200,7 +201,7 @@ struct SpriteSubmissionTests {
         #expect(first.transformX == SIMD2(2, 0))
         #expect(first.sampler.minFilter == .nearest)
         #expect(first.sampler.addressModeU == .clampToEdge)
-        #expect(first.blendMode == .normal)
+        #expect(first.blendMode == .premultiplied)
 
         #expect(second.transformX == SIMD2(-2, 0))
         #expect(second.sampler.minFilter == .linear)
@@ -264,6 +265,70 @@ struct SpriteSubmissionTests {
                 #expect(execution.views[0].batches[0].end == 2)
             }
         }
+    }
+
+    @Test
+    func polygonGradientRegistersItsRampAndLowersPlacement() {
+        let queue = RenderQueue(settings: .init(capacity: 2))
+        let gradient = Gradient(colors: [.red, .blue])
+        let polygon = Polygon(
+            triangle: .init(width: 20, height: 10),
+            paint: .gradient(.init(
+                gradient,
+                from: .init(-10, 0),
+                to: .init(10, 0)
+            ))
+        )
+        queue.submit(polygon, transform: identity)
+        var view = RenderQueue.View(
+            projectionX: .init(1, 0, 0), projectionY: .init(0, 1, 0),
+            projectionTranslation: .init(0, 0, 1),
+            logicalSize: .init(200, 200),
+            boundsMinimum: .init(repeating: -100), boundsMaximum: .init(repeating: 100)
+        )
+
+        withUnsafePointer(to: &view) { pointer in
+            queue.execute(views: .init(start: pointer, count: 1)) { execution in
+                #expect(execution.gradientCount == 1)
+                #expect(execution.polygonBatchKeys[0].paintKind == .gradient)
+                #expect(execution.polygonInstances[0].paintParameters == SIMD4(-10, 0, 10, 0))
+                #expect(execution.polygonInstances[0].style >> 4 == 1)
+            }
+        }
+    }
+
+    @Test
+    func polygonTextureLowersRegionSamplingAndAlphaComposition() {
+        let asset = TextureAsset(
+            identity: 42,
+            size: .init(8, 4),
+            alpha: .passthrough
+        )
+        let region = TextureRegion(
+            asset: asset,
+            source: Rect(x: 2, y: 1, width: 4, height: 2)
+        )
+        let polygon = Polygon(
+            triangle: .init(width: 20, height: 10),
+            paint: .texture(.init(
+                region: region,
+                sampling: .init(filtering: .linear, addressing: .mirrorRepeat)
+            ))
+        )
+        let submission = PolygonSubmission(
+            polygon: polygon,
+            geometry: 0,
+            transform: identity
+        )
+
+        #expect(submission.paintKind == .texture)
+        #expect(submission.paintParameters == SIMD4(0.25, 0.25, 0.5, 0.5))
+        #expect(submission.texture?.rawValue == 42)
+        #expect(submission.sampler.minFilter == .linear)
+        #expect(submission.sampler.magFilter == .linear)
+        #expect(submission.sampler.addressModeU == .mirrorRepeat)
+        #expect(submission.sampler.addressModeV == .mirrorRepeat)
+        #expect(submission.blendMode == .normal)
     }
 
     private var identity: Transform2D {

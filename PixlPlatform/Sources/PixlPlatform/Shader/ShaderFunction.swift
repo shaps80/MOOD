@@ -41,4 +41,8 @@ public extension ShaderFunction {
     static let polygonVertex = Self(name: "pixlPolygonVertex")
     /// Built-in solid-colour indexed-polygon fragment entry point.
     static let polygonFragment = Self(name: "pixlPolygonFragment")
+    /// Built-in gradient indexed-polygon fragment entry point.
+    static let gradientPolygonFragment = Self(name: "pixlGradientPolygonFragment")
+    /// Built-in texture-backed indexed-polygon fragment entry point.
+    static let texturedPolygonFragment = Self(name: "pixlTexturedPolygonFragment")
 }

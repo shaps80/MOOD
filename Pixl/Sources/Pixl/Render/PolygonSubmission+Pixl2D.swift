@@ -9,18 +9,62 @@ extension PolygonSubmission {
         geometry: UInt32,
         transform: Transform2D,
         rendering: RenderProperties = .init(),
-        material: Pixl2D.Material = .unlit
+        material: Pixl2D.Material = .unlit,
+        gradientSlot: UInt32 = .max
     ) {
         _ = material
-        #warning("Polygon gradient and texture paints currently use temporary solid-colour fallbacks")
+        let paintKind: PolygonPaintKind
+        let paintParameters: SIMD4<Float>
         let color: PixlGraphics.Color
+        let gradientPlacement: UInt32
+        let texture: TextureResourceID?
+        let sampler: SamplerDescriptor
+        let blendMode: BlendMode
         switch polygon.paint {
         case .color(let value):
+            paintKind = .color
+            paintParameters = .zero
             color = value
-        case .gradient(let value):
-            color = value.gradient.stops[0].color
-        case .texture:
-            color = .gray
+            gradientPlacement = 0
+            texture = nil
+            sampler = .init()
+            blendMode = rendering.blendMode.platform
+        case .gradient(let fill):
+            paintKind = .gradient
+            color = .clear
+            texture = nil
+            sampler = .init()
+            blendMode = rendering.blendMode.platform
+            switch fill.placement {
+            case .linear(let start, let end):
+                paintParameters = .init(start.x, start.y, end.x, end.y)
+                gradientPlacement = 0
+            case .radial(let center, let radius):
+                paintParameters = .init(center.x, center.y, radius, 0)
+                gradientPlacement = 1
+            case .angular(let center, let angle):
+                paintParameters = .init(center.x, center.y, angle.radians, 0)
+                gradientPlacement = 2
+            }
+        case .texture(let value):
+            let coordinates = value.region.textureCoordinates
+            paintKind = .texture
+            paintParameters = .init(
+                coordinates.origin.x,
+                coordinates.origin.y,
+                coordinates.scale.x,
+                coordinates.scale.y
+            )
+            color = .clear
+            gradientPlacement = 0
+            texture = TextureResourceID(rawValue: value.region.asset.identity)
+            sampler = SamplerDescriptor(
+                minFilter: value.sampling.filtering.minification.platform,
+                magFilter: value.sampling.filtering.magnification.platform,
+                addressModeU: value.sampling.addressing.horizontal.platform,
+                addressModeV: value.sampling.addressing.vertical.platform
+            )
+            blendMode = rendering.blendMode.platform(alpha: value.region.asset.alpha)
         }
 
         let bounds = transform.transformed(bounds: polygon.bounds)
@@ -34,8 +78,14 @@ extension PolygonSubmission {
                 transform.translation.x,
                 transform.translation.y
             ),
+            paintKind: paintKind,
+            paintParameters: paintParameters,
             color: color.premultiplied,
-            blendMode: rendering.blendMode.platform,
+            gradientSlot: gradientSlot,
+            gradientPlacement: gradientPlacement,
+            texture: texture,
+            sampler: sampler,
+            blendMode: blendMode,
             layer: rendering.layer.rawValue,
             order: rendering.order
         )
@@ -53,6 +103,33 @@ private extension RenderProperties.BlendMode {
         switch self {
         case .normal: .premultiplied
         case .replace: .replace
+        }
+    }
+
+    func platform(alpha: TextureAlpha) -> BlendMode {
+        switch self {
+        case .normal:
+            alpha == .premultiplied ? .premultiplied : .normal
+        case .replace: .replace
+        }
+    }
+}
+
+private extension TextureSampling.Filter {
+    var platform: SamplerFilter {
+        switch self {
+        case .nearest: .nearest
+        case .linear: .linear
+        }
+    }
+}
+
+private extension TextureSampling.AddressMode {
+    var platform: SamplerAddressMode {
+        switch self {
+        case .clampToEdge: .clampToEdge
+        case .repeat: .repeat
+        case .mirrorRepeat: .mirrorRepeat
         }
     }
 }

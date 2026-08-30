@@ -248,15 +248,22 @@ fragment float4 pixlPrimitiveShapeFragment(PrimitiveShapeVertexOutput input [[st
 
 struct PolygonVertexInput {
     float2 position [[attribute(0)]];
+    float2 normalizedPosition [[attribute(2)]];
     float2 transformX [[attribute(3)]];
     float2 transformY [[attribute(4)]];
     float2 translation [[attribute(5)]];
-    float4 color [[attribute(6)]];
+    float4 paintParameters [[attribute(6)]];
+    float4 color [[attribute(7)]];
+    uint style [[attribute(8)]];
 };
 
 struct PolygonVertexOutput {
     float4 position [[position]];
+    float2 localPosition;
+    float2 normalizedPosition;
+    float4 paintParameters [[flat]];
     float4 color [[flat]];
+    uint style [[flat]];
 };
 
 vertex PolygonVertexOutput pixlPolygonVertex(
@@ -269,12 +276,46 @@ vertex PolygonVertexOutput pixlPolygonVertex(
     float3 projected = view.projection * float3(world, 1.0);
     return {
         float4(projected.xy, 0.0, 1.0),
-        input.color
+        input.position,
+        input.normalizedPosition,
+        input.paintParameters,
+        input.color,
+        input.style
     };
 }
 
 fragment float4 pixlPolygonFragment(PolygonVertexOutput input [[stage_in]]) {
     return input.color;
+}
+
+fragment float4 pixlGradientPolygonFragment(
+    PolygonVertexOutput input [[stage_in]],
+    texture2d<float> atlas [[texture(1)]],
+    sampler atlasSampler [[sampler(1)]]
+) {
+    uint placement = (input.style >> 2u) & 3u;
+    uint row = (input.style >> 4u) - 1u;
+    float2 start = input.paintParameters.xy;
+    float2 end = input.paintParameters.zw;
+    float2 delta = end - start;
+    float t = placement == 1u
+        ? length(input.localPosition - start) / input.paintParameters.z
+        : placement == 2u
+            ? fract((atan2(input.localPosition.y - start.y, input.localPosition.x - start.x)
+                - input.paintParameters.z) / (2.0 * M_PI_F))
+            : dot(input.localPosition - start, delta) / dot(delta, delta);
+    float y = (float(row) + 0.5) / float(atlas.get_height());
+    return atlas.sample(atlasSampler, float2(clamp(t, 0.0, 1.0), y));
+}
+
+fragment float4 pixlTexturedPolygonFragment(
+    PolygonVertexOutput input [[stage_in]],
+    texture2d<float> texture [[texture(0)]],
+    sampler textureSampler [[sampler(0)]]
+) {
+    float2 coordinate = input.paintParameters.xy
+        + input.normalizedPosition * input.paintParameters.zw;
+    return texture.sample(textureSampler, coordinate);
 }
 
 static float pixlRoundedBoxDistance(float2 point, float2 halfSize, float rounding) {

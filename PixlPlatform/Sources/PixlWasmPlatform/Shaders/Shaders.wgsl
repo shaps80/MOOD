@@ -237,15 +237,22 @@ fn pixlPrimitiveShapeFragment(input: PrimitiveShapeVertexOutput) -> @location(0)
 
 struct PolygonVertexInput {
     @location(0) position: vec2f,
+    @location(2) normalizedPosition: vec2f,
     @location(3) transformX: vec2f,
     @location(4) transformY: vec2f,
     @location(5) translation: vec2f,
-    @location(6) color: vec4f,
+    @location(6) paintParameters: vec4f,
+    @location(7) color: vec4f,
+    @location(8) style: u32,
 }
 
 struct PolygonVertexOutput {
     @builtin(position) position: vec4f,
-    @location(0) @interpolate(flat) color: vec4f,
+    @location(0) localPosition: vec2f,
+    @location(1) normalizedPosition: vec2f,
+    @location(2) @interpolate(flat) paintParameters: vec4f,
+    @location(3) @interpolate(flat) color: vec4f,
+    @location(4) @interpolate(flat) style: u32,
 }
 
 @vertex
@@ -256,13 +263,46 @@ fn pixlPolygonVertex(input: PolygonVertexInput) -> PolygonVertexOutput {
     let projected = parameters.transform * vec3f(world, 1.0);
     var output: PolygonVertexOutput;
     output.position = vec4f(projected.xy, 0.0, 1.0);
+    output.localPosition = input.position;
+    output.normalizedPosition = input.normalizedPosition;
+    output.paintParameters = input.paintParameters;
     output.color = input.color;
+    output.style = input.style;
     return output;
 }
 
 @fragment
 fn pixlPolygonFragment(input: PolygonVertexOutput) -> @location(0) vec4f {
     return input.color;
+}
+
+@fragment
+fn pixlGradientPolygonFragment(input: PolygonVertexOutput) -> @location(0) vec4f {
+    let placement = (input.style >> 2u) & 3u;
+    let row = (input.style >> 4u) - 1u;
+    let start = input.paintParameters.xy;
+    let end = input.paintParameters.zw;
+    let delta = end - start;
+    var t = dot(input.localPosition - start, delta) / dot(delta, delta);
+    if placement == 1u {
+        t = length(input.localPosition - start) / input.paintParameters.z;
+    } else if placement == 2u {
+        t = fract((atan2(input.localPosition.y - start.y, input.localPosition.x - start.x)
+            - input.paintParameters.z) / 6.28318530718);
+    }
+    let height = f32(textureDimensions(texture).y);
+    return textureSample(
+        texture,
+        textureSampler,
+        vec2f(clamp(t, 0.0, 1.0), (f32(row) + 0.5) / height)
+    );
+}
+
+@fragment
+fn pixlTexturedPolygonFragment(input: PolygonVertexOutput) -> @location(0) vec4f {
+    let coordinate = input.paintParameters.xy
+        + input.normalizedPosition * input.paintParameters.zw;
+    return textureSample(texture, textureSampler, coordinate);
 }
 
 fn pixlRoundedBoxDistance(point: vec2f, halfSize: vec2f, rounding: f32) -> f32 {

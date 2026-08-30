@@ -2,11 +2,10 @@ import Pixl
 import Pixl2D
 
 struct WorldBounds: Entity {
-    private let shape = Shape(.rect).fill(.gray6)
-    private var slope = Polygon(
-        triangle: .init(800, 20),
-        paint: .color(.blue)
-    )
+    private let shape = Shape(.rect)
+        .fill(.gray6)
+
+    private var slope: Polygon
 
     private let rendering = RenderProperties(layer: .environment)
 
@@ -30,6 +29,17 @@ struct WorldBounds: Entity {
         width: 20,
         height: 400
     )
+
+    init(context: GameContext) throws {
+        let asset = try context.assets.load(texture: "world.png")
+        let sheet = SpriteSheet(asset: asset, columns: 10, rows: 10)
+        let region = sheet.region(column: 0, row: 1)
+
+        slope = .init(
+            triangle: .init(800, 20),
+            paint: .texture(.init(region: region))
+        )
+    }
 
     var slopeGeometry: Polygon2D { slope.geometry }
 

@@ -4,7 +4,7 @@ import PixlUI
 
 @main
 struct Game: Pixl.Game {
-    private let worldBounds = WorldBounds()
+    private let worldBounds: WorldBounds
     private let collisions: CollisionWorld2D
     private let characterCollider: ColliderID
     private var character: Character
@@ -15,6 +15,7 @@ struct Game: Pixl.Game {
 //    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
+        self.worldBounds = try .init(context: context)
 //        self.gameState = try .init(context: context)
         let collisions = CollisionWorld2D()
         let character = try Character(camera: camera, context: context)

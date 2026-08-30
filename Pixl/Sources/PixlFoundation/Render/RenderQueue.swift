@@ -192,11 +192,15 @@ public final class RenderQueue {
 
     /// Compact GPU-facing indexed-polygon instance produced during lowering.
     public struct PolygonInstance: BitwiseCopyable, Sendable {
+        /// Gradient placement or normalized texture-region mapping.
+        public let paintParameters: SIMD4<Float>
         public let transformX: SIMD2<Float>
         public let transformY: SIMD2<Float>
         public let translation: SIMD2<Float>
         /// Packed premultiplied linear eight-bit RGBA colour.
         public let colorRGBA8: UInt32
+        /// Packed paint kind, gradient placement, and gradient-atlas row.
+        public let style: UInt32
     }
 
     /// Retained immutable indexed geometry registered by polygon identity.
@@ -204,6 +208,8 @@ public final class RenderQueue {
         package let owner: AnyObject
         package let vertices: UnsafeBufferPointer<SIMD2<Float>>
         package let indices: UnsafeBufferPointer<UInt32>
+        package let boundsMinimum: SIMD2<Float>
+        package let inverseBoundsSize: SIMD2<Float>
     }
 
     /// Shape pipeline compatibility shared by consecutive instances.
@@ -227,6 +233,9 @@ public final class RenderQueue {
     /// Polygon geometry and pipeline compatibility shared by consecutive instances.
     package struct PolygonBatchKey: Equatable, Sendable {
         package let geometry: UInt32
+        package let paintKind: PolygonPaintKind
+        package let texture: TextureResourceID?
+        package let sampler: SamplerDescriptor
         package let blendMode: BlendMode
     }
 
@@ -562,7 +571,9 @@ public final class RenderQueue {
     package func registerPolygonGeometry(
         owner: AnyObject,
         vertices: UnsafeBufferPointer<SIMD2<Float>>,
-        indices: UnsafeBufferPointer<UInt32>
+        indices: UnsafeBufferPointer<UInt32>,
+        boundsMinimum: SIMD2<Float>,
+        boundsSize: SIMD2<Float>
     ) -> UInt32 {
         let identity = UInt64(UInt(bitPattern: Unmanaged.passUnretained(owner).toOpaque()))
         let hash = Self.mix(identity)
@@ -585,7 +596,9 @@ public final class RenderQueue {
             to: PolygonGeometry(
                 owner: owner,
                 vertices: vertices,
-                indices: indices
+                indices: indices,
+                boundsMinimum: boundsMinimum,
+                inverseBoundsSize: SIMD2<Float>(repeating: 1) / boundsSize
             )
         )
         polygonGeometryCount += 1
@@ -914,6 +927,9 @@ public final class RenderQueue {
             case .polygon(let source):
                 encodedBatchKey = 0x8000_0000 | resolvePolygonBatchKey(.init(
                     geometry: source.geometry,
+                    paintKind: source.paintKind,
+                    texture: source.texture,
+                    sampler: source.sampler,
                     blendMode: source.blendMode
                 ))
                 family = .polygon
@@ -926,10 +942,16 @@ public final class RenderQueue {
                 extendedShapeInstance = Self.emptyExtendedShapeInstance
                 primitiveInstance = Self.emptyPrimitiveInstance
                 polygonInstance = PolygonInstance(
+                    paintParameters: source.paintParameters,
                     transformX: source.transformX,
                     transformY: source.transformY,
                     translation: source.transformTranslation,
-                    colorRGBA8: Self.rgba8(source.color)
+                    colorRGBA8: Self.rgba8(source.color),
+                    style: source.paintKind.rawValue
+                        | source.gradientPlacement << 2
+                        | (source.gradientSlot == .max
+                            ? 0
+                            : (source.gradientSlot + 1) << 4)
                 )
             }
             let layerSlot: UInt32
@@ -1170,7 +1192,12 @@ public final class RenderQueue {
     private func resolvePolygonBatchKey(_ key: PolygonBatchKey) -> UInt32 {
         let value = UInt64(key.geometry)
             | UInt64(Self.blendCode(key.blendMode)) << 32
-        let hash = Self.mix(value)
+            | UInt64(key.paintKind.rawValue) << 34
+        let resourceValue = key.texture?.rawValue ?? 0
+        let samplerValue = key.paintKind == .texture
+            ? UInt64(Self.samplerCode(key.sampler))
+            : 0
+        let hash = Self.mix(value) ^ Self.mix(resourceValue) ^ Self.mix(samplerValue)
         var registryIndex = Int(truncatingIfNeeded: hash) & (registryCapacity - 1)
         while polygonBatchKeyRegistry[registryIndex].occupied {
             let entry = polygonBatchKeyRegistry[registryIndex]
@@ -1240,10 +1267,12 @@ public final class RenderQueue {
     )
 
     private static let emptyPolygonInstance = PolygonInstance(
+        paintParameters: .zero,
         transformX: .zero,
         transformY: .zero,
         translation: .zero,
-        colorRGBA8: 0
+        colorRGBA8: 0,
+        style: 0
     )
 
     private static func family(for encodedKey: UInt32) -> Family {
