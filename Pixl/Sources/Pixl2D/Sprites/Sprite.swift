@@ -1,7 +1,7 @@
 import PixlGraphics
 
 /// Mutable, value-semantic texture-backed renderable content.
-public struct Sprite: Renderable {
+public struct Sprite: Renderable, Sendable {
     /// Texture paint displayed by the sprite.
     public var paint: Paint.Texture
     /// Per-instance colour multiplied with the sampled texture.

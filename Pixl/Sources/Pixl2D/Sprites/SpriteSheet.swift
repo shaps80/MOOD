@@ -2,7 +2,7 @@ import PixlGraphics
 import Swift
 
 /// A regular row-major grid of equally sized texture regions.
-public struct SpriteSheet {
+public struct SpriteSheet: Sendable {
     /// Texture asset divided by the sheet.
     public let asset: TextureAsset
     /// Number of equal-width columns.

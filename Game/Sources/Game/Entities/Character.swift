@@ -2,12 +2,22 @@ import Pixl
 import Pixl2D
 
 struct Character: Entity {
-    private var sprite: Sprite
-    private let sheet: SpriteSheet
+    private static let size: Vec2 = .init(repeating: 48)
 
-    private let idle: SpriteAnimation
-    private let walk: SpriteAnimation
+    private let idle: AnimatedSprite
+    private let walk: AnimatedSprite
+    private let run: AnimatedSprite
+    private let jump: AnimatedSprite
+    private let dash: AnimatedSprite
+    private let land: AnimatedSprite
+    private let crouchIdle: AnimatedSprite
+    private let crouchWalk: AnimatedSprite
+    private let wallSlide: AnimatedSprite
+    private let wallLand: AnimatedSprite
+
+    private var sprite: Sprite
     private var timeline: SpriteAnimation.Timeline
+
     private var isFlipped: Bool = true
 
     private var editable = Editable()
@@ -23,32 +33,23 @@ struct Character: Entity {
     ) throws {
         self.camera = camera
 
-        sprite = try .init(
-            named: "character",
-            context: context
-        )
+        idle = try .idle(in: context)
+        walk = try .walk(in: context)
+        run = try .run(in: context)
+        jump = try .jump(in: context)
+        dash = try .dash(in: context)
+        land = try .land(in: context)
+        crouchIdle = try .crouchIdle(in: context)
+        crouchWalk = try .crouchWalk(in: context)
+        wallSlide = try .wallSlide(in: context)
+        wallLand = try .wallLand(in: context)
 
-        sheet = SpriteSheet(
-            asset: sprite.asset,
-            columns: 3,
-            rows: 4
-        )
+        sprite = idle.sprite
+        timeline = .init(animation: idle.animation)
 
-        idle = .init(
-            frames: sheet[row: 0, columns: ...1],
-            frameDuration: 0.3
-        )
-
-        walk = .init(
-            frames: sheet[row: 2],
-            frameDuration: 0.2
-        )
-
-        timeline = .init(animation: idle)
-        sprite.region = timeline.region
-        editable.size = sprite.size
+        editable.size = Self.size
         controller = .init(
-            configuration: .flexible(scale: sprite.size.y)
+            configuration: .flexible(scale: Self.size.x)
         )
 
         bindings.bind(to: context.inputs)
@@ -65,18 +66,32 @@ struct Character: Entity {
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
         captureInput()
+
         timeline.advance(by: time.delta)
         sprite.region = timeline.region
-
         isFlipped = !controller.isFacingRight
+
         switch controller.state {
-        case .walking, .running, .crouchWalking, .crouchRolling:
-            timeline.animation = walk
+        case .walking:
+            timeline.animation = walk.animation
+        case .running:
+            timeline.animation = run.animation
+        case .jumping:
+            timeline.animation = jump.animation
+        case .dash:
+            timeline.animation = dash.animation
+        case .crouching:
+            timeline.animation = crouchIdle.animation
+        case .crouchWalking:
+            timeline.animation = crouchWalk.animation
+        case .wallSliding:
+            timeline.animation = wallSlide.animation
+        case .wallFalling:
+            timeline.animation = wallLand.animation
         default:
-            timeline.animation = idle
+            timeline.animation = idle.animation
         }
 
-        editable.size = sprite.size
         editable.update(camera: camera, context: context)
     }
 

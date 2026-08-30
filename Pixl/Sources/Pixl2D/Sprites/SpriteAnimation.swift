@@ -1,7 +1,7 @@
 import Swift
 
 /// An immutable sequence of sprite regions with uniform frame timing.
-public struct SpriteAnimation {
+public struct SpriteAnimation: Sendable {
     /// Texture regions displayed in playback order.
     public let frames: [TextureRegion]
     /// Seconds for which each frame is displayed.
@@ -55,7 +55,7 @@ public struct SpriteAnimation {
 
 public extension SpriteAnimation {
     /// Mutable playback position for one animation.
-    struct Timeline {
+    struct Timeline: Sendable {
         /// Animation controlled by this timeline.
         public var animation: SpriteAnimation
         /// Current playback position, in seconds.

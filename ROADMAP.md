@@ -12,6 +12,8 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 - One game-facing Swift path runs on macOS/Metal and browsers/WebGPU.
 - Pixl provides lifecycle, timing, semantic input, audio, assets, metrics, and macOS hot reload over portable `PixlPlatform` contracts. PixlPlatform supplies allocation-free keyboard, gamepad, and high-fidelity physical mouse state and per-frame events on macOS and Web.
 - Pixl2D provides value-semantic sprites, analytic SDF shapes, gradients, materials, regions, sheets, animation, layers, transforms, and orthographic cameras.
+- Pixl2D provides game-owned discrete collision for rectangles, normalized polygons, analytic circles, and analytic capsules through a balanced dynamic AABB-tree broad phase and exact narrow phase.
+- Pixl currently includes a provisional fixed-step `PlatformerController` with configurable walk/run, variable and buffered jumps, coyote time, air jumps, dashing, crouching/rolling, wall sliding, and wall jumping.
 - Spatial, graphical, and normalized input values use compact `Float` storage throughout portable layers; time and accumulated durations remain `Double`.
 - Fixed-capacity immediate submission performs shared culling, ordering, batching, instance compaction, and indexed instanced sprite, analytic-shape, and polygon drawing without steady-state growth by design.
 - Game-provided render and queue capacities are authoritative. The current Game sizes them from actual visible submission needs rather than total world population.
@@ -24,12 +26,12 @@ This file is a compact view of where Pixl is and what should happen next. It is 
 
 ### First Playable Game Gate
 
-Complete these in order before expanding the engine surface:
+Complete the remaining items before expanding the engine surface:
 
-1. Streaming audio so long-form playback no longer requires fully decoded resident storage.
-2. Bitmap-font text for game HUD, scoring, and PixlUI menus.
-3. Small deterministic 2D collision vocabulary suitable for the first game.
-4. Minimal 2D platformer physics: velocity integration, gravity, grounded state, and collision response.
+- [ ] Streaming audio so long-form playback no longer requires fully decoded resident storage.
+- [ ] Bitmap-font text for game HUD, scoring, and PixlUI menus.
+- [x] Small deterministic 2D collision vocabulary suitable for the first game.
+- [x] Minimal 2D platformer movement: velocity integration, gravity, grounded state, and collision response.
 
 With these complete, build the first proper Retro Invaders game using the existing sprites, animation, input, PixlUI pause menu, music, sound effects, and scoring paths.
 
@@ -68,9 +70,13 @@ With these complete, build the first proper Retro Invaders game using the existi
 
 ### Minimal 2D Physics
 
-- [ ] Define lightweight game-owned 2D motion state with velocity and gravity integration over fixed updates.
-- [ ] Resolve the first game's body against static AABB platforms with deterministic position correction and velocity response.
-- [ ] Expose grounded/contact state sufficient for jumping and ordinary platformer movement.
+- [x] Provide fixed-step 2D motion state with velocity and configurable gravity integration.
+- [x] Resolve the first game's body against static rectangle and polygon surfaces with deterministic position correction and velocity response.
+- [x] Expose grounded/contact state supporting variable and buffered jumps, coyote time, air jumps, dashing, crouching/rolling, wall sliding, and wall jumping.
+- [ ] Replace the Game character's temporary AABB with `Capsule2D` and wire ground, head, and wall sensing through the controller's existing probe configuration.
+- [ ] Make crouching change the physical collider and prevent standing when overhead geometry blocks the standing shape.
+- [ ] Add focused regression coverage for dash, crouch/roll, wall movement, and compound state transitions.
+- [ ] Move the isolated provisional controller into `PixlPrototypes` when its collider integration is complete.
 - [ ] Defer general rigid bodies, rotation, impulses, joints, restitution, friction, and continuous collision detection.
 
 ### Later Collision Scaling
