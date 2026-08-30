@@ -1,5 +1,5 @@
 import Testing
-import Pixl2D
+@testable import Pixl2D
 
 @Suite
 struct DynamicAABBTreeTests {
@@ -33,6 +33,7 @@ struct DynamicAABBTreeTests {
 
         #expect(tree.count == 65)
         #expect(tree.bounds(for: first) == firstBounds)
+        #expect(tree.validateStructure())
     }
 
     @Test
@@ -51,5 +52,364 @@ struct DynamicAABBTreeTests {
         #expect(tree.bounds(for: removed) == nil)
         #expect(tree.bounds(for: replacement) == replacementBounds)
         #expect(tree.count == 1)
+        #expect(tree.validateStructure())
+    }
+
+    @Test
+    func rayReturnsNearestProxyAndHit() {
+        let tree = DynamicAABBTree2D()
+        _ = tree.insert(Rect(x: 30, y: -5, width: 10, height: 10))
+        let nearest = tree.insert(
+            Rect(x: 10, y: -5, width: 10, height: 10)
+        )
+        let ray = Ray2D(origin: .zero, direction: .init(1, 0))
+
+        let result = tree.intersection(with: ray)
+
+        #expect(result?.proxy == nearest)
+        #expect(result?.hit.distance == 10)
+        #expect(result?.hit.normal == .init(-1, 0))
+    }
+
+    @Test
+    func removingNearestProxyRevealsNextHit() {
+        let tree = DynamicAABBTree2D()
+        let nearest = tree.insert(
+            Rect(x: 10, y: -5, width: 10, height: 10)
+        )
+        let farther = tree.insert(
+            Rect(x: 30, y: -5, width: 10, height: 10)
+        )
+        let ray = Ray2D(origin: .zero, direction: .init(1, 0))
+
+        tree.remove(nearest)
+
+        #expect(tree.intersection(with: ray)?.proxy == farther)
+        #expect(tree.intersection(with: ray)?.hit.distance == 30)
+    }
+
+    @Test
+    func removingFinalProxyEmptiesTree() {
+        let tree = DynamicAABBTree2D()
+        let proxy = tree.insert(
+            Rect(x: 10, y: -5, width: 10, height: 10)
+        )
+
+        tree.remove(proxy)
+
+        #expect(tree.count == 0)
+        #expect(tree.height == 0)
+        #expect(
+            tree.intersection(
+                with: Ray2D(origin: .zero, direction: .init(1, 0))
+            ) == nil
+        )
+    }
+
+    @Test
+    func rayMissingTreeReturnsNil() {
+        let tree = DynamicAABBTree2D()
+        _ = tree.insert(Rect(x: 10, y: 10, width: 10, height: 10))
+
+        let result = tree.intersection(
+            with: Ray2D(origin: .zero, direction: .init(1, 0))
+        )
+
+        #expect(result == nil)
+    }
+
+    @Test
+    func orderedInsertionsRemainBalancedAndQueryable() {
+        let tree = DynamicAABBTree2D()
+        let first = tree.insert(
+            Rect(x: 0, y: -1, width: 1, height: 2)
+        )
+
+        for index in 1..<256 {
+            _ = tree.insert(
+                Rect(
+                    x: Float(index * 3),
+                    y: -1,
+                    width: 1,
+                    height: 2
+                )
+            )
+        }
+
+        let result = tree.intersection(
+            with: Ray2D(origin: .init(-10, 0), direction: .init(1, 0))
+        )
+
+        #expect(tree.count == 256)
+        #expect(tree.height < 32)
+        #expect(result?.proxy == first)
+        #expect(result?.hit.distance == 10)
+        #expect(tree.validateStructure())
+    }
+
+    @Test
+    func equalDistanceHitsAreDeterministic() {
+        let tree = DynamicAABBTree2D()
+        _ = tree.insert(Rect(x: 10, y: -5, width: 10, height: 10))
+        _ = tree.insert(Rect(x: 10, y: -5, width: 10, height: 10))
+        let ray = Ray2D(origin: .zero, direction: .init(1, 0))
+
+        let first = tree.intersection(with: ray)
+
+        for _ in 0..<32 {
+            #expect(tree.intersection(with: ray) == first)
+        }
+        #expect(first?.hit.distance == 10)
+        #expect(tree.validateStructure())
+    }
+
+    @Test
+    func zeroSizeBoundsAndInsideOriginsRemainQueryable() {
+        let pointTree = DynamicAABBTree2D()
+        let point = pointTree.insert(
+            Rect(x: 10, y: 0, width: 0, height: 0)
+        )
+        let containingTree = DynamicAABBTree2D()
+        let containing = containingTree.insert(
+            Rect(x: -5, y: -5, width: 10, height: 10)
+        )
+
+        #expect(
+            pointTree.intersection(
+                with: Ray2D(origin: .zero, direction: .init(1, 0))
+            )?.proxy == point
+        )
+        #expect(
+            containingTree.intersection(
+                with: Ray2D(origin: .zero, direction: .init(1, 0))
+            )?.proxy == containing
+        )
+        #expect(
+            containingTree.intersection(
+                with: Ray2D(origin: .zero, direction: .init(1, 0))
+            )?.hit.distance == 5
+        )
+    }
+
+    @Test
+    func randomizedMutationsAndRaysMatchBruteForce() {
+        let capacity = 512
+        let records = UnsafeMutablePointer<Record>.allocate(capacity: capacity)
+        var initializedCount = 0
+        defer {
+            records.deinitialize(count: initializedCount)
+            records.deallocate()
+        }
+
+        var random = Generator(seed: 0xC0FFEE)
+        let tree = DynamicAABBTree2D()
+
+        for index in 0..<384 {
+            let bounds = Self.randomBounds(using: &random)
+            let proxy = tree.insert(bounds)
+            records.advanced(by: index).initialize(
+                to: .init(proxy: proxy, bounds: bounds, isLive: true)
+            )
+            initializedCount += 1
+        }
+        #expect(tree.validateStructure())
+
+        Self.assertRandomRaysMatchOracle(
+            tree: tree,
+            records: records,
+            count: initializedCount,
+            random: &random,
+            rayCount: 1_000
+        )
+
+        for index in 0..<initializedCount where index.isMultiple(of: 3) {
+            tree.remove(records[index].proxy)
+            records[index].isLive = false
+            if index.isMultiple(of: 24) {
+                #expect(tree.validateStructure())
+            }
+        }
+
+        for index in initializedCount..<capacity {
+            let bounds = Self.randomBounds(using: &random)
+            let proxy = tree.insert(bounds)
+            records.advanced(by: index).initialize(
+                to: .init(proxy: proxy, bounds: bounds, isLive: true)
+            )
+            initializedCount += 1
+        }
+        #expect(tree.validateStructure())
+
+        Self.assertRandomRaysMatchOracle(
+            tree: tree,
+            records: records,
+            count: initializedCount,
+            random: &random,
+            rayCount: 1_000
+        )
+
+        for index in stride(from: initializedCount - 1, through: 0, by: -1) {
+            guard records[index].isLive else { continue }
+            tree.remove(records[index].proxy)
+            records[index].isLive = false
+            if index.isMultiple(of: 31) {
+                #expect(tree.validateStructure())
+            }
+        }
+
+        #expect(tree.count == 0)
+        #expect(tree.validateStructure())
+    }
+
+    @Test
+    func interleavedRandomMutationsPreserveQueriesAndStructure() {
+        let capacity = 128
+        let records = UnsafeMutablePointer<Record>.allocate(capacity: capacity)
+        defer {
+            records.deinitialize(count: capacity)
+            records.deallocate()
+        }
+
+        var random = Generator(seed: 0xBADC0DE)
+        let tree = DynamicAABBTree2D()
+
+        for index in 0..<capacity {
+            let bounds = Self.randomBounds(using: &random)
+            records.advanced(by: index).initialize(
+                to: .init(
+                    proxy: tree.insert(bounds),
+                    bounds: bounds,
+                    isLive: true
+                )
+            )
+        }
+
+        for operation in 0..<4_000 {
+            let index = random.int(upperBound: capacity)
+            if records[index].isLive {
+                tree.remove(records[index].proxy)
+                records[index].isLive = false
+            } else {
+                let bounds = Self.randomBounds(using: &random)
+                records[index] = .init(
+                    proxy: tree.insert(bounds),
+                    bounds: bounds,
+                    isLive: true
+                )
+            }
+
+            if operation.isMultiple(of: 40) {
+                #expect(tree.validateStructure())
+                Self.assertRandomRaysMatchOracle(
+                    tree: tree,
+                    records: records,
+                    count: capacity,
+                    random: &random,
+                    rayCount: 20
+                )
+            }
+        }
+
+        #expect(tree.validateStructure())
+    }
+}
+
+private extension DynamicAABBTreeTests {
+    struct Record {
+        let proxy: ProxyID
+        let bounds: Rect
+        var isLive: Bool
+    }
+
+    struct Generator {
+        var state: UInt64
+
+        init(seed: UInt64) {
+            state = seed
+        }
+
+        mutating func float(in range: ClosedRange<Float>) -> Float {
+            state = state &* 6_364_136_223_846_793_005 &+ 1
+            let value = Float(UInt32(truncatingIfNeeded: state >> 32))
+                / Float(UInt32.max)
+            return range.lowerBound
+                + ((range.upperBound - range.lowerBound) * value)
+        }
+
+        mutating func int(upperBound: Int) -> Int {
+            state = state &* 6_364_136_223_846_793_005 &+ 1
+            return Int(state % UInt64(upperBound))
+        }
+    }
+
+    static func randomBounds(using random: inout Generator) -> Rect {
+        Rect(
+            x: random.float(in: -1_000...1_000),
+            y: random.float(in: -1_000...1_000),
+            width: random.float(in: 0...40),
+            height: random.float(in: 0...40)
+        )
+    }
+
+    static func assertRandomRaysMatchOracle(
+        tree: DynamicAABBTree2D,
+        records: UnsafeMutablePointer<Record>,
+        count: Int,
+        random: inout Generator,
+        rayCount: Int
+    ) {
+        for _ in 0..<rayCount {
+            var direction = Vec2(
+                random.float(in: -1...1),
+                random.float(in: -1...1)
+            )
+            if direction == .zero {
+                direction = .init(1, 0)
+            }
+            let ray = Ray2D(
+                origin: .init(
+                    random.float(in: -1_200...1_200),
+                    random.float(in: -1_200...1_200)
+                ),
+                direction: direction
+            )
+
+            var expectedDistance = Float.infinity
+            for index in 0..<count where records[index].isLive {
+                if let hit = records[index].bounds.intersection(with: ray) {
+                    expectedDistance = min(expectedDistance, hit.distance)
+                }
+            }
+
+            let result = tree.intersection(with: ray)
+            if expectedDistance == .infinity {
+                #expect(result == nil)
+                continue
+            }
+
+            #expect(result != nil)
+            #expect(
+                abs((result?.hit.distance ?? .infinity) - expectedDistance)
+                    < 0.000_1
+            )
+
+            var matchedLiveProxy = false
+            if let result {
+                for index in 0..<count
+                where records[index].isLive
+                    && records[index].proxy == result.proxy
+                {
+                    matchedLiveProxy = true
+                    #expect(
+                        abs(
+                            (records[index].bounds.intersection(with: ray)?.distance
+                                ?? .infinity) - expectedDistance
+                        ) < 0.000_1
+                    )
+                    break
+                }
+            }
+            #expect(matchedLiveProxy)
+        }
     }
 }
