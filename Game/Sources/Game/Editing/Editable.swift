@@ -1,7 +1,7 @@
 import Pixl
 import Pixl2D
 
-struct Editable2D {
+struct Editable {
     var position: Vec2
     var rotation: Float
     var size: Vec2
@@ -92,7 +92,7 @@ struct Editable2D {
         )
 
         context.draw(
-            .ellipse(in: .init(center: .zero, size: size)),
+            .rect(.init(center: .zero, size: size)),
             transform: transform,
             style: .stroke(.fill, width: 1),
             layer: .gizmo

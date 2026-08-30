@@ -10,7 +10,7 @@ struct Character: Entity {
     private var timeline: SpriteAnimation.Timeline
     private var isFlipped: Bool = true
 
-    private var editable = Editable2D()
+    private var editable = Editable()
     private var velocity: Vec2 = .zero
     private let camera: OrthographicCamera
     private let rendering = RenderProperties(layer: .entity)

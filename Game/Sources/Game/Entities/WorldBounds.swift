@@ -37,7 +37,8 @@ struct WorldBounds: Entity {
 
         queue.submit(
             slope,
-            transform: .init(floor.center),
+            transform: .init(floor.center)
+                .scaled(x: -1, y: 1),
             rendering: rendering
         )
     }

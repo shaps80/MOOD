@@ -10,7 +10,7 @@ extension RenderQueue {
     ///   - material: Shading applied to the shape content.
     public func submit(
         _ shape: Shape,
-        transform: Transform2D,
+        transform: Shape.Transform,
         rendering: RenderProperties = .init(),
         material: Pixl2D.Material = .unlit
     ) {

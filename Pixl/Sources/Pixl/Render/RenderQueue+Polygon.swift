@@ -10,7 +10,7 @@ extension RenderQueue {
     ///   - material: Shading applied to the polygon content.
     public func submit(
         _ polygon: Polygon,
-        transform: Transform2D,
+        transform: Polygon.Transform,
         rendering: RenderProperties = .init(),
         material: Pixl2D.Material = .unlit
     ) {

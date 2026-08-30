@@ -10,7 +10,7 @@ extension RenderQueue {
     ///   - material: Shading applied to the sprite content.
     public func submit(
         _ sprite: Sprite,
-        transform: Transform2D,
+        transform: Sprite.Transform,
         rendering: RenderProperties = .init(),
         material: Pixl2D.Material = .unlit
     ) {
