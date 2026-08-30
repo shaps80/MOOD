@@ -11,27 +11,11 @@ struct Character: Entity {
     private var isFlipped: Bool = true
 
     private var editable = Editable()
-    private var velocity: Vec2 = .zero
-    private var horizontalVelocity: Float = 0
-    private var isGrounded = false
-    private var jumpBufferRemaining: Float = 0
-    private var coyoteTimeRemaining: Float = 0
-    private var isJumpPressCaptured = false
+    private var controller: PlatformerController
     private let camera: OrthographicCamera
     private let rendering = RenderProperties(layer: .entity)
 
-    private let gravity: Float = -1_200
-    private let jumpSpeed: Float = 500
-    private let minimumGroundNormalY: Float = 0.7
-    private let jumpBufferDuration: Float = 0.12
-    private let coyoteTimeDuration: Float = 0.1
-
     private let bindings: PlayerBindings = .init()
-    private let controller: AxisController = .init(
-        maxSpeed: 300,
-        acceleration: 1000,
-        deceleration: 1000
-    )
 
     init(
         camera: OrthographicCamera,
@@ -63,6 +47,9 @@ struct Character: Entity {
         timeline = .init(animation: idle)
         sprite.region = timeline.region
         editable.size = sprite.size
+        controller = .init(
+            configuration: .flexible(scale: sprite.size.y)
+        )
 
         bindings.bind(to: context.inputs)
     }
@@ -72,45 +59,20 @@ struct Character: Entity {
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
-        captureJumpInput()
-
-        let canJump = isGrounded || coyoteTimeRemaining > 0
-        isGrounded = false
-
-        horizontalVelocity = controller.velocity(
-            source: horizontalVelocity,
-            target: bindings.right.value - bindings.left.value,
-            delta: time.delta
-        )
-        velocity.x = horizontalVelocity
-
-        if canJump, jumpBufferRemaining > 0 {
-            velocity.y = jumpSpeed
-            jumpBufferRemaining = 0
-            coyoteTimeRemaining = 0
-        }
-
-        let delta = Float(time.delta)
-        velocity.y += gravity * delta
-
-        editable.position += velocity * delta
-
-        jumpBufferRemaining = max(0, jumpBufferRemaining - delta)
-        coyoteTimeRemaining = max(0, coyoteTimeRemaining - delta)
+        captureInput()
+        editable.position += controller.advance(delta: Float(time.delta))
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
-        captureJumpInput()
+        captureInput()
         timeline.advance(by: time.delta)
         sprite.region = timeline.region
 
-        if horizontalVelocity > 0 {
-            isFlipped = false
+        isFlipped = !controller.isFacingRight
+        switch controller.state {
+        case .walking, .running, .crouchWalking, .crouchRolling:
             timeline.animation = walk
-        } else if horizontalVelocity < 0 {
-            isFlipped = true
-            timeline.animation = walk
-        } else {
+        default:
             timeline.animation = idle
         }
 
@@ -127,31 +89,24 @@ struct Character: Entity {
               let contact = collision.contact
         else { return nil }
 
-        editable.position -= contact.normal * contact.depth
-
-        let inwardSpeed = velocity.dot(contact.normal)
-        if inwardSpeed > 0 {
-            velocity -= contact.normal * inwardSpeed
-        }
-
-        let surfaceNormal = -contact.normal
-        if surfaceNormal.y >= minimumGroundNormalY {
-            isGrounded = true
-            coyoteTimeRemaining = coyoteTimeDuration
-        }
+        editable.position += controller.resolve(contact)
 
         return editable.transform
     }
 
-    private mutating func captureJumpInput() {
-        guard bindings.space.is(.down) else {
-            isJumpPressCaptured = false
-            return
-        }
-        guard !isJumpPressCaptured else { return }
-
-        isJumpPressCaptured = true
-        jumpBufferRemaining = jumpBufferDuration
+    private mutating func captureInput() {
+        controller.capture(
+            .init(
+                movement: .init(
+                    bindings.right.value - bindings.left.value,
+                    bindings.up.value - bindings.down.value
+                ),
+                jump: .init(bindings.space),
+                run: .init(bindings.run),
+                dash: .init(bindings.dash),
+                crouch: .init(bindings.down)
+            )
+        )
     }
 
     func submit(to queue: RenderQueue, context: GameContext) {

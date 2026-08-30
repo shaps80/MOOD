@@ -55,6 +55,48 @@ public final class CollisionWorld2D {
         )
     }
 
+    /// Inserts local-space circle geometry with its model-to-world transform.
+    ///
+    /// Circle collision transforms support translation, rotation, and uniform
+    /// scale. Non-uniform scale and shear do not preserve a circle.
+    @discardableResult
+    public func insert(
+        _ circle: Circle2D,
+        transform: Transform2D = .identity,
+        mode: CollisionMode,
+        layer: CollisionLayer,
+        mask: CollisionMask = .all
+    ) -> ColliderID {
+        store.insert(
+            circle,
+            transform: transform,
+            isDynamic: mode == .dynamic,
+            layer: layer,
+            mask: mask
+        )
+    }
+
+    /// Inserts local-space capsule geometry with its model-to-world transform.
+    ///
+    /// Capsule collision transforms support translation, rotation, and uniform
+    /// scale. Non-uniform scale and shear do not preserve circular caps.
+    @discardableResult
+    public func insert(
+        _ capsule: Capsule2D,
+        transform: Transform2D = .identity,
+        mode: CollisionMode,
+        layer: CollisionLayer,
+        mask: CollisionMask = .all
+    ) -> ColliderID {
+        store.insert(
+            capsule,
+            transform: transform,
+            isDynamic: mode == .dynamic,
+            layer: layer,
+            mask: mask
+        )
+    }
+
     /// Removes a collider. Stale identities are ignored.
     public func remove(_ collider: ColliderID) {
         store.remove(collider)
@@ -66,15 +108,16 @@ public final class CollisionWorld2D {
     }
 
     /// Updates exact world-space rectangle bounds. Stale identities and
-    /// polygon colliders are ignored.
+    /// non-rectangle colliders are ignored.
     public func update(_ collider: ColliderID, bounds: Rect) {
         store.update(collider, bounds: bounds)
     }
 
     /// Updates a collider's model-to-world transform and invalidates its cache.
     ///
-    /// Polygon geometry applies the complete affine transform. Rectangles use
-    /// translation only until oriented rectangle collision is introduced.
+    /// Polygon geometry applies the complete affine transform. Circles and
+    /// capsules accept translation, rotation, and uniform scale. Rectangles
+    /// use translation only until oriented rectangle collision is introduced.
     /// Stale identities are ignored.
     public func update(_ collider: ColliderID, transform: Transform2D) {
         store.update(collider, transform: transform)

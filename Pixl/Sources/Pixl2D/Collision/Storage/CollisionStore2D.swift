@@ -53,6 +53,43 @@ final class CollisionStore2D {
         )
     }
 
+    func insert(
+        _ circle: Circle2D,
+        transform: Transform2D,
+        isDynamic: Bool,
+        layer: CollisionLayer = 0,
+        mask: CollisionMask = .all
+    ) -> ColliderID {
+        let circle = CircleColliderGeometry2D(circle, transform: transform)
+        return insert(
+            geometry: .circle(circle),
+            bounds: circle.bounds,
+            isDynamic: isDynamic,
+            layer: layer,
+            mask: mask
+        )
+    }
+
+    func insert(
+        _ capsule: Capsule2D,
+        transform: Transform2D,
+        isDynamic: Bool,
+        layer: CollisionLayer = 0,
+        mask: CollisionMask = .all
+    ) -> ColliderID {
+        let capsule = CapsuleColliderGeometry2D(
+            capsule,
+            transform: transform
+        )
+        return insert(
+            geometry: .capsule(capsule),
+            bounds: capsule.bounds,
+            isDynamic: isDynamic,
+            layer: layer,
+            mask: mask
+        )
+    }
+
     private func insert(
         geometry: ColliderGeometry2D,
         bounds: Rect,
@@ -120,6 +157,10 @@ final class CollisionStore2D {
             pool.records[index].bounds = bounds
         case .polygon(let polygon):
             guard polygon.setTransform(transform) else { return true }
+        case .circle(let circle):
+            guard circle.setTransform(transform) else { return true }
+        case .capsule(let capsule):
+            guard capsule.setTransform(transform) else { return true }
         }
         markDirty(index)
         return true
@@ -305,6 +346,12 @@ final class CollisionStore2D {
             case .polygon(let polygon):
                 polygon.synchronize()
                 _ = synchronize(index: index, bounds: polygon.bounds)
+            case .circle(let circle):
+                circle.synchronize()
+                _ = synchronize(index: index, bounds: circle.bounds)
+            case .capsule(let capsule):
+                capsule.synchronize()
+                _ = synchronize(index: index, bounds: capsule.bounds)
             }
         }
         dirtyIndices.deinitialize(count: dirtyCount)

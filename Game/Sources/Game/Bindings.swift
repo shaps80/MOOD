@@ -34,15 +34,15 @@ struct PlayerBindings {
     @InputMap(
         .key(.space)
     ) var space
-}
 
-extension PlayerBindings {
-    var velocity: Vec2 {
-        .init(
-            x: right.value - left.value,
-            y: up.value - down.value
-        )
-    }
+    @InputMap(
+        .key(.leftShift),
+        .key(.rightShift)
+    ) var run
+
+    @InputMap(
+        .key(.o)
+    ) var dash
 }
 
 @InputProfile

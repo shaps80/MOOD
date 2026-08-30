@@ -167,6 +167,72 @@ final class PolygonColliderGeometry2D {
         return best
     }
 
+    /// Returns a contact directed from `circle` toward this polygon.
+    func contact(from circle: CircleColliderGeometry2D) -> Contact2D? {
+        var nearestDistanceSquared = Float.infinity
+        var nearestPoint = Vec2.zero
+        var nearestOutwardNormal = Vec2.zero
+
+        for index in 0..<vertexCount {
+            let start = vertices[index]
+            let end = vertices[(index + 1) % vertexCount]
+            let edge = Segment(start: start, end: end)
+            let point = edge.closestPoint(to: circle.center)
+            let offset = point - circle.center
+            let distanceSquared = offset.dot(offset)
+            if distanceSquared < nearestDistanceSquared {
+                nearestDistanceSquared = distanceSquared
+                nearestPoint = point
+                let direction = end - start
+                nearestOutwardNormal = Vec2(
+                    direction.y,
+                    -direction.x
+                ).normalized * winding
+            }
+        }
+
+        let distance = nearestDistanceSquared.squareRoot()
+        if contains(circle.center) {
+            let outward = distance > 0
+                ? (nearestPoint - circle.center) / distance
+                : nearestOutwardNormal
+            return .init(
+                normal: -outward,
+                depth: circle.radius + distance
+            )
+        }
+
+        let depth = circle.radius - distance
+        guard depth > 0 else { return nil }
+        let normal = distance > 0
+            ? (nearestPoint - circle.center) / distance
+            : -nearestOutwardNormal
+        return .init(normal: normal, depth: depth)
+    }
+
+    /// Returns a contact directed from `capsule` toward this polygon.
+    func contact(from capsule: CapsuleColliderGeometry2D) -> Contact2D? {
+        var best: Contact2D?
+        let indices = storage.indices
+
+        for triangle in stride(from: 0, to: indices.count, by: 3) {
+            let vertices = (
+                Int(indices[triangle]),
+                Int(indices[triangle + 1]),
+                Int(indices[triangle + 2])
+            )
+            guard let contact = contact(
+                from: capsule,
+                triangle: vertices,
+                axisOffset: triangle
+            ) else { continue }
+            if best == nil || contact.depth < best!.depth {
+                best = contact
+            }
+        }
+        return best
+    }
+
     /// Returns the nearest intersection with the original polygon boundary.
     func intersection(with ray: Ray2D) -> RayHit2D? {
         let direction = ray.normalizedDirection
@@ -266,6 +332,103 @@ final class PolygonColliderGeometry2D {
         return test.contact
     }
 
+    private func contact(
+        from capsule: CapsuleColliderGeometry2D,
+        triangle: (Int, Int, Int),
+        axisOffset: Int
+    ) -> Contact2D? {
+        var test = SeparatingAxisContact2D()
+
+        for edgeIndex in 0..<3 {
+            let axis = triangleAxes[axisOffset + edgeIndex]
+            guard axis != .zero else { continue }
+            guard test.include(
+                axis: axis,
+                source: .init(capsule: capsule, axis: axis),
+                target: projection(of: triangle, axis: axis),
+                canResolve: boundaryEdges[axisOffset + edgeIndex]
+            ) else { return nil }
+        }
+
+        guard include(
+            capsule.normal,
+            capsule: capsule,
+            triangle: triangle,
+            test: &test
+        ), include(
+            capsule.tangent,
+            capsule: capsule,
+            triangle: triangle,
+            test: &test
+        ), include(
+            vertex: vertices[triangle.0],
+            capsule: capsule,
+            triangle: triangle,
+            test: &test
+        ), include(
+            vertex: vertices[triangle.1],
+            capsule: capsule,
+            triangle: triangle,
+            test: &test
+        ), include(
+            vertex: vertices[triangle.2],
+            capsule: capsule,
+            triangle: triangle,
+            test: &test
+        ) else { return nil }
+
+        return test.contact
+    }
+
+    @inline(__always)
+    private func include(
+        _ axis: Vec2,
+        capsule: CapsuleColliderGeometry2D,
+        triangle: (Int, Int, Int),
+        test: inout SeparatingAxisContact2D
+    ) -> Bool {
+        let axis = axis.normalized
+        guard axis != .zero else { return true }
+        return test.include(
+            axis: axis,
+            source: .init(capsule: capsule, axis: axis),
+            target: projection(of: triangle, axis: axis),
+            canResolve: true
+        )
+    }
+
+    @inline(__always)
+    private func include(
+        vertex: Vec2,
+        capsule: CapsuleColliderGeometry2D,
+        triangle: (Int, Int, Int),
+        test: inout SeparatingAxisContact2D
+    ) -> Bool {
+        include(
+            vertex - capsule.segment.closestPoint(to: vertex),
+            capsule: capsule,
+            triangle: triangle,
+            test: &test
+        )
+    }
+
+    private func contains(_ point: Vec2) -> Bool {
+        var inside = false
+        var previous = vertices[vertexCount - 1]
+        for index in 0..<vertexCount {
+            let current = vertices[index]
+            if (current.y > point.y) != (previous.y > point.y),
+               point.x < (previous.x - current.x)
+                    * (point.y - current.y)
+                    / (previous.y - current.y)
+                    + current.x {
+                inside.toggle()
+            }
+            previous = current
+        }
+        return inside
+    }
+
     @inline(__always)
     private func projection(
         of triangle: (Int, Int, Int),
@@ -280,57 +443,4 @@ final class PolygonColliderGeometry2D {
         )
     }
 
-}
-
-private struct Projection2D {
-    let minimum: Float
-    let maximum: Float
-
-    init(minimum: Float, maximum: Float) {
-        self.minimum = minimum
-        self.maximum = maximum
-    }
-
-    init(rect: Rect, axis: Vec2) {
-        let center = rect.center.dot(axis)
-        let halfSize = rect.size * 0.5
-        let radius = (halfSize.x * abs(axis.x))
-            + (halfSize.y * abs(axis.y))
-        minimum = center - radius
-        maximum = center + radius
-    }
-}
-
-private struct SeparatingAxisContact2D {
-    private var depth = Float.infinity
-    private var normal = Vec2.zero
-
-    var contact: Contact2D? {
-        guard depth.isFinite else { return nil }
-        return .init(normal: normal, depth: depth)
-    }
-
-    /// Tests one axis and records it only when it is an exterior surface.
-    mutating func include(
-        axis: Vec2,
-        source: Projection2D,
-        target: Projection2D,
-        canResolve: Bool
-    ) -> Bool {
-        let negativeDepth = source.maximum - target.minimum
-        let positiveDepth = target.maximum - source.minimum
-        guard negativeDepth > 0, positiveDepth > 0 else { return false }
-        guard canResolve else { return true }
-
-        if negativeDepth <= positiveDepth {
-            if negativeDepth < depth {
-                depth = negativeDepth
-                normal = axis
-            }
-        } else if positiveDepth < depth {
-            depth = positiveDepth
-            normal = -axis
-        }
-        return true
-    }
 }

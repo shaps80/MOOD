@@ -87,4 +87,16 @@ struct ShapeAuthoringTests {
 
         #expect(shapes.count == 38)
     }
+
+    @Test
+    func collisionGeometryCanBeRenderedAnalytically() {
+        let circle = Circle2D(center: .init(2, 3), radius: 4)
+        let capsule = Capsule2D(
+            segment: .init(start: .init(-2, -1), end: .init(3, 4)),
+            radius: 2
+        )
+
+        #expect(Shape(circle).geometry == .circle2D(circle))
+        #expect(Shape(capsule).geometry == .capsule2D(capsule))
+    }
 }

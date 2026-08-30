@@ -10,6 +10,8 @@ public struct Shape: Hashable, Sendable, Renderable {
     public enum Geometry: Hashable, Sendable {
         /// Circle geometry.
         case circle(Circle)
+        /// Shared local-space circle geometry used by collision and rendering.
+        case circle2D(Circle2D)
         /// Rectangle geometry.
         case rectangle(Rectangle)
         /// Rectangle geometry with independent continuous corner radii.
@@ -30,6 +32,8 @@ public struct Shape: Hashable, Sendable, Renderable {
         case triangle(TriangleShape)
         /// Capsule geometry with independent end radii.
         case unevenCapsule(UnevenCapsule)
+        /// Shared local-space equal-radius capsule geometry.
+        case capsule2D(Capsule2D)
         /// Regular-pentagon geometry.
         case pentagon(Pentagon)
         /// Regular-hexagon geometry.
@@ -121,6 +125,11 @@ public struct Shape: Hashable, Sendable, Renderable {
         self.init(geometry: .circle(geometry))
     }
 
+    /// Creates an analytic shape from reusable circle geometry.
+    public init(_ geometry: Circle2D) {
+        self.init(geometry: .circle2D(geometry))
+    }
+
     /// Creates a rectangle shape.
     ///
     /// ```swift
@@ -167,6 +176,8 @@ public struct Shape: Hashable, Sendable, Renderable {
     /// Creates an uneven-capsule shape. Use `Shape(.unevenCapsule)` for canonical sizing.
     /// - Parameter geometry: Analytic geometry value.
     public init(_ geometry: UnevenCapsule) { self.init(geometry: .unevenCapsule(geometry)) }
+    /// Creates an analytic shape from reusable capsule geometry.
+    public init(_ geometry: Capsule2D) { self.init(geometry: .capsule2D(geometry)) }
     /// Creates a regular-pentagon shape. Use `Shape(.pentagon)` for unit sizing.
     /// - Parameter geometry: Analytic geometry value.
     public init(_ geometry: Pentagon) { self.init(geometry: .pentagon(geometry)) }

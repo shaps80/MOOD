@@ -5,7 +5,9 @@ import Swift
 public extension Input {
     /// A physical source contributing to one semantic input.
     enum Binding: Hashable, Sendable {
-        /// A physical keyboard key with an exact modifier requirement.
+        /// A physical keyboard key with required modifiers.
+        ///
+        /// Additional held modifiers do not prevent the binding from matching.
         case key(Key, modifiers: Key.Modifiers = [])
         /// A gamepad button or trigger.
         case button(Gamepad.Button)

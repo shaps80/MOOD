@@ -145,7 +145,7 @@ public extension Input {
         ) {
             for binding in keyBindings {
                 guard keyboard.contains(binding.key),
-                      modifiers == binding.modifiers
+                      modifiers.isSuperset(of: binding.modifiers)
                 else {
                     continue
                 }

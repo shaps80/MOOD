@@ -27,3 +27,9 @@ public struct Contact2D: Sendable, Equatable {
         self.depth = depth
     }
 }
+
+extension Contact2D {
+    var reversed: Self {
+        .init(normal: -normal, depth: depth)
+    }
+}

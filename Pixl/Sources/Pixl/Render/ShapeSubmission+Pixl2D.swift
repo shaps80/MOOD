@@ -17,11 +17,19 @@ extension ShapeSubmission {
         let parameters: SIMD4<Float>
         var extendedParameters = SIMD4<Float>.zero
         var localOffset = Vec2.zero
+        var localBasisX = Vec2(1, 0)
+        var localBasisY = Vec2(0, 1)
         switch shape.geometry {
         case .circle(let circle):
             let diameter = Float((circle.radius ?? 0.5) * 2)
             size = .init(repeating: diameter)
             parameters = .init(diameter * 0.5, diameter * 0.5, 0, 0)
+            kind = .circle
+        case .circle2D(let circle):
+            let diameter = circle.radius * 2
+            size = .init(repeating: diameter)
+            localOffset = circle.center
+            parameters = .init(circle.radius, circle.radius, 0, 0)
             kind = .circle
         case .rectangle(let rectangle):
             let localSize = rectangle.size ?? .one
@@ -110,6 +118,24 @@ extension ShapeSubmission {
         case .unevenCapsule(let value):
             size = .init(Float(max(value.bottomRadius, value.topRadius) * 2), Float(value.height + value.bottomRadius + value.topRadius))
             parameters = .init(Float(value.bottomRadius), Float(value.topRadius), Float(value.height), 0)
+            kind = .unevenCapsule
+        case .capsule2D(let capsule):
+            let direction = capsule.segment.end - capsule.segment.start
+            let segmentLength = direction.length
+            let tangent = direction / segmentLength
+            localOffset = (capsule.segment.start + capsule.segment.end) * 0.5
+            localBasisX = .init(tangent.y, -tangent.x)
+            localBasisY = tangent
+            size = .init(
+                capsule.radius * 2,
+                segmentLength + (capsule.radius * 2)
+            )
+            parameters = .init(
+                capsule.radius,
+                capsule.radius,
+                segmentLength,
+                0
+            )
             kind = .unevenCapsule
         case .pentagon(let value):
             let radius = Float(value.radius ?? 0.5); size = .init(repeating: radius * 2)
@@ -233,7 +259,15 @@ extension ShapeSubmission {
         }
         let rounding = Float(shape.rounding)
         let quadSize = size + SIMD2(repeating: (outwardStroke + rounding) * 2)
-        let transform = sourceTransform.translated(by: localOffset).scaled(
+        let translatedTransform = sourceTransform.translated(by: localOffset)
+        let orientedTransform = Transform2D(
+            x: (sourceTransform.x * localBasisX.x)
+                + (sourceTransform.y * localBasisX.y),
+            y: (sourceTransform.x * localBasisY.x)
+                + (sourceTransform.y * localBasisY.y),
+            translation: translatedTransform.translation
+        )
+        let transform = orientedTransform.scaled(
             x: quadSize.x,
             y: quadSize.y
         )
