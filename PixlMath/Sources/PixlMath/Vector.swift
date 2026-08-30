@@ -14,6 +14,12 @@ public func cross(_ lhs: SIMD3<Float>, _ rhs: SIMD3<Float>) -> SIMD3<Float> {
     ]
 }
 
+/// Returns the signed scalar cross product of two two-dimensional vectors.
+@inlinable @inline(__always)
+public func cross(_ lhs: SIMD2<Float>, _ rhs: SIMD2<Float>) -> Float {
+    lhs.x * rhs.y - lhs.y * rhs.x
+}
+
 @inlinable @inline(__always)
 public func normalize(_ value: SIMD3<Float>) -> SIMD3<Float> {
     let lengthSquared = dot(value, value)

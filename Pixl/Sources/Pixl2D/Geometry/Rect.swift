@@ -104,6 +104,11 @@ public struct Rect: Equatable, Sendable, CustomDebugStringConvertible {
 }
 
 public extension Rect {
+    @inline(__always) var width: Float { size.x }
+    @inline(__always) var height: Float { size.y }
+}
+
+public extension Rect {
     /// The minimum x coordinate.
     ///
     /// ```swift
