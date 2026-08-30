@@ -62,6 +62,25 @@ public final class CollisionWorld2D {
         currentContacts.swapStorage(with: previousContacts)
     }
 
+    /// Advances collision detection and visits each directed report.
+    ///
+    /// Return corrected world-space bounds for the report's source collider
+    /// when handling the collision changes its transform. The collision world
+    /// applies those bounds immediately, keeping its internal storage in sync
+    /// without requiring a second game-side ``update(_:bounds:)`` call.
+    /// Return `nil` when the source bounds did not change.
+    public func advance(
+        _ body: (Collision2D) -> Rect?
+    ) {
+        advance()
+        for index in 0..<reports.count {
+            let report = reports.reports[index]
+            if let bounds = body(report) {
+                store.update(report.source.collider, bounds: bounds)
+            }
+        }
+    }
+
     /// Visits directed reports produced by the latest call to ``advance()``.
     public func forEachCollision(_ body: (Collision2D) -> Void) {
         for index in 0..<reports.count {

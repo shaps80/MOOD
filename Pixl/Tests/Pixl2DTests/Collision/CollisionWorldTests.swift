@@ -57,6 +57,31 @@ struct CollisionWorldTests {
     }
 
     @Test
+    func advanceSynchronizesCorrectedSourceBoundsReturnedByCallback() {
+        let world = CollisionWorld2D()
+        _ = world.insert(
+            bounds: Rect(x: 8, y: 0, width: 10, height: 10),
+            mode: .static,
+            layer: .world,
+            mask: .none
+        )
+        let player = world.insert(
+            bounds: Rect(x: 0, y: 0, width: 10, height: 10),
+            mode: .dynamic,
+            layer: .player,
+            mask: CollisionMask(.world)
+        )
+        let correctedBounds = Rect(x: -2, y: 0, width: 10, height: 10)
+
+        world.advance { collision in
+            #expect(collision.source.collider == player)
+            return correctedBounds
+        }
+
+        #expect(world.bounds(for: player) == correctedBounds)
+    }
+
+    @Test
     func persistentCollisionAdvancesThroughChangedAndEndedPhases() {
         let world = CollisionWorld2D()
         _ = world.insert(

@@ -90,12 +90,14 @@ struct Game: Pixl.Game {
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
         character.fixedUpdate(time, context: context)
         collisions.update(characterCollider, bounds: character.bounds)
-        collisions.advance()
-        collisions.forEachCollision { collision in
-            guard collision.source.collider == characterCollider else { return }
-            character.onCollision(collision, context: context)
+
+        collisions.advance { collision in
+            character.onCollision(
+                collision,
+                collider: characterCollider,
+                context: context
+            )
         }
-        collisions.update(characterCollider, bounds: character.bounds)
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {

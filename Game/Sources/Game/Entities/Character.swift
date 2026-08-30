@@ -89,10 +89,14 @@ struct Character: Entity {
 
     mutating func onCollision(
         _ collision: Collision2D,
+        collider: ColliderID,
         context: GameContext
-    ) {
-        guard let contact = collision.contact else { return }
-        editable.position -= contact.normal * contact.depth
+    ) -> Rect? {
+        guard collision.source.collider == collider else { return nil }
+        if let contact = collision.contact {
+            editable.position -= contact.normal * contact.depth
+        }
+        return bounds
     }
 
     func submit(to queue: RenderQueue, context: GameContext) {
