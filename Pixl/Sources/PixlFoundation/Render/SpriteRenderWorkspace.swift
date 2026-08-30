@@ -42,6 +42,7 @@ public final class SpriteRenderWorkspace {
     private let shapeUpload: UnsafeMutablePointer<RenderQueue.ShapeInstance>
     private let extendedShapeUpload: UnsafeMutablePointer<RenderQueue.ExtendedShapeInstance>
     private let primitiveUpload: UnsafeMutablePointer<RenderQueue.PrimitiveInstance>
+    private let polygonUpload: UnsafeMutablePointer<RenderQueue.PolygonInstance>
 
     package init(resources: SpriteRenderResources, queue: RenderQueue) {
         self.resources = resources
@@ -81,9 +82,20 @@ public final class SpriteRenderWorkspace {
             transformX: .zero, transformY: .zero, translation: .zero,
             origin: .zero, size: .zero, width: 0, colorRGBA8: 0
         ), count: capacity)
+        polygonUpload = .allocate(capacity: capacity)
+        polygonUpload.initialize(repeating: .init(
+            transformX: .zero,
+            transformY: .zero,
+            translation: .zero,
+            colorRGBA8: 0
+        ), count: capacity)
         precondition(
             MemoryLayout<RenderQueue.Instance>.stride == 48,
             "Sprite instance ABI must remain 48 bytes"
+        )
+        precondition(
+            MemoryLayout<RenderQueue.PolygonInstance>.stride == 32,
+            "Polygon instance ABI must remain 32 bytes"
         )
     }
 
@@ -98,6 +110,8 @@ public final class SpriteRenderWorkspace {
         extendedShapeUpload.deallocate()
         primitiveUpload.deinitialize(count: capacity)
         primitiveUpload.deallocate()
+        polygonUpload.deinitialize(count: capacity)
+        polygonUpload.deallocate()
     }
 
     /// Encodes one execution view using shared sprite rendering resources.
@@ -132,6 +146,7 @@ public final class SpriteRenderWorkspace {
         var hasShapes = false
         var hasExtendedShapes = false
         var hasPrimitives = false
+        var hasPolygons = false
         var hasGradients = false
         for batch in view.batches {
             switch batch.family {
@@ -139,6 +154,7 @@ public final class SpriteRenderWorkspace {
             case .shape: hasShapes = true
             case .extendedShape: hasExtendedShapes = true
             case .primitive: hasPrimitives = true
+            case .polygon: hasPolygons = true
             }
             if (batch.family == .shape || batch.family == .extendedShape),
                 execution.shapeBatchKeys[Int(batch.key)].usesGradient
@@ -157,6 +173,9 @@ public final class SpriteRenderWorkspace {
             }
             if hasPrimitives {
                 primitiveUpload[index] = execution.primitiveInstances[ordinal]
+            }
+            if hasPolygons {
+                polygonUpload[index] = execution.polygonInstances[ordinal]
             }
         }
         pass.setVertexBuffer(geometry.vertex, index: 0)
@@ -209,17 +228,29 @@ public final class SpriteRenderWorkspace {
                 index: 5
             )
         }
+        if hasPolygons {
+            pass.setVertexData(
+                UnsafeRawBufferPointer(
+                    start: polygonUpload,
+                    count: view.ordinals.count
+                        * MemoryLayout<RenderQueue.PolygonInstance>.stride
+                ),
+                index: 6
+            )
+        }
         let metrics = Metrics(instancesSeconds: Self.seconds(since: instanceStart))
         let gradients = try hasGradients ? resources.gradientResources(for: execution) : nil
 
         var start = UInt32(0)
+        var usesSharedGeometry = true
         var usesPrimitiveGeometry = false
         var primitiveGeometry: PrimitiveGeometryResources?
         for batch in view.batches {
             switch batch.family {
             case .sprite:
-                if usesPrimitiveGeometry {
+                if !usesSharedGeometry {
                     pass.setVertexBuffer(geometry.vertex, index: 0)
+                    usesSharedGeometry = true
                     usesPrimitiveGeometry = false
                 }
                 let keyIndex = Int(batch.key)
@@ -238,8 +269,9 @@ public final class SpriteRenderWorkspace {
                 pass.setFragmentTexture(spriteResources.resolved.texture, index: 0)
                 pass.setFragmentSampler(spriteResources.resolved.sampler, index: 0)
             case .shape:
-                if usesPrimitiveGeometry {
+                if !usesSharedGeometry {
                     pass.setVertexBuffer(geometry.vertex, index: 0)
+                    usesSharedGeometry = true
                     usesPrimitiveGeometry = false
                 }
                 let key = execution.shapeBatchKeys[Int(batch.key)]
@@ -253,8 +285,9 @@ public final class SpriteRenderWorkspace {
                     pass.setFragmentSampler(gradients!.sampler, index: 1)
                 }
             case .extendedShape:
-                if usesPrimitiveGeometry {
+                if !usesSharedGeometry {
                     pass.setVertexBuffer(geometry.vertex, index: 0)
+                    usesSharedGeometry = true
                     usesPrimitiveGeometry = false
                 }
                 let key = execution.shapeBatchKeys[Int(batch.key)]
@@ -272,6 +305,7 @@ public final class SpriteRenderWorkspace {
                 primitiveGeometry = primitive
                 if !usesPrimitiveGeometry {
                     pass.setVertexBuffer(primitive.vertex, index: 0)
+                    usesSharedGeometry = false
                     usesPrimitiveGeometry = true
                 }
                 pass.setRenderPipeline(try resources.primitivePipeline(format: pass.colorFormat))
@@ -284,6 +318,28 @@ public final class SpriteRenderWorkspace {
                     indexBufferOffset: range.indexBufferOffset,
                     instanceCount: batch.end - start,
                     baseVertex: range.baseVertex,
+                    baseInstance: start
+                )
+                start = batch.end
+                continue
+            case .polygon:
+                let key = execution.polygonBatchKeys[Int(batch.key)]
+                let polygon = try resources.polygonGeometry(
+                    execution.polygonGeometries[Int(key.geometry)]
+                )
+                pass.setVertexBuffer(polygon.vertex, index: 0)
+                usesSharedGeometry = false
+                usesPrimitiveGeometry = false
+                pass.setRenderPipeline(try resources.polygonPipeline(
+                    format: pass.colorFormat,
+                    blendMode: key.blendMode
+                ))
+                pass.drawIndexedPrimitives(
+                    .triangle,
+                    indexCount: polygon.indexCount,
+                    indexType: .uint32,
+                    indexBuffer: polygon.index,
+                    instanceCount: batch.end - start,
                     baseInstance: start
                 )
                 start = batch.end

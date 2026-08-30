@@ -11,6 +11,7 @@ public final class RenderQueue {
         case sprite(SpriteSubmission)
         case shape(ShapeSubmission)
         case primitive(PrimitiveSubmission)
+        case polygon(PolygonSubmission)
     }
 
     /// GPU renderer family for one consecutive batch.
@@ -23,6 +24,8 @@ public final class RenderQueue {
         case extendedShape
         /// Lightweight filled or stroked immediate primitives.
         case primitive
+        /// Indexed polygon instances.
+        case polygon
     }
     /// Fixed capacities allocated by a render queue.
     public struct Settings: Hashable, Sendable {
@@ -46,7 +49,7 @@ public final class RenderQueue {
             precondition(capacity > 0)
             precondition(UInt64(capacity) <= UInt64(UInt32.max))
             precondition(capacity <= Int.max / 2)
-            precondition(UInt64(capacity) < UInt64(1) << 30)
+            precondition(UInt64(capacity) < UInt64(1) << 29)
             precondition((1...64).contains(viewCapacity))
             precondition((1...256).contains(gradientCapacity))
             self.capacity = capacity
@@ -187,6 +190,22 @@ public final class RenderQueue {
         public let colorRGBA8: UInt32
     }
 
+    /// Compact GPU-facing indexed-polygon instance produced during lowering.
+    public struct PolygonInstance: BitwiseCopyable, Sendable {
+        public let transformX: SIMD2<Float>
+        public let transformY: SIMD2<Float>
+        public let translation: SIMD2<Float>
+        /// Packed premultiplied linear eight-bit RGBA colour.
+        public let colorRGBA8: UInt32
+    }
+
+    /// Retained immutable indexed geometry registered by polygon identity.
+    package struct PolygonGeometry {
+        package let owner: AnyObject
+        package let vertices: UnsafeBufferPointer<SIMD2<Float>>
+        package let indices: UnsafeBufferPointer<UInt32>
+    }
+
     /// Shape pipeline compatibility shared by consecutive instances.
     package struct ShapeBatchKey: Hashable, Sendable {
         /// Fixed-function colour composition.
@@ -203,6 +222,12 @@ public final class RenderQueue {
         public let sampler: SamplerDescriptor
         /// Fixed-function colour composition.
         public let blendMode: BlendMode
+    }
+
+    /// Polygon geometry and pipeline compatibility shared by consecutive instances.
+    package struct PolygonBatchKey: Equatable, Sendable {
+        package let geometry: UInt32
+        package let blendMode: BlendMode
     }
 
     /// One consecutive range sharing a batch key.
@@ -242,6 +267,8 @@ public final class RenderQueue {
         public let extendedShapeInstances: UnsafeBufferPointer<ExtendedShapeInstance>
         /// Ordinal-aligned immediate-primitive instance records.
         public let primitiveInstances: UnsafeBufferPointer<PrimitiveInstance>
+        /// Ordinal-aligned indexed-polygon instance records.
+        public let polygonInstances: UnsafeBufferPointer<PolygonInstance>
         /// Premultiplied RGBA8 rows for registered gradients.
         public let gradientAtlas: UnsafeBufferPointer<UInt8>
         /// Number of valid 256-pixel rows in ``gradientAtlas``.
@@ -252,6 +279,10 @@ public final class RenderQueue {
         package let spriteBatchKeys: UnsafeBufferPointer<SpriteBatchKey>
         /// Unique shape batch keys referenced by view batches.
         package let shapeBatchKeys: UnsafeBufferPointer<ShapeBatchKey>
+        /// Unique polygon batch keys referenced by view batches.
+        package let polygonBatchKeys: UnsafeBufferPointer<PolygonBatchKey>
+        /// Immutable registered polygon geometries.
+        package let polygonGeometries: UnsafeBufferPointer<PolygonGeometry>
         /// Outputs corresponding positionally to the supplied views.
         public let views: UnsafeBufferPointer<ViewOutput>
         /// CPU stage durations for this execution.
@@ -310,6 +341,7 @@ public final class RenderQueue {
     private let shapeInstances: UnsafeMutablePointer<ShapeInstance>
     private let extendedShapeInstances: UnsafeMutablePointer<ExtendedShapeInstance>
     private let primitiveInstances: UnsafeMutablePointer<PrimitiveInstance>
+    private let polygonInstances: UnsafeMutablePointer<PolygonInstance>
     private let families: UnsafeMutablePointer<Family>
     private let visibilityMasks: UnsafeMutablePointer<UInt64>
     private let visibleUnion: UnsafeMutablePointer<UInt32>
@@ -321,6 +353,8 @@ public final class RenderQueue {
     private let spriteBatchKeyRegistry: UnsafeMutablePointer<RegistryEntry>
     private let spriteBatchKeys: UnsafeMutablePointer<SpriteBatchKey>
     private let shapeBatchKeys: UnsafeMutablePointer<ShapeBatchKey>
+    private let polygonBatchKeys: UnsafeMutablePointer<PolygonBatchKey>
+    private let polygonGeometries: UnsafeMutablePointer<PolygonGeometry>
     private let radixCounts: UnsafeMutablePointer<Int>
     private let viewContexts: UnsafeMutablePointer<ViewContext>
     private let viewOutputs: UnsafeMutablePointer<ViewOutput>
@@ -332,6 +366,8 @@ public final class RenderQueue {
     private var layerCount = 0
     private var spriteBatchKeyCount = 0
     private var shapeBatchKeyCount = 0
+    private var polygonBatchKeyCount = 0
+    private var polygonGeometryCount = 0
     private var layerGeneration = UInt32(0)
     private var gradientCount = 0
     private var gradientGeneration = UInt64(0)
@@ -353,6 +389,7 @@ public final class RenderQueue {
         shapeInstances = .allocate(capacity: capacity)
         extendedShapeInstances = .allocate(capacity: capacity)
         primitiveInstances = .allocate(capacity: capacity)
+        polygonInstances = .allocate(capacity: capacity)
         families = .allocate(capacity: capacity)
         visibilityMasks = .allocate(capacity: capacity)
         visibleUnion = .allocate(capacity: capacity)
@@ -364,6 +401,8 @@ public final class RenderQueue {
         spriteBatchKeyRegistry = .allocate(capacity: registryCapacity)
         spriteBatchKeys = .allocate(capacity: capacity)
         shapeBatchKeys = .allocate(capacity: capacity)
+        polygonBatchKeys = .allocate(capacity: capacity)
+        polygonGeometries = .allocate(capacity: capacity)
         radixCounts = .allocate(capacity: 256)
         viewContexts = .allocate(capacity: settings.viewCapacity)
         viewOutputs = .allocate(capacity: settings.viewCapacity)
@@ -413,6 +452,8 @@ public final class RenderQueue {
         extendedShapeInstances.deallocate()
         primitiveInstances.deinitialize(count: initializedExecutionCount)
         primitiveInstances.deallocate()
+        polygonInstances.deinitialize(count: initializedExecutionCount)
+        polygonInstances.deallocate()
         families.deinitialize(count: initializedExecutionCount)
         families.deallocate()
         visibilityMasks.deinitialize(count: settings.capacity)
@@ -435,6 +476,10 @@ public final class RenderQueue {
         spriteBatchKeys.deallocate()
         shapeBatchKeys.deinitialize(count: shapeBatchKeyCount)
         shapeBatchKeys.deallocate()
+        polygonBatchKeys.deinitialize(count: polygonBatchKeyCount)
+        polygonBatchKeys.deallocate()
+        polygonGeometries.deinitialize(count: polygonGeometryCount)
+        polygonGeometries.deallocate()
         radixCounts.deinitialize(count: 256)
         radixCounts.deallocate()
         for index in 0..<settings.viewCapacity {
@@ -491,6 +536,42 @@ public final class RenderQueue {
         )
         submissions.advanced(by: count).initialize(to: .primitive(submission))
         count += 1
+    }
+
+    /// Appends one indexed-polygon submission.
+    package func submit(_ submission: PolygonSubmission) {
+        precondition(
+            count < settings.capacity,
+            "Render queue submission capacity exceeded: capacity \(settings.capacity), attempted count \(count + 1)"
+        )
+        submissions.advanced(by: count).initialize(to: .polygon(submission))
+        count += 1
+    }
+
+    /// Retains immutable polygon geometry once and returns its queue-local slot.
+    package func registerPolygonGeometry(
+        owner: AnyObject,
+        vertices: UnsafeBufferPointer<SIMD2<Float>>,
+        indices: UnsafeBufferPointer<UInt32>
+    ) -> UInt32 {
+        for index in 0..<polygonGeometryCount
+        where polygonGeometries[index].owner === owner {
+            return UInt32(index)
+        }
+        precondition(
+            polygonGeometryCount < settings.capacity,
+            "Render queue polygon-geometry capacity exceeded: capacity \(settings.capacity), attempted count \(polygonGeometryCount + 1)"
+        )
+        let slot = UInt32(polygonGeometryCount)
+        polygonGeometries.advanced(by: polygonGeometryCount).initialize(
+            to: PolygonGeometry(
+                owner: owner,
+                vertices: vertices,
+                indices: indices
+            )
+        )
+        polygonGeometryCount += 1
+        return slot
     }
 
     /// Appends analytic-shape snapshots using one capacity check.
@@ -666,6 +747,7 @@ public final class RenderQueue {
                 shapeInstances: UnsafeBufferPointer(start: shapeInstances, count: count),
                 extendedShapeInstances: UnsafeBufferPointer(start: extendedShapeInstances, count: count),
                 primitiveInstances: UnsafeBufferPointer(start: primitiveInstances, count: count),
+                polygonInstances: UnsafeBufferPointer(start: polygonInstances, count: count),
                 gradientAtlas: UnsafeBufferPointer(
                     start: gradientBytes,
                     count: gradientCount * 256 * 4
@@ -679,6 +761,14 @@ public final class RenderQueue {
                 shapeBatchKeys: UnsafeBufferPointer(
                     start: shapeBatchKeys,
                     count: shapeBatchKeyCount
+                ),
+                polygonBatchKeys: UnsafeBufferPointer(
+                    start: polygonBatchKeys,
+                    count: polygonBatchKeyCount
+                ),
+                polygonGeometries: UnsafeBufferPointer(
+                    start: polygonGeometries,
+                    count: polygonGeometryCount
                 ),
                 views: UnsafeBufferPointer(start: viewOutputs, count: views.count),
                 metrics: metrics
@@ -699,6 +789,7 @@ public final class RenderQueue {
             let shapeInstance: ShapeInstance
             let extendedShapeInstance: ExtendedShapeInstance
             let primitiveInstance: PrimitiveInstance
+            let polygonInstance: PolygonInstance
             switch source {
             case .sprite(let source):
                 let batchKey = SpriteBatchKey(
@@ -724,6 +815,7 @@ public final class RenderQueue {
                 shapeInstance = Self.emptyShapeInstance
                 extendedShapeInstance = Self.emptyExtendedShapeInstance
                 primitiveInstance = Self.emptyPrimitiveInstance
+                polygonInstance = Self.emptyPolygonInstance
             case .shape(let source):
                 let isExtended = source.kind == .triangle
                     || source.kind == .quadraticBezier
@@ -732,7 +824,7 @@ public final class RenderQueue {
                     blendMode: source.blendMode,
                     usesGradient: source.gradientSlot != .max
                 ))
-                    | (isExtended ? 0xc000_0000 : 0x8000_0000)
+                    | (isExtended ? 0x6000_0000 : 0x4000_0000)
                 family = isExtended ? .extendedShape : .shape
                 sourceLayer = source.layer
                 sourceOrder = source.order
@@ -775,8 +867,9 @@ public final class RenderQueue {
                     )
                 )
                 primitiveInstance = Self.emptyPrimitiveInstance
+                polygonInstance = Self.emptyPolygonInstance
             case .primitive(let source):
-                encodedBatchKey = 0x4000_0000 | source.kind.rawValue
+                encodedBatchKey = 0x2000_0000 | source.kind.rawValue
                 family = .primitive
                 sourceLayer = source.layer
                 sourceOrder = source.order
@@ -792,6 +885,27 @@ public final class RenderQueue {
                     origin: source.origin,
                     size: source.size,
                     width: source.width,
+                    colorRGBA8: Self.rgba8(source.color)
+                )
+                polygonInstance = Self.emptyPolygonInstance
+            case .polygon(let source):
+                encodedBatchKey = 0x8000_0000 | resolvePolygonBatchKey(.init(
+                    geometry: source.geometry,
+                    blendMode: source.blendMode
+                ))
+                family = .polygon
+                sourceLayer = source.layer
+                sourceOrder = source.order
+                sourceBoundsMinimum = source.boundsMinimum
+                sourceBoundsMaximum = source.boundsMaximum
+                spriteInstance = Self.emptySpriteInstance
+                shapeInstance = Self.emptyShapeInstance
+                extendedShapeInstance = Self.emptyExtendedShapeInstance
+                primitiveInstance = Self.emptyPrimitiveInstance
+                polygonInstance = PolygonInstance(
+                    transformX: source.transformX,
+                    transformY: source.transformY,
+                    translation: source.transformTranslation,
                     colorRGBA8: Self.rgba8(source.color)
                 )
             }
@@ -814,6 +928,7 @@ public final class RenderQueue {
                 shapeInstances[index] = shapeInstance
                 extendedShapeInstances[index] = extendedShapeInstance
                 primitiveInstances[index] = primitiveInstance
+                polygonInstances[index] = polygonInstance
                 families[index] = family
             } else {
                 boundsMinimum.advanced(by: index).initialize(to: sourceBoundsMinimum)
@@ -824,6 +939,7 @@ public final class RenderQueue {
                 shapeInstances.advanced(by: index).initialize(to: shapeInstance)
                 extendedShapeInstances.advanced(by: index).initialize(to: extendedShapeInstance)
                 primitiveInstances.advanced(by: index).initialize(to: primitiveInstance)
+                polygonInstances.advanced(by: index).initialize(to: polygonInstance)
                 families.advanced(by: index).initialize(to: family)
             }
         }
@@ -946,7 +1062,7 @@ public final class RenderQueue {
             if state.hasPrevious {
                 context.pointee.batches[Int(state.batchCount)] = Batch(
                     family: Self.family(for: state.previousKey),
-                    key: state.previousKey & 0x3fff_ffff,
+                    key: state.previousKey & 0x1fff_ffff,
                     end: state.visibleCount)
                 state.batchCount += 1
                 context.pointee.state = state
@@ -962,7 +1078,7 @@ public final class RenderQueue {
         if state.hasPrevious && encodedKey != state.previousKey {
             context.pointee.batches[Int(state.batchCount)] = Batch(
                 family: Self.family(for: state.previousKey),
-                key: state.previousKey & 0x3fff_ffff,
+                key: state.previousKey & 0x1fff_ffff,
                 end: state.visibleCount)
             state.batchCount += 1
         }
@@ -1028,6 +1144,20 @@ public final class RenderQueue {
         return slot
     }
 
+    private func resolvePolygonBatchKey(_ key: PolygonBatchKey) -> UInt32 {
+        for index in 0..<polygonBatchKeyCount where polygonBatchKeys[index] == key {
+            return UInt32(index)
+        }
+        precondition(
+            polygonBatchKeyCount < settings.capacity,
+            "Render queue polygon-batch-key capacity exceeded: capacity \(settings.capacity), attempted count \(polygonBatchKeyCount + 1)"
+        )
+        let slot = UInt32(polygonBatchKeyCount)
+        polygonBatchKeys.advanced(by: polygonBatchKeyCount).initialize(to: key)
+        polygonBatchKeyCount += 1
+        return slot
+    }
+
     private static let emptySpriteInstance = Instance(
         transformX: .zero,
         transformY: .zero,
@@ -1071,12 +1201,20 @@ public final class RenderQueue {
         colorRGBA8: 0
     )
 
-    private static func family(for encodedMaterial: UInt32) -> Family {
-        switch encodedMaterial >> 30 {
+    private static let emptyPolygonInstance = PolygonInstance(
+        transformX: .zero,
+        transformY: .zero,
+        translation: .zero,
+        colorRGBA8: 0
+    )
+
+    private static func family(for encodedKey: UInt32) -> Family {
+        switch encodedKey >> 29 {
         case 0: .sprite
         case 1: .primitive
         case 2: .shape
-        default: .extendedShape
+        case 3: .extendedShape
+        default: .polygon
         }
     }
 

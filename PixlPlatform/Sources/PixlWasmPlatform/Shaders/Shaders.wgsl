@@ -235,6 +235,36 @@ fn pixlPrimitiveShapeFragment(input: PrimitiveShapeVertexOutput) -> @location(0)
     return input.color;
 }
 
+struct PolygonVertexInput {
+    @location(0) position: vec2f,
+    @location(3) transformX: vec2f,
+    @location(4) transformY: vec2f,
+    @location(5) translation: vec2f,
+    @location(6) color: vec4f,
+}
+
+struct PolygonVertexOutput {
+    @builtin(position) position: vec4f,
+    @location(0) @interpolate(flat) color: vec4f,
+}
+
+@vertex
+fn pixlPolygonVertex(input: PolygonVertexInput) -> PolygonVertexOutput {
+    let world = input.transformX * input.position.x
+        + input.transformY * input.position.y
+        + input.translation;
+    let projected = parameters.transform * vec3f(world, 1.0);
+    var output: PolygonVertexOutput;
+    output.position = vec4f(projected.xy, 0.0, 1.0);
+    output.color = input.color;
+    return output;
+}
+
+@fragment
+fn pixlPolygonFragment(input: PolygonVertexOutput) -> @location(0) vec4f {
+    return input.color;
+}
+
 fn pixlRoundedBoxDistance(point: vec2f, halfSize: vec2f, rounding: f32) -> f32 {
     let q = abs(point) - halfSize + rounding;
     return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - rounding;

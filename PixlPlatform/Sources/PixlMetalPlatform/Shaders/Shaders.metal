@@ -246,6 +246,37 @@ fragment float4 pixlPrimitiveShapeFragment(PrimitiveShapeVertexOutput input [[st
     return input.color;
 }
 
+struct PolygonVertexInput {
+    float2 position [[attribute(0)]];
+    float2 transformX [[attribute(3)]];
+    float2 transformY [[attribute(4)]];
+    float2 translation [[attribute(5)]];
+    float4 color [[attribute(6)]];
+};
+
+struct PolygonVertexOutput {
+    float4 position [[position]];
+    float4 color [[flat]];
+};
+
+vertex PolygonVertexOutput pixlPolygonVertex(
+    PolygonVertexInput input [[stage_in]],
+    constant SpriteViewParameters &view [[buffer(2)]]
+) {
+    float2 world = input.transformX * input.position.x
+        + input.transformY * input.position.y
+        + input.translation;
+    float3 projected = view.projection * float3(world, 1.0);
+    return {
+        float4(projected.xy, 0.0, 1.0),
+        input.color
+    };
+}
+
+fragment float4 pixlPolygonFragment(PolygonVertexOutput input [[stage_in]]) {
+    return input.color;
+}
+
 static float pixlRoundedBoxDistance(float2 point, float2 halfSize, float rounding) {
     float2 q = abs(point) - halfSize + rounding;
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rounding;

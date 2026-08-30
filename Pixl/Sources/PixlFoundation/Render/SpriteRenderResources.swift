@@ -24,6 +24,12 @@ package struct PrimitiveGeometryResources {
     let ranges: [PrimitiveGeometryRange]
 }
 
+package struct PolygonGeometryResources {
+    let vertex: Buffer
+    let index: Buffer
+    let indexCount: UInt32
+}
+
 package struct ResolvedSpriteResources {
     let texture: Texture
     let sampler: Sampler
@@ -49,9 +55,11 @@ public final class SpriteRenderResources {
     private var shapePipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var extendedShapePipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var primitivePipelines: [PixelFormat: RenderPipeline] = [:]
+    private var polygonPipelines: [SpritePipelineKey: RenderPipeline] = [:]
     private var vertexBuffer: Buffer?
     private var indexBuffer: Buffer?
     private var primitiveGeometryResources: PrimitiveGeometryResources?
+    private var polygonGeometryResources: [ObjectIdentifier: PolygonGeometryResources] = [:]
     private var gradientAtlas: Texture?
     private var gradientSampler: Sampler?
     private var gradientGeneration = UInt64.max
@@ -77,11 +85,16 @@ public final class SpriteRenderResources {
             device.destroy(primitiveGeometryResources.vertex)
             device.destroy(primitiveGeometryResources.index)
         }
+        for geometry in polygonGeometryResources.values {
+            device.destroy(geometry.vertex)
+            device.destroy(geometry.index)
+        }
         for sampler in samplers.values { device.destroy(sampler) }
         for pipeline in pipelines.values { device.destroy(pipeline) }
         for pipeline in shapePipelines.values { device.destroy(pipeline) }
         for pipeline in extendedShapePipelines.values { device.destroy(pipeline) }
         for pipeline in primitivePipelines.values { device.destroy(pipeline) }
+        for pipeline in polygonPipelines.values { device.destroy(pipeline) }
         if let gradientAtlas { device.destroy(gradientAtlas) }
         for texture in retiredGradientAtlases { device.destroy(texture) }
         if let gradientSampler { device.destroy(gradientSampler) }
@@ -250,6 +263,67 @@ public final class SpriteRenderResources {
         )
         primitivePipelines[format] = pipeline
         return pipeline
+    }
+
+    package func polygonPipeline(
+        format: PixelFormat,
+        blendMode: BlendMode
+    ) throws -> RenderPipeline {
+        let key = SpritePipelineKey(
+            format: format,
+            blendMode: blendMode,
+            usesGradient: false
+        )
+        if let pipeline = polygonPipelines[key] { return pipeline }
+        let pipeline = try device.makeRenderPipeline(
+            .init(
+                vertex: .polygonVertex,
+                fragment: .polygonFragment,
+                vertexLayout: Self.polygonVertexLayout,
+                colorFormat: format,
+                blendMode: blendMode
+            )
+        )
+        polygonPipelines[key] = pipeline
+        return pipeline
+    }
+
+    package func polygonGeometry(
+        _ source: RenderQueue.PolygonGeometry
+    ) throws -> PolygonGeometryResources {
+        let identity = ObjectIdentifier(source.owner)
+        if let geometry = polygonGeometryResources[identity] { return geometry }
+
+        let vertexBytes = UnsafeRawBufferPointer(
+            start: source.vertices.baseAddress,
+            count: source.vertices.count * MemoryLayout<SIMD2<Float>>.stride
+        )
+        let vertex = try device.makeBuffer(
+            copying: vertexBytes,
+            usage: .vertex,
+            memory: .gpuOnly
+        )
+        do {
+            let indexBytes = UnsafeRawBufferPointer(
+                start: source.indices.baseAddress,
+                count: source.indices.count * MemoryLayout<UInt32>.stride
+            )
+            let index = try device.makeBuffer(
+                copying: indexBytes,
+                usage: .index,
+                memory: .gpuOnly
+            )
+            let geometry = PolygonGeometryResources(
+                vertex: vertex,
+                index: index,
+                indexCount: UInt32(source.indices.count)
+            )
+            polygonGeometryResources[identity] = geometry
+            return geometry
+        } catch {
+            device.destroy(vertex)
+            throw error
+        }
     }
 
     package func primitiveGeometry() throws -> PrimitiveGeometryResources {
@@ -536,6 +610,40 @@ public final class SpriteRenderResources {
         }
         layout.append(.init(location: 9, bufferIndex: 5, format: .float32, offset: 40))
         layout.append(.init(location: 10, bufferIndex: 5, format: .unorm8x4, offset: 44))
+        return layout
+    }
+
+    private static var polygonVertexLayout: VertexLayout {
+        let layout = VertexLayout(bufferCapacity: 2, attributeCapacity: 5)
+        layout.append(.init(
+            bufferIndex: 0,
+            stride: UInt64(MemoryLayout<SIMD2<Float>>.stride)
+        ))
+        layout.append(.init(
+            bufferIndex: 6,
+            stride: UInt64(MemoryLayout<RenderQueue.PolygonInstance>.stride),
+            stepMode: .perInstance
+        ))
+        layout.append(.init(
+            location: 0,
+            bufferIndex: 0,
+            format: .float32x2,
+            offset: 0
+        ))
+        for index in 0..<3 {
+            layout.append(.init(
+                location: UInt32(index + 3),
+                bufferIndex: 6,
+                format: .float32x2,
+                offset: UInt64(index * 8)
+            ))
+        }
+        layout.append(.init(
+            location: 6,
+            bufferIndex: 6,
+            format: .unorm8x4,
+            offset: 24
+        ))
         return layout
     }
 

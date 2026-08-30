@@ -37,4 +37,8 @@ public extension ShaderFunction {
     static let primitiveShapeVertex = Self(name: "pixlPrimitiveShapeVertex")
     /// Built-in immediate two-dimensional primitive fragment entry point.
     static let primitiveShapeFragment = Self(name: "pixlPrimitiveShapeFragment")
+    /// Built-in instanced indexed-polygon vertex entry point.
+    static let polygonVertex = Self(name: "pixlPolygonVertex")
+    /// Built-in solid-colour indexed-polygon fragment entry point.
+    static let polygonFragment = Self(name: "pixlPolygonFragment")
 }
