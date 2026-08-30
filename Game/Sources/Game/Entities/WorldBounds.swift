@@ -2,6 +2,8 @@ import Pixl
 import Pixl2D
 
 struct WorldBounds: Entity {
+    private static let boundaryThickness: Float = 20
+
     private let shape = Shape(.rect)
         .fill(.gray6)
 
@@ -9,35 +11,38 @@ struct WorldBounds: Entity {
 
     private let rendering = RenderProperties(layer: .environment)
 
-    let floor = Rect(
-        x: -400,
-        y: -200,
-        width: 800,
-        height: 20
-    )
+    let floor: Rect
+    let leftWall: Rect
+    let rightWall: Rect
+    let crouchPlatform: Rect
 
-    let leftWall = Rect(
-        x: -400,
-        y: -200,
-        width: 20,
-        height: 400
-    )
+    init(bounds: Rect, context: GameContext) throws {
+        let thickness = Self.boundaryThickness
+        floor = Rect(
+            x: bounds.minX,
+            y: bounds.minY,
+            width: bounds.width,
+            height: thickness
+        )
+        leftWall = Rect(
+            x: bounds.minX,
+            y: bounds.minY,
+            width: thickness,
+            height: bounds.height
+        )
+        rightWall = Rect(
+            x: bounds.maxX - thickness,
+            y: bounds.minY,
+            width: thickness,
+            height: bounds.height
+        )
+        crouchPlatform = Rect(
+            x: 80,
+            y: floor.maxY + 20,
+            width: 160,
+            height: 16
+        )
 
-    let rightWall = Rect(
-        x: 380,
-        y: -200,
-        width: 20,
-        height: 400
-    )
-
-    let crouchPlatform = Rect(
-        x: 80,
-        y: -160,
-        width: 160,
-        height: 16
-    )
-
-    init(context: GameContext) throws {
 //        let asset = try context.assets.load(texture: "world")
 //        let sheet = SpriteSheet(asset: asset, columns: 10, rows: 10)
 //        let region = sheet.region(column: 0, row: 1)

@@ -9,15 +9,25 @@ struct Game: Pixl.Game {
     private let bindings: GameBindings = .init()
     private var character: Character
     private var showsCollisionDebug = false
-    private var camera: OrthographicCamera = .init(
-        halfHeight: Character.referenceCameraHalfHeight
-    )
+    private var camera: OrthographicCamera
 
 //    private let debug = Scene(Debug())
 //    private var gameState: GameStateHandler
 
     init(context: GameContext) throws {
-        self.worldBounds = try .init(context: context)
+        let camera = OrthographicCamera(
+            halfHeight: Character.referenceCameraHalfHeight
+        )
+        self.camera = camera
+        let resolution = Self.gameSettings.resolution
+        let viewportSize = Vec2(
+            Float(resolution.x),
+            Float(resolution.y)
+        )
+        self.worldBounds = try .init(
+            bounds: camera.visibleBounds(in: viewportSize),
+            context: context
+        )
 //        self.gameState = try .init(context: context)
         let collisions = CollisionWorld2D()
         let character = try Character(
@@ -141,7 +151,7 @@ import PixlPlatform
 extension Game {
     static let loopSettings = LoopSettings(
         fixedStep: .init(
-            updatesPerSecond: 50,
+            updatesPerSecond: 60,
             maximumUpdatesPerFrame: 8
         )
     )
