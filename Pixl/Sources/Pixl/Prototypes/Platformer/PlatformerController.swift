@@ -462,11 +462,14 @@ public struct PlatformerController: Sendable {
     }
 
     private var normalizedDashDirection: Vec2 {
-        let horizontal = normalizedHorizontalInput
-        return .init(
-            horizontal == 0 ? (isFacingRight ? 1 : -1) : horizontal,
-            0
+        var direction = Vec2(
+            input.movement.x > 0 ? 1 : (input.movement.x < 0 ? -1 : 0),
+            input.movement.y > 0 ? 1 : (input.movement.y < 0 ? -1 : 0)
         )
+        if direction == .zero {
+            direction.x = isFacingRight ? 1 : -1
+        }
+        return direction.normalized
     }
 
     private func move(_ value: Float, toward target: Float, by amount: Float) -> Float {

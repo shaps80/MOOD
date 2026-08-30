@@ -177,13 +177,14 @@ public struct PlatformerConfiguration: Equatable, Sendable {
             acceleration: 150 * scale,
             deceleration: 150 * scale,
             height: 0.6 * scale,
-            centerOffset: 0.2 * scale,
+            centerOffset: 0.18 * scale,
             rollSpeed: 10 * scale,
             rollDuration: 0.25
         )
+        let spriteCenterOffsetY = 0.084 * scale
         let bodyCenter = Vec2(
             0.002660205 * 0.6 * scale,
-            0.06919146 * scale
+            (0.06919146 * scale) - spriteCenterOffsetY
         )
         let bodyWidth = 0.9884307 * 0.6 * scale
         let standingBody = Capsule2D(
@@ -194,7 +195,10 @@ public struct PlatformerConfiguration: Equatable, Sendable {
         collision = .init(
             standingBody: standingBody,
             crouchingBody: .init(
-                center: .init(bodyCenter.x, -crouch.centerOffset),
+                center: .init(
+                    bodyCenter.x,
+                    -crouch.centerOffset - spriteCenterOffsetY
+                ),
                 size: .init(bodyWidth, crouch.height)
             ),
             feet: .init(

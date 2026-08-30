@@ -205,7 +205,7 @@ struct PlatformerControllerTests {
     }
 
     @Test
-    func airDashReplacesJumpVelocityWithHorizontalDash() {
+    func airDashReplacesJumpVelocityWithRequestedDirection() {
         var controller = PlatformerController()
         controller.capture(
             .init(jump: .init(isHeld: true, wasPressed: true))
@@ -222,8 +222,26 @@ struct PlatformerControllerTests {
         _ = controller.advance(delta: step, surfaces: .init())
 
         #expect(controller.state == .dash)
-        #expect(controller.velocity.x == controller.configuration.dash.speed)
-        #expect(controller.velocity.y == 0)
+        #expect(controller.velocity.x == 0)
+        #expect(controller.velocity.y == controller.configuration.dash.speed)
+    }
+
+    @Test
+    func diagonalDashUsesNormalizedRequestedDirection() {
+        var controller = PlatformerController()
+        controller.capture(
+            .init(
+                movement: .init(1, 1),
+                dash: .init(isHeld: true, wasPressed: true)
+            )
+        )
+
+        _ = controller.advance(delta: step, surfaces: ground)
+
+        let component = controller.configuration.dash.speed
+            / Float(2).squareRoot()
+        #expect(abs(controller.velocity.x - component) < 0.0001)
+        #expect(abs(controller.velocity.y - component) < 0.0001)
     }
 
     @Test
@@ -341,7 +359,7 @@ struct PlatformerControllerTests {
             )
             controller.capture(
                 .init(
-                    movement: .init(1, 1),
+                    movement: .init(1, 0),
                     dash: .init(
                         isHeld: true,
                         wasPressed: tick == 0

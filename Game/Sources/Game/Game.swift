@@ -35,30 +35,7 @@ struct Game: Pixl.Game {
             collisions: collisions,
             context: context
         )
-        _ = collisions.insert(
-            bounds: worldBounds.floor,
-            mode: .static,
-            layer: .world,
-            mask: .none
-        )
-        _ = collisions.insert(
-            bounds: worldBounds.leftWall,
-            mode: .static,
-            layer: .world,
-            mask: .none
-        )
-        _ = collisions.insert(
-            bounds: worldBounds.rightWall,
-            mode: .static,
-            layer: .world,
-            mask: .none
-        )
-        _ = collisions.insert(
-            bounds: worldBounds.crouchPlatform,
-            mode: .static,
-            layer: .world,
-            mask: .none
-        )
+        worldBounds.insertColliders(into: collisions)
         bindings.bind(to: context.inputs)
         self.collisions = collisions
         self.character = character
@@ -149,6 +126,10 @@ struct Game: Pixl.Game {
 import PixlPlatform
 
 extension Game {
+    static let renderSettings = RenderSettings(
+        frameByteCapacity: 64 * 1024
+    )
+
     static let loopSettings = LoopSettings(
         fixedStep: .init(
             updatesPerSecond: 60,
