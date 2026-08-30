@@ -31,7 +31,7 @@ struct WorldBounds: Entity {
     )
 
     init(context: GameContext) throws {
-        let asset = try context.assets.load(texture: "world.png")
+        let asset = try context.assets.load(texture: "world")
         let sheet = SpriteSheet(asset: asset, columns: 10, rows: 10)
         let region = sheet.region(column: 0, row: 1)
 

@@ -3,6 +3,7 @@ import PixlGraphics
 
 extension Sprite {
     /// Loads a texture asset and creates a sprite covering the complete image.
+    /// A name without a filename extension resolves as PNG.
     /// - Parameters:
     ///   - name: Source-relative texture asset path.
     ///   - alpha: Processing applied to decoded RGB before GPU upload. The

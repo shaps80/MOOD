@@ -29,7 +29,7 @@ struct Character: Entity {
         self.camera = camera
 
         sprite = try .init(
-            named: "character.png",
+            named: "character",
             context: context
         )
 

@@ -247,7 +247,7 @@ PixlPlatform textures are currently GPU-owned resources with no direct CPU mappi
 : Owns the runtime mapping from logical texture identity to resolved platform resources, plus deduplication, lifetime, invalidation, and replacement. The game runtime owns this infrastructure and exposes it through `GameContext`; games retain only lightweight asset values.
 
 `Assets.load(texture:)`
-: Pixl's game-facing orchestration path. Pixl reads bytes through the platform capability, decodes image data through PixlGraphics, registers or resolves execution storage through PixlFoundation, then returns the corresponding `PixlGraphics.TextureAsset`. A function's owning module need not own its return type. Required startup assets throw `AssetError` rather than becoming optional values with logged errors.
+: Pixl's game-facing orchestration path. Pixl reads bytes through the platform capability, decodes image data through PixlGraphics, registers or resolves execution storage through PixlFoundation, then returns the corresponding `PixlGraphics.TextureAsset`. Extensionless texture names resolve as PNG; explicit extensions remain exact. A function's owning module need not own its return type. Required startup assets throw `AssetError` rather than becoming optional values with logged errors.
 
 Pixl may add public convenience initializers or methods to domain types it imports. Package-scoped domain initializers can accept opaque primitive identity and metadata, allowing Pixl to construct complete game-facing values without a dependency from PixlGraphics or Pixl2D back to PixlFoundation. Public extension signatures must not expose package-only Foundation types. This bridge pattern preserves concrete static types: it requires no `Any`, existential, or generic facade.
 

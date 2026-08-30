@@ -225,6 +225,30 @@ struct AssetTests {
     }
 
     @Test
+    func extensionlessTextureNamesResolveAsPNG() throws {
+        let path = try AssetPath("sprites/player.png")
+        let source = TestAssetSource(path: path, bytes: [1])
+        let device = try #require(
+            MetalDevice(
+                bufferCapacity: 1,
+                pipelineCapacity: 1,
+                samplerCapacity: 1,
+                textureCapacity: 1
+            )
+        )
+        let assets = Assets(
+            device: device,
+            source: source,
+            decode: decodeTestTexture
+        )
+
+        let extensionless = try assets.load(texture: "sprites/player")
+        let explicit = try assets.load(texture: path.value)
+
+        #expect(extensionless == explicit)
+    }
+
+    @Test
     func hotReloadReappliesRegisteredAlphaProcessing() async throws {
         let path = try AssetPath("player.png")
         let source = TestAssetSource(path: path, bytes: [1])

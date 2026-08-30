@@ -75,6 +75,7 @@ public final class Assets {
     }
 
     /// Loads or returns the cached logical texture asset at a relative path.
+    /// A path without a filename extension resolves as PNG.
     /// Decoded PNG channels are premultiplied by default. Pass `.passthrough`
     /// when the original RGBA channels must remain unchanged; sprite rendering
     /// automatically selects composition compatible with the returned asset.
@@ -105,6 +106,24 @@ public final class Assets {
         alpha: TextureAlpha
     ) throws(AssetError) -> TextureAsset {
         let path = try makePath(value)
+        if Self.hasFilenameExtension(path.value) {
+            return try loadTexture(path, alpha: alpha)
+        }
+
+        do {
+            return try loadTexture(
+                makePath("\(value).png"),
+                alpha: alpha
+            )
+        } catch AssetError.notFound {
+            throw .notFound(value)
+        }
+    }
+
+    private func loadTexture(
+        _ path: AssetPath,
+        alpha: TextureAlpha
+    ) throws(AssetError) -> TextureAsset {
         let key = TextureCacheKey(path: path, alpha: alpha)
         if let texture = textures[key] {
             return texture
@@ -155,28 +174,9 @@ public final class Assets {
 
     func loadUITexture(named name: String) throws(AssetError) -> TextureAsset {
         if let texture = uiTextures[name] { return texture }
-
-        let lastComponent = if let separator = name.lastIndex(of: "/") {
-            name[name.index(after: separator)...]
-        } else {
-            name[...]
-        }
-        if lastComponent.contains(".") {
-            let texture = try loadTexture(name, alpha: .premultiplied)
-            uiTextures[name] = texture
-            return texture
-        }
-
-        for path in ["\(name).png", "\(name).jpg", "\(name).jpeg"] {
-            do {
-                let texture = try loadTexture(path, alpha: .premultiplied)
-                uiTextures[name] = texture
-                return texture
-            } catch AssetError.notFound {
-                continue
-            }
-        }
-        throw .notFound(name)
+        let texture = try loadTexture(name, alpha: .premultiplied)
+        uiTextures[name] = texture
+        return texture
     }
 
     func texture(for resource: TextureResourceID) -> Texture? {
@@ -231,6 +231,13 @@ public final class Assets {
         } catch {
             throw .invalidPath(value)
         }
+    }
+
+    private static func hasFilenameExtension(_ path: String) -> Bool {
+        let component = path.lastIndex(of: "/").map {
+            path[path.index(after: $0)...]
+        } ?? path[...]
+        return component.contains(".")
     }
 
     private func makeTexture(
