@@ -21,6 +21,7 @@ struct ColliderRecordPool2D: ~Copyable {
     }
 
     mutating func allocate(
+        geometry: ColliderGeometry2D,
         bounds: Rect,
         broadBounds: Rect,
         layerBit: UInt64,
@@ -32,6 +33,7 @@ struct ColliderRecordPool2D: ~Copyable {
         let generation = records[Int(index)].generation
         freeList = records[Int(index)].nextFree
         records[Int(index)] = .live(
+            geometry: geometry,
             bounds: bounds,
             broadBounds: broadBounds,
             generation: generation,

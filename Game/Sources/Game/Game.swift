@@ -25,7 +25,8 @@ struct Game: Pixl.Game {
             mask: .world
         )
         _ = collisions.insert(
-            bounds: worldBounds.floor,
+            worldBounds.slopeGeometry,
+            transform: worldBounds.slopeTransform,
             mode: .static,
             layer: .world,
             mask: .none
@@ -102,16 +103,16 @@ struct Game: Pixl.Game {
         collisions.update(characterCollider, bounds: character.bounds)
 
         collisions.advance { collision in
-            let sourceBounds = character.onCollision(
+            let sourceTransform = character.onCollision(
                 collision,
                 collider: characterCollider,
                 context: context
             )
-            if collision.contact != nil, let sourceBounds {
-                collisionRects.append(sourceBounds)
+            if sourceTransform != nil {
+                collisionRects.append(character.bounds)
                 collisionRects.append(collision.target.bounds)
             }
-            return sourceBounds
+            return sourceTransform
         }
     }
 

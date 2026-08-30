@@ -33,6 +33,28 @@ public final class CollisionWorld2D {
         )
     }
 
+    /// Inserts polygon geometry with its model-to-world transform.
+    ///
+    /// Polygon normalization and convex decomposition are retained from the
+    /// immutable geometry. Transformed vertices and exact world-space bounds
+    /// are calculated once here and rebuilt only by ``update(_:transform:)``.
+    @discardableResult
+    public func insert(
+        _ polygon: Polygon2D,
+        transform: Transform2D = .identity,
+        mode: CollisionMode,
+        layer: CollisionLayer,
+        mask: CollisionMask = .all
+    ) -> ColliderID {
+        store.insert(
+            polygon,
+            transform: transform,
+            isDynamic: mode == .dynamic,
+            layer: layer,
+            mask: mask
+        )
+    }
+
     /// Removes a collider. Stale identities are ignored.
     public func remove(_ collider: ColliderID) {
         store.remove(collider)
@@ -43,9 +65,19 @@ public final class CollisionWorld2D {
         store.bounds(for: collider)
     }
 
-    /// Updates exact world-space bounds. Stale identities are ignored.
+    /// Updates exact world-space rectangle bounds. Stale identities and
+    /// polygon colliders are ignored.
     public func update(_ collider: ColliderID, bounds: Rect) {
         store.update(collider, bounds: bounds)
+    }
+
+    /// Updates a collider's model-to-world transform and invalidates its cache.
+    ///
+    /// Polygon geometry applies the complete affine transform. Rectangles use
+    /// translation only until oriented rectangle collision is introduced.
+    /// Stale identities are ignored.
+    public func update(_ collider: ColliderID, transform: Transform2D) {
+        store.update(collider, transform: transform)
     }
 
     /// Advances collision detection by one fixed simulation tick.
@@ -64,21 +96,22 @@ public final class CollisionWorld2D {
 
     /// Advances collision detection and visits each directed report.
     ///
-    /// Return corrected world-space bounds for the report's source collider
-    /// when handling the collision changes its transform. The collision world
-    /// applies those bounds immediately, keeping its internal storage in sync
-    /// without requiring a second game-side ``update(_:bounds:)`` call.
-    /// Return `nil` when the source bounds did not change.
+    /// Return the corrected model-to-world transform for the report's source
+    /// collider when handling the collision changes it. The collision world
+    /// coalesces repeated changes and synchronizes dirty collision geometry
+    /// once after every report has been delivered. Return `nil` when the
+    /// source transform did not change.
     public func advance(
-        _ body: (Collision2D) -> Rect?
+        _ body: (Collision2D) -> Transform2D?
     ) {
         advance()
         for index in 0..<reports.count {
             let report = reports.reports[index]
-            if let bounds = body(report) {
-                store.update(report.source.collider, bounds: bounds)
+            if let transform = body(report) {
+                store.update(report.source.collider, transform: transform)
             }
         }
+        store.synchronizeDirtyColliders()
     }
 
     /// Visits directed reports produced by the latest call to ``advance()``.

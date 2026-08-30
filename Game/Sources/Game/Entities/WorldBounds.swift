@@ -31,14 +31,19 @@ struct WorldBounds: Entity {
         height: 400
     )
 
+    var slopeGeometry: Polygon2D { slope.geometry }
+
+    var slopeTransform: Transform2D {
+        .init(floor.center).scaled(x: -1, y: 1)
+    }
+
     func submit(to queue: RenderQueue, context: GameContext) {
         submit(leftWall, to: queue)
         submit(rightWall, to: queue)
 
         queue.submit(
             slope,
-            transform: .init(floor.center)
-                .scaled(x: -1, y: 1),
+            transform: slopeTransform,
             rendering: rendering
         )
     }

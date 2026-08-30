@@ -8,7 +8,7 @@ protocol Entity {
         _ collision: Collision2D,
         collider: ColliderID,
         context: GameContext
-    ) -> Rect?
+    ) -> Transform2D?
     func submit(to queue: RenderQueue, context: GameContext)
 }
 
@@ -19,5 +19,5 @@ extension Entity {
         _ collision: Collision2D,
         collider: ColliderID,
         context: GameContext
-    ) -> Rect? { nil }
+    ) -> Transform2D? { nil }
 }

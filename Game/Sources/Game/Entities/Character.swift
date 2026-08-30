@@ -92,12 +92,12 @@ struct Character: Entity {
         _ collision: Collision2D,
         collider: ColliderID,
         context: GameContext
-    ) -> Rect? {
-        guard collision.source.collider == collider else { return nil }
-        if let contact = collision.contact {
-            editable.position -= contact.normal * contact.depth
-        }
-        return bounds
+    ) -> Transform2D? {
+        guard collision.source.collider == collider,
+              let contact = collision.contact
+        else { return nil }
+        editable.position -= contact.normal * contact.depth
+        return editable.transform
     }
 
     func submit(to queue: RenderQueue, context: GameContext) {

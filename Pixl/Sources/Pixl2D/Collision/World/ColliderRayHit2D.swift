@@ -1,8 +1,8 @@
 /// Nearest exact collider intersection returned by a collision-world ray cast.
 public struct ColliderRayHit2D: Equatable, Sendable {
-    /// Collider whose exact bounds were intersected.
+    /// Collider whose exact geometry was intersected.
     public let collider: ColliderID
-    /// Exact rectangle intersection.
+    /// Exact geometry intersection.
     public let hit: RayHit2D
 
     package init(collider: ColliderID, hit: RayHit2D) {

@@ -62,8 +62,8 @@ With these complete, build the first proper Retro Invaders game using the existi
 
 ### Collision
 
-- [x] Keep Rect collision in Pixl2D, with game-owned `CollisionWorld2D` and no PixlPlatform, PixlFoundation, entity, or automatic runtime ownership.
-- [x] Define the first deterministic AABB vocabulary: contacts, rays, stable collider identity, static/dynamic mode, one-way layer masks, and directed contact phases.
+- [x] Keep Rect and Polygon2D collision in Pixl2D, with game-owned `CollisionWorld2D` and no PixlPlatform, PixlFoundation, entity, or automatic runtime ownership.
+- [x] Define the first deterministic collision vocabulary: contacts, rays, stable collider identity, static/dynamic mode, one-way layer masks, directed contact phases, and transformed polygon colliders.
 - [x] Provide centralized fixed-tick collision reporting plus exact allocation-free overlap and ray queries.
 
 ### Minimal 2D Physics
