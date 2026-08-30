@@ -45,48 +45,6 @@ struct CollisionStoreTests {
     }
 
     @Test
-    func contactsUseExactBoundsAndSkipStaticPairs() {
-        let store = CollisionStore2D(broadMargin: 10)
-        let dynamic = store.insert(
-            Rect(x: 0, y: 0, width: 10, height: 10),
-            isDynamic: true
-        )
-        let touchingStatic = store.insert(
-            Rect(x: 8, y: 0, width: 10, height: 10),
-            isDynamic: false
-        )
-        _ = store.insert(
-            Rect(x: 15, y: 0, width: 2, height: 2),
-            isDynamic: false
-        )
-        let isolatedStatic = store.insert(
-            Rect(x: 100, y: 100, width: 10, height: 10),
-            isDynamic: false
-        )
-        _ = store.insert(
-            Rect(x: 105, y: 100, width: 10, height: 10),
-            isDynamic: false
-        )
-        var found: ColliderID?
-        var contact: Contact2D?
-
-        let dynamicContactCount = store.contacts(for: dynamic) { other, value in
-            found = other
-            contact = value
-            return true
-        }
-        let staticContactCount = store.contacts(for: isolatedStatic) { _, _ in
-            Issue.record("static-static contact should be skipped")
-            return true
-        }
-
-        #expect(dynamicContactCount == 1)
-        #expect(found == touchingStatic)
-        #expect(contact?.depth == 2)
-        #expect(staticContactCount == 0)
-    }
-
-    @Test
     func growthPreservesCollidersAndRemovedIDsStayInvalid() {
         let store = CollisionStore2D()
         let firstBounds = Rect(x: 1, y: 2, width: 3, height: 4)

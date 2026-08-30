@@ -62,9 +62,9 @@ With these complete, build the first proper Retro Invaders game using the existi
 
 ### Collision
 
-- [ ] Design a separate collision target before implementation, keeping bodies, broadphase ownership, and simulation outside PixlPlatform and the engine foundation.
-- [ ] Define the smallest playable 2D collision vocabulary, beginning with AABBs and deterministic overlap/contact results required by the first game.
-- [ ] Provide direct collision queries without introducing engine-owned entities, worlds, or simulation ownership.
+- [x] Keep Rect collision in Pixl2D, with game-owned `CollisionWorld2D` and no PixlPlatform, PixlFoundation, entity, or automatic runtime ownership.
+- [x] Define the first deterministic AABB vocabulary: contacts, rays, stable collider identity, static/dynamic mode, one-way layer masks, and directed contact phases.
+- [x] Provide centralized fixed-tick collision reporting plus exact allocation-free overlap and ray queries.
 
 ### Minimal 2D Physics
 
@@ -75,8 +75,9 @@ With these complete, build the first proper Retro Invaders game using the existi
 
 ### Later Collision Scaling
 
-- [ ] Prototype a persistent spatial-grid broadphase and measure candidate generation before selecting more complex structures.
-- [ ] Evaluate bitsets for collision filtering, worker-local deterministic result collection, and fast set merging.
+- [x] Implement the initial balanced dynamic AABB-tree broad phase with contiguous unsafe storage, fat bounds, stackless traversal, and exact narrow-phase confirmation.
+- [x] Lower game-defined collision layers and masks to fixed-width bitsets outside candidate hot paths.
+- [ ] Benchmark representative dynamic-tree, pair-generation, phase-merge, and query workloads before considering parallel collection or alternate broad phases.
 - [ ] Introduce `PixlConcurrency` only after a representative collision workload proves useful parallel depth and defines deterministic merging.
 
 ### In-Game Editing
