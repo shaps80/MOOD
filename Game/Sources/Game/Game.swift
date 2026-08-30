@@ -127,7 +127,7 @@ struct Game: Pixl.Game {
         else {
             return
         }
-//        print(time.metrics.summary)
+        print(time.metrics.summary)
     }
 
     private static func seconds(_ duration: Duration) -> Double {
