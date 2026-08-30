@@ -1,44 +1,42 @@
 import Swift
 
 /// A balanced, allocation-free-in-steady-state broad-phase index for 2D bounds.
-public final class DynamicAABBTree2D {
-    private static let initialProxyCapacity = 16
-    private static let nullIndex: Int32 = -1
+package final class DynamicAABBTree2D {
+    /// Controls traversal after one broad-phase ray candidate is visited.
+    enum RayCastAction: Sendable {
+        /// Continue without shortening the ray.
+        case ignore
+        /// Continue while pruning candidates beyond this distance.
+        case clip(to: Float)
+        /// Stop traversal immediately.
+        case terminate
+    }
 
-    private var nodes: UnsafeMutablePointer<Node>
-    private var capacity: Int
-    private var allocatedNodeCount: Int32 = 0
+    private static let initialProxyCapacity = 16
+    private static let nullIndex = DynamicAABBTreeNode.nullIndex
+
+    private var pool: DynamicAABBTreeNodePool
     private var proxyCount: Int32 = 0
-    private var freeList: Int32
     private var root: Int32 = nullIndex
 
-    public var count: Int { Int(proxyCount) }
+    @inline(__always)
+    private var nodes: UnsafeMutablePointer<DynamicAABBTreeNode> {
+        pool.nodes
+    }
+
+    var count: Int { Int(proxyCount) }
 
     /// Current tree height. An empty tree has height zero.
-    public var height: Int {
+    var height: Int {
         root == Self.nullIndex ? 0 : Int(nodes[Int(root)].height)
     }
 
-    public init() {
-        capacity = (Self.initialProxyCapacity * 2) - 1
-        nodes = .allocate(capacity: capacity)
-        freeList = 0
-
-        for index in 0..<capacity {
-            let next = index + 1 < capacity ? Int32(index + 1) : Self.nullIndex
-            nodes.advanced(by: index).initialize(
-                to: .free(next: next, generation: 0)
-            )
-        }
+    init() {
+        pool = .init(proxyCapacity: Self.initialProxyCapacity)
     }
 
-    deinit {
-        nodes.deinitialize(count: capacity)
-        nodes.deallocate()
-    }
-
-    public func insert(_ bounds: Rect) -> ProxyID {
-        let leaf = allocateNode()
+    func insert(_ bounds: Rect) -> ProxyID {
+        let leaf = pool.allocateNode()
         let generation = nodes[Int(leaf)].generation
         nodes[Int(leaf)] = .leaf(bounds: bounds, generation: generation)
         insertLeaf(leaf)
@@ -46,55 +44,142 @@ public final class DynamicAABBTree2D {
         return ProxyID(index: leaf, generation: generation)
     }
 
-    public func remove(_ proxy: ProxyID) {
+    func remove(_ proxy: ProxyID) {
         guard let leaf = liveIndex(for: proxy) else { return }
         removeLeaf(Int32(leaf))
-        freeNode(Int32(leaf))
+        pool.freeNode(Int32(leaf))
         proxyCount -= 1
     }
 
-    public func bounds(for proxy: ProxyID) -> Rect? {
+    /// Returns the broad-phase AABB stored for a live proxy.
+    func bounds(for proxy: ProxyID) -> Rect? {
         guard let index = liveIndex(for: proxy) else { return nil }
         return nodes[index].rect
     }
 
-    /// Returns the nearest proxy intersected by an infinite ray.
-    public func intersection(with ray: Ray2D) -> RayIntersection2D? {
-        let direction = ray.normalizedDirection
-        guard root != Self.nullIndex,
-              ray.origin.isValid,
-              direction != .zero
-        else { return nil }
+    /// Moves a proxy by removing and reinserting it with new broad-phase bounds.
+    @discardableResult
+    func move(_ proxy: ProxyID, to bounds: Rect) -> Bool {
+        guard let leaf = liveIndex(for: proxy) else { return false }
+        removeLeaf(Int32(leaf))
+        nodes[leaf].bounds = Self.packed(bounds)
+        insertLeaf(Int32(leaf))
+        return true
+    }
 
-        var nearestDistance = Float.infinity
-        var nearest: RayIntersection2D?
+    /// Enlarges a proxy and its ancestors without reinserting it.
+    @discardableResult
+    func enlarge(_ proxy: ProxyID, toInclude bounds: Rect) -> Bool {
+        guard let leaf = liveIndex(for: proxy) else { return false }
+        let enlarged = Self.union(nodes[leaf].bounds, Self.packed(bounds))
+        guard enlarged != nodes[leaf].bounds else { return false }
+        nodes[leaf].bounds = enlarged
+
+        var index = nodes[leaf].parent
+        while index != Self.nullIndex {
+            let childA = nodes[Int(index)].childA
+            let childB = nodes[Int(index)].childB
+            let combined = Self.union(
+                nodes[Int(childA)].bounds,
+                nodes[Int(childB)].bounds
+            )
+            guard combined != nodes[Int(index)].bounds else { break }
+            nodes[Int(index)].bounds = combined
+            index = nodes[Int(index)].parent
+        }
+        return true
+    }
+
+    /// Visits every broad-phase proxy whose AABB overlaps `bounds`.
+    @discardableResult
+    func query(
+        overlapping bounds: Rect,
+        _ visit: (ProxyID) -> Bool
+    ) -> TreeQueryStats2D {
+        guard root != Self.nullIndex else { return .init() }
+
+        let queryBounds = Self.packed(bounds)
+        var stats = TreeQueryStats2D()
         var previous = Self.nullIndex
         var current = root
 
-        // Parent links provide a stackless depth-first traversal.
         while current != Self.nullIndex {
             let node = nodes[Int(current)]
             let next: Int32
 
             if previous == node.parent {
+                stats.nodeVisits += 1
+                if !Self.overlaps(node.bounds, queryBounds) {
+                    next = node.parent
+                } else if node.isLeaf {
+                    stats.leafVisits += 1
+                    let shouldContinue = visit(
+                        .init(index: current, generation: node.generation)
+                    )
+                    if !shouldContinue { return stats }
+                    next = node.parent
+                } else {
+                    next = node.childA
+                }
+            } else if previous == node.childA {
+                next = node.childB
+            } else {
+                next = node.parent
+            }
+
+            previous = current
+            current = next
+        }
+
+        return stats
+    }
+
+    /// Visits broad-phase ray candidates and lets exact shape tests clip traversal.
+    @discardableResult
+    func rayCast(
+        _ ray: Ray2D,
+        maximumDistance: Float = .infinity,
+        _ visit: (ProxyID, Float) -> RayCastAction
+    ) -> TreeQueryStats2D {
+        let direction = ray.normalizedDirection
+        guard root != Self.nullIndex,
+              ray.origin.isValid,
+              direction != .zero,
+              maximumDistance >= 0
+        else { return .init() }
+
+        var clippedDistance = maximumDistance
+        var stats = TreeQueryStats2D()
+        var previous = Self.nullIndex
+        var current = root
+
+        while current != Self.nullIndex {
+            let node = nodes[Int(current)]
+            let next: Int32
+
+            if previous == node.parent {
+                stats.nodeVisits += 1
                 if !rayIntersects(
                     node.bounds,
                     ray: ray,
-                    maximumDistance: nearestDistance
+                    maximumDistance: clippedDistance
                 ) {
                     next = node.parent
                 } else if node.isLeaf {
-                    if let hit = node.rect.intersection(with: ray),
-                       hit.distance < nearestDistance
-                    {
-                        nearestDistance = hit.distance
-                        nearest = .init(
-                            proxy: .init(
-                                index: current,
-                                generation: node.generation
-                            ),
-                            hit: hit
-                        )
+                    stats.leafVisits += 1
+                    let proxy = ProxyID(
+                        index: current,
+                        generation: node.generation
+                    )
+                    switch visit(proxy, clippedDistance) {
+                    case .ignore:
+                        break
+                    case .clip(let distance):
+                        if distance >= 0, distance < clippedDistance {
+                            clippedDistance = distance
+                        }
+                    case .terminate:
+                        return stats
                     }
                     next = node.parent
                 } else {
@@ -110,56 +195,17 @@ public final class DynamicAABBTree2D {
             current = next
         }
 
-        return nearest
+        return stats
     }
 
     private func liveIndex(for proxy: ProxyID) -> Int? {
         let index = Int(proxy.index)
-        guard index >= 0, index < capacity else { return nil }
+        guard index >= 0, index < pool.capacity else { return nil }
         let node = nodes[index]
         guard node.height == 0, node.generation == proxy.generation else {
             return nil
         }
         return index
-    }
-
-    private func allocateNode() -> Int32 {
-        if freeList == Self.nullIndex { grow() }
-
-        let index = freeList
-        let slot = nodes.advanced(by: Int(index))
-        let generation = slot.pointee.generation
-        freeList = slot.pointee.nextFree
-        slot.pointee = .allocated(generation: generation)
-        allocatedNodeCount += 1
-        return index
-    }
-
-    private func freeNode(_ index: Int32) {
-        let slot = nodes.advanced(by: Int(index))
-        let generation = slot.pointee.generation &+ 1
-        slot.pointee = .free(next: freeList, generation: generation)
-        freeList = index
-        allocatedNodeCount -= 1
-    }
-
-    private func grow() {
-        let oldCapacity = capacity
-        let newCapacity = oldCapacity + max(oldCapacity / 2, 1)
-        let newNodes = UnsafeMutablePointer<Node>.allocate(capacity: newCapacity)
-        newNodes.moveInitialize(from: nodes, count: oldCapacity)
-        nodes.deallocate()
-
-        for index in oldCapacity..<newCapacity {
-            let next = index + 1 < newCapacity ? Int32(index + 1) : Self.nullIndex
-            newNodes.advanced(by: index).initialize(
-                to: .free(next: next, generation: 0)
-            )
-        }
-
-        nodes = newNodes
-        capacity = newCapacity
-        freeList = Int32(oldCapacity)
     }
 
     private func insertLeaf(_ leaf: Int32) {
@@ -171,7 +217,7 @@ public final class DynamicAABBTree2D {
 
         let sibling = bestSibling(for: nodes[Int(leaf)].bounds)
         let oldParent = nodes[Int(sibling)].parent
-        let newParent = allocateNode()
+        let newParent = pool.allocateNode()
         let generation = nodes[Int(newParent)].generation
         nodes[Int(newParent)] = .branch(
             bounds: Self.union(nodes[Int(leaf)].bounds, nodes[Int(sibling)].bounds),
@@ -215,7 +261,7 @@ public final class DynamicAABBTree2D {
         if grandParent == Self.nullIndex {
             root = sibling
             nodes[Int(sibling)].parent = Self.nullIndex
-            freeNode(parent)
+            pool.freeNode(parent)
             return
         }
 
@@ -225,7 +271,7 @@ public final class DynamicAABBTree2D {
             nodes[Int(grandParent)].childB = sibling
         }
         nodes[Int(sibling)].parent = grandParent
-        freeNode(parent)
+        pool.freeNode(parent)
 
         var index = grandParent
         while index != Self.nullIndex {
@@ -438,166 +484,29 @@ public final class DynamicAABBTree2D {
         2 * ((bounds.z - bounds.x) + (bounds.w - bounds.y))
     }
 
+    private static func packed(_ bounds: Rect) -> SIMD4<Float> {
+        .init(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY)
+    }
+
+    private static func overlaps(
+        _ lhs: SIMD4<Float>,
+        _ rhs: SIMD4<Float>
+    ) -> Bool {
+        lhs.x <= rhs.z
+            && lhs.z >= rhs.x
+            && lhs.y <= rhs.w
+            && lhs.w >= rhs.y
+    }
+
     /// Exhaustive storage/topology audit used by tests and diagnostics.
     func validateStructure() -> Bool {
-        var freeCount = 0
-        var freeIndex = freeList
-        while freeIndex != Self.nullIndex {
-            let index = Int(freeIndex)
-            guard index >= 0, index < capacity,
-                  nodes[index].height == -1
-            else { return false }
-
-            freeCount += 1
-            guard freeCount <= capacity else { return false }
-            freeIndex = nodes[index].nextFree
-        }
-
-        var actualNodeCount = 0
-        var actualProxyCount = 0
-        var actualBranchCount = 0
-
-        for index in 0..<capacity {
-            let node = nodes[index]
-            if node.height == -1 { continue }
-            actualNodeCount += 1
-
-            if node.isLeaf {
-                guard node.height == 0,
-                      node.childB == Self.nullIndex
-                else { return false }
-                actualProxyCount += 1
-            } else {
-                let childA = Int(node.childA)
-                let childB = Int(node.childB)
-                guard childA >= 0, childA < capacity,
-                      childB >= 0, childB < capacity,
-                      childA != childB,
-                      nodes[childA].height >= 0,
-                      nodes[childB].height >= 0,
-                      nodes[childA].parent == Int32(index),
-                      nodes[childB].parent == Int32(index),
-                      node.bounds == Self.union(
-                        nodes[childA].bounds,
-                        nodes[childB].bounds
-                      ),
-                      node.height == 1 + max(
-                        nodes[childA].height,
-                        nodes[childB].height
-                      )
-                else { return false }
-                actualBranchCount += 1
-            }
-
-            var ancestor = Int32(index)
-            var stepCount = 0
-            while nodes[Int(ancestor)].parent != Self.nullIndex {
-                ancestor = nodes[Int(ancestor)].parent
-                let ancestorIndex = Int(ancestor)
-                guard ancestorIndex >= 0, ancestorIndex < capacity else {
-                    return false
-                }
-                stepCount += 1
-                guard stepCount <= actualNodeCount + capacity else {
-                    return false
-                }
-            }
-            guard ancestor == root else { return false }
-        }
-
-        if root == Self.nullIndex {
-            guard actualNodeCount == 0,
-                  actualProxyCount == 0,
-                  actualBranchCount == 0
-            else { return false }
-        } else {
-            let rootIndex = Int(root)
-            guard rootIndex >= 0, rootIndex < capacity,
-                  nodes[rootIndex].parent == Self.nullIndex,
-                  actualBranchCount == actualProxyCount - 1
-            else { return false }
-        }
-
-        return actualNodeCount == Int(allocatedNodeCount)
-            && actualProxyCount == Int(proxyCount)
-            && actualNodeCount + freeCount == capacity
-    }
-}
-
-private extension DynamicAABBTree2D {
-    struct Node {
-        var bounds: SIMD4<Float>
-        var parent: Int32
-        var childA: Int32
-        var childB: Int32
-        var height: Int32
-        var nextFree: Int32
-        var generation: UInt32
-
-        var isLeaf: Bool { childA == DynamicAABBTree2D.nullIndex }
-
-        var rect: Rect {
-            Rect(
-                x: bounds.x,
-                y: bounds.y,
-                width: bounds.z - bounds.x,
-                height: bounds.w - bounds.y
-            )
-        }
-
-        static func allocated(generation: UInt32) -> Self {
-            Self(
-                bounds: .zero,
-                parent: DynamicAABBTree2D.nullIndex,
-                childA: DynamicAABBTree2D.nullIndex,
-                childB: DynamicAABBTree2D.nullIndex,
-                height: 0,
-                nextFree: DynamicAABBTree2D.nullIndex,
-                generation: generation
-            )
-        }
-
-        static func leaf(bounds: Rect, generation: UInt32) -> Self {
-            Self(
-                bounds: .init(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY),
-                parent: DynamicAABBTree2D.nullIndex,
-                childA: DynamicAABBTree2D.nullIndex,
-                childB: DynamicAABBTree2D.nullIndex,
-                height: 0,
-                nextFree: DynamicAABBTree2D.nullIndex,
-                generation: generation
-            )
-        }
-
-        static func branch(
-            bounds: SIMD4<Float>,
-            parent: Int32,
-            childA: Int32,
-            childB: Int32,
-            height: Int32,
-            generation: UInt32
-        ) -> Self {
-            Self(
-                bounds: bounds,
-                parent: parent,
-                childA: childA,
-                childB: childB,
-                height: height,
-                nextFree: DynamicAABBTree2D.nullIndex,
-                generation: generation
-            )
-        }
-
-        static func free(next: Int32, generation: UInt32) -> Self {
-            Self(
-                bounds: .zero,
-                parent: DynamicAABBTree2D.nullIndex,
-                childA: DynamicAABBTree2D.nullIndex,
-                childB: DynamicAABBTree2D.nullIndex,
-                height: -1,
-                nextFree: next,
-                generation: generation
-            )
-        }
+        DynamicAABBTreeValidator.validate(
+            nodes: nodes,
+            capacity: pool.capacity,
+            freeList: pool.freeList,
+            allocatedNodeCount: pool.allocatedNodeCount,
+            root: root,
+            proxyCount: proxyCount
+        )
     }
 }

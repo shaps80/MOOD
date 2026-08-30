@@ -1,5 +1,5 @@
 /// Stable identity for one live proxy in a `DynamicAABBTree2D`.
-public struct ProxyID: Equatable, Sendable {
+package struct ProxyID: Equatable, Sendable {
     let index: Int32
     let generation: UInt32
 
