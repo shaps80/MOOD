@@ -3,6 +3,11 @@ import Pixl2D
 
 struct WorldBounds: Entity {
     private let shape = Shape(.rect).fill(.gray6)
+    private var slope = Polygon(
+        triangle: .init(800, 20),
+        paint: .color(.blue)
+    )
+
     private let rendering = RenderProperties(layer: .environment)
 
     let floor = Rect(
@@ -27,15 +32,20 @@ struct WorldBounds: Entity {
     )
 
     func submit(to queue: RenderQueue, context: GameContext) {
-        submit(floor, to: queue)
         submit(leftWall, to: queue)
         submit(rightWall, to: queue)
+
+        queue.submit(
+            slope,
+            transform: .init(floor.center),
+            rendering: rendering
+        )
     }
 
     private func submit(_ bounds: Rect, to queue: RenderQueue) {
         queue.submit(
             shape,
-            transform: Transform2D(bounds.center, scale: bounds.size),
+            transform: .init(bounds.center, scale: bounds.size),
             rendering: rendering
         )
     }
