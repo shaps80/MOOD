@@ -4,9 +4,14 @@ import PixlGraphics
 import Pixl2D
 
 extension SpriteSubmission {
-    init(sprite: Sprite, transform: Transform2D) {
+    init(
+        sprite: Sprite,
+        transform: Transform2D,
+        rendering: RenderProperties = .init(),
+        material: Pixl2D.Material = .unlit
+    ) {
+        _ = material
         let width = sprite.region.source.size.x
-            * (sprite.isFlipped ? -1 : 1)
         let height = sprite.region.source.size.y
         let transform = transform.scaled(x: width, y: height)
         let textureCoordinates = sprite.region.textureCoordinates
@@ -34,16 +39,16 @@ extension SpriteSubmission {
             modulationMode: sprite.modulationMode.rawValue
                 | (sprite.asset.alpha == .premultiplied ? 2 : 0),
             sampler: SamplerDescriptor(
-                minFilter: sprite.material.filtering.minification.platform,
-                magFilter: sprite.material.filtering.magnification.platform,
-                addressModeU: sprite.material.addressing.horizontal.platform,
-                addressModeV: sprite.material.addressing.vertical.platform
+                minFilter: sprite.sampling.filtering.minification.platform,
+                magFilter: sprite.sampling.filtering.magnification.platform,
+                addressModeU: sprite.sampling.addressing.horizontal.platform,
+                addressModeV: sprite.sampling.addressing.vertical.platform
             ),
-            blendMode: sprite.material.blendMode.platform(
+            blendMode: rendering.blendMode.platform(
                 alpha: sprite.asset.alpha
             ),
-            layer: sprite.layer.rawValue,
-            order: sprite.order
+            layer: rendering.layer.rawValue,
+            order: rendering.order
         )
     }
 }
@@ -60,7 +65,7 @@ private extension PixlGraphics.Color {
     }
 }
 
-private extension Sprite.Material.Filter {
+private extension TextureSampling.Filter {
     var platform: SamplerFilter {
         switch self {
         case .nearest: .nearest
@@ -69,7 +74,7 @@ private extension Sprite.Material.Filter {
     }
 }
 
-private extension Sprite.Material.AddressMode {
+private extension TextureSampling.AddressMode {
     var platform: SamplerAddressMode {
         switch self {
         case .clampToEdge: .clampToEdge
@@ -79,7 +84,7 @@ private extension Sprite.Material.AddressMode {
     }
 }
 
-private extension Sprite.Material.BlendMode {
+private extension RenderProperties.BlendMode {
     func platform(alpha: TextureAlpha) -> BlendMode {
         switch self {
         case .normal:

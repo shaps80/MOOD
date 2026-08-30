@@ -8,10 +8,12 @@ struct Character: Entity {
     private let idle: SpriteAnimation
     private let walk: SpriteAnimation
     private var timeline: SpriteAnimation.Timeline
+    private var isFlipped: Bool = true
 
     private var editable = Editable2D()
     private var velocity: Vec2 = .zero
     private let camera: OrthographicCamera
+    private let rendering = RenderProperties(layer: .entity)
 
     private let bindings: PlayerBindings = .init()
     private let controller: AxisController = .init(
@@ -49,7 +51,6 @@ struct Character: Entity {
 
         timeline = .init(animation: idle)
         sprite.region = timeline.region
-        sprite.layer = .entity
         editable.size = sprite.size
 
         bindings.bind(to: context.inputs)
@@ -74,10 +75,10 @@ struct Character: Entity {
         sprite.region = timeline.region
 
         if velocity.x > 0 {
-            sprite.isFlipped = false
+            isFlipped = false
             timeline.animation = walk
         } else if velocity.x < 0 {
-            sprite.isFlipped = true
+            isFlipped = true
             timeline.animation = walk
         } else {
             timeline.animation = idle
@@ -103,6 +104,8 @@ struct Character: Entity {
         queue.submit(
             sprite,
             transform: editable.transform
+                .scaled(x: isFlipped ? -1 : 1, y: 1),
+            rendering: rendering
         )
         editable.drawGizmo(context: context)
     }

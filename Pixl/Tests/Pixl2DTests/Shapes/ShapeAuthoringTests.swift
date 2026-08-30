@@ -16,13 +16,9 @@ struct ShapeAuthoringTests {
         let shape = Shape(.circle)
 
         #expect(shape.fill == .color(.white))
-        #expect(shape.strokeColor == nil)
+        #expect(shape.stroke == nil)
         #expect(shape.antialiasing == .smooth)
         #expect(shape.rounding == 0)
-        #expect(shape.blendMode == .normal)
-        #expect(shape.layer == 0)
-        #expect(shape.order == 0)
-        #expect(!shape.isFlipped)
     }
 
     @Test
@@ -35,11 +31,11 @@ struct ShapeAuthoringTests {
             .antialiasing(.hard)
 
         #expect(original.fill == .color(.white))
-        #expect(original.strokeColor == nil)
+        #expect(original.stroke == nil)
         #expect(styled.fill == .color(.red))
-        #expect(styled.strokeColor == .white)
-        #expect(styled.strokeWidth == 2)
-        #expect(styled.strokeAlignment == .inside)
+        #expect(styled.stroke?.color == .white)
+        #expect(styled.stroke?.width == 2)
+        #expect(styled.stroke?.alignment == .inside)
         #expect(styled.rounding == 3)
         #expect(styled.antialiasing == .hard)
     }

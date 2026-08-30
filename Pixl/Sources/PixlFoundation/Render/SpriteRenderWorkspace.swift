@@ -11,8 +11,8 @@ private struct SpriteViewParameters: BitwiseCopyable {
     let padding: SIMD2<Float> = .zero
 }
 
-private struct WorkspaceMaterial {
-    let resolved: ResolvedSpriteMaterial
+private struct WorkspaceSpriteResources {
+    let resolved: ResolvedSpriteResources
     var pipelineFormat: PixelFormat?
     var pipeline: RenderPipeline?
 }
@@ -37,7 +37,7 @@ public final class SpriteRenderWorkspace {
     private let resources: SpriteRenderResources
     private let queue: RenderQueue
     private let capacity: Int
-    private let resolved: UnsafeMutablePointer<WorkspaceMaterial?>
+    private let resolved: UnsafeMutablePointer<WorkspaceSpriteResources?>
     private let upload: UnsafeMutablePointer<RenderQueue.Instance>
     private let shapeUpload: UnsafeMutablePointer<RenderQueue.ShapeInstance>
     private let extendedShapeUpload: UnsafeMutablePointer<RenderQueue.ExtendedShapeInstance>
@@ -123,7 +123,7 @@ public final class SpriteRenderWorkspace {
             "Execution belongs to another render queue"
         )
         precondition(execution.instances.count <= capacity)
-        precondition(execution.materials.count <= capacity)
+        precondition(execution.spriteBatchKeys.count <= capacity)
         precondition(execution.views.indices.contains(viewIndex))
         let view = execution.views[viewIndex]
         guard !view.ordinals.isEmpty else { return Metrics() }
@@ -141,7 +141,7 @@ public final class SpriteRenderWorkspace {
             case .primitive: hasPrimitives = true
             }
             if (batch.family == .shape || batch.family == .extendedShape),
-                execution.shapeMaterials[Int(batch.material)].usesGradient
+                execution.shapeBatchKeys[Int(batch.key)].usesGradient
             {
                 hasGradients = true
             }
@@ -222,33 +222,33 @@ public final class SpriteRenderWorkspace {
                     pass.setVertexBuffer(geometry.vertex, index: 0)
                     usesPrimitiveGeometry = false
                 }
-                let materialIndex = Int(batch.material)
-                var material = try resolve(
-                    execution.materials[materialIndex], at: materialIndex
+                let keyIndex = Int(batch.key)
+                var spriteResources = try resolve(
+                    execution.spriteBatchKeys[keyIndex], at: keyIndex
                 )
-                if material.pipelineFormat != pass.colorFormat {
-                    material.pipeline = try resources.pipeline(
+                if spriteResources.pipelineFormat != pass.colorFormat {
+                    spriteResources.pipeline = try resources.pipeline(
                         format: pass.colorFormat,
-                        blendMode: execution.materials[materialIndex].blendMode
+                        blendMode: execution.spriteBatchKeys[keyIndex].blendMode
                     )
-                    material.pipelineFormat = pass.colorFormat
-                    resolved[materialIndex] = material
+                    spriteResources.pipelineFormat = pass.colorFormat
+                    resolved[keyIndex] = spriteResources
                 }
-                pass.setRenderPipeline(material.pipeline!)
-                pass.setFragmentTexture(material.resolved.texture, index: 0)
-                pass.setFragmentSampler(material.resolved.sampler, index: 0)
+                pass.setRenderPipeline(spriteResources.pipeline!)
+                pass.setFragmentTexture(spriteResources.resolved.texture, index: 0)
+                pass.setFragmentSampler(spriteResources.resolved.sampler, index: 0)
             case .shape:
                 if usesPrimitiveGeometry {
                     pass.setVertexBuffer(geometry.vertex, index: 0)
                     usesPrimitiveGeometry = false
                 }
-                let material = execution.shapeMaterials[Int(batch.material)]
+                let key = execution.shapeBatchKeys[Int(batch.key)]
                 pass.setRenderPipeline(try resources.shapePipeline(
                     format: pass.colorFormat,
-                    blendMode: material.blendMode,
-                    usesGradient: material.usesGradient
+                    blendMode: key.blendMode,
+                    usesGradient: key.usesGradient
                 ))
-                if material.usesGradient {
+                if key.usesGradient {
                     pass.setFragmentTexture(gradients!.texture, index: 1)
                     pass.setFragmentSampler(gradients!.sampler, index: 1)
                 }
@@ -257,13 +257,13 @@ public final class SpriteRenderWorkspace {
                     pass.setVertexBuffer(geometry.vertex, index: 0)
                     usesPrimitiveGeometry = false
                 }
-                let material = execution.shapeMaterials[Int(batch.material)]
+                let key = execution.shapeBatchKeys[Int(batch.key)]
                 pass.setRenderPipeline(try resources.extendedShapePipeline(
                     format: pass.colorFormat,
-                    blendMode: material.blendMode,
-                    usesGradient: material.usesGradient
+                    blendMode: key.blendMode,
+                    usesGradient: key.usesGradient
                 ))
-                if material.usesGradient {
+                if key.usesGradient {
                     pass.setFragmentTexture(gradients!.texture, index: 1)
                     pass.setFragmentSampler(gradients!.sampler, index: 1)
                 }
@@ -275,7 +275,7 @@ public final class SpriteRenderWorkspace {
                     usesPrimitiveGeometry = true
                 }
                 pass.setRenderPipeline(try resources.primitivePipeline(format: pass.colorFormat))
-                let range = primitive.ranges[Int(batch.material)]
+                let range = primitive.ranges[Int(batch.key)]
                 pass.drawIndexedPrimitives(
                     .triangle,
                     indexCount: range.indexCount,
@@ -303,11 +303,11 @@ public final class SpriteRenderWorkspace {
     }
 
     private func resolve(
-        _ source: RenderQueue.Material,
+        _ source: RenderQueue.SpriteBatchKey,
         at index: Int
-    ) throws -> WorkspaceMaterial {
+    ) throws -> WorkspaceSpriteResources {
         if let value = resolved[index] { return value }
-        let value = WorkspaceMaterial(
+        let value = WorkspaceSpriteResources(
             resolved: try resources.resolve(source),
             pipelineFormat: nil,
             pipeline: nil

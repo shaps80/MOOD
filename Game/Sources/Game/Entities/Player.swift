@@ -5,6 +5,7 @@ struct Player {
     private var sprite: Sprite
     private var animation: SpriteAnimation.Timeline
     private let positions: SpatialGrid
+    private let rendering = RenderProperties(layer: .entity, order: 1)
 
     init(count: Int, worldSize: Float, context: GameContext) throws {
         positions = SpatialGrid(
@@ -31,9 +32,6 @@ struct Player {
         )
 
         sprite.region = animation.region
-        sprite.layer = .entity
-        sprite.isFlipped = true
-        sprite.order = 1
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
@@ -45,7 +43,11 @@ struct Player {
 
     func submit(visibleBounds: Rect, to queue: RenderQueue) -> Int {
         positions.forEachPosition(in: visibleBounds, cellPadding: 1) {
-            queue.submit(sprite, transform: .init($0))
+            queue.submit(
+                sprite,
+                transform: Transform2D($0).scaled(x: -1, y: 1),
+                rendering: rendering
+            )
         }
     }
 }

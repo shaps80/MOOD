@@ -5,7 +5,7 @@ import Swift
 ///
 /// Source coordinates use a top-left origin, matching image files and sprite
 /// sheet authoring tools.
-public struct TextureRegion {
+public struct TextureRegion: Equatable, Sendable {
     /// Texture asset containing the region.
     public let asset: TextureAsset
     /// Pixel rectangle within `asset`, measured from its top-left corner.

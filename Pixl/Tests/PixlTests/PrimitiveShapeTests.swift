@@ -73,9 +73,9 @@ struct PrimitiveShapeTests {
                 #expect(execution.views[0].logicalSize == .init(200, 100))
                 #expect(execution.views[0].batches.count == 2)
                 #expect(execution.views[0].batches[0].family == .primitive)
-                #expect(execution.views[0].batches[0].material == PrimitiveKind.ellipseFill.rawValue)
+                #expect(execution.views[0].batches[0].key == PrimitiveKind.ellipseFill.rawValue)
                 #expect(execution.views[0].batches[1].family == .primitive)
-                #expect(execution.views[0].batches[1].material == PrimitiveKind.ellipseStroke.rawValue)
+                #expect(execution.views[0].batches[1].key == PrimitiveKind.ellipseStroke.rawValue)
             }
         }
     }

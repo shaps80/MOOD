@@ -4,7 +4,14 @@ import PixlGraphics
 import PixlPlatform
 
 extension ShapeSubmission {
-    init(shape: Shape, transform sourceTransform: Transform2D, gradientSlot: UInt32 = .max) {
+    init(
+        shape: Shape,
+        transform sourceTransform: Transform2D,
+        rendering: RenderProperties = .init(),
+        material: Pixl2D.Material = .unlit,
+        gradientSlot: UInt32 = .max
+    ) {
+        _ = material
         let kind: ShapeKind
         let size: SIMD2<Float>
         let parameters: SIMD4<Float>
@@ -210,10 +217,10 @@ extension ShapeSubmission {
             parameters = .init(Float(value.radius), Float(value.width), 0, 0); kind = .circleWave
         }
 
-        let strokeWidth = shape.strokeColor == nil ? 0 : Float(shape.strokeWidth)
+        let strokeWidth = Float(shape.stroke?.width ?? 0)
         let strokeAlignment: Float
         let outwardStroke: Float
-        switch shape.strokeAlignment {
+        switch shape.stroke?.alignment ?? .center {
         case .inside:
             strokeAlignment = -1
             outwardStroke = 0
@@ -227,7 +234,7 @@ extension ShapeSubmission {
         let rounding = Float(shape.rounding)
         let quadSize = size + SIMD2(repeating: (outwardStroke + rounding) * 2)
         let transform = sourceTransform.translated(by: localOffset).scaled(
-            x: quadSize.x * (shape.isFlipped ? -1 : 1),
+            x: quadSize.x,
             y: quadSize.y
         )
         let transformX = SIMD2(transform.x.x, transform.x.y)
@@ -263,7 +270,7 @@ extension ShapeSubmission {
                 gradientPlacement = 2
             }
         }
-        let strokeColor = shape.strokeColor ?? .clear
+        let strokeColor = shape.stroke?.color ?? .clear
 
         self.init(
             boundsMinimum: translation - extent,
@@ -284,9 +291,9 @@ extension ShapeSubmission {
             strokeAlignment: strokeAlignment,
             smoothAntialiasing: shape.antialiasing == .smooth ? 1 : 0,
             rounding: rounding,
-            blendMode: shape.blendMode.platform,
-            layer: shape.layer.rawValue,
-            order: shape.order
+            blendMode: rendering.blendMode.platform,
+            layer: rendering.layer.rawValue,
+            order: rendering.order
         )
     }
 }
@@ -297,7 +304,7 @@ private extension PixlGraphics.Color {
     }
 }
 
-private extension Sprite.Material.BlendMode {
+private extension RenderProperties.BlendMode {
     var platform: BlendMode {
         switch self {
         case .normal: .premultiplied

@@ -2,11 +2,23 @@ import Pixl2D
 import PixlFoundation
 
 extension RenderQueue {
-    /// Submits one sprite and model-to-world transform to the queue.
+    /// Submits one sprite with its model-to-world transform and render intent.
     /// - Parameters:
     ///   - sprite: Value-semantic sprite snapshot to submit.
     ///   - transform: Model-to-world transform captured with the sprite.
-    public func submit(_ sprite: Sprite, transform: Transform2D) {
-        submit(SpriteSubmission(sprite: sprite, transform: transform))
+    ///   - rendering: Ordering and destination composition for this submission.
+    ///   - material: Shading applied to the sprite content.
+    public func submit(
+        _ sprite: Sprite,
+        transform: Transform2D,
+        rendering: RenderProperties = .init(),
+        material: Pixl2D.Material = .unlit
+    ) {
+        submit(SpriteSubmission(
+            sprite: sprite,
+            transform: transform,
+            rendering: rendering,
+            material: material
+        ))
     }
 }

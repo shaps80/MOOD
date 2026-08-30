@@ -24,7 +24,7 @@ package struct PrimitiveGeometryResources {
     let ranges: [PrimitiveGeometryRange]
 }
 
-package struct ResolvedSpriteMaterial {
+package struct ResolvedSpriteResources {
     let texture: Texture
     let sampler: Sampler
 }
@@ -95,8 +95,8 @@ public final class SpriteRenderResources {
     }
 
     package func resolve(
-        _ source: RenderQueue.Material
-    ) throws -> ResolvedSpriteMaterial {
+        _ source: RenderQueue.SpriteBatchKey
+    ) throws -> ResolvedSpriteResources {
         guard let texture = textures.texture(for: source.texture) else {
             preconditionFailure(
                 "Sprite texture does not belong to these render resources"
@@ -109,7 +109,7 @@ public final class SpriteRenderResources {
             sampler = try device.makeSampler(source.sampler)
             samplers[source.sampler] = sampler
         }
-        let value = ResolvedSpriteMaterial(
+        let value = ResolvedSpriteResources(
             texture: texture,
             sampler: sampler
         )

@@ -11,19 +11,25 @@ public struct ScreenSpace {
     /// Submits an analytic shape to the context's normal render queue.
     ///
     /// Axis-aligned centred segment strokes are aligned to physical pixels.
-    public func submit(_ shape: Shape, transform: Transform2D) {
+    public func submit(
+        _ shape: Shape,
+        transform: Transform2D,
+        rendering: RenderProperties = .init(),
+        material: Pixl2D.Material = .unlit
+    ) {
         context.renderQueue.submit(
             shape,
-            transform: alignedTransform(for: shape, transform: transform)
+            transform: alignedTransform(for: shape, transform: transform),
+            rendering: rendering,
+            material: material
         )
     }
 
     private func alignedTransform(for shape: Shape, transform: Transform2D) -> Transform2D {
         guard
             case .segment(let segment) = shape.geometry,
-            shape.strokeColor != nil,
-            shape.strokeWidth > 0,
-            shape.strokeAlignment == .center
+            let stroke = shape.stroke,
+            stroke.alignment == .center
         else { return transform }
 
         let start = transform.translation
@@ -37,11 +43,11 @@ public struct ScreenSpace {
         var offset = SIMD3<Float>.zero
 
         if abs(delta.x) <= epsilon {
-            let width = shape.strokeWidth
+            let width = stroke.width
                 * (transform.x.x * transform.x.x + transform.x.y * transform.x.y).squareRoot()
             offset.x = alignedStrokeCenter(start.x, width: width) - start.x
         } else if abs(delta.y) <= epsilon {
-            let width = shape.strokeWidth
+            let width = stroke.width
                 * (transform.y.x * transform.y.x + transform.y.y * transform.y.y).squareRoot()
             offset.y = alignedStrokeCenter(start.y, width: width) - start.y
         }

@@ -102,8 +102,8 @@ struct SpriteSubmissionTests {
             queue.execute(views: .init(start: pointer, count: 1)) { execution in
                 #expect(execution.gradientCount == 1)
                 #expect(execution.gradientAtlas.count == 256 * 4)
-                #expect(execution.shapeMaterials.contains { $0.usesGradient })
-                #expect(execution.shapeMaterials.contains { !$0.usesGradient })
+                #expect(execution.shapeBatchKeys.contains { $0.usesGradient })
+                #expect(execution.shapeBatchKeys.contains { !$0.usesGradient })
             }
         }
     }
@@ -146,7 +146,7 @@ struct SpriteSubmissionTests {
         )
         let sprite = Sprite(
             region: region,
-            material: Sprite.Material(
+            sampling: TextureSampling(
                 filtering: .init(
                     minification: .linear,
                     magnification: .nearest
@@ -154,17 +154,14 @@ struct SpriteSubmissionTests {
                 addressing: .init(
                     horizontal: .repeat,
                     vertical: .mirrorRepeat
-                ),
-                blendMode: .replace
-            ),
-            layer: 7,
-            order: 9,
-            isFlipped: true
+                )
+            )
         )
 
         let submission = SpriteSubmission(
             sprite: sprite,
-            transform: identity
+            transform: identity.scaled(x: -1, y: 1),
+            rendering: .init(layer: 7, order: 9, blendMode: .replace)
         )
 
         #expect(submission.texture.rawValue == 42)
@@ -192,12 +189,13 @@ struct SpriteSubmissionTests {
         var sprite = Sprite(region: TextureRegion(asset: asset))
         let first = SpriteSubmission(sprite: sprite, transform: identity)
 
-        sprite.layer = 100
-        sprite.isFlipped = true
-        sprite.material.filtering = .linear
-        sprite.material.addressing = .repeat
-        sprite.material.blendMode = .replace
-        let second = SpriteSubmission(sprite: sprite, transform: identity)
+        sprite.sampling.filtering = .linear
+        sprite.sampling.addressing = .repeat
+        let second = SpriteSubmission(
+            sprite: sprite,
+            transform: identity.scaled(x: -1, y: 1),
+            rendering: .init(layer: 100, blendMode: .replace)
+        )
 
         #expect(first.transformX == SIMD2(2, 0))
         #expect(first.sampler.minFilter == .nearest)

@@ -5,7 +5,7 @@ import PixlGraphics
 /// Solid and gradient colours are converted to premultiplied representation
 /// before normal source-over composition. Shapes render analytically, so
 /// sprite texture filtering does not apply to their edges.
-public struct Shape: Hashable, Sendable {
+public struct Shape: Hashable, Sendable, Renderable {
     /// Analytic geometry rendered by the shape.
     public enum Geometry: Hashable, Sendable {
         /// Circle geometry.
@@ -88,24 +88,6 @@ public struct Shape: Hashable, Sendable {
         case circleWave(CircleWave)
     }
 
-    /// Interior paint.
-    public enum Fill: Hashable, Sendable {
-        /// One constant colour.
-        case color(Color)
-        /// Retained colour ramp with shape-local placement.
-        case gradient(GradientFill)
-    }
-
-    /// Stroke placement relative to the analytic boundary.
-    public enum StrokeAlignment: Hashable, Sendable {
-        /// Half of the stroke lies on either side of the boundary.
-        case center
-        /// The stroke lies inside the boundary.
-        case inside
-        /// The stroke lies outside the boundary.
-        case outside
-    }
-
     /// Edge coverage mode.
     public enum Antialiasing: Hashable, Sendable {
         /// Smooth analytic edge coverage.
@@ -117,25 +99,16 @@ public struct Shape: Hashable, Sendable {
     /// Analytic geometry.
     public var geometry: Geometry
     /// Interior paint. Defaults to opaque white.
-    public var fill: Fill
-    /// Optional stroke colour.
-    public var strokeColor: Color?
-    /// Stroke width in local units.
-    public var strokeWidth: Float
-    /// Stroke placement relative to the boundary.
-    public var strokeAlignment: StrokeAlignment
+    public var fill: FillStyle
+    /// Optional analytic boundary stroke.
+    public var stroke: StrokeStyle?
     /// Edge coverage mode.
     public var antialiasing: Antialiasing
     /// Outward rounding applied to the analytic boundary, in local units.
     public var rounding: Float
-    /// Fixed-function composition over the destination.
-    public var blendMode: Sprite.Material.BlendMode
-    /// Coarse render layer. Lower layers render first.
-    public var layer: RenderLayer
-    /// Ordering within ``layer``. Lower values render first.
-    public var order: UInt32
-    /// Whether local x is mirrored before evaluating the shape.
-    public var isFlipped: Bool
+
+    public typealias Transform = Transform2D
+    public typealias Bounds = Rect
 
     /// Creates a circle shape.
     ///
@@ -282,15 +255,9 @@ public struct Shape: Hashable, Sendable {
     private init(geometry: Geometry) {
         self.geometry = geometry
         fill = .color(.white)
-        strokeColor = nil
-        strokeWidth = 0
-        strokeAlignment = .center
+        stroke = nil
         antialiasing = .smooth
         rounding = 0
-        blendMode = .normal
-        layer = 0
-        order = 0
-        isFlipped = false
     }
 
     /// Returns a copy using a solid interior colour.
@@ -303,7 +270,7 @@ public struct Shape: Hashable, Sendable {
 
     /// Returns a copy using the supplied interior paint.
     /// - Parameter fill: Interior paint.
-    public func fill(_ fill: Fill) -> Self {
+    public func fill(_ fill: FillStyle) -> Self {
         var copy = self
         copy.fill = fill
         return copy
@@ -356,13 +323,10 @@ public struct Shape: Hashable, Sendable {
     public func stroke(
         _ color: Color,
         width: Float,
-        alignment: StrokeAlignment = .center
+        alignment: StrokeStyle.Alignment = .center
     ) -> Self {
-        precondition(width.isFinite && width > 0)
         var copy = self
-        copy.strokeColor = color
-        copy.strokeWidth = width
-        copy.strokeAlignment = alignment
+        copy.stroke = .init(color, width: width, alignment: alignment)
         return copy
     }
 

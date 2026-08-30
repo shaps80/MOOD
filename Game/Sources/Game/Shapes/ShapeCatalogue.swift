@@ -11,14 +11,14 @@ struct ShapeCatalogue {
     private static let shapeScale: Float = 40
 
     private let bindings: ShapeBindings = .init()
-    private var alignment: Shape.StrokeAlignment = .center
+    private var alignment: StrokeStyle.Alignment = .center
     private var rounding: Float = 0
-    private let fill: Shape.Fill
+    private let fill: FillStyle
 
     init(context: GameContext) {
 //        bindings.bind(to: context.inputs)
 
-        fill = Shape.Fill.gradient(
+        fill = FillStyle.gradient(
             .init(
                 .init(colors: [.purple, .blue]),
                 angle: .degrees(-45)
@@ -83,12 +83,10 @@ struct ShapeCatalogue {
         Shape(.coolS),
         Shape(.circleWave),
     ].map {
-        var shape = $0
+        $0
             .fill(.primary.opacity(0.3))
             .stroke(.separator, width: 1, alignment: .center)
             .rounding(0.2)
-        shape.layer = 1
-        return shape
     }
 
     mutating func update(_ time: UpdateTime, context: GameContext) {
@@ -109,7 +107,7 @@ struct ShapeCatalogue {
         }
 
         for index in shapes.indices {
-            shapes[index].strokeAlignment = alignment
+            shapes[index].stroke?.alignment = alignment
             shapes[index].rounding = rounding
         }
     }
@@ -127,9 +125,8 @@ struct ShapeCatalogue {
             )
 
             var shape = shape
-            shape.strokeWidth = 1 / Self.shapeScale
             shape.rounding = 0.1
-            shape.strokeColor = nil
+            shape.stroke = nil
             shape.fill = fill
 
             screenSpace.submit(
@@ -137,28 +134,35 @@ struct ShapeCatalogue {
                 transform: .init(
                     position,
                     scale: .init(Self.shapeScale, -Self.shapeScale)
-                )
+                ),
+                rendering: .init(layer: 1)
             )
         }
 
         for column in 0...Self.columns {
             let x = Float(column) * cellWidth
-            var line = Shape(.segment(
+            let line = Shape(.segment(
                 from: .init(x, 0),
                 to: .init(x, size.height)
             )).stroke(.opaqueSeparator, width: 1)
-            line.layer = 2
-            screenSpace.submit(line, transform: .identity)
+            screenSpace.submit(
+                line,
+                transform: .identity,
+                rendering: .init(layer: 2)
+            )
         }
 
         for row in 0...Self.rows {
             let y = Float(row) * cellHeight
-            var line = Shape(.segment(
+            let line = Shape(.segment(
                 from: .init(0, y),
                 to: .init(size.width, y)
             )).stroke(.opaqueSeparator, width: 1)
-            line.layer = 2
-            screenSpace.submit(line, transform: .identity)
+            screenSpace.submit(
+                line,
+                transform: .identity,
+                rendering: .init(layer: 2)
+            )
         }
     }
 }

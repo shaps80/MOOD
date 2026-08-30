@@ -187,16 +187,16 @@ public final class RenderQueue {
         public let colorRGBA8: UInt32
     }
 
-    /// Shape draw compatibility shared by consecutive instances.
-    public struct ShapeMaterial: Hashable, Sendable {
+    /// Shape pipeline compatibility shared by consecutive instances.
+    package struct ShapeBatchKey: Hashable, Sendable {
         /// Fixed-function colour composition.
         public let blendMode: BlendMode
         /// Whether the fragment stage samples the shared gradient atlas.
         public let usesGradient: Bool
     }
 
-    /// Resolved sprite draw compatibility shared by consecutive instances.
-    public struct Material: Hashable, Sendable {
+    /// Sprite resource and pipeline compatibility shared by consecutive instances.
+    package struct SpriteBatchKey: Hashable, Sendable {
         /// Logical texture identity.
         public let texture: TextureResourceID
         /// Complete sampling state.
@@ -205,12 +205,12 @@ public final class RenderQueue {
         public let blendMode: BlendMode
     }
 
-    /// One consecutive range sharing a material slot.
+    /// One consecutive range sharing a batch key.
     public struct Batch: BitwiseCopyable, Sendable {
         /// Renderer family consuming this batch.
         public let family: Family
-        /// Index into ``Execution/materials``.
-        public let material: UInt32
+        /// Family-specific batch key index.
+        public let key: UInt32
         /// Exclusive end offset in the view's ordinal stream.
         public let end: UInt32
     }
@@ -248,10 +248,10 @@ public final class RenderQueue {
         public let gradientCount: Int
         /// Monotonic atlas-content generation.
         public let gradientGeneration: UInt64
-        /// Unique materials referenced by view batches.
-        public let materials: UnsafeBufferPointer<Material>
-        /// Unique shape materials referenced by view batches.
-        public let shapeMaterials: UnsafeBufferPointer<ShapeMaterial>
+        /// Unique sprite batch keys referenced by view batches.
+        package let spriteBatchKeys: UnsafeBufferPointer<SpriteBatchKey>
+        /// Unique shape batch keys referenced by view batches.
+        package let shapeBatchKeys: UnsafeBufferPointer<ShapeBatchKey>
         /// Outputs corresponding positionally to the supplied views.
         public let views: UnsafeBufferPointer<ViewOutput>
         /// CPU stage durations for this execution.
@@ -282,7 +282,7 @@ public final class RenderQueue {
     }
 
     private struct BatchState {
-        var previousMaterial = UInt32(0)
+        var previousKey = UInt32(0)
         var visibleCount = UInt32(0)
         var batchCount = UInt32(0)
         var hasPrevious = false
@@ -305,7 +305,7 @@ public final class RenderQueue {
     private let boundsMinimum: UnsafeMutablePointer<SIMD2<Float>>
     private let boundsMaximum: UnsafeMutablePointer<SIMD2<Float>>
     private let orderingRecords: UnsafeMutablePointer<OrderingRecord>
-    private let materialSlots: UnsafeMutablePointer<UInt32>
+    private let encodedBatchKeys: UnsafeMutablePointer<UInt32>
     private let instances: UnsafeMutablePointer<Instance>
     private let shapeInstances: UnsafeMutablePointer<ShapeInstance>
     private let extendedShapeInstances: UnsafeMutablePointer<ExtendedShapeInstance>
@@ -318,9 +318,9 @@ public final class RenderQueue {
     private let layerBins: UnsafeMutablePointer<LayerBin>
     private let activeLayerSlots: UnsafeMutablePointer<UInt32>
     private let layerRegistry: UnsafeMutablePointer<RegistryEntry>
-    private let materialRegistry: UnsafeMutablePointer<RegistryEntry>
-    private let materials: UnsafeMutablePointer<Material>
-    private let shapeMaterials: UnsafeMutablePointer<ShapeMaterial>
+    private let spriteBatchKeyRegistry: UnsafeMutablePointer<RegistryEntry>
+    private let spriteBatchKeys: UnsafeMutablePointer<SpriteBatchKey>
+    private let shapeBatchKeys: UnsafeMutablePointer<ShapeBatchKey>
     private let radixCounts: UnsafeMutablePointer<Int>
     private let viewContexts: UnsafeMutablePointer<ViewContext>
     private let viewOutputs: UnsafeMutablePointer<ViewOutput>
@@ -330,8 +330,8 @@ public final class RenderQueue {
     private let registryCapacity: Int
     private var initializedExecutionCount = 0
     private var layerCount = 0
-    private var materialCount = 0
-    private var shapeMaterialCount = 0
+    private var spriteBatchKeyCount = 0
+    private var shapeBatchKeyCount = 0
     private var layerGeneration = UInt32(0)
     private var gradientCount = 0
     private var gradientGeneration = UInt64(0)
@@ -348,7 +348,7 @@ public final class RenderQueue {
         boundsMinimum = .allocate(capacity: capacity)
         boundsMaximum = .allocate(capacity: capacity)
         orderingRecords = .allocate(capacity: capacity)
-        materialSlots = .allocate(capacity: capacity)
+        encodedBatchKeys = .allocate(capacity: capacity)
         instances = .allocate(capacity: capacity)
         shapeInstances = .allocate(capacity: capacity)
         extendedShapeInstances = .allocate(capacity: capacity)
@@ -361,9 +361,9 @@ public final class RenderQueue {
         layerBins = .allocate(capacity: capacity)
         activeLayerSlots = .allocate(capacity: capacity)
         layerRegistry = .allocate(capacity: registryCapacity)
-        materialRegistry = .allocate(capacity: registryCapacity)
-        materials = .allocate(capacity: capacity)
-        shapeMaterials = .allocate(capacity: capacity)
+        spriteBatchKeyRegistry = .allocate(capacity: registryCapacity)
+        spriteBatchKeys = .allocate(capacity: capacity)
+        shapeBatchKeys = .allocate(capacity: capacity)
         radixCounts = .allocate(capacity: 256)
         viewContexts = .allocate(capacity: settings.viewCapacity)
         viewOutputs = .allocate(capacity: settings.viewCapacity)
@@ -380,14 +380,14 @@ public final class RenderQueue {
         orderingScratch.initialize(repeating: 0, count: capacity)
         activeLayerSlots.initialize(repeating: 0, count: capacity)
         layerRegistry.initialize(repeating: .empty, count: registryCapacity)
-        materialRegistry.initialize(repeating: .empty, count: registryCapacity)
+        spriteBatchKeyRegistry.initialize(repeating: .empty, count: registryCapacity)
         radixCounts.initialize(repeating: 0, count: 256)
 
         for index in 0..<settings.viewCapacity {
             let ordinals = UnsafeMutablePointer<UInt32>.allocate(capacity: capacity)
             let batches = UnsafeMutablePointer<Batch>.allocate(capacity: capacity)
             ordinals.initialize(repeating: 0, count: capacity)
-            batches.initialize(repeating: Batch(family: .sprite, material: 0, end: 0), count: capacity)
+            batches.initialize(repeating: Batch(family: .sprite, key: 0, end: 0), count: capacity)
             viewContexts.advanced(by: index).initialize(
                 to: ViewContext(ordinals: ordinals, batches: batches, state: .init())
             )
@@ -403,8 +403,8 @@ public final class RenderQueue {
         boundsMaximum.deallocate()
         orderingRecords.deinitialize(count: initializedExecutionCount)
         orderingRecords.deallocate()
-        materialSlots.deinitialize(count: initializedExecutionCount)
-        materialSlots.deallocate()
+        encodedBatchKeys.deinitialize(count: initializedExecutionCount)
+        encodedBatchKeys.deallocate()
         instances.deinitialize(count: initializedExecutionCount)
         instances.deallocate()
         shapeInstances.deinitialize(count: initializedExecutionCount)
@@ -429,12 +429,12 @@ public final class RenderQueue {
         activeLayerSlots.deallocate()
         layerRegistry.deinitialize(count: registryCapacity)
         layerRegistry.deallocate()
-        materialRegistry.deinitialize(count: registryCapacity)
-        materialRegistry.deallocate()
-        materials.deinitialize(count: materialCount)
-        materials.deallocate()
-        shapeMaterials.deinitialize(count: shapeMaterialCount)
-        shapeMaterials.deallocate()
+        spriteBatchKeyRegistry.deinitialize(count: registryCapacity)
+        spriteBatchKeyRegistry.deallocate()
+        spriteBatchKeys.deinitialize(count: spriteBatchKeyCount)
+        spriteBatchKeys.deallocate()
+        shapeBatchKeys.deinitialize(count: shapeBatchKeyCount)
+        shapeBatchKeys.deallocate()
         radixCounts.deinitialize(count: 256)
         radixCounts.deallocate()
         for index in 0..<settings.viewCapacity {
@@ -672,8 +672,14 @@ public final class RenderQueue {
                 ),
                 gradientCount: gradientCount,
                 gradientGeneration: gradientGeneration,
-                materials: UnsafeBufferPointer(start: materials, count: materialCount),
-                shapeMaterials: UnsafeBufferPointer(start: shapeMaterials, count: shapeMaterialCount),
+                spriteBatchKeys: UnsafeBufferPointer(
+                    start: spriteBatchKeys,
+                    count: spriteBatchKeyCount
+                ),
+                shapeBatchKeys: UnsafeBufferPointer(
+                    start: shapeBatchKeys,
+                    count: shapeBatchKeyCount
+                ),
                 views: UnsafeBufferPointer(start: viewOutputs, count: views.count),
                 metrics: metrics
             )
@@ -688,19 +694,19 @@ public final class RenderQueue {
             let sourceBoundsMinimum: SIMD2<Float>
             let sourceBoundsMaximum: SIMD2<Float>
             let family: Family
-            let materialSlot: UInt32
+            let encodedBatchKey: UInt32
             let spriteInstance: Instance
             let shapeInstance: ShapeInstance
             let extendedShapeInstance: ExtendedShapeInstance
             let primitiveInstance: PrimitiveInstance
             switch source {
             case .sprite(let source):
-                let material = Material(
+                let batchKey = SpriteBatchKey(
                     texture: source.texture,
                     sampler: source.sampler,
                     blendMode: source.blendMode
                 )
-                materialSlot = resolveMaterial(material)
+                encodedBatchKey = resolveSpriteBatchKey(batchKey)
                 family = .sprite
                 sourceLayer = source.layer
                 sourceOrder = source.order
@@ -722,7 +728,7 @@ public final class RenderQueue {
                 let isExtended = source.kind == .triangle
                     || source.kind == .quadraticBezier
                     || source.kind == .unevenRoundedRectangle
-                materialSlot = resolveShapeMaterial(.init(
+                encodedBatchKey = resolveShapeBatchKey(.init(
                     blendMode: source.blendMode,
                     usesGradient: source.gradientSlot != .max
                 ))
@@ -770,7 +776,7 @@ public final class RenderQueue {
                 )
                 primitiveInstance = Self.emptyPrimitiveInstance
             case .primitive(let source):
-                materialSlot = 0x4000_0000 | source.kind.rawValue
+                encodedBatchKey = 0x4000_0000 | source.kind.rawValue
                 family = .primitive
                 sourceLayer = source.layer
                 sourceOrder = source.order
@@ -803,7 +809,7 @@ public final class RenderQueue {
                 boundsMinimum[index] = sourceBoundsMinimum
                 boundsMaximum[index] = sourceBoundsMaximum
                 orderingRecords[index] = ordering
-                materialSlots[index] = materialSlot
+                encodedBatchKeys[index] = encodedBatchKey
                 instances[index] = spriteInstance
                 shapeInstances[index] = shapeInstance
                 extendedShapeInstances[index] = extendedShapeInstance
@@ -813,7 +819,7 @@ public final class RenderQueue {
                 boundsMinimum.advanced(by: index).initialize(to: sourceBoundsMinimum)
                 boundsMaximum.advanced(by: index).initialize(to: sourceBoundsMaximum)
                 orderingRecords.advanced(by: index).initialize(to: ordering)
-                materialSlots.advanced(by: index).initialize(to: materialSlot)
+                encodedBatchKeys.advanced(by: index).initialize(to: encodedBatchKey)
                 instances.advanced(by: index).initialize(to: spriteInstance)
                 shapeInstances.advanced(by: index).initialize(to: shapeInstance)
                 extendedShapeInstances.advanced(by: index).initialize(to: extendedShapeInstance)
@@ -925,11 +931,11 @@ public final class RenderQueue {
         for index in 0..<viewCount { viewContexts[index].state = .init() }
         for position in 0..<visibleCount {
             let ordinal = UInt32(truncatingIfNeeded: orderedKeys[position])
-            let material = materialSlots[Int(ordinal)]
+            let encodedKey = encodedBatchKeys[Int(ordinal)]
             var mask = visibilityMasks[Int(ordinal)]
             while mask != 0 {
                 append(
-                    ordinal: ordinal, material: material,
+                    ordinal: ordinal, encodedKey: encodedKey,
                     to: viewContexts.advanced(by: mask.trailingZeroBitCount))
                 mask &= mask - 1
             }
@@ -939,8 +945,8 @@ public final class RenderQueue {
             var state = context.pointee.state
             if state.hasPrevious {
                 context.pointee.batches[Int(state.batchCount)] = Batch(
-                    family: Self.family(for: state.previousMaterial),
-                    material: state.previousMaterial & 0x3fff_ffff,
+                    family: Self.family(for: state.previousKey),
+                    key: state.previousKey & 0x3fff_ffff,
                     end: state.visibleCount)
                 state.batchCount += 1
                 context.pointee.state = state
@@ -950,19 +956,19 @@ public final class RenderQueue {
 
     @inline(__always)
     private func append(
-        ordinal: UInt32, material: UInt32, to context: UnsafeMutablePointer<ViewContext>
+        ordinal: UInt32, encodedKey: UInt32, to context: UnsafeMutablePointer<ViewContext>
     ) {
         var state = context.pointee.state
-        if state.hasPrevious && material != state.previousMaterial {
+        if state.hasPrevious && encodedKey != state.previousKey {
             context.pointee.batches[Int(state.batchCount)] = Batch(
-                family: Self.family(for: state.previousMaterial),
-                material: state.previousMaterial & 0x3fff_ffff,
+                family: Self.family(for: state.previousKey),
+                key: state.previousKey & 0x3fff_ffff,
                 end: state.visibleCount)
             state.batchCount += 1
         }
         context.pointee.ordinals[Int(state.visibleCount)] = ordinal
         state.visibleCount += 1
-        state.previousMaterial = material
+        state.previousKey = encodedKey
         state.hasPrevious = true
         context.pointee.state = state
     }
@@ -989,36 +995,36 @@ public final class RenderQueue {
         return slot
     }
 
-    private func resolveMaterial(_ material: Material) -> UInt32 {
-        let hash = Self.materialHash(material)
+    private func resolveSpriteBatchKey(_ key: SpriteBatchKey) -> UInt32 {
+        let hash = Self.spriteBatchKeyHash(key)
         var index = Int(truncatingIfNeeded: hash) & (registryCapacity - 1)
-        while materialRegistry[index].occupied {
-            let slot = materialRegistry[index].slot
-            if materials[Int(slot)] == material { return slot }
+        while spriteBatchKeyRegistry[index].occupied {
+            let slot = spriteBatchKeyRegistry[index].slot
+            if spriteBatchKeys[Int(slot)] == key { return slot }
             index = (index + 1) & (registryCapacity - 1)
         }
         precondition(
-            materialCount < settings.capacity,
-            "Render queue material capacity exceeded: capacity \(settings.capacity), attempted count \(materialCount + 1)"
+            spriteBatchKeyCount < settings.capacity,
+            "Render queue sprite-batch-key capacity exceeded: capacity \(settings.capacity), attempted count \(spriteBatchKeyCount + 1)"
         )
-        let slot = UInt32(materialCount)
-        materials.advanced(by: materialCount).initialize(to: material)
-        materialCount += 1
-        materialRegistry[index] = RegistryEntry(value: hash, slot: slot, occupied: true)
+        let slot = UInt32(spriteBatchKeyCount)
+        spriteBatchKeys.advanced(by: spriteBatchKeyCount).initialize(to: key)
+        spriteBatchKeyCount += 1
+        spriteBatchKeyRegistry[index] = RegistryEntry(value: hash, slot: slot, occupied: true)
         return slot
     }
 
-    private func resolveShapeMaterial(_ material: ShapeMaterial) -> UInt32 {
-        for index in 0..<shapeMaterialCount where shapeMaterials[index] == material {
+    private func resolveShapeBatchKey(_ key: ShapeBatchKey) -> UInt32 {
+        for index in 0..<shapeBatchKeyCount where shapeBatchKeys[index] == key {
             return UInt32(index)
         }
         precondition(
-            shapeMaterialCount < settings.capacity,
-            "Render queue shape-material capacity exceeded: capacity \(settings.capacity), attempted count \(shapeMaterialCount + 1)"
+            shapeBatchKeyCount < settings.capacity,
+            "Render queue shape-batch-key capacity exceeded: capacity \(settings.capacity), attempted count \(shapeBatchKeyCount + 1)"
         )
-        let slot = UInt32(shapeMaterialCount)
-        shapeMaterials.advanced(by: shapeMaterialCount).initialize(to: material)
-        shapeMaterialCount += 1
+        let slot = UInt32(shapeBatchKeyCount)
+        shapeBatchKeys.advanced(by: shapeBatchKeyCount).initialize(to: key)
+        shapeBatchKeyCount += 1
         return slot
     }
 
@@ -1084,10 +1090,10 @@ public final class RenderQueue {
             | channel(color.w) << 24
     }
 
-    private static func materialHash(_ material: Material) -> UInt64 {
-        var value = mix(material.texture.rawValue)
-        value ^= mix(UInt64(samplerCode(material.sampler)) << 1)
-        switch material.blendMode {
+    private static func spriteBatchKeyHash(_ key: SpriteBatchKey) -> UInt64 {
+        var value = mix(key.texture.rawValue)
+        value ^= mix(UInt64(samplerCode(key.sampler)) << 1)
+        switch key.blendMode {
         case .replace:
             break
         case .normal:

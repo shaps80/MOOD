@@ -69,48 +69,41 @@ struct SpriteAuthoringTests {
         let original = Sprite(region: region)
         var copy = original
 
-        copy.layer = 100
-        copy.isFlipped = true
+        copy.sampling = .init(filtering: .linear)
 
-        #expect(original.layer == 0)
-        #expect(!original.isFlipped)
+        #expect(original.sampling.filtering == .nearest)
         #expect(copy.asset == asset)
-        #expect(copy.layer == RenderLayer(100))
-        #expect(copy.isFlipped)
+        #expect(copy.sampling.filtering == .linear)
     }
 
     @Test
     func spriteInitializerAcceptsEveryDefaultableProperty() {
         let region = TextureRegion(asset: asset)
-        let material = Sprite.Material(
+        let sampling = TextureSampling(
             filtering: .linear,
-            addressing: .repeat,
-            blendMode: .replace
+            addressing: .repeat
         )
         let sprite = Sprite(
             region: region,
-            material: material,
-            layer: 10,
-            isFlipped: true
+            sampling: sampling,
+            modulation: .red
         )
 
-        #expect(sprite.material == material)
-        #expect(sprite.layer == 10)
-        #expect(sprite.isFlipped)
+        #expect(sprite.sampling == sampling)
+        #expect(sprite.modulation == .red)
     }
 
     @Test
-    func materialDefaultsToPixelArtSamplingAndNormalBlending() {
-        let material = Sprite.Material()
+    func samplingDefaultsToPixelArtFilteringAndClampedAddressing() {
+        let sampling = TextureSampling()
 
-        #expect(material.filtering == .nearest)
-        #expect(material.addressing == .clampToEdge)
-        #expect(material.blendMode == .normal)
+        #expect(sampling.filtering == .nearest)
+        #expect(sampling.addressing == .clampToEdge)
     }
 
     @Test
-    func materialAllowsIndependentSamplingAxes() {
-        var material = Sprite.Material(
+    func textureSamplingAllowsIndependentAxes() {
+        var sampling = TextureSampling(
             filtering: .init(
                 minification: .linear,
                 magnification: .nearest
@@ -121,19 +114,33 @@ struct SpriteAuthoringTests {
             )
         )
 
-        #expect(material.filtering.minification == .linear)
-        #expect(material.filtering.magnification == .nearest)
-        #expect(material.addressing.horizontal == .repeat)
-        #expect(material.addressing.vertical == .mirrorRepeat)
+        #expect(sampling.filtering.minification == .linear)
+        #expect(sampling.filtering.magnification == .nearest)
+        #expect(sampling.addressing.horizontal == .repeat)
+        #expect(sampling.addressing.vertical == .mirrorRepeat)
 
-        material.filtering.magnification = .linear
-        material.addressing.vertical = .clampToEdge
+        sampling.filtering.magnification = .linear
+        sampling.addressing.vertical = .clampToEdge
 
-        #expect(material.filtering == .linear)
-        #expect(material.addressing == .init(
+        #expect(sampling.filtering == .linear)
+        #expect(sampling.addressing == .init(
             horizontal: .repeat,
             vertical: .clampToEdge
         ))
+    }
+
+    @Test
+    func renderPropertiesOwnOrderingAndComposition() {
+        let rendering = RenderProperties(
+            layer: 10,
+            order: 20,
+            blendMode: .replace
+        )
+
+        #expect(rendering.layer == 10)
+        #expect(rendering.order == 20)
+        #expect(rendering.blendMode == .replace)
+        #expect(Material.unlit == Material())
     }
 
     @Test
