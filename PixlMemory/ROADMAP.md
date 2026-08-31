@@ -1,50 +1,38 @@
 # PixlMemory Roadmap
 
-PixlMemory is an independent portable memory library. Its first production
-slice exists to validate its interface, accounting, reports, and diagnostics
-before it owns payload backing storage. Pixl engine integration is separate and
-comes later.
+PixlMemory is an independent, platform-agnostic Swift memory library. It owns
+explicit fixed-capacity CPU storage, lifetime layouts, diagnostics, and usage
+reporting. It imports no platform SDK.
 
-## First Slice — Tracked Memory Interface
+## Implementation verification
 
-- [x] Add a standalone, standard-library-only `PixlMemory` Swift package with a
-  public library product and target. It must remain platform-agnostic and import
-  no Apple framework or SDK module.
-- [x] Add a `Sandbox` executable product and target depending only on
-  `PixlMemory`. Give it an input-driven game-style loop, representative plans,
-  explicit use/release, reports, and deliberate failure actions. Do not run it
-  during implementation; the developer will run it manually in Xcode.
-- [x] Add decimal byte quantities with `.bytes`, `.kilobytes`, and `.megabytes`.
-  Typed reservations derive byte size and alignment from Swift `MemoryLayout`.
-- [x] Add named `MemoryPlan` descriptions that calculate payload, alignment
-  padding, tracking metadata, and total required capacity without allocating
-  payload backing storage.
-- [x] Add `PlanConcurrency.single` and `.upTo(Int)`. Arena reserved capacity
-  combines permanent requirements with the largest configured number of
-  distinct plans.
-- [x] Add the real `Arena`, nested lifetime scopes, and automatic descendant
-  release. Releasing a smaller scope early makes its tracked capacity available
-  for reuse; releasing a parent releases its complete scope subtree.
-- [x] Add tracking-only typed and raw reservations. They enforce their real
-  calculated byte/count capacities and expose explicit acquire/release
-  operations so current use, reuse, and peak use can be exercised without
-  allocating payload backing or retaining inserted values.
-- [x] Add production capacity, plan-activation, and plan-concurrency failures.
-  Diagnostics include reserved, used, requested, and required values; caller
-  `#fileID` and `#line`; and a concrete minimum fix suggestion.
-- [x] Add concise explicit startup, peak, plan, scope, and reservation reports.
-  Tables use actual plan names, header separators, fixed-width right-aligned
-  columns, decimal units, and exactly two fractional digits. Default managed
-  capacity is zero. Do not add capability reporting.
-- [ ] Exercise valid plans, nested scopes, early release/reuse, deliberate
-  reservation overflow, and deliberate plan-concurrency overflow through
-  `Sandbox` so the interface and human-readable output can receive developer
-  sign-off.
+- [x] Compile the `@Layout` and `@Region` consumer fixture in
+  `PixlMemoryTests`, including persistent arena buffers and acquired-layout
+  buffers, pools, and raw bytes.
+- [x] Verify aligned arena allocation, persistent storage, one active top-level
+  layout, nested acquisition, cascading release, and storage reuse.
+- [ ] Verify eager/lazy preparation inheritance and that hot-path operations
+  never allocate, wait, or grow implicitly.
+- [x] Verify indexed-buffer initialization, bulk append/replace, mutation,
+  removal, borrowing, capacity failures, and stale-scope failures.
+- [x] Verify raw-buffer alignment, byte access, borrowing, capacity failures,
+  and stale-scope failures.
+- [x] Verify dense-pool insertion, removal, dense iteration, generational
+  handles, constant-time lookup, stale-handle detection, and capacity failures.
+- [x] Verify exclusive mutable borrowing, concurrent read borrowing, immediate
+  contention failure, and release failure while borrowed.
+- [ ] Validate raw statistics and diagnostics data. Keep report formatting out
+  of correctness assertions.
 
-## Explicitly Deferred
+## Performance
 
-- Payload backing allocation and usable byte access.
-- Typed buffers, pools, dense storage, and generational handles.
-- Unit tests and benchmark executables.
-- Game package dependencies and Pixl runtime, `Pixl.Game`, renderer, audio,
-  asset, GPU, or platform integration.
+- [ ] Add standalone release benchmarks for arena operations, indexed buffers,
+  raw buffers, dense pools, handle lookup, and dense iteration.
+- [ ] Confirm no steady-state allocation or dynamic dispatch in hot paths.
+- [ ] Compare Sandbox release resident memory against its accepted 3.60–3.80 MB
+  pre-allocation CLI baseline and record accepted results in `PERF.md`.
+- [ ] Establish accepted host baselines before integrating PixlMemory elsewhere.
+
+## Deferred
+
+- Pixl engine and `Pixl.Game` integration.
