@@ -31,5 +31,9 @@ public struct MutableElements<Element: BitwiseCopyable>: RandomAccessCollection,
             assert(index >= 0 && index < count, "Element index out of bounds")
             baseAddress!.advanced(by: index).pointee = newValue
         }
+        nonmutating _modify {
+            assert(index >= 0 && index < count, "Element index out of bounds")
+            yield &baseAddress!.advanced(by: index).pointee
+        }
     }
 }

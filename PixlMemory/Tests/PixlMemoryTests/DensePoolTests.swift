@@ -2,7 +2,9 @@ import PixlMemory
 import Testing
 
 @Layout("Pool persistent")
-struct PoolPersistent {}
+struct PoolPersistent {
+    static func make(_ layout: inout Layout) {}
+}
 
 @Layout("Pool layout")
 struct PoolLayoutFixture {

@@ -2,7 +2,9 @@ import PixlMemory
 import Testing
 
 @Layout("Buffer persistent")
-struct BufferPersistent {}
+struct BufferPersistent {
+    static func make(_ layout: inout Layout) {}
+}
 
 @Layout("Buffer layout")
 struct BufferLayout {

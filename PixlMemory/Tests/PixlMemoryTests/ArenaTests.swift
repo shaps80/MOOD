@@ -115,7 +115,9 @@ private func nestedLayoutsReleaseIndependentlyAndWithTheirParent() throws {
 }
 
 @Layout("Empty persistent")
-struct EmptyPersistent {}
+struct EmptyPersistent {
+    static func make(_ layout: inout Layout) {}
+}
 
 @Test
 private func emptyArenaReservesNoMemory() throws {

@@ -28,26 +28,30 @@ added no observable resident memory in Xcode's memory gauge.
 
 Accepted on 2026-08-31 using an Apple M4 Pro MacBook Pro (14 cores, 48 GB),
 macOS 27.0 (26A5421a), and Apple Swift 6.4. Built with `-O` and PixlMemory
-cross-module optimisation enabled. Each result uses 5 warmups and 31 measured
-samples. Benchmarks run sequentially.
+cross-module optimisation enabled. Each process run uses 5 warmups and 31
+measured samples. Benchmarks run sequentially. The table reports the median of
+each column across three sequential process runs. The MacBook was connected to
+power for these accepted runs. Future comparisons must use external power and
+confirm that Low Power Mode is disabled; battery or Low Power Mode results are
+not directly comparable.
 
 | Benchmark | Unit | Median | p95 | Max |
 | --- | --- | ---: | ---: | ---: |
-| Arena construction | arena | 1.43 µs | 1.45 µs | 1.49 µs |
-| Scope acquire/release | scope | 518.41 ns | 537.46 ns | 555.94 ns |
-| Indexed append | element | 70.03 ns | 76.14 ns | 76.80 ns |
-| Indexed bulk append | element | 0.57 ns | 0.58 ns | 0.61 ns |
-| Indexed mutable iteration | element | 0.18 ns | 0.20 ns | 0.20 ns |
-| Raw append, 64 bytes | chunk | 87.73 ns | 96.29 ns | 105.74 ns |
-| Raw mutable iteration | byte | 0.08 ns | 0.08 ns | 0.09 ns |
-| Dense-pool insert | element | 91.60 ns | 94.10 ns | 94.50 ns |
-| Dense-pool remove | element | 86.14 ns | 88.53 ns | 90.54 ns |
-| Dense-pool handle lookup | lookup | 5.66 ns | 6.12 ns | 6.59 ns |
-| Dense-pool iteration | element | 0.13 ns | 0.13 ns | 0.15 ns |
-| Mixed frame, small | frame | 33.17 µs | 39.29 µs | 43.67 µs |
-| Mixed frame, heavy | frame | 278.17 µs | 293.58 µs | 325.00 µs |
-| Particle integration, 2 M | particle | 0.51 ns | 0.53 ns | 0.55 ns |
-| Particle integration, 2 M | frame | 1.02 ms | 1.06 ms | 1.09 ms |
+| Arena construction | arena | 916.65 ns | 934.57 ns | 948.40 ns |
+| Scope acquire/release | scope | 338.42 ns | 346.79 ns | 366.56 ns |
+| Indexed append | element | 46.65 ns | 49.23 ns | 50.08 ns |
+| Indexed bulk append | element | 0.30 ns | 0.32 ns | 0.37 ns |
+| Indexed mutable iteration | element | 0.12 ns | 0.14 ns | 0.15 ns |
+| Raw append, 64 bytes | chunk | 55.36 ns | 58.74 ns | 59.60 ns |
+| Raw mutable iteration | byte | 0.05 ns | 0.05 ns | 0.07 ns |
+| Dense-pool insert | element | 57.56 ns | 59.46 ns | 59.98 ns |
+| Dense-pool remove | element | 54.63 ns | 56.21 ns | 56.95 ns |
+| Dense-pool handle lookup | lookup | 3.62 ns | 3.81 ns | 3.90 ns |
+| Dense-pool iteration | element | 0.08 ns | 0.11 ns | 0.14 ns |
+| Mixed frame, small | frame | 20.96 µs | 25.17 µs | 28.17 µs |
+| Mixed frame, heavy | frame | 175.83 µs | 195.38 µs | 204.33 µs |
+| Particle integration, 2 M | particle | 0.32 ns | 0.35 ns | 0.39 ns |
+| Particle integration, 2 M | frame | 634.96 µs | 695.88 µs | 773.33 µs |
 
 The small mixed frame integrates 10,000 actors, rebuilds 10,000 render
 positions from that state, churns 100 dense-pool entries, performs 1,000 handle
@@ -59,7 +63,7 @@ Mixed-frame values measure PixlMemory and representative data work only. They
 are not complete game-frame or renderer timings.
 
 Across three sequential process runs, mixed-frame medians ranged from
-32.13–33.67 µs for the small workload and 277.63–284.29 µs for the heavy
+20.92–21.75 µs for the small workload and 173.42–186.29 µs for the heavy
 workload.
 
 Raw iteration validates an exact checksum covering every mutated byte and
@@ -75,10 +79,10 @@ and velocity use separate buffers; each pass writes the next position from the
 current position and velocity, then swaps position-buffer roles. This reserves
 approximately 72 MB and streams at least 72 MB per integration pass.
 
-Three sequential runs measured 1.02–1.03 ms median and 1.06–1.07 ms p95. The
-representative 1.02 ms median is approximately 6.1% of a 16.67 ms frame and
-implies roughly 70 GB/s of effective buffer traffic. At 60 integrations per
-second, the pass alone represents about 4.32 GB/s of sustained traffic.
+Three sequential runs measured 611.54–635.33 µs median and 639.50–723.00 µs
+p95. The aggregate 634.96 µs median is approximately 3.8% of a 16.67 ms frame
+and implies roughly 113 GB/s of effective buffer traffic. At 60 integrations
+per second, the pass alone represents about 4.32 GB/s of sustained traffic.
 
 Validation checks every lane in both final position buffers against the
 expected result after all warmup and measured passes. This benchmark covers
