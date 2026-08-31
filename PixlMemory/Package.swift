@@ -4,6 +4,13 @@ import CompilerPluginSupport
 
 let package = Package(
     name: "PixlMemory",
+    platforms: [
+        .macOS(.v14),
+        .watchOS(.v10),
+        .tvOS(.v17),
+        .iOS(.v17),
+        .visionOS(.v1)
+    ],
     products: [
         .library(name: "PixlMemory", targets: ["PixlMemory"]),
         .executable(name: "Sandbox", targets: ["Sandbox"]),

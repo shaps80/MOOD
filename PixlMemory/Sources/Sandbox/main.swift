@@ -42,13 +42,6 @@ private struct Menu {
     }
 }
 
-@Layout("Empty")
-private struct Empty {
-    static func make(_ layout: inout Layout) {
-        
-    }
-}
-
 @main
 private enum Sandbox {
     static func main() throws {
