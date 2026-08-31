@@ -18,6 +18,28 @@ struct BufferLayout {
 }
 
 @Test
+private func indexedBufferKeepsItsScopeAlive() async {
+    await #expect(processExitsWith: .success) {
+        let arena = try Arena(
+            BufferPersistent.self,
+            layouts: BufferLayout.self,
+            logging: .disabled
+        )
+        let buffer = indexedBuffer(from: arena)
+
+        buffer.append(42)
+        #expect(buffer.withElements { $0[0] } == 42)
+    }
+}
+
+private func indexedBuffer(
+    from arena: Arena<BufferPersistent>
+) -> IndexedBuffer<Int32> {
+    let scope = arena.acquire(BufferLayout.self)
+    return scope.buffer(\.integers)
+}
+
+@Test
 private func indexedBufferSupportsContiguousMutationAndReuse() throws {
     let arena = try Arena(
         BufferPersistent.self,

@@ -23,5 +23,4 @@ public struct Scope<Definition: MemoryLayoutDefinition>: ~Copyable {
     }
 
     public consuming func release() { storage.release(cascading: true) }
-    deinit { storage.release(cascading: true) }
 }
