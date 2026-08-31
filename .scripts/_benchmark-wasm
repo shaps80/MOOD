@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${SCRIPT_DIR}/_web-toolchain"
+ensure_web_toolchain
+
+SCRATCH_DIR="${ROOT_DIR}/Pixl/.build/benchmarks-wasm"
+PRODUCTS_DIR="${SCRATCH_DIR}/out/Products/Release-webassembly-wasm32"
+DIRECT_DIR="${SCRATCH_DIR}/direct-wmo"
+SDK_BASE="${HOME}/Library/org.swift.swiftpm/swift-sdks/${WEB_SDK}.artifactbundle/${WEB_SDK}/wasm32-unknown-wasip1"
+SDK_ROOT="${SDK_BASE}/WASI.sdk"
+RESOURCE_DIR="${SDK_BASE}/swift.xctoolchain/usr/lib/swift_static"
+
+for target in PixlFoundation Pixl2D; do
+  swiftly run swift build \
+    --package-path "${ROOT_DIR}/Pixl" \
+    --scratch-path "${SCRATCH_DIR}" \
+    --swift-sdk "${WEB_SDK}" \
+    --target "${target}" \
+    -c release \
+    +"${WEB_TOOLCHAIN}" >/dev/null
+done
+
+mkdir -p "${DIRECT_DIR}"
+
+common=(
+  -target wasm32-unknown-wasip1
+  -sysroot "${SDK_ROOT}"
+  -sdk "${SDK_ROOT}"
+  -resource-dir "${RESOURCE_DIR}"
+  -Xclang-linker -resource-dir
+  -Xclang-linker "${RESOURCE_DIR}/clang"
+  -static-stdlib
+  -O
+  -whole-module-optimization
+  -default-isolation nonisolated
+  -Xcc -msimd128
+  -Xcc "-fmodule-map-file=${SCRATCH_DIR}/checkouts/swift-atomics/Sources/_AtomicsShims/include/module.modulemap"
+  -Xcc "-I${SCRATCH_DIR}/checkouts/swift-atomics/Sources/_AtomicsShims/include"
+  -Xcc "-fmodule-map-file=${SCRATCH_DIR}/out/Intermediates.noindex/GeneratedModuleMaps-webassembly-wasm32/PixlMathC.modulemap"
+  -Xcc "-I${ROOT_DIR}/PixlMath/Sources/PixlMathC/include"
+  -I "${DIRECT_DIR}"
+  -I "${PRODUCTS_DIR}"
+)
+
+for argument in "${common[@]}"; do
+  if [[ "${argument}" == -num-threads* ]]; then
+    echo "error: accepted WASM benchmarks must not pass -num-threads" >&2
+    exit 1
+  fi
+done
+
+collect_sources() {
+  local directory="$1"
+  while IFS= read -r -d '' file; do
+    sources+=("${file}")
+  done < <(find "${directory}" -type f -name '*.swift' -print0 | sort -z)
+}
+
+compile_module() {
+  local module="$1"
+  local package="$2"
+  shift 2
+  swiftly run swiftc \
+    "${common[@]}" \
+    -parse-as-library \
+    -emit-module \
+    -emit-module-path "${DIRECT_DIR}/${module}.swiftmodule" \
+    -emit-object \
+    -module-name "${module}" \
+    -package-name "${package}" \
+    "$@" \
+    -o "${DIRECT_DIR}/${module}.o" \
+    +"${WEB_TOOLCHAIN}"
+}
+
+sources=()
+collect_sources "${ROOT_DIR}/PixlPlatform/Sources/PixlSynchronization"
+compile_module PixlSynchronization pixlplatform "${sources[@]}"
+
+sources=()
+collect_sources "${ROOT_DIR}/PixlPlatform/Sources/PixlPlatform"
+compile_module PixlPlatform pixlplatform -enable-cmo-everything "${sources[@]}"
+
+sources=()
+collect_sources "${ROOT_DIR}/PixlMath/Sources/PixlMath"
+compile_module PixlMath pixlmath "${sources[@]}"
+
+sources=()
+collect_sources "${ROOT_DIR}/Pixl/Sources/PixlGraphics"
+compile_module PixlGraphics pixl \
+  -enable-experimental-feature Lifetimes \
+  "${sources[@]}"
+
+sources=()
+collect_sources "${ROOT_DIR}/Pixl/Sources/Pixl2D"
+compile_module Pixl2D pixl "${sources[@]}"
+
+sources=()
+collect_sources "${ROOT_DIR}/Pixl/Sources/PixlFoundation"
+compile_module PixlFoundation pixl "${sources[@]}"
+
+link_objects=(
+  "${DIRECT_DIR}/PixlSynchronization.o"
+  "${DIRECT_DIR}/PixlPlatform.o"
+  "${DIRECT_DIR}/PixlMath.o"
+  "${DIRECT_DIR}/PixlGraphics.o"
+  "${DIRECT_DIR}/Pixl2D.o"
+  "${DIRECT_DIR}/PixlFoundation.o"
+)
+while IFS= read -r -d '' file; do
+  link_objects+=("${file}")
+done < <(
+  find \
+    "${PRODUCTS_DIR}/Atomics.objlib" \
+    "${PRODUCTS_DIR}/_AtomicsShims.objlib" \
+    "${PRODUCTS_DIR}/PixlMathC.objlib" \
+    -type f -name '*.o' -print0 | sort -z
+)
+
+sources=()
+collect_sources "${ROOT_DIR}/Pixl/Benchmarks"
+swiftly run swiftc \
+  "${common[@]}" \
+  -parse-as-library \
+  -module-name PixlBenchmarks \
+  -package-name pixl \
+  "${sources[@]}" \
+  "${link_objects[@]}" \
+  -o "${DIRECT_DIR}/PixlBenchmarks.wasm" \
+  +"${WEB_TOOLCHAIN}"
+
+node --no-warnings "${SCRIPT_DIR}/_run-wasi.mjs" \
+  "${DIRECT_DIR}/PixlBenchmarks.wasm" \
+  "$@"

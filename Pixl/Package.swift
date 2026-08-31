@@ -148,6 +148,19 @@ let package = Package(
             name: "PixlTextPlayground",
             dependencies: ["PixlText"]
         ),
+        .executableTarget(
+            name: "PixlBenchmarks",
+            dependencies: [
+                "Pixl2D",
+                "PixlFoundation",
+                .product(
+                    name: "PixlPlatform",
+                    package: "PixlPlatform"
+                )
+            ],
+            path: "Benchmarks",
+            swiftSettings: defaultNonisolated()
+        ),
         .target(
             name: "PixlUI",
             dependencies: ["Pixl2D", "PixlGraphics", "PixlInput", "PixlMacros"],

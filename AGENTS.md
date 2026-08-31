@@ -26,6 +26,21 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - Read `ROADMAP.md` for current progress, workstreams, and unresolved gates. Progress belongs there, not in this file.
 - Read `PERF.md` before profiling or discussing performance baselines. Record only accepted results there.
 
+## WebAssembly Performance Builds
+
+- Compile every accepted WebAssembly performance benchmark in this repository
+  directly with `swiftc -O -whole-module-optimization` and do not pass
+  `-num-threads`. This is a Swift 6.4 toolchain workaround, not a
+  PixlParticles-specific optimisation.
+- Treat WebAssembly timings produced by SwiftPM as invalid performance evidence
+  while its driver adds `-num-threads`; SwiftPM WebAssembly builds remain valid
+  for correctness only.
+- Use each benchmark's checked-in script rather than reconstructing compiler
+  commands manually. `./.scripts/benchmark wasm` is the accepted Pixl CPU-frame
+  path.
+- Pass `-Xcc -msimd128` when SIMD-enabled production or benchmark sources are
+  present.
+
 ## PixlParticles Boundary
 
 - `PixlParticles` owns simulation state, fixed timing, previous/current values, interpolation metadata, and interpolated value calculation.
@@ -42,7 +57,7 @@ Pixl is a cross-platform Swift game engine. Its near-term goal is Raylib-like ti
 - Keep performance benchmarks out of the normal test suite and place standalone release harnesses under `PixlParticles/Benchmarks`.
 - Compile benchmark harnesses together with the real production sources so internal hot-path code remains internal and no benchmark-only API is introduced.
 - Run relevant benchmarks on both the host and WebAssembly toolchains where possible, and record accepted configurations and results in `PixlParticles/PERF.md`.
-- Compile production `PixlParticles` WebAssembly builds, including accepted benchmarks, directly with `swiftc -O -whole-module-optimization` and do not pass `-num-threads`. The Swift 6.4 snapshot's SwiftPM build adds that flag and currently destroys crucial cross-file optimization even when its value is `1`.
+- Follow the repository-wide direct-WMO WebAssembly performance-build rule above.
 - Pass `-Xcc -msimd128` for SIMD-enabled production and benchmark WebAssembly
   builds. Without it, Swift `SIMD4` code is scalarized by the current toolchain.
 - Run performance measurements sequentially. Parallel benchmark processes

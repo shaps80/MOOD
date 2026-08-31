@@ -98,6 +98,7 @@ With these complete, build the first proper Retro Invaders game using the existi
 
 ## Later — Performance Verification
 
+- [x] Establish a standalone deterministic representative CPU-frame benchmark on native and WASI, including mixed render preparation, collision work, correctness checksums, and native resident-memory reporting.
 - [ ] Verify no steady-state CPU allocation once the Game has a representative workload.
 - [ ] Profile material-key derivation, resolved-resource lookup, ordering, and instance writes separately so avoidable submission cost remains visible.
 - [ ] Measure the representative bullets/enemies workload and a separate 10,000-visible-sprite stress case on native and browser, then record only accepted baselines in `PERF.md`.

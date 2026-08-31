@@ -4,7 +4,93 @@ These are reference measurements for detecting material performance regressions 
 
 ## Current profiling record
 
-This document contains separate profiling records for specific low-level components. It does not describe whole-backend, rendering, GPU, frame-time, or game performance.
+This document contains separate profiling records for specific low-level components and one representative CPU frame. It does not describe GPU execution, presentation, or complete game performance.
+
+## Representative CPU frame — native and WebAssembly
+
+Recorded on 2026-08-31 before the planned memory-ownership redesign. The
+standalone `Pixl/Benchmarks` runner executes one deterministic production
+workload without a window, GPU, assets, or presentation timing. It is the
+accepted before-change baseline for comparing CPU and retained-memory effects
+of that redesign.
+
+### Methodology
+
+- Swift 6.4 development snapshot dated 2026-08-26, release configuration.
+- Native host: Apple M4 Pro with 10 performance and four efficiency cores,
+  48 GB memory, arm64 macOS 27.0.
+- WebAssembly: the repository's matching Swift 6.4 WASI SDK, compiled directly
+  with `swiftc -O -whole-module-optimization -Xcc -msimd128` and no
+  `-num-threads`, then executed through Node.js 24.2.0's WASI runtime.
+- 100,000 retained submissions: 60% sprites, 30% analytic shapes, and 10%
+  immediate primitives. Exactly 10,000 submissions are visible with the same
+  family distribution; eight layers, varied orders, textures, samplers, blend
+  modes, and shape kinds exercise lowering, culling, ordering, and batching.
+- 5,120 colliders: 4,096 static rectangles and 1,024 moving rectangles. Every
+  frame updates the dynamic bounds, advances exact collision, performs 64
+  overlap queries, and performs 32 nearest-hit ray casts.
+- Ten warm-up frames precede 51 measured frames. Each row reports the
+  distribution across those frames. Cases run sequentially.
+- Total CPU frame includes collision updates, advance, queries, ray casts,
+  render submission, and render-queue execution. It excludes game logic,
+  resource resolution, GPU command encoding, GPU execution, and presentation.
+- Correctness requires 10,000 visible submissions, 1,024 directed collision
+  reports, 1,280 overlap-query hits, 32 ray hits, and checksum
+  `14257096247257000787` on both runtimes.
+- Three complete native runs produced total-frame medians of 3.529, 3.456,
+  and 3.494 ms. Five complete direct-WMO WebAssembly runs produced 5.785,
+  5.620, 5.536, 5.488, and 5.509 ms. Each table retains its middle complete
+  run rather than combining stage values from different runs.
+
+### CPU results
+
+| Stage | Native median | Native p95 | WASI median | WASI p95 |
+| --- | ---: | ---: | ---: | ---: |
+| Total CPU frame | 3.494 ms | 3.749 ms | 5.536 ms | 5.834 ms |
+| Collision updates | 0.008 ms | 0.010 ms | 0.009 ms | 0.009 ms |
+| Collision advance | 0.392 ms | 0.605 ms | 0.480 ms | 0.683 ms |
+| Collision overlap queries | 0.039 ms | 0.067 ms | 0.075 ms | 0.092 ms |
+| Collision ray casts | 0.006 ms | 0.011 ms | 0.008 ms | 0.012 ms |
+| Render submission | 1.454 ms | 1.556 ms | 2.293 ms | 2.360 ms |
+| Render lowering | 1.395 ms | 1.519 ms | 2.420 ms | 2.515 ms |
+| Render culling | 0.096 ms | 0.114 ms | 0.157 ms | 0.161 ms |
+| Render layer binning | 0.026 ms | 0.042 ms | 0.029 ms | 0.046 ms |
+| Render ordering | 0.017 ms | 0.019 ms | 0.020 ms | 0.022 ms |
+| Render batching | 0.026 ms | 0.032 ms | 0.051 ms | 0.059 ms |
+| Render instances | 0.000 ms | 0.000 ms | 0.000 ms | 0.000 ms |
+
+The WebAssembly result is a portable regression baseline, not a browser-speed
+prediction. SwiftPM release compilation of this same benchmark incorrectly
+measured 97.867 ms median because the Swift 6.4 driver added `-num-threads` and
+destroyed crucial cross-file optimisation. That result is rejected build-path
+evidence, not Pixl performance. The checked-in WASM command compiles the real
+production modules and benchmark directly with the accepted workaround.
+
+### Native memory
+
+| Point | Resident memory | Change |
+| --- | ---: | ---: |
+| Before workload construction | 5.81 MiB | — |
+| After deterministic workload construction | 47.88 MiB | +42.06 MiB |
+| After warm-up touched retained execution storage | 103.11 MiB | +55.23 MiB |
+| After 51 measured frames | 103.11 MiB | +0.00 MiB |
+| Peak resident memory | 103.11 MiB | — |
+
+These are whole-process resident measurements. They deliberately include the
+benchmark's retained submission descriptions and collision workload, so they
+are suitable for matched before/after comparison rather than exact ownership
+accounting. The unchanged post-warm-up reading confirms no measurable
+steady-state resident growth in this run. WASI does not currently expose a
+comparable resident-memory query through this runner.
+
+Commands from the repository root:
+
+```sh
+./.scripts/benchmark native
+./.scripts/benchmark wasm
+```
+
+Pass `--json` after the runtime for machine-readable output.
 
 ## PixlText layout — arm64 macOS
 
