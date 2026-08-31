@@ -2,6 +2,7 @@ import Swift
 
 public struct DensePoolHandle<Layout, Element: BitwiseCopyable>: Hashable, Sendable {
     fileprivate let placement: UInt64
+    fileprivate let regionOffset: UInt64
     fileprivate let slot: UInt32
     fileprivate let generation: UInt32
 }
@@ -45,7 +46,12 @@ public struct DensePool<Layout, Element: BitwiseCopyable>: @unchecked Sendable {
             slots[Int(slotIndex)].nextFree = .max
             state.count = required
             didChangeUsage()
-            return Handle(placement: state.placement, slot: slotIndex, generation: slots[Int(slotIndex)].generation)
+            return Handle(
+                placement: state.placement,
+                regionOffset: state.record.offset,
+                slot: slotIndex,
+                generation: slots[Int(slotIndex)].generation
+            )
         }
     }
 
@@ -144,6 +150,7 @@ public struct DensePool<Layout, Element: BitwiseCopyable>: @unchecked Sendable {
 
     private func validatedDenseIndex(_ handle: Handle) -> UInt32? {
         guard handle.placement == state.placement,
+              handle.regionOffset == state.record.offset,
               handle.slot < state.nextUnused
         else { return nil }
         let slot = slots[Int(handle.slot)]
@@ -156,9 +163,14 @@ public struct DensePool<Layout, Element: BitwiseCopyable>: @unchecked Sendable {
 
     private func requireDenseIndex(_ handle: Handle, operation: String, _ fileID: StaticString, _ line: UInt) -> UInt32 {
         guard let index = validatedDenseIndex(handle) else {
-            let reason = handle.placement == state.placement
-                ? "Handle is stale or no longer live."
-                : "Handle belongs to a different pool placement."
+            let reason: String
+            if handle.placement != state.placement {
+                reason = "Handle belongs to a different pool placement."
+            } else if handle.regionOffset != state.record.offset {
+                reason = "Handle belongs to a different pool region."
+            } else {
+                reason = "Handle is stale or no longer live."
+            }
             arena.fail(title: "Invalid dense-pool handle", details: [
                 ("Operation", operation),
                 ("Target", "\(state.record.name) [placement \(state.placement)]"),
@@ -190,19 +202,17 @@ public struct DensePool<Layout, Element: BitwiseCopyable>: @unchecked Sendable {
     }
 
     private func capacityFailure(_ required: UInt64, _ fileID: StaticString, _ line: UInt) -> Never {
-        let reservedMemory = state.record.payload
-        let requiredMemory = PoolLayout.calculate(capacity: required, elementStride: state.record.elementStride, elementAlignment: state.record.alignment).required
-        arena.fail(title: "Dense pool capacity exceeded", details: [
-            ("Region", state.record.name),
-            ("Operation", "insert"),
-            ("Capacity", "\(state.record.capacity) elements · \(ReportFormatter.bytes(reservedMemory))"),
-            ("Used", "\(state.count) elements · \(ReportFormatter.bytes(state.usedBytes))"),
-            ("Required", "\(required) elements · \(ReportFormatter.bytes(requiredMemory))"),
-            ("Additional", "\(required - state.record.capacity) elements · \(ReportFormatter.bytes(requiredMemory - reservedMemory))"),
-            ("Reservation", state.record.source.description),
-            ("Location", SourceLocation(fileID: fileID, line: line).description),
-            ("Fix", "layout.reserve(\\.\(state.record.name), count: \(required))")
-        ])
+        arena.fail(.densePool(
+            region: state.record.name,
+            operation: "insert",
+            capacity: state.record.capacity,
+            used: state.count,
+            required: required,
+            elementStride: state.record.elementStride,
+            elementAlignment: state.record.alignment,
+            reservation: state.record.source,
+            access: SourceLocation(fileID: fileID, line: line)
+        ))
     }
 
     private func borrowFailure(_ operation: String, _ fileID: StaticString, _ line: UInt) -> Never {
@@ -211,6 +221,8 @@ public struct DensePool<Layout, Element: BitwiseCopyable>: @unchecked Sendable {
 
     private func didChangeUsage() {
         state.peakCount = max(state.peakCount, state.count)
-        state.scope?.noteUsageChanged()
+        let used = state.usedBytes
+        state.scope?.noteUsageChanged(from: state.reportedUsedBytes, to: used)
+        state.reportedUsedBytes = used
     }
 }

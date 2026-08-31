@@ -115,7 +115,7 @@ private func nestedLayoutsReleaseIndependentlyAndWithTheirParent() throws {
 }
 
 @Layout("Empty persistent")
-private struct EmptyPersistent {}
+struct EmptyPersistent {}
 
 @Test
 private func emptyArenaReservesNoMemory() throws {

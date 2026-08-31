@@ -101,8 +101,55 @@ enum ReportFormatter {
         """ + "\n"
     }
 
+    static func failure(arenaName: String?, capacity failure: CapacityFailure) -> String {
+        let title: String
+        var details: [(String, String)] = [
+            ("Region", failure.region),
+            ("Operation", failure.operation)
+        ]
+        switch failure.storage {
+        case .indexedBuffer:
+            title = "Indexed buffer capacity exceeded"
+            details += [
+                ("Capacity", "\(failure.capacity) elements"),
+                ("Used", "\(failure.used) elements"),
+                ("Required", "\(failure.required) elements")
+            ]
+        case .rawBuffer:
+            title = "Raw buffer capacity exceeded"
+            details += [
+                ("Capacity", "\(failure.capacity) bytes"),
+                ("Used", "\(failure.used) bytes"),
+                ("Required", "\(failure.required) bytes")
+            ]
+        case .densePool:
+            title = "Dense pool capacity exceeded"
+            details += [
+                ("Capacity", "\(failure.capacity) elements · \(bytes(failure.reservedBytes))"),
+                ("Used", "\(failure.used) elements · \(bytes(failure.usedBytes))"),
+                ("Required", "\(failure.required) elements · \(bytes(failure.requiredBytes))"),
+                ("Additional", "\(failure.additional) elements · \(bytes(failure.additionalBytes))")
+            ]
+        }
+        details += [
+            ("Reservation", failure.reservation.description),
+            ("Location", failure.access.description),
+            ("Fix", capacityFix(failure))
+        ]
+        return self.failure(arenaName: arenaName, title: title, details: details)
+    }
+
     static func bytes(_ value: UInt64) -> String {
         Unit.select(value).format(value)
+    }
+
+    private static func capacityFix(_ failure: CapacityFailure) -> String {
+        switch failure.storage {
+        case .indexedBuffer, .densePool:
+            "layout.reserve(\\.\(failure.region), count: \(failure.required))"
+        case .rawBuffer:
+            "layout.reserve(\\.\(failure.region), bytes: .bytes(\(failure.required)))"
+        }
     }
 
     private static func layoutRows(_ layout: LayoutRecord, unit: Unit, prefix: String = "") -> [[String]] {

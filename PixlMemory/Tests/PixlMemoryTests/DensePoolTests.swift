@@ -79,3 +79,98 @@ private func densePoolInvalidatesHandlesAcrossScopePlacements() throws {
     #expect(secondPool.value(for: newHandle) == 21)
     secondScope.release()
 }
+
+@Layout("Pool isolation")
+private struct PoolIsolationLayout {
+    @Region(.densePool) var left: UInt32
+    @Region(.densePool) var right: UInt32
+
+    static func make(_ layout: inout Layout) {
+        layout.reserve(\.left, count: 2)
+        layout.reserve(\.right, count: 2)
+    }
+}
+
+@Test
+private func handlesCannotCrossBetweenRegionsOfTheSameType() throws {
+    let arena = try Arena(
+        PoolPersistent.self,
+        layouts: PoolIsolationLayout.self,
+        logging: .disabled
+    )
+    let scope = arena.acquire(PoolIsolationLayout.self)
+    let left = scope.pool(\.left)
+    let right = scope.pool(\.right)
+    let leftHandle = left.insert(10)
+    let rightHandle = right.insert(20)
+
+    #expect(left.contains(leftHandle))
+    #expect(right.contains(rightHandle))
+    #expect(!left.contains(rightHandle))
+    #expect(!right.contains(leftHandle))
+    scope.release()
+}
+
+private struct DeterministicGenerator {
+    private var state: UInt64 = 0x4D59_5DF4_D0F3_3173
+
+    mutating func next() -> UInt64 {
+        state = state &* 6_364_136_223_846_793_005 &+ 1
+        return state
+    }
+}
+
+@Layout("Randomised pool")
+private struct RandomisedPoolLayout {
+    @Region(.densePool) var values: UInt32
+
+    static func make(_ layout: inout Layout) {
+        layout.reserve(\.values, count: 64)
+    }
+}
+
+@Test
+private func densePoolMatchesAReferenceModelAcrossRandomOperations() throws {
+    let arena = try Arena(
+        PoolPersistent.self,
+        layouts: RandomisedPoolLayout.self,
+        logging: .disabled
+    )
+    let scope = arena.acquire(RandomisedPoolLayout.self)
+    let pool = scope.pool(\.values)
+    var generator = DeterministicGenerator()
+    var entries: [(handle: DensePool<RandomisedPoolLayout, UInt32>.Handle, value: UInt32)] = []
+    var nextValue: UInt32 = 1
+
+    for operation in 0..<20_000 {
+        let insert = entries.isEmpty
+            || (entries.count < pool.capacity && generator.next() % 3 != 0)
+        if insert {
+            let value = nextValue
+            nextValue &+= 1
+            entries.append((pool.insert(value), value))
+        } else {
+            let index = Int(generator.next() % UInt64(entries.count))
+            let entry = entries.remove(at: index)
+            #expect(pool.remove(entry.handle) == entry.value)
+            #expect(!pool.contains(entry.handle))
+        }
+
+        if operation.isMultiple(of: 31) {
+            #expect(pool.count == entries.count)
+            for entry in entries {
+                #expect(pool.contains(entry.handle))
+                #expect(pool.value(for: entry.handle) == entry.value)
+            }
+            #expect(Set(pool.withElements { Array($0) }) == Set(entries.map(\.value)))
+        }
+    }
+
+    let oldHandles = entries.map(\.handle)
+    pool.removeAll()
+    #expect(pool.count == 0)
+    for handle in oldHandles {
+        #expect(!pool.contains(handle))
+    }
+    scope.release()
+}

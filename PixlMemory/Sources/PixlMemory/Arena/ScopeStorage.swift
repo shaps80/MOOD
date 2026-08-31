@@ -1,4 +1,5 @@
 import Swift
+import Atomics
 
 final class ScopeStorage: @unchecked Sendable {
     weak var arena: ArenaStorage?
@@ -11,7 +12,8 @@ final class ScopeStorage: @unchecked Sendable {
 
     private var children: [ObjectIdentifier: ScopeStorage] = [:]
     private(set) var active = true
-    private(set) var peakUsed: UInt64 = 0
+    private let used = ManagedAtomic<UInt64>(0)
+    private let peakUsage = ManagedAtomic<UInt64>(0)
 
     init(arena: ArenaStorage?, layout: LayoutRecord, baseAddress: UnsafeMutableRawPointer?, placement: UInt64, effectivePolicy: PreparationPolicy, parent: ScopeStorage?) {
         self.arena = arena
@@ -40,18 +42,12 @@ final class ScopeStorage: @unchecked Sendable {
         )
     }
 
-    var currentUsed: UInt64 {
-        var total: UInt64 = 0
-        for state in regions.values { total = checkedAdd(total, state.usedBytes) }
-        for child in children.values where child.active {
-            total = checkedAdd(total, child.currentUsed)
-        }
-        return total
-    }
+    var currentUsed: UInt64 { used.load(ordering: .acquiring) }
+    var peakUsed: UInt64 { peakUsage.load(ordering: .acquiring) }
 
     func prepareDirectRegions() {
         for state in regions.values {
-            let policy = state.record.policy ?? layout.policy ?? effectivePolicy
+            let policy = preparationPolicy(for: state)
             guard policy == .eager, state.record.payload > 0 else { continue }
             state.pointer?.initializeMemory(
                 as: UInt8.self,
@@ -59,6 +55,10 @@ final class ScopeStorage: @unchecked Sendable {
                 count: Int(state.record.payload)
             )
         }
+    }
+
+    func preparationPolicy(for state: RegionState) -> PreparationPolicy {
+        state.record.policy ?? effectivePolicy
     }
 
     func acquire<Child: MemoryLayoutDefinition>(_ type: Child.Type, policy: PreparationPolicy?, source: SourceLocation) -> ScopeStorage {
@@ -94,7 +94,6 @@ final class ScopeStorage: @unchecked Sendable {
         arena!.history.append(child)
         child.prepareDirectRegions()
         arena!.log(ReportFormatter.acquired(child))
-        noteUsageChanged()
         return child
     }
 
@@ -109,7 +108,11 @@ final class ScopeStorage: @unchecked Sendable {
         if cascading {
             for child in children.values { child.release(cascading: true) }
         }
+        let remainingUsage = currentUsed
         for state in regions.values { state.reset() }
+        if remainingUsage > 0 {
+            noteUsageChanged(from: remainingUsage, to: 0)
+        }
         active = false
         children.removeAll(keepingCapacity: true)
         parent?.childDidRelease(self)
@@ -137,15 +140,34 @@ final class ScopeStorage: @unchecked Sendable {
         return DensePool(state: state, arena: arena!)
     }
 
-    func noteUsageChanged() {
-        peakUsed = max(peakUsed, currentUsed)
-        parent?.noteUsageChanged()
-        arena?.usageDidChange()
+    func noteUsageChanged(from previous: UInt64, to current: UInt64) {
+        let updated: UInt64
+        if current >= previous {
+            let delta = current - previous
+            let old = used.loadThenWrappingIncrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            updated = old + delta
+        } else {
+            let delta = previous - current
+            let old = used.loadThenWrappingDecrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            precondition(old >= delta, "Scope usage underflow")
+            updated = old - delta
+        }
+        updateMaximum(peakUsage, with: updated)
+        if let parent {
+            parent.noteUsageChanged(from: previous, to: current)
+        } else {
+            arena?.noteUsageChanged(from: previous, to: current)
+        }
     }
 
     private func childDidRelease(_ child: ScopeStorage) {
         children.removeValue(forKey: child.layout.typeID)
-        noteUsageChanged()
     }
 
     private func requireActive(_ source: SourceLocation) {

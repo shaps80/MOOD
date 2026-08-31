@@ -9,6 +9,7 @@ final class RegionState: @unchecked Sendable {
 
     var count: UInt64 = 0
     var peakCount: UInt64 = 0
+    var reportedUsedBytes: UInt64 = 0
     var active = true
     var freeHead: UInt32 = .max
     var nextUnused: UInt32 = 0
@@ -51,6 +52,7 @@ final class RegionState: @unchecked Sendable {
 
     func reset() {
         count = 0
+        reportedUsedBytes = 0
         freeHead = .max
         nextUnused = 0
         active = false

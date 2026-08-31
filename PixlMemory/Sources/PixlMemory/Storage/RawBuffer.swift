@@ -69,7 +69,15 @@ public struct RawBuffer: @unchecked Sendable {
     }
 
     private func capacityFailure(_ required: UInt64, _ fileID: StaticString, _ line: UInt) -> Never {
-        arena.fail(title: "Raw buffer capacity exceeded", details: [("Region", state.record.name), ("Capacity", "\(state.record.capacity) bytes"), ("Used", "\(state.count) bytes"), ("Required", "\(required) bytes"), ("Reservation", state.record.source.description), ("Location", SourceLocation(fileID: fileID, line: line).description), ("Fix", "layout.reserve(\\.\(state.record.name), bytes: .bytes(\(required)))")])
+        arena.fail(.rawBuffer(
+            region: state.record.name,
+            operation: "append",
+            capacity: state.record.capacity,
+            used: state.count,
+            required: required,
+            reservation: state.record.source,
+            access: SourceLocation(fileID: fileID, line: line)
+        ))
     }
 
     private func borrowFailure(_ operation: String, _ fileID: StaticString, _ line: UInt) -> Never {
@@ -78,6 +86,8 @@ public struct RawBuffer: @unchecked Sendable {
 
     private func didChangeUsage() {
         state.peakCount = max(state.peakCount, state.count)
-        state.scope?.noteUsageChanged()
+        let used = state.usedBytes
+        state.scope?.noteUsageChanged(from: state.reportedUsedBytes, to: used)
+        state.reportedUsedBytes = used
     }
 }

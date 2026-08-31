@@ -105,3 +105,54 @@ private func releasingBorrowedScopeTerminatesImmediately() async {
         await reader.value
     }
 }
+
+@Test
+private func acquiringUnregisteredLayoutTerminatesImmediately() async {
+    await #expect(processExitsWith: .failure) {
+        let arena = try Arena(EmptyPersistent.self, logging: .disabled)
+        _ = arena.acquire(BufferLayout.self)
+    }
+}
+
+@Test
+private func acquiringSecondTopLevelLayoutTerminatesImmediately() async {
+    await #expect(processExitsWith: .failure) {
+        let arena = try Arena(
+            EmptyPersistent.self,
+            layouts: BufferLayout.self, PoolLayoutFixture.self,
+            logging: .disabled
+        )
+        let first = arena.acquire(BufferLayout.self)
+        _ = arena.acquire(PoolLayoutFixture.self)
+        _ = first.statistics
+    }
+}
+
+@Test
+private func usingWrongRegionAccessorTerminatesImmediately() async {
+    await #expect(processExitsWith: .failure) {
+        let arena = try Arena(
+            PoolPersistent.self,
+            layouts: PoolLayoutFixture.self,
+            logging: .disabled
+        )
+        let scope = arena.acquire(PoolLayoutFixture.self)
+        _ = scope.buffer(\.values)
+    }
+}
+
+@Test
+private func readingRemovedDensePoolHandleTerminatesImmediately() async {
+    await #expect(processExitsWith: .failure) {
+        let arena = try Arena(
+            PoolPersistent.self,
+            layouts: PoolLayoutFixture.self,
+            logging: .disabled
+        )
+        let scope = arena.acquire(PoolLayoutFixture.self)
+        let pool = scope.pool(\.values)
+        let handle = pool.insert(1)
+        pool.remove(handle)
+        _ = pool.value(for: handle)
+    }
+}

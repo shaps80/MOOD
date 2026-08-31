@@ -96,17 +96,16 @@ public struct IndexedBuffer<Element: BitwiseCopyable>: @unchecked Sendable {
     private func requireCapacity(_ additional: UInt64, operation: String, fileID: StaticString, line: UInt) {
         let required = checkedAdd(state.count, additional)
         guard required <= state.record.capacity else {
-            arena.fail(title: "Indexed buffer capacity exceeded", details: [
-                ("Layout", ""),
-                ("Region", state.record.name),
-                ("Operation", operation),
-                ("Capacity", "\(state.record.capacity) elements"),
-                ("Used", "\(state.count) elements"),
-                ("Required", "\(required) elements"),
-                ("Reservation", state.record.source.description),
-                ("Location", SourceLocation(fileID: fileID, line: line).description),
-                ("Fix", "layout.reserve(\\.\(state.record.name), count: \(required))")
-            ])
+            arena.fail(.indexedBuffer(
+                region: state.record.name,
+                operation: operation,
+                capacity: state.record.capacity,
+                used: state.count,
+                required: required,
+                elementStride: state.record.elementStride,
+                reservation: state.record.source,
+                access: SourceLocation(fileID: fileID, line: line)
+            ))
         }
     }
 
@@ -130,6 +129,8 @@ public struct IndexedBuffer<Element: BitwiseCopyable>: @unchecked Sendable {
 
     private func didChangeUsage() {
         state.peakCount = max(state.peakCount, state.count)
-        state.scope?.noteUsageChanged()
+        let used = state.usedBytes
+        state.scope?.noteUsageChanged(from: state.reportedUsedBytes, to: used)
+        state.reportedUsedBytes = used
     }
 }

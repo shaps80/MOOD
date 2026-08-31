@@ -1,4 +1,5 @@
 import Swift
+import Atomics
 
 final class ArenaStorage: @unchecked Sendable {
     let name: String?
@@ -14,7 +15,8 @@ final class ArenaStorage: @unchecked Sendable {
 
     private var activeTopLevel: ScopeStorage?
     private var nextPlacement: UInt64 = 1
-    private(set) var peak: UInt64 = 0
+    private let used = ManagedAtomic<UInt64>(0)
+    private let peakUsage = ManagedAtomic<UInt64>(0)
 
     init(name: String?, logging: ArenaLogging, persistent: LayoutRecord, layouts: [LayoutRecord]) {
         self.name = name
@@ -40,8 +42,15 @@ final class ArenaStorage: @unchecked Sendable {
     }
 
     var statistics: MemoryStatistics {
-        MemoryStatistics(reserved: ByteCount(rawValue: reserved), used: ByteCount(rawValue: currentUsed), peak: ByteCount(rawValue: peak))
+        MemoryStatistics(
+            reserved: ByteCount(rawValue: reserved),
+            used: ByteCount(rawValue: currentUsed),
+            peak: ByteCount(rawValue: peak)
+        )
     }
+
+    var currentUsed: UInt64 { used.load(ordering: .acquiring) }
+    var peak: UInt64 { peakUsage.load(ordering: .acquiring) }
 
     func acquire<Definition: MemoryLayoutDefinition>(_ type: Definition.Type, policy: PreparationPolicy?, source: SourceLocation) -> ScopeStorage {
         guard activeTopLevel == nil else {
@@ -55,16 +64,33 @@ final class ArenaStorage: @unchecked Sendable {
         history.append(scope)
         scope.prepareDirectRegions()
         log(ReportFormatter.acquired(scope))
-        usageDidChange()
         return scope
     }
 
     func scopeDidRelease(_ scope: ScopeStorage) {
         if activeTopLevel === scope { activeTopLevel = nil }
-        usageDidChange()
     }
 
-    func usageDidChange() { peak = max(peak, currentUsed) }
+    func noteUsageChanged(from previous: UInt64, to current: UInt64) {
+        let updated: UInt64
+        if current >= previous {
+            let delta = current - previous
+            let old = used.loadThenWrappingIncrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            updated = old + delta
+        } else {
+            let delta = previous - current
+            let old = used.loadThenWrappingDecrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            precondition(old >= delta, "Arena usage underflow")
+            updated = old - delta
+        }
+        updateMaximum(peakUsage, with: updated)
+    }
 
     func takePlacement() -> UInt64 {
         defer { nextPlacement &+= 1 }
@@ -81,7 +107,21 @@ final class ArenaStorage: @unchecked Sendable {
         fatalError("PixlMemory failure")
     }
 
-    private var currentUsed: UInt64 {
-        checkedAdd(persistentScope.currentUsed, activeTopLevel?.currentUsed ?? 0)
+    func fail(_ failure: CapacityFailure) -> Never {
+        log(ReportFormatter.failure(arenaName: name, capacity: failure))
+        fatalError("PixlMemory failure")
+    }
+}
+
+func updateMaximum(_ atomic: ManagedAtomic<UInt64>, with candidate: UInt64) {
+    var current = atomic.load(ordering: .acquiring)
+    while candidate > current {
+        let result = atomic.compareExchange(
+            expected: current,
+            desired: candidate,
+            ordering: .acquiringAndReleasing
+        )
+        if result.exchanged { return }
+        current = result.original
     }
 }
