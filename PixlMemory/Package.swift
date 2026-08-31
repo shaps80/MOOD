@@ -6,7 +6,8 @@ let package = Package(
     name: "PixlMemory",
     products: [
         .library(name: "PixlMemory", targets: ["PixlMemory"]),
-        .executable(name: "Sandbox", targets: ["Sandbox"])
+        .executable(name: "Sandbox", targets: ["Sandbox"]),
+        .executable(name: "Benchmarks", targets: ["Benchmarks"])
     ],
     dependencies: [
         .package(
@@ -25,7 +26,7 @@ let package = Package(
                 "PixlMemoryMacros",
                 .product(name: "Atomics", package: "swift-atomics")
             ],
-            swiftSettings: [.defaultIsolation(nil)]
+            swiftSettings: defaultNonisolated() + releaseCrossModuleOptimization()
         ),
         .macro(
             name: "PixlMemoryMacros",
@@ -39,7 +40,13 @@ let package = Package(
         .executableTarget(
             name: "Sandbox",
             dependencies: ["PixlMemory"],
-            swiftSettings: [.defaultIsolation(nil)]
+            swiftSettings: defaultNonisolated()
+        ),
+        .executableTarget(
+            name: "Benchmarks",
+            dependencies: ["PixlMemory"],
+            path: "Benchmarks",
+            swiftSettings: defaultNonisolated()
         ),
         .testTarget(
             name: "PixlMemoryTests",
@@ -47,8 +54,21 @@ let package = Package(
                 "PixlMemory",
                 .product(name: "Atomics", package: "swift-atomics")
             ],
-            swiftSettings: [.defaultIsolation(nil)]
+            swiftSettings: defaultNonisolated()
         )
     ],
     swiftLanguageModes: [.v6]
 )
+
+private func defaultNonisolated() -> [SwiftSetting] {
+    [.defaultIsolation(nil)]
+}
+
+private func releaseCrossModuleOptimization() -> [SwiftSetting] {
+    [
+        .unsafeFlags(
+            ["-cross-module-optimization"],
+            .when(configuration: .release)
+        )
+    ]
+}

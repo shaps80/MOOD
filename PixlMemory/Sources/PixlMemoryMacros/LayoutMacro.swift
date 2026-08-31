@@ -13,17 +13,12 @@ public struct LayoutMacro: MemberMacro, ExtensionMacro {
         let access = declaration.modifiers.first(where: {
             [.keyword(.public), .keyword(.package)].contains($0.name.tokenKind)
         }).map { "\($0.name.text) " } ?? ""
-        var members: [DeclSyntax] = [
+        let members: [DeclSyntax] = [
             "\(raw: access)typealias Layout = PixlMemory.MemoryLayoutBuilder<Self>",
             "\(raw: access)static var memoryLayoutName: String { \(layout.name) }",
             "\(raw: access)static var preparationPolicy: PixlMemory.PreparationPolicy? { \(layout.policy) }",
             "\(raw: access)static var memoryRegionDeclarations: [PixlMemory.MemoryRegionDeclaration<Self>] { [\(raw: layout.regions.joined(separator: ", "))] }"
         ]
-        if !layout.hasMake {
-            members.append(
-                "\(raw: access)static func make(_ layout: inout Layout) {}"
-            )
-        }
         return members
     }
 
