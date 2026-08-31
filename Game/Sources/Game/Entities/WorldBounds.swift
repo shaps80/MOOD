@@ -17,8 +17,13 @@ struct WorldBounds: Entity {
     let rightWall: Rect
     let crouchPlatform: Rect
     let platforms: [Rect]
+    private var movingPlatforms: [MovingPlatform]
 
-    init(bounds: Rect, context: GameContext) throws {
+    init(
+        bounds: Rect,
+        collisions: CollisionWorld2D,
+        context: GameContext
+    ) throws {
         let asset = try context.assets.load(texture: "world-platform")
         let sheet = SpriteSheet(asset: asset, columns: 2, rows: 2)
         tile = Sprite(region: sheet.region(column: 0, row: 0))
@@ -55,13 +60,78 @@ struct WorldBounds: Entity {
             height: 16
         )
         platforms = [
-            Rect(x: -100, y: floor.maxY + 107, width: 160, height: 16),
-            Rect(x: 100, y: floor.maxY + 192, width: 160, height: 16),
-            Rect(x: -140, y: floor.maxY + 277, width: 180, height: 16),
-            Rect(x: 100, y: floor.maxY + 362, width: 180, height: 16),
-            Rect(x: -120, y: floor.maxY + 447, width: 160, height: 16),
-            Rect(x: 80, y: floor.maxY + 532, width: 160, height: 16),
+            Rect(
+                x: bounds.minX + 80,
+                y: floor.maxY + 110,
+                width: 180,
+                height: 16
+            ),
+            Rect(
+                x: bounds.maxX - 260,
+                y: floor.maxY + 280,
+                width: 180,
+                height: 16
+            ),
+            Rect(
+                x: bounds.minX + 120,
+                y: floor.maxY + 440,
+                width: 180,
+                height: 16
+            ),
+            Rect(
+                x: bounds.midX - 80,
+                y: floor.maxY + 500,
+                width: 160,
+                height: 16
+            ),
+            Rect(
+                x: bounds.midX - 80,
+                y: floor.maxY + 80,
+                width: 20,
+                height: 330
+            ),
+            Rect(
+                x: bounds.midX + 120,
+                y: floor.maxY + 80,
+                width: 20,
+                height: 330
+            ),
         ]
+        movingPlatforms = [
+            MovingPlatform(
+                bounds: Rect(
+                    x: bounds.maxX - 250,
+                    y: floor.maxY + 100,
+                    width: 160,
+                    height: 16
+                ),
+                verticalTravel: 100,
+                speed: 35,
+                startsMovingUp: true,
+                collisions: collisions
+            ),
+            MovingPlatform(
+                bounds: Rect(
+                    x: bounds.minX + 270,
+                    y: floor.maxY + 280,
+                    width: 160,
+                    height: 16
+                ),
+                verticalTravel: 100,
+                speed: 45,
+                startsMovingUp: false,
+                collisions: collisions
+            ),
+        ]
+
+        insert(floor, into: collisions)
+        insert(ceiling, into: collisions)
+        insert(leftWall, into: collisions)
+        insert(rightWall, into: collisions)
+        insert(crouchPlatform, into: collisions)
+        for platform in platforms {
+            insert(platform, into: collisions)
+        }
 
 //        let asset = try context.assets.load(texture: "world")
 //        let sheet = SpriteSheet(asset: asset, columns: 10, rows: 10)
@@ -88,6 +158,9 @@ struct WorldBounds: Entity {
         for platform in platforms {
             submit(platform, to: queue)
         }
+        for platform in movingPlatforms {
+            submit(platform.bounds, to: queue)
+        }
 
 //        queue.submit(
 //            slope,
@@ -96,14 +169,15 @@ struct WorldBounds: Entity {
 //        )
     }
 
-    func insertColliders(into collisions: CollisionWorld2D) {
-        insert(floor, into: collisions)
-        insert(ceiling, into: collisions)
-        insert(leftWall, into: collisions)
-        insert(rightWall, into: collisions)
-        insert(crouchPlatform, into: collisions)
-        for platform in platforms {
-            insert(platform, into: collisions)
+    mutating func fixedUpdate(
+        delta: Float,
+        collisions: CollisionWorld2D
+    ) {
+        for index in movingPlatforms.indices {
+            movingPlatforms[index].fixedUpdate(
+                delta: delta,
+                collisions: collisions
+            )
         }
     }
 

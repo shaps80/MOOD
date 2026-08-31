@@ -4,7 +4,7 @@ import PixlUI
 
 @main
 struct Game: Pixl.Game {
-    private let worldBounds: WorldBounds
+    private var worldBounds: WorldBounds
     private let collisions: CollisionWorld2D
     private let bindings: GameBindings = .init()
     private var character: Character
@@ -24,18 +24,18 @@ struct Game: Pixl.Game {
             Float(resolution.x),
             Float(resolution.y)
         )
+        let collisions = CollisionWorld2D()
         self.worldBounds = try .init(
             bounds: camera.visibleBounds(in: viewportSize),
+            collisions: collisions,
             context: context
         )
 //        self.gameState = try .init(context: context)
-        let collisions = CollisionWorld2D()
         let character = try Character(
             camera: camera,
             collisions: collisions,
             context: context
         )
-        worldBounds.insertColliders(into: collisions)
         bindings.bind(to: context.inputs)
         self.collisions = collisions
         self.character = character
@@ -85,6 +85,10 @@ struct Game: Pixl.Game {
     }
 
     mutating func fixedUpdate(_ time: FixedTime, context: GameContext) {
+        worldBounds.fixedUpdate(
+            delta: Float(time.delta),
+            collisions: collisions
+        )
         character.fixedUpdate(
             time,
             collisions: collisions,

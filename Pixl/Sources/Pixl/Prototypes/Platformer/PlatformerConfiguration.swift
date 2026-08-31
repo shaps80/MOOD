@@ -57,7 +57,11 @@ public struct PlatformerConfiguration: Equatable, Sendable {
         public var slideMaximumSpeed: Float
         public var slideDeceleration: Float
         public var detachDuration: Float
+        /// Time allowed for horizontal intent before a neutral wall jump.
         public var jumpDuration: Float
+        /// Time after launch during which air steering cannot cancel the
+        /// wall-jump's horizontal impulse.
+        public var controlLockDuration: Float
         public var jumpClimb: Vec2
         public var jumpOff: Vec2
         public var leap: Vec2
@@ -165,9 +169,10 @@ public struct PlatformerConfiguration: Equatable, Sendable {
             slideDeceleration: 5,
             detachDuration: 0.2,
             jumpDuration: 0.05,
+            controlLockDuration: 0.1,
             jumpClimb: .init(20, 25) * scale,
             jumpOff: .init(5, 8) * scale,
-            leap: .init(40, 15) * scale,
+            leap: .init(40, 25) * scale,
             fallSpeed: 10 * scale,
             fallAcceleration: 150 * scale,
             fallDeceleration: 23 * scale

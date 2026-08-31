@@ -19,6 +19,10 @@ struct PlatformerControllerTests {
         #expect(scaled.jump.timeToApex == unit.jump.timeToApex)
         #expect(scaled.jump.bufferDuration == unit.jump.bufferDuration)
         #expect(scaled.jump.maximumCount == unit.jump.maximumCount)
+        #expect(
+            scaled.wall.controlLockDuration
+                == unit.wall.controlLockDuration
+        )
         #expect(abs(scaled.gravity - (unit.gravity * 32)) < 0.001)
         #expect(
             scaled.collision.standingBody.bounds.size
@@ -182,6 +186,83 @@ struct PlatformerControllerTests {
             #expect(controller.state == .wallSliding)
             #expect(controller.isTouchingWall)
         }
+    }
+
+    @Test
+    func neutralWallJumpWaitsForInputBeforeJumpingOff() {
+        var configuration = PlatformerConfiguration.flexible()
+        configuration.wall.jumpDuration = step * 2
+        var controller = PlatformerController(configuration: configuration)
+        let rightWall = PlatformerSurfaces(wallNormal: .init(-1, 0))
+
+        controller.capture(
+            .init(jump: .init(isHeld: true, wasPressed: true))
+        )
+        _ = controller.advance(delta: step, surfaces: rightWall)
+        #expect(controller.velocity.y <= 0)
+
+        controller.capture(.init(jump: .init(isHeld: true)))
+        _ = controller.advance(delta: step, surfaces: rightWall)
+        #expect(controller.velocity.y <= 0)
+
+        _ = controller.advance(delta: step, surfaces: rightWall)
+        #expect(controller.velocity.x == -configuration.wall.jumpOff.x)
+        #expect(controller.velocity.y > 0)
+    }
+
+    @Test
+    func wallJumpPreservesHorizontalImpulseDuringControlLock() {
+        var configuration = PlatformerConfiguration.flexible()
+        configuration.wall.controlLockDuration = step * 4
+        var controller = PlatformerController(configuration: configuration)
+        let rightWall = PlatformerSurfaces(wallNormal: .init(-1, 0))
+
+        controller.capture(
+            .init(
+                movement: .init(-1, 0),
+                jump: .init(isHeld: true, wasPressed: true)
+            )
+        )
+        _ = controller.advance(delta: step, surfaces: rightWall)
+        let launchVelocity = controller.velocity.x
+        #expect(launchVelocity == -configuration.wall.leap.x)
+
+        controller.capture(.init(movement: .init(1, 0)))
+        _ = controller.advance(delta: step, surfaces: .init())
+        _ = controller.advance(delta: step, surfaces: .init())
+        #expect(controller.velocity.x == launchVelocity)
+
+        _ = controller.advance(delta: step, surfaces: .init())
+        _ = controller.advance(delta: step, surfaces: .init())
+        _ = controller.advance(delta: step, surfaces: .init())
+        #expect(controller.velocity.x > launchVelocity)
+    }
+
+    @Test
+    func wallLeapRetainsWallClimbVerticalLaunch() {
+        let configuration = PlatformerConfiguration.flexible()
+        let rightWall = PlatformerSurfaces(wallNormal: .init(-1, 0))
+
+        var climb = PlatformerController(configuration: configuration)
+        climb.capture(
+            .init(
+                movement: .init(1, 0),
+                jump: .init(isHeld: true, wasPressed: true)
+            )
+        )
+        _ = climb.advance(delta: step, surfaces: rightWall)
+
+        var leap = PlatformerController(configuration: configuration)
+        leap.capture(
+            .init(
+                movement: .init(-1, 0),
+                jump: .init(isHeld: true, wasPressed: true)
+            )
+        )
+        _ = leap.advance(delta: step, surfaces: rightWall)
+
+        #expect(leap.velocity.y == climb.velocity.y)
+        #expect(abs(leap.velocity.x) > abs(climb.velocity.x))
     }
 
     @Test

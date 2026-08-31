@@ -36,13 +36,15 @@ public struct PlatformerController: Sendable {
     private var dash = PlatformerTimer()
     private var crouchRoll = PlatformerTimer()
     private var wallDetach = PlatformerTimer()
-    private var wallJump = PlatformerTimer()
+    private var wallJumpInput = PlatformerTimer()
+    private var wallJumpControlLock = PlatformerTimer()
 
     private var remainingJumps: Int
     private var remainingAirDashes: Int
     private var consumedWalkOffJump = false
     private var dashDirection = Vec2.zero
     private var rollDirection: Float = 1
+    private var pendingWallJumpDirection: Float = 0
 
     public init(configuration: PlatformerConfiguration = .init()) {
         self.configuration = configuration
@@ -103,10 +105,12 @@ public struct PlatformerController: Sendable {
         }
 
         let jumpRequested = jumpPressed || jumpBuffer.isRunning
-        if shouldStartCrouchRoll(dashPressed: dashPressed, contacts: contacts) {
+        if pendingWallJumpDirection != 0 {
+            resolvePendingWallJump()
+        } else if shouldStartCrouchRoll(dashPressed: dashPressed, contacts: contacts) {
             startCrouchRoll()
         } else if shouldStartWallJump(jumpRequested: jumpRequested, contacts: contacts) {
-            startWallJump()
+            requestWallJump()
         } else if shouldStartJump(jumpRequested: jumpRequested, contacts: contacts) {
             startJump(running: shouldRun, events: &events)
         } else if shouldStartDash(dashPressed: dashPressed, contacts: contacts) {
@@ -145,6 +149,9 @@ public struct PlatformerController: Sendable {
             remainingJumps = max(0, configuration.jump.maximumCount)
             remainingAirDashes = max(0, configuration.dash.maximumAirCount)
             coyote.stop()
+            wallJumpInput.stop()
+            wallJumpControlLock.stop()
+            pendingWallJumpDirection = 0
             consumedWalkOffJump = false
         } else if wasGrounded {
             coyote.start(duration: configuration.jump.coyoteDuration)
@@ -223,7 +230,9 @@ public struct PlatformerController: Sendable {
         consumedWalkOffJump = true
         jumpBuffer.stop()
         coyote.stop()
-        wallJump.stop()
+        wallJumpInput.stop()
+        wallJumpControlLock.stop()
+        pendingWallJumpDirection = 0
         stance = .standing
         airMode = running ? .run : .walk
         state = running ? .runJumping : .jumping
@@ -246,10 +255,29 @@ public struct PlatformerController: Sendable {
         state = .crouchRolling
     }
 
+    private mutating func requestWallJump() {
+        pendingWallJumpDirection = wallDirection
+        jumpBuffer.stop()
+        coyote.stop()
+
+        if normalizedHorizontalInput == 0,
+           configuration.wall.jumpDuration > 0 {
+            wallJumpInput.start(duration: configuration.wall.jumpDuration)
+        } else {
+            startWallJump()
+        }
+    }
+
+    private mutating func resolvePendingWallJump() {
+        if normalizedHorizontalInput != 0 || !wallJumpInput.isRunning {
+            startWallJump()
+        }
+    }
+
     private mutating func startWallJump() {
         let horizontalInput = normalizedHorizontalInput
         let impulse: Vec2
-        if horizontalInput == wallDirection {
+        if horizontalInput == pendingWallJumpDirection {
             impulse = configuration.wall.jumpClimb
         } else if horizontalInput == 0 {
             impulse = configuration.wall.jumpOff
@@ -257,11 +285,15 @@ public struct PlatformerController: Sendable {
             impulse = configuration.wall.leap
         }
 
-        velocity = .init(-wallDirection * impulse.x, impulse.y)
+        velocity = .init(-pendingWallJumpDirection * impulse.x, impulse.y)
         horizontalVelocity = velocity.x
         jumpBuffer.stop()
         coyote.stop()
-        wallJump.start(duration: configuration.wall.jumpDuration)
+        wallJumpInput.stop()
+        wallJumpControlLock.start(
+            duration: configuration.wall.controlLockDuration
+        )
+        pendingWallJumpDirection = 0
         stance = .standing
         airMode = .wall
         state = .wallJumping
@@ -279,13 +311,19 @@ public struct PlatformerController: Sendable {
             applyCrouchRoll()
             return
         }
+        if wallJumpControlLock.isRunning {
+            stance = .standing
+            applyGravity(delta: delta)
+            state = .wallJumping
+            return
+        }
         if (state == .jumping || state == .runJumping), velocity.y > 0 {
             applyAirMovement(delta: delta)
             return
         }
         if !contacts.isGrounded,
            contacts.wallDirection != 0,
-           !wallJump.isRunning,
+           !wallJumpControlLock.isRunning,
            !wallDetach.isRunning {
             applyWallSlide(delta: delta)
             return
@@ -370,9 +408,7 @@ public struct PlatformerController: Sendable {
         )
         applyGravity(delta: delta)
 
-        if wallJump.isRunning {
-            state = .wallJumping
-        } else if velocity.y > 0 {
+        if velocity.y > 0 {
             state = airMode == .run ? .runJumping : .jumping
         } else {
             switch airMode {
@@ -458,7 +494,8 @@ public struct PlatformerController: Sendable {
         _ = dash.advance(by: delta)
         _ = crouchRoll.advance(by: delta)
         _ = wallDetach.advance(by: delta)
-        _ = wallJump.advance(by: delta)
+        _ = wallJumpInput.advance(by: delta)
+        _ = wallJumpControlLock.advance(by: delta)
 
         if coyoteExpired, !grounded, !consumedWalkOffJump {
             remainingJumps = max(0, remainingJumps - 1)
