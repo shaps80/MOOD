@@ -14,6 +14,8 @@ final class ScopeStorage: @unchecked Sendable {
     private(set) var active = true
     private let used = ManagedAtomic<UInt64>(0)
     private let peakUsage = ManagedAtomic<UInt64>(0)
+    private let dynamicReserved = ManagedAtomic<UInt64>(0)
+    private let peakDynamicReserved = ManagedAtomic<UInt64>(0)
 
     init(arena: ArenaStorage?, layout: LayoutRecord, baseAddress: UnsafeMutableRawPointer?, placement: UInt64, effectivePolicy: PreparationPolicy, parent: ScopeStorage?) {
         self.arena = arena
@@ -36,7 +38,7 @@ final class ScopeStorage: @unchecked Sendable {
 
     var statistics: MemoryStatistics {
         MemoryStatistics(
-            reserved: ByteCount(rawValue: layout.required),
+            reserved: ByteCount(rawValue: checkedAdd(layout.required, currentDynamicReserved)),
             used: ByteCount(rawValue: currentUsed),
             peak: ByteCount(rawValue: peakUsed)
         )
@@ -44,6 +46,8 @@ final class ScopeStorage: @unchecked Sendable {
 
     var currentUsed: UInt64 { used.load(ordering: .acquiring) }
     var peakUsed: UInt64 { peakUsage.load(ordering: .acquiring) }
+    var currentDynamicReserved: UInt64 { dynamicReserved.load(ordering: .acquiring) }
+    var maximumReserved: UInt64 { checkedAdd(layout.required, peakDynamicReserved.load(ordering: .acquiring)) }
 
     func prepareDirectRegions() {
         for state in regions.values {
@@ -122,7 +126,12 @@ final class ScopeStorage: @unchecked Sendable {
     func indexedBuffer<Definition: MemoryLayoutDefinition, Element: BitwiseCopyable>(_ keyPath: KeyPath<Definition, Element>, source: SourceLocation) -> IndexedBuffer<Element> {
         let declaration = requireDeclaration(keyPath, source: source)
         let state = requireRegion(declaration.name, source: source)
-        guard case .indexed = state.record.kind else { kindFailure(declaration.name, source) }
+        switch state.record.kind {
+        case .indexed:
+            break
+        case .raw, .densePool:
+            kindFailure(declaration.name, source)
+        }
         return IndexedBuffer(state: state, arena: arena!)
     }
 
@@ -163,6 +172,32 @@ final class ScopeStorage: @unchecked Sendable {
             parent.noteUsageChanged(from: previous, to: current)
         } else {
             arena?.noteUsageChanged(from: previous, to: current)
+        }
+    }
+
+    func noteReservationChanged(from previous: UInt64, to current: UInt64) {
+        let updated: UInt64
+        if current >= previous {
+            let delta = current - previous
+            let old = dynamicReserved.loadThenWrappingIncrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            updated = old + delta
+        } else {
+            let delta = previous - current
+            let old = dynamicReserved.loadThenWrappingDecrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            precondition(old >= delta, "Scope reservation underflow")
+            updated = old - delta
+        }
+        updateMaximum(peakDynamicReserved, with: updated)
+        if let parent {
+            parent.noteReservationChanged(from: previous, to: current)
+        } else {
+            arena?.noteReservationChanged(from: previous, to: current)
         }
     }
 

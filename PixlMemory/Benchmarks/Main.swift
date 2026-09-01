@@ -15,6 +15,7 @@ enum Benchmarks {
         )
         let scope = arena.acquire(StorageLayout.self)
         results += IndexedBufferBenchmarks.run(scope: scope)
+        results += GrowingBufferBenchmarks.run()
         results += RawBufferBenchmarks.run(scope: scope)
         results += DensePoolBenchmarks.run(scope: scope)
         scope.release()

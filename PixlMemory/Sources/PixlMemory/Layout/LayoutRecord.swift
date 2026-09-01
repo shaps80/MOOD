@@ -28,6 +28,7 @@ enum LayoutEntryRecord: @unchecked Sendable {
 struct RegionRecord: @unchecked Sendable {
     let name: String
     let kind: RegionDraft.Kind
+    let growth: IndexedGrowth?
     let policy: PreparationPolicy?
     let capacity: UInt64
     let payload: UInt64
@@ -64,7 +65,7 @@ enum LayoutCompiler {
                     throw MemoryFailure("Duplicate region '\(draft.name)' in layout '\(Definition.memoryLayoutName)'")
                 }
                 cursor = aligned(cursor, to: draft.alignment)
-                records.append(.region(RegionRecord(name: draft.name, kind: draft.kind, policy: draft.policy, capacity: draft.capacity, payload: draft.payload, alignment: draft.alignment, elementStride: draft.elementStride, offset: cursor, source: draft.source)))
+                records.append(.region(RegionRecord(name: draft.name, kind: draft.kind, growth: draft.growth, policy: draft.policy, capacity: draft.capacity, payload: draft.payload, alignment: draft.alignment, elementStride: draft.elementStride, offset: cursor, source: draft.source)))
                 cursor = checkedAdd(cursor, draft.payload)
                 payload = checkedAdd(payload, draft.payload)
                 maximumAlignment = max(maximumAlignment, draft.alignment)

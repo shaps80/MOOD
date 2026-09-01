@@ -9,7 +9,7 @@ public struct IndexedBuffer<Element: BitwiseCopyable>: @unchecked Sendable {
         self.arena = arena
     }
 
-    public var capacity: Int { Int(state.record.capacity) }
+    public var capacity: Int { Int(state.capacity) }
     public var count: Int { Int(state.count) }
 
     public func append(_ value: Element, fileID: StaticString = #fileID, line: UInt = #line) {
@@ -95,7 +95,13 @@ public struct IndexedBuffer<Element: BitwiseCopyable>: @unchecked Sendable {
 
     private func requireCapacity(_ additional: UInt64, operation: String, fileID: StaticString, line: UInt) {
         let required = checkedAdd(state.count, additional)
-        guard required <= state.record.capacity else {
+        guard required > state.capacity else { return }
+        let access = SourceLocation(fileID: fileID, line: line)
+        guard state.grow(
+            toFit: required,
+            operation: operation,
+            access: access
+        ) else {
             arena.fail(.indexedBuffer(
                 region: state.record.name,
                 operation: operation,
@@ -104,7 +110,7 @@ public struct IndexedBuffer<Element: BitwiseCopyable>: @unchecked Sendable {
                 required: required,
                 elementStride: state.record.elementStride,
                 reservation: state.record.source,
-                access: SourceLocation(fileID: fileID, line: line)
+                access: access
             ))
         }
     }

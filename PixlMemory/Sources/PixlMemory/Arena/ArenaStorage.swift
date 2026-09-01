@@ -6,7 +6,7 @@ final class ArenaStorage: @unchecked Sendable {
     let logging: ArenaLogging
     let persistentRecord: LayoutRecord
     let layouts: [ObjectIdentifier: LayoutRecord]
-    let reserved: UInt64
+    let fixedReserved: UInt64
     let topLevelOffset: UInt64
     let pointer: UnsafeMutableRawPointer?
     let persistentScope: ScopeStorage
@@ -17,6 +17,8 @@ final class ArenaStorage: @unchecked Sendable {
     private var nextPlacement: UInt64 = 1
     private let used = ManagedAtomic<UInt64>(0)
     private let peakUsage = ManagedAtomic<UInt64>(0)
+    private let dynamicReserved = ManagedAtomic<UInt64>(0)
+    private let peakDynamicReserved = ManagedAtomic<UInt64>(0)
 
     init(name: String?, logging: ArenaLogging, persistent: LayoutRecord, layouts: [LayoutRecord]) {
         self.name = name
@@ -26,9 +28,9 @@ final class ArenaStorage: @unchecked Sendable {
         self.layouts = Dictionary(uniqueKeysWithValues: layouts.map { ($0.typeID, $0) })
         let topAlignment = layouts.map(\.alignment).max() ?? 1
         topLevelOffset = aligned(persistent.required, to: topAlignment)
-        reserved = checkedAdd(topLevelOffset, layouts.map(\.required).max() ?? 0)
+        fixedReserved = checkedAdd(topLevelOffset, layouts.map(\.required).max() ?? 0)
         let arenaAlignment = max(persistent.alignment, topAlignment)
-        pointer = reserved == 0 ? nil : UnsafeMutableRawPointer.allocate(byteCount: Int(reserved), alignment: Int(arenaAlignment))
+        pointer = fixedReserved == 0 ? nil : UnsafeMutableRawPointer.allocate(byteCount: Int(fixedReserved), alignment: Int(arenaAlignment))
         persistentScope = ScopeStorage(arena: nil, layout: persistent, baseAddress: pointer, placement: 0, effectivePolicy: persistent.policy ?? .eager, parent: nil)
         persistentScope.arena = self
         history.append(persistentScope)
@@ -51,6 +53,8 @@ final class ArenaStorage: @unchecked Sendable {
 
     var currentUsed: UInt64 { used.load(ordering: .acquiring) }
     var peak: UInt64 { peakUsage.load(ordering: .acquiring) }
+    var reserved: UInt64 { checkedAdd(fixedReserved, dynamicReserved.load(ordering: .acquiring)) }
+    var maximumReserved: UInt64 { checkedAdd(fixedReserved, peakDynamicReserved.load(ordering: .acquiring)) }
 
     func acquire<Definition: MemoryLayoutDefinition>(_ type: Definition.Type, policy: PreparationPolicy?, source: SourceLocation) -> ScopeStorage {
         guard activeTopLevel == nil else {
@@ -90,6 +94,27 @@ final class ArenaStorage: @unchecked Sendable {
             updated = old - delta
         }
         updateMaximum(peakUsage, with: updated)
+    }
+
+    func noteReservationChanged(from previous: UInt64, to current: UInt64) {
+        let updated: UInt64
+        if current >= previous {
+            let delta = current - previous
+            let old = dynamicReserved.loadThenWrappingIncrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            updated = old + delta
+        } else {
+            let delta = previous - current
+            let old = dynamicReserved.loadThenWrappingDecrement(
+                by: delta,
+                ordering: .acquiringAndReleasing
+            )
+            precondition(old >= delta, "Arena reservation underflow")
+            updated = old - delta
+        }
+        updateMaximum(peakDynamicReserved, with: updated)
     }
 
     func takePlacement() -> UInt64 {

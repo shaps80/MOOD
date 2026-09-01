@@ -10,7 +10,7 @@ case "${MODE}" in
     swiftly run swift run \
       --package-path "${ROOT_DIR}/Pixl" \
       -c release \
-      PixlBenchmarks \
+      Benchmarks \
       "${@:2}"
     ;;
   wasm)

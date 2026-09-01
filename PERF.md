@@ -9,7 +9,7 @@ This document contains separate profiling records for specific low-level compone
 ## Representative CPU frame — native and WebAssembly
 
 Recorded on 2026-08-31 before the planned memory-ownership redesign. The
-standalone `Pixl/Benchmarks` runner executes one deterministic production
+standalone `Pixl/Sources/Benchmarks` runner executes one deterministic production
 workload without a window, GPU, assets, or presentation timing. It is the
 accepted before-change baseline for comparing CPU and retained-memory effects
 of that redesign.
@@ -83,6 +83,18 @@ accounting. The unchanged post-warm-up reading confirms no measurable
 steady-state resident growth in this run. WASI does not currently expose a
 comparable resident-memory query through this runner.
 
+### Native follow-up
+
+On 2026-09-01, three plugged-in native reruns produced total-frame medians of
+3.874, 3.835, and 3.832 ms: approximately 10% slower than the accepted native
+baseline. Correctness results and retained-memory behaviour remained unchanged.
+The benchmark sources were byte-for-byte identical, no relevant production
+source had changed, and restoring the original benchmark target name and path
+did not recover the earlier timings. This difference is tracked as an
+unresolved environment, toolchain, or machine-condition variance; the accepted
+baseline above remains unchanged until a matched comparison identifies the
+cause.
+
 Commands from the repository root:
 
 ```sh
@@ -91,6 +103,29 @@ Commands from the repository root:
 ```
 
 Pass `--json` after the runtime for machine-readable output.
+
+### Live game reference
+
+Recorded on 2026-09-01 before replacing Pixl's fixed-capacity render storage
+with PixlMemory. This is a reference for the current small game workload rather
+than a controlled standalone benchmark; compare repeated runs of the same game
+and scene under matched conditions.
+
+| Measurement | Average |
+| --- | ---: |
+| Game update | 0.027604 ms |
+| Total render | 0.075426 ms |
+| Render lowering | 0.024945 ms |
+| Render culling | 0.002178 ms |
+| Render layer binning | 0.004225 ms |
+| Render ordering | 0.000336 ms |
+| Render batching | 0.002254 ms |
+| Render instances | 0.004711 ms |
+
+The observed presentation rate was 59.942 FPS with a 16.682658 ms average
+frame, 17.647542 ms maximum frame, and zero reported window hitches. This
+reference specifically protects the low-volume case where storage-abstraction
+overhead could dominate otherwise tiny render stages.
 
 ## PixlText layout — arm64 macOS
 

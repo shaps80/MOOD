@@ -35,7 +35,7 @@ enum ReportFormatter {
     }
 
     static func peak(_ arena: ArenaStorage) -> String {
-        let unit = Unit.select(arena.reserved)
+        let unit = Unit.select(arena.maximumReserved)
         var rows: [[String]] = []
         rows += peakRows(
             arena.persistentRecord,
@@ -57,7 +57,7 @@ enum ReportFormatter {
         )
         let total = alignRows([[
             "Arena",
-            unit.format(arena.reserved),
+            unit.format(arena.maximumReserved),
             unit.format(arena.peak)
         ]], widthsFrom: ["Layout / Region", "Reserved", "Peak"] + rows.flatMap { $0 })
         return """
@@ -66,6 +66,38 @@ enum ReportFormatter {
         \(body)
 
         \(total)
+        """ + "\n"
+    }
+
+    static func growth(
+        arenaName: String?,
+        layout: String,
+        region: String,
+        operation: String,
+        previousCapacity: UInt64,
+        capacity: UInt64,
+        required: UInt64,
+        previousReserved: UInt64,
+        reserved: UInt64,
+        access: SourceLocation
+    ) -> String {
+        let details: [(String, String)] = [
+            ("Layout", layout),
+            ("Region", region),
+            ("Operation", operation),
+            ("Capacity", "\(previousCapacity) → \(capacity) elements"),
+            ("Required", "\(required) elements"),
+            ("Reserved", "\(bytes(previousReserved)) → \(bytes(reserved))"),
+            ("Access", access.description)
+        ]
+        let width = details.map { $0.0.count }.max() ?? 0
+        let body = details.map { label, value in
+            label + String(repeating: " ", count: width - label.count + 2) + value
+        }.joined(separator: "\n")
+        return """
+        \(arenaName ?? "Arena"): grew buffer
+
+        \(body)
         """ + "\n"
     }
 
@@ -174,14 +206,19 @@ enum ReportFormatter {
 
     private static func peakRows(_ layout: LayoutRecord, scopes: [ScopeStorage], unit: Unit, prefix: String = "") -> [[String]] {
         let layoutPeak = scopes.map(\.peakUsed).max() ?? 0
-        var rows = [[prefix + layout.name, unit.format(layout.required), unit.format(layoutPeak)]]
+        let layoutReserved = max(layout.required, scopes.map(\.maximumReserved).max() ?? 0)
+        var rows = [[prefix + layout.name, unit.format(layoutReserved), unit.format(layoutPeak)]]
         for (index, entry) in layout.entries.enumerated() {
             let last = index == layout.entries.count - 1
             let branch = last ? "└── " : "├── "
             switch entry {
             case .region(let region):
                 let peak = scopes.compactMap { $0.regions[region.name]?.peakBytes }.max() ?? 0
-                rows.append([prefix + branch + displayName(region.name), unit.format(region.payload), unit.format(peak)])
+                let reserved = max(
+                    region.payload,
+                    scopes.compactMap { $0.regions[region.name]?.peakReservedBytes }.max() ?? 0
+                )
+                rows.append([prefix + branch + displayName(region.name), unit.format(reserved), unit.format(peak)])
             case .child(let child):
                 let children = scopes.flatMap { parent in
                     parent.arena?.history.filter { $0.parent === parent && $0.layout.typeID == child.layout.typeID } ?? []

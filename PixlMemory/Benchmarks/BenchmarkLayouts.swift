@@ -43,6 +43,28 @@ struct StorageLayout {
     }
 }
 
+@Layout("Growing storage", policy: .lazy)
+struct GrowingStorage {
+    @Region var indexed: UInt64
+
+    static func make(_ layout: inout Layout) {
+        layout.reserve(
+            \.indexed,
+            initialCount: 1_024,
+            growth: .doubling
+        )
+    }
+}
+
+@Layout("Fixed comparison", policy: .lazy)
+struct FixedComparisonStorage {
+    @Region var indexed: UInt64
+
+    static func make(_ layout: inout Layout) {
+        layout.reserve(\.indexed, count: 262_144)
+    }
+}
+
 struct FrameActor {
     var position: SIMD2<Float>
     var velocity: SIMD2<Float>

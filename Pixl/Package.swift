@@ -48,6 +48,10 @@ let package = Package(
             name: "PixlInput",
             targets: ["PixlInput"]
         ),
+        .executable(
+            name: "Benchmarks",
+            targets: ["Benchmarks"]
+        ),
     ],
     dependencies: [
         .package(path: "../PixlPlatform"),
@@ -149,7 +153,7 @@ let package = Package(
             dependencies: ["PixlText"]
         ),
         .executableTarget(
-            name: "PixlBenchmarks",
+            name: "Benchmarks",
             dependencies: [
                 "Pixl2D",
                 "PixlFoundation",
@@ -158,7 +162,6 @@ let package = Package(
                     package: "PixlPlatform"
                 )
             ],
-            path: "Benchmarks",
             swiftSettings: defaultNonisolated()
         ),
         .target(

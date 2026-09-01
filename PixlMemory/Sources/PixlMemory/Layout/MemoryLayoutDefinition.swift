@@ -37,6 +37,7 @@ public struct MemoryLayoutBuilder<Definition: MemoryLayoutDefinition> {
             entries.append(.region(RegionDraft(
                 name: region.name,
                 kind: .indexed,
+                growth: nil,
                 policy: region.policy,
                 capacity: capacity,
                 payload: payload,
@@ -53,6 +54,7 @@ public struct MemoryLayoutBuilder<Definition: MemoryLayoutDefinition> {
             entries.append(.region(RegionDraft(
                 name: region.name,
                 kind: .densePool(pool),
+                growth: nil,
                 policy: region.policy,
                 capacity: capacity,
                 payload: pool.required,
@@ -63,6 +65,43 @@ public struct MemoryLayoutBuilder<Definition: MemoryLayoutDefinition> {
         case .rawBuffer:
             preconditionFailure("Raw region '\(region.name)' must be reserved using bytes at \(source)")
         }
+    }
+
+    public mutating func reserve<Element: BitwiseCopyable>(
+        _ keyPath: KeyPath<Definition, Element>,
+        initialCount: Int,
+        growth: GrowthStrategy,
+        alignment: ByteCount? = nil,
+        fileID: StaticString = #fileID,
+        line: UInt = #line
+    ) {
+        let source = SourceLocation(fileID: fileID, line: line)
+        guard initialCount > 0 else {
+            preconditionFailure("Initial region count must be positive at \(source)")
+        }
+        let region = declaration(for: keyPath, at: source)
+        precondition(
+            region.kind == .indexedBuffer,
+            "Only indexed buffer regions support automatic growth at \(source)"
+        )
+        let stride = UInt64(Swift.MemoryLayout<Element>.stride)
+        let natural = UInt64(max(1, Swift.MemoryLayout<Element>.alignment))
+        let requested = alignment?.rawValue ?? natural
+        preconditionValidAlignment(requested, at: source)
+        entries.append(.region(RegionDraft(
+            name: region.name,
+            kind: .indexed,
+            growth: IndexedGrowth(
+                initialCapacity: UInt64(initialCount),
+                growth: growth
+            ),
+            policy: region.policy,
+            capacity: 0,
+            payload: 0,
+            alignment: max(natural, requested),
+            elementStride: stride,
+            source: source
+        )))
     }
 
     public mutating func reserve(
@@ -79,6 +118,7 @@ public struct MemoryLayoutBuilder<Definition: MemoryLayoutDefinition> {
         entries.append(.region(RegionDraft(
             name: region.name,
             kind: .raw,
+            growth: nil,
             policy: region.policy,
             capacity: bytes.rawValue,
             payload: bytes.rawValue,
@@ -133,12 +173,18 @@ struct RegionDraft {
 
     let name: String
     let kind: Kind
+    let growth: IndexedGrowth?
     let policy: PreparationPolicy?
     let capacity: UInt64
     let payload: UInt64
     let alignment: UInt64
     let elementStride: UInt64
     let source: SourceLocation
+}
+
+struct IndexedGrowth: Sendable {
+    let initialCapacity: UInt64
+    let growth: GrowthStrategy
 }
 
 struct ChildLayoutDraft {

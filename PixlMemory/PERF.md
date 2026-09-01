@@ -42,6 +42,15 @@ not directly comparable.
 | Indexed append | element | 46.65 ns | 49.23 ns | 50.08 ns |
 | Indexed bulk append | element | 0.30 ns | 0.32 ns | 0.37 ns |
 | Indexed mutable iteration | element | 0.12 ns | 0.14 ns | 0.15 ns |
+| Paired fixed append | element | 47.23 ns | 48.48 ns | 48.78 ns |
+| Growing retained append | element | 47.96 ns | 49.12 ns | 49.84 ns |
+| Growth 1K → 2K | growth | 334.00 ns | 375.00 ns | 417.00 ns |
+| Growth 16K → 32K | growth | 2.13 µs | 2.25 µs | 2.67 µs |
+| Growth 128K → 256K | growth | 16.83 µs | 17.04 µs | 20.33 µs |
+| Growth 1M → 2M | growth | 111.04 µs | 115.08 µs | 121.46 µs |
+| Growing cold append | element | 47.91 ns | 49.47 ns | 51.01 ns |
+| Growing cold bulk append | element | 0.38 ns | 0.40 ns | 0.41 ns |
+| Growing mutable iteration | element | 0.12 ns | 0.12 ns | 0.12 ns |
 | Raw append, 64 bytes | chunk | 55.36 ns | 58.74 ns | 59.60 ns |
 | Raw mutable iteration | byte | 0.05 ns | 0.05 ns | 0.07 ns |
 | Dense-pool insert | element | 57.56 ns | 59.46 ns | 59.98 ns |
@@ -70,6 +79,34 @@ Raw iteration validates an exact checksum covering every mutated byte and
 checks every final byte after measurement. Optimised arm64 output uses SIMD
 loads, additions, stores, and a scalar tail; the result is real vectorised,
 cache-resident throughput rather than eliminated work.
+
+### Automatically growing indexed buffers
+
+Accepted on 2026-09-01 under the same host, release, sequential-run, and
+external-power conditions. The growing buffer starts with capacity for 1,024
+`UInt64` values and doubles while filling 250,000 values, reaching a retained
+capacity of 262,144 values (2.10 MB). “Cold append” includes every allocation,
+copy, and release needed to reach that capacity. “Cold bulk append” supplies
+the complete count upfront and therefore performs one allocation. “Retained”
+reuses the established capacity without further allocation.
+
+Across the same three runs, the existing fixed indexed-buffer append measured
+46.69–46.95 ns per element, bulk append measured 0.30–0.37 ns, and mutable
+iteration measured 0.11–0.12 ns. A separate alternating comparison gave equal
+262,144-element capacities to fixed and stabilized-growing buffers and reversed
+their execution order between samples. The expanded final harness measured
+47.23 versus 47.96 ns per append; an earlier independent three-run paired
+sequence measured 46.11 versus 46.21 ns. Growing mutable iteration was identical
+to fixed iteration in both. Growth is policy metadata and is consulted only
+when capacity is exhausted; subsequent appends and contiguous traversal retain
+fixed-buffer hot-path characteristics.
+
+The explicit growth rows time only the append that crosses capacity; preparation
+fills the old allocation before timing. Because elements are `UInt64`, the four
+rows copy 8.19 KB, 131.07 KB, 1.05 MB, and 8.39 MB respectively into allocations
+twice that size. The next append immediately returns to the retained hot path.
+Actual growth cost scales primarily with copied bytes, so element counts alone
+must not be used to predict costs for larger record types.
 
 ### Particle-like integration
 

@@ -121,17 +121,17 @@ done < <(
 )
 
 sources=()
-collect_sources "${ROOT_DIR}/Pixl/Benchmarks"
+collect_sources "${ROOT_DIR}/Pixl/Sources/Benchmarks"
 swiftly run swiftc \
   "${common[@]}" \
   -parse-as-library \
-  -module-name PixlBenchmarks \
+  -module-name Benchmarks \
   -package-name pixl \
   "${sources[@]}" \
   "${link_objects[@]}" \
-  -o "${DIRECT_DIR}/PixlBenchmarks.wasm" \
+  -o "${DIRECT_DIR}/Benchmarks.wasm" \
   +"${WEB_TOOLCHAIN}"
 
 node --no-warnings "${SCRIPT_DIR}/_run-wasi.mjs" \
-  "${DIRECT_DIR}/PixlBenchmarks.wasm" \
+  "${DIRECT_DIR}/Benchmarks.wasm" \
   "$@"
