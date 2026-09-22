@@ -30,6 +30,10 @@ validated.
 - [x] Separate profiling from the control mailbox with bounded atomic recording;
   defer presentation statistics and diagnostic assembly to the UI consumer.
   Concurrent recording and overflow tests pass under Thread Sanitizer; app builds.
+- [x] Replace the editor control mailbox condition lock with atomic latest-value
+  handoffs and a spinning render-worker wait. Coalescing preserves pending
+  controls; UI publication never waits. Seven focused tests pass under Thread
+  Sanitizer and the app builds; manual playback/input validation remains pending.
 
 - [x] Add the document colour picker with correct display-encoded to linear input
   conversion and live updates that do not recreate the system unnecessarily.

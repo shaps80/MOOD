@@ -171,17 +171,23 @@
 - Portable particle and renderer code is nonisolated by default. Actor or thread
   ownership belongs at composition boundaries. The editor main actor configures
   `MTKView`; a dedicated serial thread owns simulation sampling, seeking,
-  Metal resources, culling, and submission. Its latest-value mailbox
-  uses `NSCondition`, never queues stale frames, and introduces no concurrency
-  dependency into `PixlRenderer`.
+  Metal resources, culling, and submission. Its latest-value mailbox uses
+  preallocated single-producer/single-consumer triple buffers with atomic slot
+  exchange. UI snapshots carry per-field revisions so frame coalescing retains
+  pending system replacement, seek/reset, and duration changes without replaying
+  consumed commands. The reverse channel carries completed playback time and
+  persistent failures. Shutdown is a separate atomic flag. The render worker
+  spins for publication whenever the mailbox is empty, including while paused;
+  the UI never spins or waits for it. No concurrency dependency is introduced
+  into `PixlRenderer`. Focused tests run with
+  `PixlParticlesUI/.scripts/test-mailbox --sanitize thread`.
 - Editor profiling is separate from the control mailbox. Render samples, GPU
   durations, and presentation timestamps use preallocated bounded atomic buffers
   supporting concurrent producers and one UI consumer. Recording makes one slot
   claim attempt, never waits or retries, and counts samples dropped when the
   selected slot is occupied. The UI consumer assembles diagnostics, converts
   simulation durations, and calculates presentation-window statistics. Existing
-  simulation execution, control-mailbox locking, and GPU frame synchronization
-  are unchanged. Focused profiling tests run with
+  simulation execution and GPU frame synchronization are unchanged. Focused profiling tests run with
   `PixlParticlesUI/.scripts/test-profiling --sanitize thread`.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
   after buffer availability and culling encoding.

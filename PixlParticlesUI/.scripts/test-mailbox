@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+mailbox_package=$(mktemp -d /private/tmp/pixl-mailbox-tests.XXXXXX)
+trap 'rm -rf "$mailbox_package"' EXIT
+mkdir -p "$mailbox_package/Sources/ParticleMailbox" "$mailbox_package/Tests/ParticleMailboxTests"
+cp "$project_root"/Views/Rendering/Communication/*.swift "$mailbox_package/Sources/ParticleMailbox/"
+cp "$project_root"/Views/Rendering/Mailbox.swift "$mailbox_package/Sources/ParticleMailbox/"
+cp "$project_root"/Tests/Mailbox/*.swift "$mailbox_package/Tests/ParticleMailboxTests/"
+# Keep the real package as a dependency without embedding its path in Swift source.
+ln -s "$project_root/../PixlParticles" "$mailbox_package/PixlParticles"
+ln -s "$project_root/../PixlMath" "$mailbox_package/PixlMath"
+cat > "$mailbox_package/Package.swift" <<'PACKAGE'
+// swift-tools-version: 6.3
+import PackageDescription
+let package = Package(
+    name: "ParticleMailbox",
+    platforms: [.macOS(.v15)],
+    dependencies: [.package(path: "PixlParticles")],
+    targets: [
+        .target(name: "ParticleMailbox", dependencies: [
+            .product(name: "PixlParticles", package: "PixlParticles"),
+            .product(name: "PixlEditorSupport", package: "PixlParticles")
+        ], swiftSettings: [.defaultIsolation(MainActor.self)]),
+        .testTarget(name: "ParticleMailboxTests", dependencies: ["ParticleMailbox"])
+    ],
+    swiftLanguageModes: [.v5]
+)
+PACKAGE
+swift test --package-path "$mailbox_package" --build-system native "$@"

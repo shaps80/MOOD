@@ -1,4 +1,4 @@
-import Foundation
+import Synchronization
 import PixlEditorSupport
 import PixlParticles
 import PixlRenderer
@@ -25,95 +25,113 @@ nonisolated final class Mailbox: @unchecked Sendable {
         let shouldStop: Bool
     }
 
-    private let condition = NSCondition()
-    private var frame: Frame?
-    private var system: System?
-    private var seekTime: Duration?
-    private var duration: Duration?
-    private var hasSeek = false
-    private var shouldStop = false
-    private var completedTime: Duration?
-    private var failure: String?
+    // UI publishes complete snapshots. Per-field revisions ensure that frame
+    // coalescing cannot discard an unconsumed control or replay an old command.
+    private struct Input {
+        var frame: Frame?
+        var frameRevision: UInt64 = 0
+        var system: System?
+        var systemRevision: UInt64 = 0
+        var seekTime: Duration?
+        var seekRevision: UInt64 = 0
+        var duration: Duration?
+        var durationRevision: UInt64 = 0
+    }
+
+    private struct Output {
+        var time: Duration?
+        var timeRevision: UInt64 = 0
+        var failure: String?
+    }
+
+    private let input = LatestValueChannel<Input>()
+    private let output = LatestValueChannel<Output>()
+    private let stopped = Atomic<Bool>(false)
+
+    // UI-owned state; no render-thread access.
+    private var pending = Input()
+    private var reportedTimeRevision: UInt64 = 0
+    private var reportedFailure: String?
+
+    // Render-worker-owned state; no UI access after initialization.
+    private var consumed = Input()
+    private var completed = Output()
 
     init(system: System) {
-        self.system = system
+        pending.system = system
+        pending.systemRevision = 1
+        input.publish(pending)
     }
 
     func submit(_ frame: Frame) {
-        condition.lock()
-        self.frame = frame
-        condition.signal()
-        condition.unlock()
+        pending.frame = frame
+        pending.frameRevision &+= 1
+        input.publish(pending)
     }
 
     func replaceSystem(_ system: System) {
-        condition.lock()
-        self.system = system
-        condition.signal()
-        condition.unlock()
+        pending.system = system
+        pending.systemRevision &+= 1
+        input.publish(pending)
     }
 
     func seek(to time: Duration) {
-        condition.lock()
-        seekTime = time
-        hasSeek = true
-        condition.signal()
-        condition.unlock()
+        pending.seekTime = time
+        pending.seekRevision &+= 1
+        input.publish(pending)
     }
 
     func setDuration(_ duration: Duration) {
-        condition.lock()
-        self.duration = duration
-        condition.signal()
-        condition.unlock()
+        pending.duration = duration
+        pending.durationRevision &+= 1
+        input.publish(pending)
     }
 
+    /// Render worker only. Spin on atomic publication until work or shutdown;
+    /// the UI never waits for the worker. No sleeping or OS synchronization.
     func next() -> Work {
-        condition.lock()
-        while frame == nil && system == nil && !hasSeek && duration == nil
-            && !shouldStop {
-            condition.wait()
+        while !stopped.load(ordering: .acquiring) {
+            guard let latest = input.take() else { continue }
+            let work = Work(
+                frame: latest.frameRevision != consumed.frameRevision
+                    ? latest.frame : nil,
+                system: latest.systemRevision != consumed.systemRevision
+                    ? latest.system : nil,
+                seekTime: latest.seekRevision != consumed.seekRevision
+                    ? latest.seekTime : nil,
+                duration: latest.durationRevision != consumed.durationRevision
+                    ? latest.duration : nil,
+                shouldStop: false
+            )
+            consumed = latest
+            return work
         }
-        let work = Work(
-            frame: frame,
-            system: system,
-            seekTime: hasSeek ? seekTime : nil,
-            duration: duration,
-            shouldStop: shouldStop
+        return Work(
+            frame: nil, system: nil, seekTime: nil, duration: nil,
+            shouldStop: true
         )
-        frame = nil
-        system = nil
-        seekTime = nil
-        duration = nil
-        hasSeek = false
-        condition.unlock()
-        return work
     }
 
     func complete(at time: Duration) {
-        condition.lock()
-        completedTime = time
-        condition.unlock()
+        completed.time = time
+        completed.timeRevision &+= 1
+        output.publish(completed)
     }
 
     func result() -> (time: Duration?, failure: String?) {
-        condition.lock()
-        let result = (completedTime, failure)
-        completedTime = nil
-        condition.unlock()
-        return result
+        guard let latest = output.take() else { return (nil, reportedFailure) }
+        let time = latest.timeRevision != reportedTimeRevision ? latest.time : nil
+        reportedTimeRevision = latest.timeRevision
+        reportedFailure = latest.failure
+        return (time, reportedFailure)
     }
 
     func fail(_ message: String) {
-        condition.lock()
-        failure = message
-        condition.unlock()
+        completed.failure = message
+        output.publish(completed)
     }
 
     func stop() {
-        condition.lock()
-        shouldStop = true
-        condition.signal()
-        condition.unlock()
+        stopped.store(true, ordering: .releasing)
     }
 }
