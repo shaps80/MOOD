@@ -35,11 +35,11 @@ let package = Package(
         .target(
             name: "PixlParticles",
             dependencies: ["PixlRenderer"],
-            swiftSettings: releaseCrossModuleOptimization()
+            swiftSettings: optimizedSettings()
         ),
         .target(
             name: "PixlRenderer",
-            swiftSettings: releaseCrossModuleOptimization()
+            swiftSettings: optimizedSettings()
         ),
         .target(
             name: "PixlMetal",
@@ -47,7 +47,7 @@ let package = Package(
             resources: [
                 .process("Shaders")
             ],
-            swiftSettings: releaseCrossModuleOptimization()
+            swiftSettings: optimizedSettings()
         ),
         .target(
             name: "PixlEditorSupport",
@@ -55,7 +55,7 @@ let package = Package(
                 "PixlRenderer",
                 .product(name: "PixlMath", package: "PixlMath")
             ],
-            swiftSettings: releaseCrossModuleOptimization()
+            swiftSettings: optimizedSettings()
         ),
         .target(
             name: "PixlEditorSupportMetal",
@@ -63,15 +63,17 @@ let package = Package(
             resources: [
                 .process("Shaders")
             ],
-            swiftSettings: releaseCrossModuleOptimization()
+            swiftSettings: optimizedSettings()
         ),
         .testTarget(
             name: "PixlParticlesTests",
-            dependencies: ["PixlParticles", "PixlRenderer"]
+            dependencies: ["PixlParticles", "PixlRenderer"],
+            swiftSettings: optimizedSettings()
         ),
         .testTarget(
             name: "PixlRendererTests",
-            dependencies: ["PixlRenderer"]
+            dependencies: ["PixlRenderer"],
+            swiftSettings: optimizedSettings()
         ),
         .testTarget(
             name: "PixlEditorSupportTests",
@@ -79,14 +81,16 @@ let package = Package(
                 "PixlEditorSupport",
                 "PixlRenderer",
                 .product(name: "PixlMath", package: "PixlMath")
-            ]
+            ],
+            swiftSettings: optimizedSettings()
         )
     ],
     swiftLanguageModes: [.v6]
 )
 
-private func releaseCrossModuleOptimization() -> [SwiftSetting] {
+private func optimizedSettings() -> [SwiftSetting] {
     [
+        .unsafeFlags(["-O"]),
         .unsafeFlags(
             ["-cross-module-optimization"],
             .when(configuration: .release)
