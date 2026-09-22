@@ -27,6 +27,10 @@ validated.
 
 ## 2. Colour Authoring and Diagnostics — Active
 
+- [x] Separate profiling from the control mailbox with bounded atomic recording;
+  defer presentation statistics and diagnostic assembly to the UI consumer.
+  Concurrent recording and overflow tests pass under Thread Sanitizer; app builds.
+
 - [x] Add the document colour picker with correct display-encoded to linear input
   conversion and live updates that do not recreate the system unnecessarily.
 - [ ] Add an editor-only diagnostic driven by the production colour pipeline.

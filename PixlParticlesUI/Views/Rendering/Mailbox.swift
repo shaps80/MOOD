@@ -4,9 +4,6 @@ import PixlParticles
 import PixlRenderer
 
 nonisolated final class Mailbox: @unchecked Sendable {
-    private static let presentationWindow = 3.0
-    private static let presentationCapacity = 512
-
     struct Frame {
         let isPaused: Bool
         let capturesDiagnostics: Bool
@@ -36,14 +33,6 @@ nonisolated final class Mailbox: @unchecked Sendable {
     private var hasSeek = false
     private var shouldStop = false
     private var completedTime: Duration?
-    private var diagnostics: RenderDiagnostics?
-    private var gpuTime: Double?
-    private var presentationTimes = [Double](
-        repeating: 0,
-        count: presentationCapacity
-    )
-    private var presentationHead = 0
-    private var presentationCount = 0
     private var failure: String?
 
     init(system: System) {
@@ -101,82 +90,16 @@ nonisolated final class Mailbox: @unchecked Sendable {
         return work
     }
 
-    func complete(
-        at time: Duration,
-        simulatedCount: Int,
-        visibleCount: Int?,
-        cpuSimulationTime: Double,
-        fixedUpdateTime: Double?,
-        cpuRenderTime: Double?,
-        frameBudget: Double?
-    ) {
+    func complete(at time: Duration) {
         condition.lock()
         completedTime = time
-        diagnostics = frameBudget.map {
-            let presentation = presentationMetrics()
-            return RenderDiagnostics(
-                simulatedCount: simulatedCount,
-                visibleCount: visibleCount,
-                cpuSimulationTime: cpuSimulationTime,
-                fixedUpdateTime: fixedUpdateTime,
-                cpuRenderTime: cpuRenderTime,
-                gpuTime: gpuTime,
-                frameBudget: $0,
-                presentationFrameCount: presentation.frameCount,
-                presentationDuration: presentation.duration
-            )
-        }
         condition.unlock()
     }
 
-    func recordGPUTime(_ duration: Double?) {
+    func result() -> (time: Duration?, failure: String?) {
         condition.lock()
-        gpuTime = duration
-        condition.unlock()
-    }
-
-    func recordPresentation(at time: Double) {
-        condition.lock()
-        let index: Int
-        if presentationCount == Self.presentationCapacity {
-            index = presentationHead
-            presentationHead = (presentationHead + 1)
-                % Self.presentationCapacity
-        } else {
-            index = (presentationHead + presentationCount)
-                % Self.presentationCapacity
-            presentationCount += 1
-        }
-        presentationTimes[index] = time
-        condition.unlock()
-    }
-
-    private func presentationMetrics() -> (frameCount: Int, duration: Double) {
-        guard presentationCount > 1 else { return (0, 0) }
-        var latest = -Double.infinity
-        for offset in 0..<presentationCount {
-            let index = (presentationHead + offset) % Self.presentationCapacity
-            latest = max(latest, presentationTimes[index])
-        }
-        let cutoff = latest - Self.presentationWindow
-        var earliest = Double.infinity
-        var count = 0
-        for offset in 0..<presentationCount {
-            let index = (presentationHead + offset) % Self.presentationCapacity
-            let time = presentationTimes[index]
-            guard time >= cutoff, time <= latest else { continue }
-            earliest = min(earliest, time)
-            count += 1
-        }
-        guard count > 1, latest > earliest else { return (0, 0) }
-        return (count - 1, latest - earliest)
-    }
-
-    func result() -> (time: Duration?, diagnostics: RenderDiagnostics?, failure: String?) {
-        condition.lock()
-        let result = (completedTime, diagnostics, failure)
+        let result = (completedTime, failure)
         completedTime = nil
-        diagnostics = nil
         condition.unlock()
         return result
     }

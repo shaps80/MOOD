@@ -11,10 +11,13 @@ final class RenderThread {
     private let mailbox: Mailbox
     private let worker: Worker
     private let thread: Thread
+    private let profiling: ProfileConsumer
 
     init(layer: CAMetalLayer, system: System) {
         let mailbox = Mailbox(system: system)
-        let worker = Worker(layer: layer, mailbox: mailbox)
+        let capture = ProfileCapture()
+        profiling = ProfileConsumer(capture: capture)
+        let worker = Worker(layer: layer, mailbox: mailbox, capture: capture)
         self.mailbox = mailbox
         self.worker = worker
         thread = Thread { worker.run() }
@@ -44,7 +47,8 @@ final class RenderThread {
     }
 
     func result() -> (time: Duration?, diagnostics: RenderDiagnostics?, failure: String?) {
-        mailbox.result()
+        let result = mailbox.result()
+        return (result.time, profiling.consume(), result.failure)
     }
 }
 
@@ -52,9 +56,12 @@ private nonisolated final class Worker: @unchecked Sendable {
     private let layer: CAMetalLayer
     private let mailbox: Mailbox
 
-    init(layer: CAMetalLayer, mailbox: Mailbox) {
+    private let capture: ProfileCapture
+
+    init(layer: CAMetalLayer, mailbox: Mailbox, capture: ProfileCapture) {
         self.layer = layer
         self.mailbox = mailbox
+        self.capture = capture
     }
 
     func run() {
@@ -74,11 +81,11 @@ private nonisolated final class Worker: @unchecked Sendable {
                 platform: platform,
                 composition: editor
             )
-            backend.onGPUTime = { [mailbox] duration in
-                mailbox.recordGPUTime(duration)
+            backend.onGPUTime = { [capture] duration in
+                capture.gpuTimes.record(duration)
             }
-            backend.onPresented = { [mailbox] time in
-                mailbox.recordPresentation(at: time)
+            backend.onPresented = { [capture] time in
+                capture.presentations.record(time)
             }
             let renderer = PixlParticles.Renderer(backend: backend)
             var system: System?
@@ -106,9 +113,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                     : nil
                 let sample = diagnosticSample?.sample
                     ?? system.sample(at: .now, isPaused: frame.isPaused)
-                let simulationTime = simulationStart.map {
-                    Self.seconds($0.duration(to: .now))
-                } ?? 0
+                let simulationDuration = simulationStart?.duration(to: .now)
                 try renderer.render(
                     system,
                     renderer: frame.renderer,
@@ -117,26 +122,21 @@ private nonisolated final class Worker: @unchecked Sendable {
                     cullingViewProjection: frame.cullingViewProjection,
                     camera: frame.camera
                 )
-                mailbox.complete(
-                    at: sample.time,
-                    simulatedCount: system.particleCount,
-                    visibleCount: backend.visibleCount,
-                    cpuSimulationTime: simulationTime,
-                    fixedUpdateTime: diagnosticSample?.fixedUpdateTime,
-                    cpuRenderTime: backend.cpuRenderTime,
-                    frameBudget: frame.capturesDiagnostics
-                        ? frame.frameBudget
-                        : nil
-                )
+                if let simulationDuration {
+                    capture.frames.record(FrameProfile(
+                        simulatedCount: system.particleCount,
+                        visibleCount: backend.visibleCount,
+                        simulationDuration: simulationDuration,
+                        fixedUpdateTime: diagnosticSample?.fixedUpdateTime,
+                        cpuRenderTime: backend.cpuRenderTime,
+                        frameBudget: frame.frameBudget
+                    ))
+                }
+                mailbox.complete(at: sample.time)
             }
         } catch {
             mailbox.fail(String(describing: error))
         }
     }
 
-    private static func seconds(_ duration: Duration) -> Double {
-        let components = duration.components
-        return Double(components.seconds)
-            + Double(components.attoseconds) / 1e18
-    }
 }

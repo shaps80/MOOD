@@ -174,6 +174,15 @@
   Metal resources, culling, and submission. Its latest-value mailbox
   uses `NSCondition`, never queues stale frames, and introduces no concurrency
   dependency into `PixlRenderer`.
+- Editor profiling is separate from the control mailbox. Render samples, GPU
+  durations, and presentation timestamps use preallocated bounded atomic buffers
+  supporting concurrent producers and one UI consumer. Recording makes one slot
+  claim attempt, never waits or retries, and counts samples dropped when the
+  selected slot is occupied. The UI consumer assembles diagnostics, converts
+  simulation durations, and calculates presentation-window statistics. Existing
+  simulation execution, control-mailbox locking, and GPU frame synchronization
+  are unchanged. Focused profiling tests run with
+  `PixlParticlesUI/.scripts/test-profiling --sanitize thread`.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
   after buffer availability and culling encoding.
   Early acquisition caused double-buffer back-pressure despite sufficient GPU
