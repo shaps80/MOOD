@@ -70,8 +70,16 @@ validated.
 - Begin property authoring with constants, deterministic ranges, and normalized
   lifetime functions. Derive analytically on GPU whenever possible; materialize
   AoSoA previous/current storage only for stateful or interpolated semantics.
-- Keep specialized dense passes serial initially, shaped so PixlConcurrency can
-  later schedule independent groups without reorganizing data.
+- [x] Add portable synchronous simulation jobs and an Apple-owned persistent
+  spinning pool. Keep SIMD integration and parallel spawn calculation batched;
+  retain deterministic ID/lifetime bookkeeping on the owning thread.
+- [x] Provide all-core and performance-core-count configurations, a serial
+  comparison mode, and a configurable batch multiplier (default four).
+- [x] Validate exact range coverage, bit-identical simulation, seeking/removal,
+  and spawn-rate changes under Thread Sanitizer; macOS app builds.
+- [x] Complete matched serial/all-core/performance-core-count benchmark report:
+  `Benchmarks/Results/2026-09-22-batched-simulation.md`. Results retained for
+  review; no automatic promotion to accepted PERF.md baselines.
 - Do not introduce a generic runtime property dictionary or dynamic dispatch in
   hot paths.
 

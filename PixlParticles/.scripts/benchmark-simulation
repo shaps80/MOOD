@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+ui="$root/../PixlParticlesUI"
+build="${PIXL_BENCHMARK_BUILD:-/private/tmp/pixl-batched-simulation}"
+mkdir -p "$build"
+renderer_sources=()
+while IFS= read -r file; do renderer_sources+=("$file"); done < <(find "$root/Sources/PixlRenderer" -name '*.swift' | sort)
+particle_sources=()
+while IFS= read -r file; do particle_sources+=("$file"); done < <(find "$root/Sources/PixlParticles" -name '*.swift' | sort)
+flags=(-O -whole-module-optimization -cross-module-optimization -swift-version 6 -package-name PixlParticles)
+xcrun swiftc "${flags[@]}" -parse-as-library -emit-module -emit-library -module-name PixlRenderer "${renderer_sources[@]}" -o "$build/libPixlRenderer.dylib" -emit-module-path "$build/PixlRenderer.swiftmodule"
+xcrun swiftc "${flags[@]}" -I "$build" -L "$build" -lPixlRenderer -Xlinker -rpath -Xlinker "$build" "${particle_sources[@]}" "$ui/Views/Rendering/Jobs/SimulationWorkers.swift" "$ui/Views/Rendering/Jobs/SpinningJobPool.swift" "$root/Benchmarks/System/BatchedSimulationBenchmarks.swift" -o "$build/benchmark"
+"$build/benchmark" "${@:-serial}"

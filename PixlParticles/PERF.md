@@ -563,3 +563,23 @@ Position compaction added 0.324 ms median compute time, increased effective GPU
 work by 0.374 ms median and 1.181 ms at p95, and consumed another 45.78 MiB.
 The small vertex reduction did not repay the compute write. The experiment was
 rejected and removed; indexed LOD remains the production path.
+
+## Pre-Parallel Editor Baseline — 2026-09-22
+
+User-designated baseline from the 22:17:02 screenshot on the current M4 Pro Mac.
+Two million simulated and visible particles; spawn rate 1,000,000/s, lifetime
+2 seconds, seed 0, sphere surface, point rendering, point LOD disabled, authored
+bounds culling disabled. Profiling is deferred/lockless and the control mailbox
+uses spinning atomic handoffs. Simulation is still serial at this baseline.
+
+| Metric | Recorded value |
+| --- | ---: |
+| Simulation | 2.16 ms |
+| CPU render | 0.12 ms |
+| CPU budget | 13.7% |
+| GPU | 11.99 ms |
+| FPS | 60.0 |
+| Frame interval | 16.67 ms |
+
+These are app-overlay values, separate from the standalone full-tick harness.
+The screenshot does not establish a latency distribution or its power state.

@@ -181,13 +181,35 @@
   the UI never spins or waits for it. No concurrency dependency is introduced
   into `PixlRenderer`. Focused tests run with
   `PixlParticlesUI/.scripts/test-mailbox --sanitize thread`.
+- Simulation accepts an optional synchronous `SimulationExecutor`; nil retains
+  serial execution. Portable `SimulationJob` values borrow a context for one
+  complete dispatch. Position integration partitions whole four-particle SIMD
+  batches. Spawn calculations use disjoint preallocated particle outputs; ID
+  allocation, birth-cohort ordering, compaction, and storage scatter remain on
+  the owning thread. Every dependent phase waits for completed jobs, preserving
+  deterministic particle state through reset, recycling, removal, and seeking.
+- The Apple UI owns a persistent `SpinningJobPool`, reused across ticks and
+  system replacements. The calling render thread participates; total worker
+  count includes that caller. Workers claim ranges with an atomic epoch/count/
+  index ticket and publish completion atomically. Idle workers spin; there are
+  no condition variables or mutexes in job dispatch. Completion waits for jobs,
+  not acknowledgement from idle workers. Shutdown waits for worker exit before
+  releasing shared state. No PixlConcurrency dependency is introduced.
+- The default is all physical cores with four batches per worker. Launch
+  environment `PIXL_SIMULATION_CORES=performance` sizes the pool to performance
+  core count; `all` selects all physical cores and `serial` disables the pool.
+  `PIXL_SIMULATION_BATCHES` changes the multiplier (default 4). macOS controls
+  actual placement; performance mode is a high-QoS P-core-count experiment, not
+  a core-affinity guarantee. Platform discovery and thread creation remain
+  UI-owned. The matched standalone harness compiles these exact pool sources.
+  Focused correctness tests: `PixlParticlesUI/.scripts/test-simulation-jobs
+  --sanitize thread`.
 - Editor profiling is separate from the control mailbox. Render samples, GPU
   durations, and presentation timestamps use preallocated bounded atomic buffers
   supporting concurrent producers and one UI consumer. Recording makes one slot
   claim attempt, never waits or retries, and counts samples dropped when the
   selected slot is occupied. The UI consumer assembles diagnostics, converts
-  simulation durations, and calculates presentation-window statistics. Existing
-  simulation execution and GPU frame synchronization are unchanged. Focused profiling tests run with
+  simulation durations, and calculates presentation-window statistics. GPU frame synchronization remains independent of profiling. Focused profiling tests run with
   `PixlParticlesUI/.scripts/test-profiling --sanitize thread`.
 - Acquire the MTKView render-pass descriptor and drawable as late as possible,
   after buffer availability and culling encoding.

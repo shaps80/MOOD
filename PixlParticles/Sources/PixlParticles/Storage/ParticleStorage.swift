@@ -110,16 +110,34 @@ final class ParticleStorage {
     }
 
     @inline(__always)
-    func advance(by delta: Float) {
+    func advance(by delta: Float, executor: (any SimulationExecutor)? = nil) {
         guard var previousPositions, let velocities else { return }
 
-        for index in 0..<liveBatchCount {
-            previousPositions[index].x = positions[index].x
-                + velocities[index].x * delta
-            previousPositions[index].y = positions[index].y
-                + velocities[index].y * delta
-            previousPositions[index].z = positions[index].z
-                + velocities[index].z * delta
+        if let executor {
+            var context = IntegrationJob(
+                source: positions, destination: previousPositions,
+                velocities: velocities, delta: delta
+            )
+            withUnsafePointer(to: &context) { pointer in
+                executor.execute(SimulationJob(count: liveBatchCount, context: pointer) {
+                    pointer, range in
+                    let job = pointer.assumingMemoryBound(to: IntegrationJob.self).pointee
+                    for index in range {
+                        job.destination[index].x = job.source[index].x + job.velocities[index].x * job.delta
+                        job.destination[index].y = job.source[index].y + job.velocities[index].y * job.delta
+                        job.destination[index].z = job.source[index].z + job.velocities[index].z * job.delta
+                    }
+                })
+            }
+        } else {
+            for index in 0..<liveBatchCount {
+                previousPositions[index].x = positions[index].x
+                    + velocities[index].x * delta
+                previousPositions[index].y = positions[index].y
+                    + velocities[index].y * delta
+                previousPositions[index].z = positions[index].z
+                    + velocities[index].z * delta
+            }
         }
 
         let oldPreviousPositions = previousPositions

@@ -9,6 +9,9 @@ public final class System {
     @_spi(EditorDiagnostics)
     public var particleCount: Int { emitter.aliveCount }
 
+    /// Set only while this system is idle. Nil uses the original serial path.
+    public var executor: (any SimulationExecutor)?
+
     public private(set) var emitter: EmitterInstance
     private var loop: Loop
     private var durationInTicks: UInt64
@@ -189,7 +192,7 @@ public final class System {
     }
 
     func update(by delta: Float) {
-        emitter.advance(by: delta)
+        emitter.advance(by: delta, executor: executor)
 
         tick += 1
     }

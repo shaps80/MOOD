@@ -16,6 +16,7 @@ public final class EmitterInstance {
     private var slice: EmitterArenaSlice
     private var metadata: Metadata
     private var birthCohorts: BirthCohorts
+    private var spawnJobs: SpawnJobs?
 
     init(
         compiled: CompiledEmitter,
@@ -49,6 +50,7 @@ public final class EmitterInstance {
 
     @discardableResult
     func apply(_ compiled: CompiledEmitter) -> Reconfiguration {
+        spawnJobs = nil
         guard self.compiled.storage != compiled.storage else {
             self.compiled = compiled
             reset()
@@ -68,7 +70,11 @@ public final class EmitterInstance {
         return .rebuiltArena
     }
 
-    func advance(by delta: Float) {
+    func advance(by delta: Float, executor: (any SimulationExecutor)? = nil) {
+        if let executor {
+            advanceParallel(by: delta, executor: executor)
+            return
+        }
         var spawnCount = scheduledSpawnCount()
         slice.storage.advance(by: delta)
 
@@ -87,6 +93,74 @@ public final class EmitterInstance {
             spawnCount -= 1
         }
         tick &+= 1
+    }
+
+    private func advanceParallel(by delta: Float, executor: any SimulationExecutor) {
+        var spawnCount = scheduledSpawnCount()
+        slice.storage.advance(by: delta, executor: executor)
+        if spawnJobs == nil {
+            spawnJobs = SpawnJobs(capacity: Int(compiled.constants.spawnRate.whole)
+                + (compiled.constants.spawnRate.remainder > 0 ? 1 : 0))
+        }
+        let jobs = spawnJobs!
+        var count = 0
+        // Reserve IDs and preserve birth-cohort order on the owning thread.
+        while spawnCount > 0, let slot = birthCohorts.popExpired(at: tick) {
+            let index = metadata.indexForKnownLiveSlot(slot)
+            jobs.requests[count] = .init(index: index, slot: slot,
+                                        id: metadata.recycle(slot, at: index))
+            scheduleDeath(for: slot)
+            count += 1
+            spawnCount -= 1
+        }
+        generate(count: count, jobs: jobs, delta: delta, executor: executor)
+        for i in 0..<count {
+            let request = jobs.requests[i]
+            if compiled.storage.velocities == nil {
+                slice.storage.replaceStationary(at: request.index, with: jobs.particles[i], slot: request.slot)
+            } else {
+                slice.storage.replaceMoving(at: request.index, with: jobs.particles[i], slot: request.slot)
+            }
+        }
+        // Finish replacements before compaction can move their storage.
+        while let slot = birthCohorts.popExpired(at: tick) {
+            remove(slot: slot, at: metadata.indexForKnownLiveSlot(slot))
+        }
+        for i in 0..<spawnCount {
+            let index = slice.storage.count + i
+            let allocated = metadata.allocateAvailable(at: index)
+            jobs.requests[i] = .init(index: index, slot: allocated.slot, id: allocated.id)
+            scheduleDeath(for: allocated.slot)
+        }
+        generate(count: spawnCount, jobs: jobs, delta: delta, executor: executor)
+        for i in 0..<spawnCount {
+            if compiled.storage.velocities == nil {
+                slice.storage.appendStationary(jobs.particles[i], slot: jobs.requests[i].slot)
+            } else {
+                slice.storage.appendMoving(jobs.particles[i], slot: jobs.requests[i].slot)
+            }
+        }
+        tick &+= 1
+    }
+
+    private func generate(count: Int, jobs: SpawnJobs, delta: Float,
+                          executor: any SimulationExecutor) {
+        guard count > 0 else { return }
+        var context = SpawnJob(requests: jobs.requests, particles: jobs.particles,
+                               random: random, constants: compiled.constants, delta: delta)
+        withUnsafePointer(to: &context) { pointer in
+            executor.execute(SimulationJob(count: count, context: pointer) { pointer, range in
+                let job = pointer.assumingMemoryBound(to: SpawnJob.self).pointee
+                for i in range {
+                    var particle = Self.spawn(id: job.requests[i].id, random: job.random,
+                                              constants: job.constants)
+                    if job.constants.velocity.requiresStorage {
+                        particle.position += particle.velocity * job.delta
+                    }
+                    job.particles[i] = particle
+                }
+            })
+        }
     }
 
     func reset() {

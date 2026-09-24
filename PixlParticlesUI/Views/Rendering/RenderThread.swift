@@ -88,12 +88,20 @@ private nonisolated final class Worker: @unchecked Sendable {
                 capture.presentations.record(time)
             }
             let renderer = PixlParticles.Renderer(backend: backend)
+            let configuration = SimulationWorkers.environment
+            let jobs = configuration.mode == .serial ? nil : SpinningJobPool(
+                workerCount: configuration.count,
+                batchesPerWorker: configuration.batchesPerWorker
+            )
             var system: System?
 
             while true {
                 let work = mailbox.next()
                 if work.shouldStop { return }
-                if let replacement = work.system { system = replacement }
+                if let replacement = work.system {
+                    replacement.executor = jobs
+                    system = replacement
+                }
                 if let duration = work.duration { system?.setDuration(duration) }
                 if let seekTime = work.seekTime { system?.seek(to: seekTime) }
                 guard let frame = work.frame, let system else { continue }
