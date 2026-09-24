@@ -24,9 +24,11 @@ final class BillboardPass {
     }
 
     func encode(
-        previousPositions: any Buffer,
+        displacements: any Buffer,
+        displacementScale: Float,
         currentPositions: any Buffer,
-        colors: any Buffer,
+        colorIndices: any Buffer,
+        colorPalette: any Buffer,
         visibleIndices: any Buffer,
         indirectArguments: any Buffer,
         renderer: BillboardRenderer,
@@ -41,13 +43,15 @@ final class BillboardPass {
         )
         encoder.setPipeline(pipeline)
         encoder.setDepthState(depth)
-        encoder.setVertexBuffer(previousPositions, index: 0)
+        encoder.setVertexBuffer(displacements, index: 0)
         encoder.setVertexBuffer(visibleIndices, index: 1)
         encoder.setVertexValue(camera, index: 2)
         encoder.setVertexValue(interpolation, index: 3)
         encoder.setVertexValue(configuration, index: 4)
-        encoder.setVertexBuffer(colors, index: 6)
+        encoder.setVertexBuffer(colorIndices, index: 6)
         encoder.setVertexBuffer(currentPositions, index: 7)
+        encoder.setVertexValue(displacementScale, index: 8)
+        encoder.setVertexBuffer(colorPalette, index: 9)
         encoder.drawPrimitives(
             .triangleStrip,
             indirectBuffer: indirectArguments

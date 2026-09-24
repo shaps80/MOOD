@@ -12,6 +12,14 @@ struct CompiledEmitter: Equatable, Sendable {
         case stationary
         case random(Range<Float>)
 
+        var packing: PackedVector3 {
+            switch self {
+            case .stationary: .init(maximumMagnitude: 0)
+            case let .random(range):
+                .init(maximumMagnitude: max(abs(range.lowerBound), abs(range.upperBound)))
+            }
+        }
+
         var requiresStorage: Bool {
             switch self {
             case .stationary:
@@ -27,6 +35,7 @@ struct CompiledEmitter: Equatable, Sendable {
         let spawnRate: SpawnRate
         let lifetimeTicks: UInt32
         let velocity: Velocity
+        let velocityPacking: PackedVector3
         let color: Color
         let size: Vec2
         let rotation: Float

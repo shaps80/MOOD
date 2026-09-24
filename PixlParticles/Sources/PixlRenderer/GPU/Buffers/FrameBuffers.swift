@@ -41,9 +41,10 @@ final class FrameBuffers {
 
         guard let shared else { throw RenderError.buffer }
         let resources = FrameResources(
-            previousPositions: shared.previousPositions(for: buffers),
-            currentPositions: shared.currentPositions(for: buffers),
-            colors: shared.colors,
+            displacements: shared.displacements,
+            currentPositions: shared.currentPositions,
+            colorIndices: shared.colorIndices,
+            colorPalette: shared.colorPalette,
             culling: culling[frameIndex],
             ids: usesLOD ? shared.ids : nil,
             lod: usesLOD ? lod[frameIndex] : nil
@@ -55,20 +56,22 @@ final class FrameBuffers {
     private func ensureSharedBuffers(_ source: ParticleBuffers) throws {
         if let shared, shared.matches(source) { return }
 
-        guard let previousPositions = platform.makeBuffer(
-            sharing: source.previousPositions
+        guard let displacements = platform.makeBuffer(
+            sharing: source.displacements
         ), let currentPositions = platform.makeBuffer(
             sharing: source.currentPositions
-        ), let colors = platform.makeBuffer(
-            sharing: source.colors
-        ), let ids = platform.makeBuffer(sharing: source.ids)
+        ), let colorIndices = platform.makeBuffer(
+            sharing: source.colorIndices
+        ), let colorPalette = platform.makeBuffer(sharing: source.colorPalette),
+        let ids = platform.makeBuffer(sharing: source.ids)
         else { throw RenderError.buffer }
 
         shared = SharedParticleBuffers(
             source: source,
-            previousPositions: previousPositions,
+            displacements: displacements,
             currentPositions: currentPositions,
-            colors: colors,
+            colorIndices: colorIndices,
+            colorPalette: colorPalette,
             ids: ids
         )
     }
@@ -145,41 +148,27 @@ final class FrameBuffers {
 
 private struct SharedParticleBuffers {
     let source: ParticleBuffers
-    let previousPositions: any Buffer
+    let displacements: any Buffer
     let currentPositions: any Buffer
-    let colors: any Buffer
+    let colorIndices: any Buffer
+    let colorPalette: any Buffer
     let ids: any Buffer
 
     func matches(_ other: ParticleBuffers) -> Bool {
-        let positionsMatch = (
-            source.previousPositions === other.previousPositions
-                && source.currentPositions === other.currentPositions
-        ) || (
-            source.previousPositions === other.currentPositions
-                && source.currentPositions === other.previousPositions
-        )
-        return positionsMatch
-            && source.colors === other.colors
+        source.displacements === other.displacements
+            && source.currentPositions === other.currentPositions
+            && source.colorIndices === other.colorIndices
+            && source.colorPalette === other.colorPalette
             && source.ids === other.ids
     }
 
-    func previousPositions(for other: ParticleBuffers) -> any Buffer {
-        source.previousPositions === other.previousPositions
-            ? previousPositions
-            : currentPositions
-    }
-
-    func currentPositions(for other: ParticleBuffers) -> any Buffer {
-        source.currentPositions === other.currentPositions
-            ? currentPositions
-            : previousPositions
-    }
 }
 
 struct FrameResources {
-    let previousPositions: any Buffer
+    let displacements: any Buffer
     let currentPositions: any Buffer
-    let colors: any Buffer
+    let colorIndices: any Buffer
+    let colorPalette: any Buffer
     let culling: CullingBuffers
     let ids: (any Buffer)?
     let lod: LODBuffers?

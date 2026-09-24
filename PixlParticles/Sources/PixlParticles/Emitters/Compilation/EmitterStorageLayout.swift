@@ -6,7 +6,7 @@ struct EmitterStorageLayout: Equatable, Sendable {
     let byteCount: Int
     let identifiers: Range<Int>
     let currentPositions: Range<Int>
-    let previousPositions: Range<Int>?
+    let displacements: Range<Int>?
     let velocities: Range<Int>?
     let colors: Range<Int>
 
@@ -26,13 +26,13 @@ struct EmitterStorageLayout: Equatable, Sendable {
             count: batchCount,
             of: Vector3Batch.self
         )
-        previousPositions = storesVelocity
-            ? builder.allocate(count: batchCount, of: Vector3Batch.self)
+        displacements = storesVelocity
+            ? builder.allocate(count: batchCount, of: SIMD4<UInt32>.self)
             : nil
         velocities = storesVelocity
-            ? builder.allocate(count: batchCount, of: Vector3Batch.self)
+            ? builder.allocate(count: batchCount, of: SIMD4<UInt32>.self)
             : nil
-        colors = builder.allocate(count: batchCount, of: ColorBatch.self)
+        colors = builder.allocate(count: batchCount, of: SIMD4<UInt16>.self)
 
         self.capacity = capacity
         byteCount = builder.byteCount

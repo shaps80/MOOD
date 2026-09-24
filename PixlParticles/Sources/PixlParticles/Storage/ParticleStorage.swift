@@ -8,33 +8,41 @@ final class ParticleStorage {
     private let capacityBatchCount: Int
     private var liveBatchCount: Int
     private let idsStorage: HostBuffer
-    private var previousPositionStorage: HostBuffer?
-    private var positionStorage: HostBuffer
+    private let displacementStorage: HostBuffer?
+    private let positionStorage: HostBuffer
     private let colorStorage: HostBuffer
     private let ids: UnsafeMutableBufferPointer<SIMD4<UInt32>>
-    private var positions: UnsafeMutableBufferPointer<Vector3Batch>
-    private var previousPositions: UnsafeMutableBufferPointer<Vector3Batch>?
-    private let colors: UnsafeMutableBufferPointer<ColorBatch>
-    private let velocities: UnsafeMutableBufferPointer<Vector3Batch>?
+    private let positions: UnsafeMutableBufferPointer<Vector3Batch>
+    private let displacements: UnsafeMutableBufferPointer<SIMD4<UInt32>>?
+    private let colors: UnsafeMutableBufferPointer<SIMD4<UInt16>>
+    private let velocityStorage: HostBuffer?
+    private let velocities: UnsafeMutableBufferPointer<SIMD4<UInt32>>?
+    private var codec: PackedVector3
+    private var palette: ParticleColorPalette
+    private var displacementScale: Float = 0
 
     init(
         capacity: Int,
-        storesVelocity: Bool = true
+        storesVelocity: Bool = true,
+        velocityPacking: PackedVector3 = .init(maximumMagnitude: 1),
+        palette: ParticleColorPalette = .init([.white])
     ) {
         self.capacity = capacity
+        codec = velocityPacking
+        self.palette = palette
         count = 0
         capacityBatchCount = (capacity + 3) / 4
         liveBatchCount = 0
-        previousPositionStorage = storesVelocity
+        displacementStorage = storesVelocity
             ? HostBuffer(
-                byteCount: capacityBatchCount * MemoryLayout<Vector3Batch>.stride
+                byteCount: capacityBatchCount * MemoryLayout<SIMD4<UInt32>>.stride
             )
             : nil
         positionStorage = HostBuffer(
             byteCount: capacityBatchCount * MemoryLayout<Vector3Batch>.stride
         )
         colorStorage = HostBuffer(
-            byteCount: capacityBatchCount * MemoryLayout<ColorBatch>.stride
+            byteCount: capacityBatchCount * MemoryLayout<SIMD4<UInt16>>.stride
         )
         idsStorage = HostBuffer(
             byteCount: capacityBatchCount * MemoryLayout<SIMD4<UInt32>>.stride
@@ -47,17 +55,18 @@ final class ParticleStorage {
             to: Vector3Batch.self,
             count: capacityBatchCount
         )
-        previousPositions = previousPositionStorage?.bindMemory(
-            to: Vector3Batch.self,
+        displacements = displacementStorage?.bindMemory(
+            to: SIMD4<UInt32>.self,
             count: capacityBatchCount
         )
         colors = colorStorage.bindMemory(
-            to: ColorBatch.self,
+            to: SIMD4<UInt16>.self,
             count: capacityBatchCount
         )
-        velocities = storesVelocity
-            ? .allocate(capacity: capacityBatchCount)
+        velocityStorage = storesVelocity
+            ? HostBuffer(byteCount: capacityBatchCount * MemoryLayout<SIMD4<UInt32>>.stride)
             : nil
+        velocities = velocityStorage?.bindMemory(to: SIMD4<UInt32>.self, count: capacityBatchCount)
 
         for batchIndex in 0..<capacityBatchCount {
             ids.initializeElement(
@@ -68,17 +77,17 @@ final class ParticleStorage {
                 at: batchIndex,
                 to: Vector3Batch(repeating: .zero)
             )
-            previousPositions?.initializeElement(
+            displacements?.initializeElement(
                 at: batchIndex,
-                to: Vector3Batch(repeating: .zero)
+                to: .zero
             )
             colors.initializeElement(
                 at: batchIndex,
-                to: ColorBatch(repeating: .white)
+                to: .zero
             )
             velocities?.initializeElement(
                 at: batchIndex,
-                to: Vector3Batch(repeating: .zero)
+                to: .zero
             )
         }
     }
@@ -86,11 +95,12 @@ final class ParticleStorage {
     deinit {
         ids.deinitialize()
         positions.deinitialize()
-        previousPositions?.deinitialize()
+        displacements?.deinitialize()
         colors.deinitialize()
         velocities?.deinitialize()
-        velocities?.deallocate()
     }
+
+    var paletteByteCount: Int { palette.storage.byteCount }
 
     func initialState() -> InitialParticleState {
         InitialParticleState(
@@ -105,55 +115,54 @@ final class ParticleStorage {
         for index in 0..<capacityBatchCount {
             let initialPosition = state[batch: index]
             positions[index] = initialPosition
-            previousPositions?[index] = initialPosition
+            displacements?[index] = .zero
         }
+    }
+
+    func configure(velocityPacking: PackedVector3, palette: ParticleColorPalette) {
+        precondition(count == 0)
+        codec = velocityPacking
+        self.palette = palette
+        displacementScale = 0
     }
 
     @inline(__always)
     func advance(by delta: Float, executor: (any SimulationExecutor)? = nil) {
-        guard var previousPositions, let velocities else { return }
-
+        guard let displacements, let velocities else { return }
+        // Current linear motion uses the same quantized components for velocity
+        // and this tick's displacement; only their shared scales differ.
+        displacementScale = codec.scale * delta
+        var context = IntegrationJob(
+            positions: positions, displacements: displacements,
+            velocities: velocities, codec: codec, delta: delta
+        )
         if let executor {
-            var context = IntegrationJob(
-                source: positions, destination: previousPositions,
-                velocities: velocities, delta: delta
-            )
             withUnsafePointer(to: &context) { pointer in
                 executor.execute(SimulationJob(count: liveBatchCount, context: pointer) {
                     pointer, range in
-                    let job = pointer.assumingMemoryBound(to: IntegrationJob.self).pointee
-                    for index in range {
-                        job.destination[index].x = job.source[index].x + job.velocities[index].x * job.delta
-                        job.destination[index].y = job.source[index].y + job.velocities[index].y * job.delta
-                        job.destination[index].z = job.source[index].z + job.velocities[index].z * job.delta
-                    }
+                    pointer.assumingMemoryBound(to: IntegrationJob.self).pointee.run(range)
                 })
             }
         } else {
-            for index in 0..<liveBatchCount {
-                previousPositions[index].x = positions[index].x
-                    + velocities[index].x * delta
-                previousPositions[index].y = positions[index].y
-                    + velocities[index].y * delta
-                previousPositions[index].z = positions[index].z
-                    + velocities[index].z * delta
-            }
+            context.run(0..<liveBatchCount)
         }
-
-        let oldPreviousPositions = previousPositions
-        previousPositions = positions
-        positions = oldPreviousPositions
-        self.previousPositions = previousPositions
-
-        let oldPreviousStorage = previousPositionStorage!
-        previousPositionStorage = positionStorage
-        positionStorage = oldPreviousStorage
     }
 
     func resetInterpolation() {
-        for index in 0..<liveBatchCount {
-            previousPositions?[index] = positions[index]
-        }
+        for index in 0..<liveBatchCount { displacements?[index] = .zero }
+    }
+
+    @inline(__always)
+    private func previousPosition(batch: Int, lane: Int) -> Vec3 {
+        guard let displacements else { return positions[batch][lane] }
+        let word = displacements[batch][lane]
+        // Decode directly with the displacement scale (also used by shaders).
+        let delta = Vec3(
+            Float(Int32(bitPattern: word << 22) >> 22),
+            Float(Int32(bitPattern: word << 12) >> 22),
+            Float(Int32(bitPattern: word << 2) >> 22)
+        ) * displacementScale
+        return positions[batch][lane] - delta
     }
 
     func particles(
@@ -167,11 +176,10 @@ final class ParticleStorage {
                     at: index,
                     to: Particle(
                         id: id(ids[batch][lane]),
-                        previousPosition: previousPositions?[batch][lane]
-                            ?? positions[batch][lane],
+                        previousPosition: previousPosition(batch: batch, lane: lane),
                         position: positions[batch][lane],
-                        velocity: velocities?[batch][lane] ?? .zero,
-                        color: colors[batch][lane]
+                        velocity: velocities.map { codec.unpack($0[batch][lane]) } ?? .zero,
+                        color: palette[colors[batch][lane]]
                     )
                 )
             }
@@ -239,8 +247,8 @@ final class ParticleStorage {
         let destinationBatch = destination / 4
         let destinationLane = destination % 4
 
-        previousPositions![destinationBatch][destinationLane] =
-            previousPositions![sourceBatch][sourceLane]
+        displacements![destinationBatch][destinationLane] =
+            displacements![sourceBatch][sourceLane]
         velocities![destinationBatch][destinationLane] =
             velocities![sourceBatch][sourceLane]
     }
@@ -257,7 +265,7 @@ final class ParticleStorage {
         let lane = index % 4
         ids[batch][lane] = slot
         positions[batch][lane] = particle.position
-        colors[batch][lane] = particle.color
+        colors[batch][lane] = palette.index(of: particle.color)
         setCount(index + 1)
     }
 
@@ -273,9 +281,10 @@ final class ParticleStorage {
         let lane = index % 4
         ids[batch][lane] = slot
         positions[batch][lane] = particle.position
-        colors[batch][lane] = particle.color
-        previousPositions![batch][lane] = particle.previousPosition
-        velocities![batch][lane] = particle.velocity
+        colors[batch][lane] = palette.index(of: particle.color)
+        let word = codec.pack(particle.velocity)
+        displacements![batch][lane] = particle.previousPosition == particle.position ? 0 : word
+        velocities![batch][lane] = word
         setCount(index + 1)
     }
 
@@ -289,7 +298,7 @@ final class ParticleStorage {
         let lane = index % 4
         ids[batch][lane] = slot
         positions[batch][lane] = particle.position
-        colors[batch][lane] = particle.color
+        colors[batch][lane] = palette.index(of: particle.color)
     }
 
     @inline(__always)
@@ -305,8 +314,9 @@ final class ParticleStorage {
         )
         let batch = index / 4
         let lane = index % 4
-        previousPositions![batch][lane] = particle.previousPosition
-        velocities![batch][lane] = particle.velocity
+        let word = codec.pack(particle.velocity)
+        displacements![batch][lane] = particle.previousPosition == particle.position ? 0 : word
+        velocities![batch][lane] = word
     }
 
     func removeAll() {
@@ -319,9 +329,11 @@ final class ParticleStorage {
         try body(
             ParticleBuffers(
                 capacity: capacity,
-                previousPositions: previousPositionStorage ?? positionStorage,
+                displacements: displacementStorage ?? idsStorage,
+                displacementScale: displacementScale,
                 currentPositions: positionStorage,
-                colors: colorStorage,
+                colorIndices: colorStorage,
+                colorPalette: palette.storage,
                 ids: idsStorage
             ),
             count

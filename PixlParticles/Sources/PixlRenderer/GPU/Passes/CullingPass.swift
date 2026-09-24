@@ -42,7 +42,8 @@ final class CullingPass {
         values: ParticleRenderValues,
         viewport: ViewportSize,
         cullingBounds: CullingBounds,
-        previousPositions: any Buffer,
+        displacements: any Buffer,
+        displacementScale: Float,
         currentPositions: any Buffer,
         buffers: CullingBuffers,
         into commandBuffer: any CommandBuffer
@@ -62,7 +63,7 @@ final class CullingPass {
             }
             encoder.label = "Culling Classify and Local Scan"
             encoder.setPipeline(classify)
-            encoder.setBuffer(previousPositions, index: 0)
+            encoder.setBuffer(displacements, index: 0)
             encoder.setBuffer(buffers.localOffsets, index: 1)
             encoder.setBuffer(buffers.blockSums, index: 2)
             encoder.setValue(viewProjection, index: 3)
@@ -87,6 +88,7 @@ final class CullingPass {
                 index: 11
             )
             encoder.setValue(frustum, index: 12)
+            encoder.setValue(displacementScale, index: 13)
             encoder.dispatchThreadgroups(
                 .init(width: Int(blockCount)),
                 threads: .init(width: Self.threadCount)

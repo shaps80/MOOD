@@ -36,10 +36,10 @@ struct EmitterCompilerTests {
             )
         )
 
-        #expect(stationary.storage.previousPositions == nil)
+        #expect(stationary.storage.displacements == nil)
         #expect(stationary.storage.velocities == nil)
         #expect(stationary.passes == [.spawn])
-        #expect(moving.storage.previousPositions != nil)
+        #expect(moving.storage.displacements != nil)
         #expect(moving.storage.velocities != nil)
         #expect(moving.passes == [.spawn, .integratePosition])
         #expect(stationary.storage.byteCount < moving.storage.byteCount)

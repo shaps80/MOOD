@@ -87,6 +87,7 @@ struct EmitterCompiler {
                 spawnRate: compiledSpawnRate,
                 lifetimeTicks: UInt32(lifetimeTicks),
                 velocity: velocity.value,
+                velocityPacking: velocity.value.packing,
                 color: color.value,
                 size: size.value,
                 rotation: rotation.value

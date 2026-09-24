@@ -26,8 +26,9 @@
 - Prefer premultiplied alpha for colour storage, interpolation, and blending.
   Premultiply RGB only after conversion to linear space. Straight-alpha or
   additive paths must be explicit effect-specific choices.
-- Represent renderer-facing per-particle colour as linear HDR `RGBA16Float`.
-  RGB may exceed `1`; alpha normally remains within `0...1`.
+- Per-particle colour uses a `UInt16` palette index. Shared palette entries are
+  premultiplied linear HDR `SIMD4<Float>` values; Metal converts the selected
+  entry to `half4` for shading. RGB may exceed `1`; alpha remains within `0...1`.
 
 ## Evidence
 
@@ -57,9 +58,9 @@
   poles. Camera orientation and zoom are restored per scene.
   Portable camera/navigation state and diagnostic descriptions live in
   `PixlEditorSupport`; Apple gesture translation and persistence remain UI-owned.
-- Renderer-facing binary16 colour components use portable `UInt16` bit storage.
-  Swift `Float16` is unavailable when compiling for Intel macOS, while the byte
-  representation consumed by Metal remains `RGBA16Float`.
+- Colour indices are portable `UInt16` values, not binary16 colour components.
+  The current compiler produces a one-entry immutable palette for constant
+  colour; the buffer format supports up to 65,536 authored entries.
 - Editor controls recreate the system only for authored simulation inputs such
   as particle count, seed, colour, and spawn region. Renderer selection and
   billboard values flow live without restarting or seeking the simulation.
@@ -94,10 +95,12 @@
   inside aligned `PixlRenderer.HostBuffer` storage. Renderer code defines that
   portable storage contract and rendering policy; platform targets wrap it in
   concrete GPU resources and own command translation. Metal uses no-copy shared
-  buffers and indexes particle batch/lane directly in shaders. Position history
-  swaps the roles of two existing buffers after integration rather than copying
-  current state into previous state. Point colour is currently immutable and
-  occupies one shared buffer, so it has no CPU history or shader interpolation.
+  buffers and indexes particle batch/lane directly in shaders. Current positions
+  remain Float32 xyz batches; velocity and interpolation displacement each use
+  one 32-bit word per particle (three signed ten-bit components, two reserved
+  bits). Per-particle colour is a UInt16 index into an immutable shared palette.
+  Packed storage is described below; it supersedes position ping-pong and the
+  full per-particle colour buffer.
 - The current document owns one standalone `ParticleRenderer` definition. The
   definition selects point or billboard rendering and holds renderer-only
   billboard settings; fixed size and rotation remain semantic particle values
@@ -265,6 +268,44 @@
 - Discuss and resolve one architectural decision at a time.
 - Stay concise and focused; expand deeply only when asked.
 - Do not introduce new architectural decisions during implementation.
+
+## Packed Simulation Storage — 2026-09-24
+
+- Moving storage is 32 bytes per allocated slot: current position 12, packed
+  velocity 4, packed displacement 4, colour index 2, stable slot 4, slot location
+  4, and generation 2. Stationary storage omits velocity/displacement: 24 bytes.
+  Palette, birth-cohort records, spawn scratch, batch rounding, and allocation
+  page padding are additional. These are layout budgets, not measured footprint.
+- Property streams remain dense four-particle SIMD batches with aligned host
+  allocations. There is no padded per-particle struct. Packed vectors decode
+  four particles at a time with SIMD shifts, masks/conversions, and multiplication.
+- The compiler derives a signed fixed-point velocity scale from the authored
+  range once. Ordinarily the step is a power of two large enough for ±511
+  integer components; the extreme Float32 endpoint uses a finite fallback step.
+  Encoding rounds to nearest, ties away from zero, and rejects out-of-range
+  values rather than silently clamping. Quantization changes velocity/trajectory
+  results and can round to an authored range endpoint. Existing full-precision
+  checksums and performance results are historical, not new acceptance evidence.
+- Current constant-velocity integration retains authoritative Float32 positions.
+  The history word holds the same quantized components as velocity, with a shared
+  displacement scale equal to velocity scale times tick delta. Renderers decode
+  current minus displacement times (1 - alpha); no previous-position array is
+  retained. Snapshot previous positions reconstruct the same displacement.
+  Reset/seek clears history words. Future non-linear motion must explicitly
+  compile its own displacement bounds/representation; it cannot assume this
+  constant-velocity history shortcut.
+- Lifetime scheduling uses FIFO consecutive-slot ranges sharing a UInt32 expiry
+  tick (12 bytes per range). Tick narrowing uses wrapping addition and equality
+  at every fixed tick, supporting expiry across UInt32 wrap. Normal spawning
+  preallocates about one range per live birth tick, plus one recycling range.
+  Explicit removal scans/splits ranges and can grow the queue; adversarial
+  fragmentation can approach per-particle records. Removal is no longer O(1)
+  in the number of cohort ranges; automatic expiry remains O(1) per particle.
+- Palette changes on layout-compatible reconfiguration replace the immutable
+  palette after reset; host-buffer identity invalidates the renderer wrapper.
+  Public particle snapshots continue to expose semantic colours and vectors.
+- Build-only validation for this change; app runs, correctness-test execution,
+  and host/iPad/WebAssembly performance acceptance remain with the user.
 
 ## Current Checkpoint
 

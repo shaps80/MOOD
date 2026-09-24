@@ -5,6 +5,12 @@ package struct Vector3Batch {
     package var y: SIMD4<Float>
     package var z: SIMD4<Float>
 
+    package init(x: SIMD4<Float>, y: SIMD4<Float>, z: SIMD4<Float>) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+
     package init(repeating value: SIMD3<Float>) {
         x = .init(repeating: value.x)
         y = .init(repeating: value.y)

@@ -14,13 +14,6 @@ struct PositionBatch {
     float4 z;
 };
 
-struct ColorBatch {
-    float4 red;
-    float4 green;
-    float4 blue;
-    float4 alpha;
-};
-
 struct CameraFrame {
     float4x4 viewProjection;
     float4 position;
@@ -49,17 +42,11 @@ struct BillboardVertex {
 };
 
 static float4 particleColor(
-    const device ColorBatch *colors,
+    const device ushort *indices,
+    const device float4 *palette,
     uint particleIndex
 ) {
-    uint batch = particleIndex / 4;
-    uint lane = particleIndex % 4;
-    return float4(
-        colors[batch].red[lane],
-        colors[batch].green[lane],
-        colors[batch].blue[lane],
-        colors[batch].alpha[lane]
-    );
+    return palette[indices[particleIndex]];
 }
 
 static float3 particlePosition(
@@ -73,6 +60,24 @@ static float3 particlePosition(
         positions[batch].y[lane],
         positions[batch].z[lane]
     );
+}
+
+static float3 interpolatedPosition(
+    const device PositionBatch *positions,
+    const device uint *displacements,
+    float displacementScale,
+    uint particleIndex,
+    float interpolation
+) {
+    uint word = displacements[particleIndex];
+    int3 components = int3(
+        as_type<int>(word << 22) >> 22,
+        as_type<int>(word << 12) >> 22,
+        as_type<int>(word << 2) >> 22
+    );
+    float3 displacement = float3(components) * displacementScale;
+    return particlePosition(positions, particleIndex)
+        - displacement * (1.0f - interpolation);
 }
 
 static uint particleID(
@@ -191,7 +196,7 @@ static bool screenBillboardIntersectsFrustum(
 }
 
 kernel void classifyAndScanVisibility(
-    const device PositionBatch *previousPositions [[buffer(0)]],
+    const device uint *displacements [[buffer(0)]],
     device uint *localOffsets [[buffer(1)]],
     device uint *blockSums [[buffer(2)]],
     constant float4x4 &viewProjection [[buffer(3)]],
@@ -204,6 +209,7 @@ kernel void classifyAndScanVisibility(
     constant uint &cullingMode [[buffer(10)]],
     constant uint2 &viewport [[buffer(11)]],
     constant FrustumPlanes &frustum [[buffer(12)]],
+    constant float &displacementScale [[buffer(13)]],
     uint index [[thread_position_in_grid]],
     uint lane [[thread_index_in_threadgroup]],
     uint block [[threadgroup_position_in_grid]],
@@ -213,11 +219,7 @@ kernel void classifyAndScanVisibility(
     uint visible = 0;
 
     if (index < particleCount) {
-        float3 position = mix(
-            particlePosition(previousPositions, index),
-            particlePosition(currentPositions, index),
-            interpolation
-        );
+        float3 position = interpolatedPosition(currentPositions, displacements, displacementScale, index, interpolation);
         float halfExtent = cullingBounds.x;
         float baseHeight = cullingBounds.y;
         bool insideBounds = !hasCullingBounds || (
@@ -377,7 +379,7 @@ kernel void clearPointLODTiles(
 }
 
 kernel void countPointLODTiles(
-    const device PositionBatch *previousPositions [[buffer(0)]],
+    const device uint *displacements [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     const device DrawArguments &visibleArguments [[buffer(2)]],
     device atomic_uint *tileCounts [[buffer(3)]],
@@ -386,15 +388,12 @@ kernel void countPointLODTiles(
     constant float &interpolation [[buffer(6)]],
     constant PointLODConfiguration &configuration [[buffer(7)]],
     const device PositionBatch *currentPositions [[buffer(8)]],
+    constant float &displacementScale [[buffer(9)]],
     uint index [[thread_position_in_grid]]
 ) {
     if (index >= visibleArguments.vertexCount) return;
     uint particleIndex = visibleIndices[index];
-    float3 position = mix(
-        particlePosition(previousPositions, particleIndex),
-        particlePosition(currentPositions, particleIndex),
-        interpolation
-    );
+    float3 position = interpolatedPosition(currentPositions, displacements, displacementScale, particleIndex, interpolation);
     uint tile = pointLODTile(
         viewProjection * float4(position, 1),
         configuration
@@ -532,49 +531,45 @@ kernel void scatterPointLOD(
 
 vertex PointVertex pointVertex(
     uint vertexID [[vertex_id]],
-    const device PositionBatch *previousPositions [[buffer(0)]],
+    const device uint *displacements [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
-    const device ColorBatch *colors [[buffer(6)]],
-    const device PositionBatch *currentPositions [[buffer(7)]]
+    const device ushort *colorIndices [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]],
+    constant float &displacementScale [[buffer(8)]],
+    const device float4 *colorPalette [[buffer(9)]]
 ) {
     uint particleIndex = visibleIndices[vertexID];
     PointVertex output;
-    float3 position = mix(
-        particlePosition(previousPositions, particleIndex),
-        particlePosition(currentPositions, particleIndex),
-        interpolation
-    );
+    float3 position = interpolatedPosition(currentPositions, displacements, displacementScale, particleIndex, interpolation);
     output.position = viewProjection * float4(position, 1);
     output.pointSize = 1;
-    output.color = half4(particleColor(colors, particleIndex));
+    output.color = half4(particleColor(colorIndices, colorPalette, particleIndex));
     return output;
 }
 
 vertex PointVertex pointLODVertex(
     uint vertexID [[vertex_id]],
-    const device PositionBatch *previousPositions [[buffer(0)]],
+    const device uint *displacements [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
     const device uint *lodVisibleIndices [[buffer(4)]],
     const device PointLODState &state [[buffer(5)]],
-    const device ColorBatch *colors [[buffer(6)]],
-    const device PositionBatch *currentPositions [[buffer(7)]]
+    const device ushort *colorIndices [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]],
+    constant float &displacementScale [[buffer(8)]],
+    const device float4 *colorPalette [[buffer(9)]]
 ) {
     uint particleIndex = state.active
         ? lodVisibleIndices[vertexID]
         : visibleIndices[vertexID];
     PointVertex output;
-    float3 position = mix(
-        particlePosition(previousPositions, particleIndex),
-        particlePosition(currentPositions, particleIndex),
-        interpolation
-    );
+    float3 position = interpolatedPosition(currentPositions, displacements, displacementScale, particleIndex, interpolation);
     output.position = viewProjection * float4(position, 1);
     output.pointSize = 1;
-    output.color = half4(particleColor(colors, particleIndex));
+    output.color = half4(particleColor(colorIndices, colorPalette, particleIndex));
     return output;
 }
 
@@ -610,20 +605,18 @@ static void billboardBasis(
 vertex BillboardVertex billboardVertex(
     uint vertexID [[vertex_id]],
     uint instanceID [[instance_id]],
-    const device PositionBatch *previousPositions [[buffer(0)]],
+    const device uint *displacements [[buffer(0)]],
     const device uint *visibleIndices [[buffer(1)]],
     constant CameraFrame &camera [[buffer(2)]],
     constant float &interpolation [[buffer(3)]],
     constant BillboardConfiguration &configuration [[buffer(4)]],
-    const device ColorBatch *colors [[buffer(6)]],
-    const device PositionBatch *currentPositions [[buffer(7)]]
+    const device ushort *colorIndices [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]],
+    constant float &displacementScale [[buffer(8)]],
+    const device float4 *colorPalette [[buffer(9)]]
 ) {
     uint particleIndex = visibleIndices[instanceID];
-    float3 center = mix(
-        particlePosition(previousPositions, particleIndex),
-        particlePosition(currentPositions, particleIndex),
-        interpolation
-    );
+    float3 center = interpolatedPosition(currentPositions, displacements, displacementScale, particleIndex, interpolation);
     float2 corner = float2(
         (vertexID & 1) == 0 ? -0.5f : 0.5f,
         (vertexID & 2) == 0 ? -0.5f : 0.5f
@@ -655,7 +648,7 @@ vertex BillboardVertex billboardVertex(
         output.position = camera.viewProjection
             * float4(center + right * local.x + up * local.y, 1);
     }
-    output.color = half4(particleColor(colors, particleIndex));
+    output.color = half4(particleColor(colorIndices, colorPalette, particleIndex));
     return output;
 }
 

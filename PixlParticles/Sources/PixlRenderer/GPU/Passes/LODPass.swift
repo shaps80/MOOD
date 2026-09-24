@@ -31,7 +31,8 @@ final class LODPass {
         viewport: ViewportSize,
         interpolation: Float,
         viewProjection: Matrix4x4,
-        previousPositions: any Buffer,
+        displacements: any Buffer,
+        displacementScale: Float,
         currentPositions: any Buffer,
         ids: any Buffer,
         culling: CullingBuffers,
@@ -66,7 +67,8 @@ final class LODPass {
             configuration,
             interpolation,
             viewProjection,
-            previousPositions,
+            displacements,
+            displacementScale,
             currentPositions,
             culling,
             lod,
@@ -127,7 +129,8 @@ final class LODPass {
         _ configuration: LODConfiguration,
         _ interpolation: Float,
         _ viewProjection: Matrix4x4,
-        _ previousPositions: any Buffer,
+        _ displacements: any Buffer,
+        _ displacementScale: Float,
         _ currentPositions: any Buffer,
         _ culling: CullingBuffers,
         _ lod: LODBuffers,
@@ -135,7 +138,7 @@ final class LODPass {
     ) throws {
         let encoder = try makeEncoder(commandBuffer, label: "Point LOD Count Tiles")
         encoder.setPipeline(count)
-        encoder.setBuffer(previousPositions, index: 0)
+        encoder.setBuffer(displacements, index: 0)
         encoder.setBuffer(culling.visibleIndices, index: 1)
         encoder.setBuffer(culling.indirectArguments, index: 2)
         encoder.setBuffer(lod.tileCounts, index: 3)
@@ -144,6 +147,7 @@ final class LODPass {
         encoder.setValue(interpolation, index: 6)
         encoder.setValue(configuration, index: 7)
         encoder.setBuffer(currentPositions, index: 8)
+        encoder.setValue(displacementScale, index: 9)
         encoder.dispatchThreadgroups(
             indirectBuffer: lod.workArguments,
             threads: .init(width: CullingPass.threadCount)

@@ -1,94 +1,95 @@
 import Swift
 
+/// FIFO runs preserve birth order without links or death ticks per particle.
+/// Normal rate-based spawning needs roughly one run per live birth tick.
+/// Explicit removals can split runs; fragmented workloads use more records.
 final class BirthCohorts {
-    private static let invalidSlot = UInt32.max
-    private static let unscheduledTick = UInt64.max
+    private var records: UnsafeMutableBufferPointer<BirthCohort>
+    private var head = 0
+    private var count = 0
 
-    private let capacity: Int
-    private let deathTicks: UnsafeMutableBufferPointer<UInt64>
-    private let next: UnsafeMutableBufferPointer<UInt32>
-    private let previous: UnsafeMutableBufferPointer<UInt32>
-
-    private var first = invalidSlot
-    private var last = invalidSlot
-
-    init(capacity: Int) {
-        precondition(capacity >= 0 && capacity < Int(Self.invalidSlot))
-
-        self.capacity = capacity
-        deathTicks = .allocate(capacity: capacity)
-        next = .allocate(capacity: capacity)
-        previous = .allocate(capacity: capacity)
-        deathTicks.initialize(repeating: Self.unscheduledTick)
-        next.initialize(repeating: Self.invalidSlot)
-        previous.initialize(repeating: Self.invalidSlot)
+    init(capacity: Int, lifetimeTicks: UInt32) {
+        // One extra run lets the current birth cohort follow expired particles
+        // that are still being recycled. Explicit fragmentation grows on demand.
+        let initial = max(1, min(capacity, Int(lifetimeTicks)) + 1)
+        records = .allocate(capacity: initial)
+        records.initialize(repeating: .init(lower: 0, upper: 0, deathTick: 0))
     }
 
     deinit {
-        deathTicks.deinitialize()
-        deathTicks.deallocate()
-        next.deinitialize()
-        next.deallocate()
-        previous.deinitialize()
-        previous.deallocate()
+        records.deinitialize()
+        records.deallocate()
     }
 
-    var byteCount: Int {
-        capacity * (
-            MemoryLayout<UInt64>.stride
-                + MemoryLayout<UInt32>.stride
-                + MemoryLayout<UInt32>.stride
-        )
-    }
+    var byteCount: Int { records.count * MemoryLayout<BirthCohort>.stride }
 
-    func reset() {
-        deathTicks.update(repeating: Self.unscheduledTick)
-        first = Self.invalidSlot
-        last = Self.invalidSlot
-    }
+    func reset() { head = 0; count = 0 }
 
     @inline(__always)
-    func schedule(_ slot: UInt32, deathTick: UInt64) {
-        let index = Int(slot)
-        deathTicks[index] = deathTick
-        next[index] = Self.invalidSlot
-        previous[index] = last
+    private func physical(_ index: Int) -> Int { (head + index) % records.count }
 
-        if last == Self.invalidSlot {
-            first = slot
-        } else {
-            next[Int(last)] = slot
+    @inline(__always)
+    func schedule(_ slot: UInt32, deathTick: UInt32) {
+        if count > 0 {
+            let tail = physical(count - 1)
+            if records[tail].deathTick == deathTick && records[tail].upper == slot {
+                records[tail].upper = slot + 1
+                return
+            }
         }
-        last = slot
+        ensureCapacity(count + 1)
+        records[physical(count)] = .init(lower: slot, upper: slot + 1, deathTick: deathTick)
+        count += 1
     }
 
-    @inline(__always)
+    /// Explicit removal is uncommon; scan runs and split the containing range.
+    /// Eager removal prevents a reused slot from inheriting its former expiry.
     func remove(_ slot: UInt32) {
-        let index = Int(slot)
-        let previousSlot = previous[index]
-        let nextSlot = next[index]
-
-        if previousSlot == Self.invalidSlot {
-            first = nextSlot
-        } else {
-            next[Int(previousSlot)] = nextSlot
+        for index in 0..<count {
+            let position = physical(index)
+            let run = records[position]
+            guard slot >= run.lower && slot < run.upper else { continue }
+            if run.upper - run.lower == 1 {
+                for next in index..<(count - 1) { records[physical(next)] = records[physical(next + 1)] }
+                count -= 1
+            } else if slot == run.lower {
+                records[position].lower += 1
+            } else if slot + 1 == run.upper {
+                records[position].upper -= 1
+            } else {
+                ensureCapacity(count + 1)
+                for next in stride(from: count, through: index + 2, by: -1) {
+                    records[physical(next)] = records[physical(next - 1)]
+                }
+                records[physical(index)].upper = slot
+                records[physical(index + 1)] = .init(lower: slot + 1, upper: run.upper, deathTick: run.deathTick)
+                count += 1
+            }
+            return
         }
-
-        if nextSlot == Self.invalidSlot {
-            last = previousSlot
-        } else {
-            previous[Int(nextSlot)] = previousSlot
-        }
-
-        deathTicks[index] = Self.unscheduledTick
+        preconditionFailure("Removing an unscheduled particle")
     }
 
     @inline(__always)
-    func popExpired(at tick: UInt64) -> UInt32? {
-        let slot = first
-        guard slot != Self.invalidSlot else { return nil }
-        guard deathTicks[Int(slot)] == tick else { return nil }
-        remove(slot)
+    func popExpired(at tick: UInt32) -> UInt32? {
+        guard count > 0, records[head].deathTick == tick else { return nil }
+        let slot = records[head].lower
+        records[head].lower += 1
+        if records[head].lower == records[head].upper {
+            head = (head + 1) % records.count
+            count -= 1
+        }
         return slot
+    }
+
+    private func ensureCapacity(_ required: Int) {
+        guard required > records.count else { return }
+        let replacement = UnsafeMutableBufferPointer<BirthCohort>.allocate(capacity: max(required, records.count * 2))
+        replacement.initialize(repeating: .init(lower: 0, upper: 0, deathTick: 0))
+        for index in 0..<count { replacement[index] = records[physical(index)] }
+        records.deinitialize()
+        records.deallocate()
+        records = replacement
+        head = 0
     }
 }

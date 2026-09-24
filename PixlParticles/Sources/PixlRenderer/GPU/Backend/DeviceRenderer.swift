@@ -68,7 +68,8 @@ final class DeviceRenderer {
             values: values,
             viewport: camera.viewportSize,
             cullingBounds: cullingBounds,
-            previousPositions: resources.previousPositions,
+            displacements: resources.displacements,
+            displacementScale: particleBuffers.displacementScale,
             currentPositions: resources.currentPositions,
             buffers: resources.culling,
             into: commandBuffer
@@ -80,7 +81,8 @@ final class DeviceRenderer {
                 viewport: camera.viewportSize,
                 interpolation: interpolation,
                 viewProjection: cullingViewProjection,
-                previousPositions: resources.previousPositions,
+                displacements: resources.displacements,
+                displacementScale: particleBuffers.displacementScale,
                 currentPositions: resources.currentPositions,
                 ids: ids,
                 culling: resources.culling,
@@ -115,9 +117,11 @@ final class DeviceRenderer {
         switch renderer.mode {
         case .point:
             points.encode(
-                previousPositions: resources.previousPositions,
+                displacements: resources.displacements,
+                displacementScale: particleBuffers.displacementScale,
                 currentPositions: resources.currentPositions,
-                colors: resources.colors,
+                colorIndices: resources.colorIndices,
+                colorPalette: resources.colorPalette,
                 visibleIndices: resources.culling.visibleIndices,
                 indirectArguments: resources.culling.indirectArguments,
                 lod: resources.lod,
@@ -127,9 +131,11 @@ final class DeviceRenderer {
             )
         case .billboard:
             billboards.encode(
-                previousPositions: resources.previousPositions,
+                displacements: resources.displacements,
+                displacementScale: particleBuffers.displacementScale,
                 currentPositions: resources.currentPositions,
-                colors: resources.colors,
+                colorIndices: resources.colorIndices,
+                colorPalette: resources.colorPalette,
                 visibleIndices: resources.culling.visibleIndices,
                 indirectArguments: resources.culling.indirectArguments,
                 renderer: renderer.billboard,

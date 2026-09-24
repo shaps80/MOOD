@@ -34,9 +34,11 @@ final class PointPass {
     }
 
     func encode(
-        previousPositions: any Buffer,
+        displacements: any Buffer,
+        displacementScale: Float,
         currentPositions: any Buffer,
-        colors: any Buffer,
+        colorIndices: any Buffer,
+        colorPalette: any Buffer,
         visibleIndices: any Buffer,
         indirectArguments: any Buffer,
         lod: LODBuffers?,
@@ -46,12 +48,14 @@ final class PointPass {
     ) {
         encoder.setPipeline(lod == nil ? pipeline : lodPipeline)
         encoder.setDepthState(depth)
-        encoder.setVertexBuffer(previousPositions, index: 0)
+        encoder.setVertexBuffer(displacements, index: 0)
         encoder.setVertexBuffer(visibleIndices, index: 1)
         encoder.setVertexValue(viewProjection, index: 2)
         encoder.setVertexValue(interpolation, index: 3)
-        encoder.setVertexBuffer(colors, index: 6)
+        encoder.setVertexBuffer(colorIndices, index: 6)
         encoder.setVertexBuffer(currentPositions, index: 7)
+        encoder.setVertexValue(displacementScale, index: 8)
+        encoder.setVertexBuffer(colorPalette, index: 9)
         if let lod {
             encoder.setVertexBuffer(lod.visibleIndices, index: 4)
             encoder.setVertexBuffer(lod.state, index: 5)

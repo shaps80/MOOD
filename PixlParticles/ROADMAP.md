@@ -83,6 +83,21 @@ validated.
 - Do not introduce a generic runtime property dictionary or dynamic dispatch in
   hot paths.
 
+## Packed Memory Layout — Awaiting Runtime Validation
+
+- [x] Replace per-particle Float32 RGBA with UInt16 palette indices and a shared
+  premultiplied HDR table; update point/billboard and visibility shader bindings.
+- [x] Keep Float32 current positions; pack velocity and interpolation displacement
+  into signed 10:10:10 words with compiler-derived scales and SIMD decoding.
+- [x] Replace per-slot death ticks/links with consecutive-slot birth cohorts and
+  wrapping UInt32 expiry ticks, preserving removal/recycling and reset semantics.
+- [x] Reach a calculated 32-byte moving / 24-byte stationary slot layout, excluding
+  palette, cohort fragmentation, spawn scratch, and allocation rounding.
+- [ ] User runtime validation: playback/seek/recycle, visual precision, serial and
+  parallel equivalence, and memory measurements. No performance baseline promoted.
+- [ ] Measure explicit-removal cost and cohort fragmentation before extending
+  scheduling to high-volume arbitrary event-driven removal.
+
 ## Later
 
 - Make toolbar undo/redo availability observe `UndoManager` changes immediately;

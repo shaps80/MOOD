@@ -30,7 +30,10 @@ public final class EmitterInstance {
             capacity: compiled.storage.capacity,
             count: 0
         )
-        birthCohorts = BirthCohorts(capacity: compiled.storage.capacity)
+        birthCohorts = BirthCohorts(
+            capacity: compiled.storage.capacity,
+            lifetimeTicks: compiled.constants.lifetimeTicks
+        )
         let arena = Self.makeArena(compiled: compiled)
         self.arena = arena
         slice = arena.slice(layout: compiled.storage)
@@ -54,6 +57,10 @@ public final class EmitterInstance {
         guard self.compiled.storage != compiled.storage else {
             self.compiled = compiled
             reset()
+            slice.storage.configure(
+                velocityPacking: compiled.constants.velocityPacking,
+                palette: ParticleColorPalette([compiled.constants.color])
+            )
             return .reusedArena
         }
 
@@ -62,7 +69,10 @@ public final class EmitterInstance {
             capacity: compiled.storage.capacity,
             count: 0
         )
-        birthCohorts = BirthCohorts(capacity: compiled.storage.capacity)
+        birthCohorts = BirthCohorts(
+            capacity: compiled.storage.capacity,
+            lifetimeTicks: compiled.constants.lifetimeTicks
+        )
         arena = Self.makeArena(compiled: compiled)
         slice = arena.slice(layout: compiled.storage)
         spawnAccumulator = 0
@@ -78,7 +88,7 @@ public final class EmitterInstance {
         var spawnCount = scheduledSpawnCount()
         slice.storage.advance(by: delta)
 
-        while let slot = birthCohorts.popExpired(at: tick) {
+        while let slot = birthCohorts.popExpired(at: UInt32(truncatingIfNeeded: tick)) {
             let index = metadata.indexForKnownLiveSlot(slot)
             if spawnCount > 0 {
                 recycle(slot: slot, at: index, advancedBy: delta)
@@ -105,7 +115,7 @@ public final class EmitterInstance {
         let jobs = spawnJobs!
         var count = 0
         // Reserve IDs and preserve birth-cohort order on the owning thread.
-        while spawnCount > 0, let slot = birthCohorts.popExpired(at: tick) {
+        while spawnCount > 0, let slot = birthCohorts.popExpired(at: UInt32(truncatingIfNeeded: tick)) {
             let index = metadata.indexForKnownLiveSlot(slot)
             jobs.requests[count] = .init(index: index, slot: slot,
                                         id: metadata.recycle(slot, at: index))
@@ -123,7 +133,7 @@ public final class EmitterInstance {
             }
         }
         // Finish replacements before compaction can move their storage.
-        while let slot = birthCohorts.popExpired(at: tick) {
+        while let slot = birthCohorts.popExpired(at: UInt32(truncatingIfNeeded: tick)) {
             remove(slot: slot, at: metadata.indexForKnownLiveSlot(slot))
         }
         for i in 0..<spawnCount {
@@ -236,6 +246,7 @@ public final class EmitterInstance {
 
     var arenaByteCount: Int {
         slice.layout.byteCount + metadata.byteCount + birthCohorts.byteCount
+            + slice.storage.paletteByteCount
     }
 
     @inline(__always)
@@ -326,12 +337,16 @@ public final class EmitterInstance {
     private func scheduleDeath(for slot: UInt32) {
         birthCohorts.schedule(
             slot,
-            deathTick: tick + UInt64(compiled.constants.lifetimeTicks)
+            deathTick: UInt32(truncatingIfNeeded: tick) &+ compiled.constants.lifetimeTicks
         )
     }
 
     private static func makeArena(compiled: CompiledEmitter) -> ParticleArena {
-        ParticleArena(layout: compiled.storage)
+        ParticleArena(
+            layout: compiled.storage,
+            velocityPacking: compiled.constants.velocityPacking,
+            palette: ParticleColorPalette([compiled.constants.color])
+        )
     }
 
     private static func spawn(
@@ -355,7 +370,7 @@ public final class EmitterInstance {
         return Particle(
             id: id,
             position: constants.spawnRegion.sample(using: random, at: id),
-            velocity: velocity,
+            velocity: constants.velocityPacking.unpack(constants.velocityPacking.pack(velocity)),
             color: constants.color
         )
     }

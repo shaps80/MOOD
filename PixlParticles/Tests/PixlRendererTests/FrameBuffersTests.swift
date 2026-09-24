@@ -8,10 +8,13 @@ struct FrameBuffersTests {
         let platform = RecordingPlatform()
         let buffers = FrameBuffers(platform: platform, frameCount: 2)
         let source = ParticleBuffers(
-            previousPositions: .init(byteCount: 150 * 48),
+            capacity: 600,
+            displacements: .init(byteCount: 150 * 16),
+            displacementScale: 0.01,
             currentPositions: .init(byteCount: 150 * 48),
-            colors: .init(byteCount: 150 * 64),
-            ids: .init(byteCount: 150 * 32)
+            colorIndices: .init(byteCount: 600 * 2),
+            colorPalette: .init(byteCount: 16),
+            ids: .init(byteCount: 150 * 16)
         )
 
         let first = try buffers.prepare(
@@ -23,15 +26,18 @@ struct FrameBuffersTests {
             ),
             viewport: .init(width: 100, height: 100)
         )
-        let swapped = ParticleBuffers(
-            previousPositions: source.currentPositions,
-            currentPositions: source.previousPositions,
-            colors: source.colors,
+        let rescaled = ParticleBuffers(
+            capacity: source.capacity,
+            displacements: source.displacements,
+            displacementScale: 0.02,
+            currentPositions: source.currentPositions,
+            colorIndices: source.colorIndices,
+            colorPalette: source.colorPalette,
             ids: source.ids
         )
         let second = try buffers.prepare(
             count: 600,
-            buffers: swapped,
+            buffers: rescaled,
             lod: .init(
                 activationCount: 500,
                 maximumVisibleCount: 200
@@ -40,9 +46,9 @@ struct FrameBuffersTests {
         )
 
         let visibleLength = 200 * MemoryLayout<UInt32>.stride
-        #expect(platform.sharedBuffers.count == 4)
-        #expect(first.previousPositions === second.currentPositions)
-        #expect(first.currentPositions === second.previousPositions)
+        #expect(platform.sharedBuffers.count == 5)
+        #expect(first.displacements === second.displacements)
+        #expect(first.currentPositions === second.currentPositions)
         #expect(
             platform.allocations.filter {
                 $0.length == visibleLength && !$0.memory.isCPUVisible
@@ -55,10 +61,13 @@ struct FrameBuffersTests {
         let platform = RecordingPlatform()
         let buffers = FrameBuffers(platform: platform, frameCount: 2)
         let source = ParticleBuffers(
-            previousPositions: .init(byteCount: 150 * 48),
+            capacity: 600,
+            displacements: .init(byteCount: 150 * 16),
+            displacementScale: 0.01,
             currentPositions: .init(byteCount: 150 * 48),
-            colors: .init(byteCount: 150 * 64),
-            ids: .init(byteCount: 150 * 32)
+            colorIndices: .init(byteCount: 600 * 2),
+            colorPalette: .init(byteCount: 16),
+            ids: .init(byteCount: 150 * 16)
         )
 
         let resources = try buffers.prepare(
@@ -76,41 +85,28 @@ struct FrameBuffersTests {
     func cullingCapacityRecovery() throws {
         let platform = RecordingPlatform()
         let buffers = FrameBuffers(platform: platform, frameCount: 2)
-        let source = ParticleBuffers(
-            previousPositions: .init(byteCount: 150 * 48),
-            currentPositions: .init(byteCount: 150 * 48),
-            colors: .init(byteCount: 150 * 64),
-            ids: .init(byteCount: 150 * 32)
-        )
-
-        let peak = try buffers.prepare(
-            count: 1_000,
-            buffers: source,
-            lod: nil,
-            viewport: .init(width: 100, height: 100)
-        )
-        _ = try buffers.prepare(
-            count: 1_000,
-            buffers: source,
-            lod: nil,
-            viewport: .init(width: 100, height: 100)
-        )
-        let retained = try buffers.prepare(
-            count: 251,
-            buffers: source,
-            lod: nil,
-            viewport: .init(width: 100, height: 100)
-        )
-        let recovered = try buffers.prepare(
-            count: 250,
-            buffers: source,
-            lod: nil,
-            viewport: .init(width: 100, height: 100)
-        )
-
+        func source(_ capacity: Int) -> ParticleBuffers {
+            let batches = (capacity + 3) / 4
+            return ParticleBuffers(
+                capacity: capacity,
+                displacements: .init(byteCount: batches * 16),
+                displacementScale: 0.01,
+                currentPositions: .init(byteCount: batches * 48),
+                colorIndices: .init(byteCount: batches * 8),
+                colorPalette: .init(byteCount: 16),
+                ids: .init(byteCount: batches * 16)
+            )
+        }
+        let large = source(1_000)
+        let viewport = ViewportSize(width: 100, height: 100)
+        let peak = try buffers.prepare(count: 1_000, buffers: large, lod: nil, viewport: viewport)
+        _ = try buffers.prepare(count: 1_000, buffers: large, lod: nil, viewport: viewport)
+        let retained = try buffers.prepare(count: 251, buffers: source(251), lod: nil, viewport: viewport)
+        let recovered = try buffers.prepare(count: 250, buffers: source(250), lod: nil, viewport: viewport)
         #expect(retained.culling.localOffsets === peak.culling.localOffsets)
         #expect(recovered.culling.localOffsets !== peak.culling.localOffsets)
     }
+
 }
 
 private final class RecordingPlatform: Platform {

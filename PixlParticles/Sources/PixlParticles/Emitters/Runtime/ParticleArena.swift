@@ -4,11 +4,15 @@ final class ParticleArena {
     let storage: ParticleStorage
 
     init(
-        layout: EmitterStorageLayout
+        layout: EmitterStorageLayout,
+        velocityPacking: PackedVector3,
+        palette: ParticleColorPalette
     ) {
         storage = ParticleStorage(
             capacity: layout.capacity,
-            storesVelocity: layout.velocities != nil
+            storesVelocity: layout.velocities != nil,
+            velocityPacking: velocityPacking,
+            palette: palette
         )
     }
 

@@ -127,15 +127,17 @@ private struct SharedPositions {
     let current: any MTLBuffer
     let previousCopy: any MTLBuffer
     let currentCopy: any MTLBuffer
+    let displacementByteCount: Int
     let byteCount: Int
 
     init(device: any MTLDevice, buffers: ParticleBuffers) throws {
-        previous = try Self.makeShared(device: device, host: buffers.previousPositions)
+        previous = try Self.makeShared(device: device, host: buffers.displacements)
         current = try Self.makeShared(device: device, host: buffers.currentPositions)
+        displacementByteCount = buffers.displacements.byteCount
         byteCount = buffers.currentPositions.byteCount
 
         guard let previousCopy = device.makeBuffer(
-            length: byteCount,
+            length: displacementByteCount,
             options: .storageModePrivate
         ), let currentCopy = device.makeBuffer(
             length: byteCount,
@@ -158,7 +160,7 @@ private struct SharedPositions {
             sourceOffset: 0,
             to: previousCopy,
             destinationOffset: 0,
-            size: byteCount
+            size: displacementByteCount
         )
         encoder.copy(
             from: current,

@@ -11,12 +11,15 @@ struct ParticleRendererTests {
         let renderer = PixlParticles.Renderer(backend: backend)
         let system = System(
             seed: 42,
-            particleCount: 5,
+            spawnRate: 150,
+            lifetime: 1,
             spawnRegion: .point([1, 2, 3]),
             color: .init(red: 2, green: 1, blue: 0.5, alpha: 0.5),
             duration: .seconds(1)
         )
 
+        system.update(by: 1.0 / 30)
+        let initialPosition = try #require(system.particleSnapshot.first).position
         try renderer.render(
             system,
             renderer: .init(),
@@ -37,7 +40,7 @@ struct ParticleRendererTests {
         )
         let second = try #require(backend.buffers)
 
-        system.update(by: 1)
+        system.update(by: 1.0 / 30)
         try renderer.render(
             system,
             renderer: .init(mode: .billboard),
@@ -53,31 +56,28 @@ struct ParticleRendererTests {
         #expect(backend.values?.size == [1, 2])
         #expect(backend.values?.rotation == 0.25)
         #expect(first.currentPositions === second.currentPositions)
-        #expect(first.colors === second.colors)
-        #expect(first.currentPositions === third.previousPositions)
-        #expect(first.previousPositions === third.currentPositions)
-        #expect(first.colors === third.colors)
+        #expect(first.colorIndices === second.colorIndices)
+        #expect(first.currentPositions === third.currentPositions)
+        #expect(first.displacements === third.displacements)
+        #expect(first.colorPalette === third.colorPalette)
 
         let positions = first.currentPositions.mutableBuffer(
             of: TestPositionBatch.self,
             count: 2
         )
-        let colors = first.colors.mutableBuffer(
-            of: TestColorBatch.self,
-            count: 2
-        )
+        let colors = first.colorPalette.mutableBuffer(of: SIMD4<Float>.self, count: 1)
+        let indices = first.colorIndices.mutableBuffer(of: UInt16.self, count: 8)
         let ids = first.ids.mutableBuffer(
             of: SIMD4<UInt32>.self,
             count: 2
         )
-        #expect(positions[0].x[0] == 1)
-        #expect(positions[0].y[0] == 2)
-        #expect(positions[0].z[0] == 3)
-        #expect(colors[0].red[0] == 1)
-        #expect(colors[0].green[0] == 0.5)
-        #expect(colors[0].blue[0] == 0.25)
-        #expect(colors[0].alpha[0] == 0.5)
+        #expect(positions[0].x[0] != initialPosition.x || positions[0].y[0] != initialPosition.y || positions[0].z[0] != initialPosition.z)
+        #expect(colors[0].x == 1)
+        #expect(colors[0].y == 0.5)
+        #expect(colors[0].z == 0.25)
+        #expect(colors[0].w == 0.5)
         #expect(ids[1][0] == 4)
+        #expect((0..<8).allSatisfy { indices[$0] == 0 })
     }
 }
 
@@ -85,13 +85,6 @@ private struct TestPositionBatch {
     var x: SIMD4<Float>
     var y: SIMD4<Float>
     var z: SIMD4<Float>
-}
-
-private struct TestColorBatch {
-    var red: SIMD4<Float>
-    var green: SIMD4<Float>
-    var blue: SIMD4<Float>
-    var alpha: SIMD4<Float>
 }
 
 private final class RecordingBackend: Backend {
