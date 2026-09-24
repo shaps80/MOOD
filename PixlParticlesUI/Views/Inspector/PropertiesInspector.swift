@@ -6,8 +6,6 @@ struct PropertiesInspector: View {
     @Environment(\.undoManager) private var undoManager
 
     @Bindable var document: ParticleDocument
-    @Binding var system: System
-    @Binding var playback: PlaybackState
 
     var body: some View {
         Inspector {
@@ -67,62 +65,6 @@ struct PropertiesInspector: View {
                 scale: binding(\.cullingBoundsScale, "Change Culling Bounds")
             )
         }
-        .onChange(of: document.snapshot.color) {
-            updateSystem()
-        }
-        .onChange(of: document.snapshot.spawnPreset) {
-            updateSystem()
-        }
-        .onChange(of: document.snapshot.spawnDomain) {
-            updateSystem()
-        }
-        .onChange(of: document.snapshot.duration) { _, duration in
-            let duration = max(duration, 0)
-
-            if document.snapshot.duration != duration {
-                edit("Change Duration") { $0.duration = duration }
-            }
-        }
-        .onChange(of: document.snapshot.spawnRate) { _, spawnRate in
-            let spawnRate = max(spawnRate.rounded(), 0)
-
-            if document.snapshot.spawnRate != spawnRate {
-                edit("Change Spawn Rate") { $0.spawnRate = spawnRate }
-            } else {
-                updateSystem()
-            }
-        }
-        .onChange(of: document.snapshot.lifetime) { _, lifetime in
-            let lifetime = max(lifetime, 0.001)
-
-            if document.snapshot.lifetime != lifetime {
-                edit("Change Lifetime") { $0.lifetime = lifetime }
-            } else {
-                updateSystem()
-            }
-        }
-        .onChange(of: document.snapshot.seed) { _, seed in
-            let maximumExactInteger = 9_007_199_254_740_991.0
-            let seed = min(max(seed.rounded(), 0), maximumExactInteger)
-
-            if document.snapshot.seed != seed {
-                edit("Change Seed") { $0.seed = seed }
-            } else {
-                updateSystem()
-            }
-        }
-    }
-
-    private func updateSystem() {
-        let snapshot = document.snapshot
-        system = System(
-            seed: UInt64(snapshot.seed),
-            emitter: EmitterPreset.debris.emitter()
-                .applying(document.snapshot),
-            duration: .seconds(snapshot.duration),
-            storesRewindState: false
-        )
-        playback.fraction = 0
     }
 
     private func binding<Value>(
@@ -136,14 +78,4 @@ struct PropertiesInspector: View {
         )
     }
 
-    private func edit(
-        _ actionName: String,
-        _ edit: (inout ParticleDocument.Snapshot) -> Void
-    ) {
-        document.performEdit(
-            actionName: actionName,
-            undoManager: undoManager,
-            edit
-        )
-    }
 }

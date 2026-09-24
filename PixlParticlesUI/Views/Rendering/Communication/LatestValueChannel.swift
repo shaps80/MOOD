@@ -27,6 +27,9 @@ nonisolated final class LatestValueChannel<Value>: @unchecked Sendable {
         producerIndex = middle.exchange(
             producerIndex | 4, ordering: .acquiringAndReleasing
         ) & 3
+        // The exchanged slot now belongs exclusively to the producer. Drop any
+        // coalesced payload immediately instead of retaining it until next publish.
+        slots[Int(producerIndex)] = nil
     }
 
     /// Consumer only. Acquire observes the payload; release returns the old
@@ -36,6 +39,9 @@ nonisolated final class LatestValueChannel<Value>: @unchecked Sendable {
         consumerIndex = middle.exchange(
             consumerIndex, ordering: .acquiringAndReleasing
         ) & 3
-        return slots[Int(consumerIndex)]
+        let value = slots[Int(consumerIndex)]
+        // A returned copy owns the payload; the channel need not retain it.
+        slots[Int(consumerIndex)] = nil
+        return value
     }
 }

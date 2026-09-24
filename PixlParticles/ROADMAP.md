@@ -27,6 +27,11 @@ validated.
 
 ## 2. Colour Authoring and Diagnostics — Active
 
+- [x] Move editor simulation ownership into a lazy document-owned object; keep
+  ContentView.system non-optional, deduplicate simulation configuration changes,
+  and clear consumed/discarded mailbox references. macOS and iOS Release builds
+  pass; runtime validation and memory measurements remain with the user.
+
 - [x] Separate profiling from the control mailbox with bounded atomic recording;
   defer presentation statistics and diagnostic assembly to the UI consumer.
   Concurrent recording and overflow tests pass under Thread Sanitizer; app builds.

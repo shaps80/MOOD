@@ -61,9 +61,14 @@
 - Colour indices are portable `UInt16` values, not binary16 colour components.
   The current compiler produces a one-entry immutable palette for constant
   colour; the buffer format supports up to 65,536 authored entries.
-- Editor controls recreate the system only for authored simulation inputs such
-  as particle count, seed, colour, and spawn region. Renderer selection and
-  billboard values flow live without restarting or seeking the simulation.
+- Each editor document lazily owns one persistent simulation owner, exposing a
+  non-optional system to ContentView. View construction and play/pause never
+  create replacement systems. Document edits (including undo/redo) normalize
+  inputs before comparing seed, spawn rate, lifetime, colour, and spawn region;
+  only changed simulation inputs replace the system. Duration, renderer selection,
+  and billboard values flow live without restarting or seeking the simulation.
+  Latest-value handoffs clear consumed and discarded payloads immediately so
+  their slots do not retain obsolete systems.
 
 ## Boundaries
 

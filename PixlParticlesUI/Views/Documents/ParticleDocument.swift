@@ -132,13 +132,35 @@ final class ParticleDocument: Document {
     }
 
     private(set) var snapshot: Snapshot
+    @ObservationIgnored private var simulationStorage: ParticleSimulation?
+
+    /// Lazy so decoding and document previews allocate no simulation buffers.
+    /// The optional cache is private; consumers always receive a concrete owner.
+    var simulation: ParticleSimulation {
+        if let simulationStorage { return simulationStorage }
+        let simulation = ParticleSimulation(snapshot: snapshot)
+        simulationStorage = simulation
+        return simulation
+    }
 
     init(snapshot: Snapshot = .init()) {
-        self.snapshot = snapshot
+        self.snapshot = Self.normalized(snapshot)
     }
 
     func replace(with snapshot: Snapshot) {
+        let snapshot = Self.normalized(snapshot)
+        guard self.snapshot != snapshot else { return }
         self.snapshot = snapshot
+        simulationStorage?.update(with: snapshot)
+    }
+
+    private static func normalized(_ snapshot: Snapshot) -> Snapshot {
+        var snapshot = snapshot
+        snapshot.duration = max(snapshot.duration, 0)
+        snapshot.spawnRate = max(snapshot.spawnRate.rounded(), 0)
+        snapshot.lifetime = max(snapshot.lifetime, 0.001)
+        snapshot.seed = min(max(snapshot.seed.rounded(), 0), 9_007_199_254_740_991)
+        return snapshot
     }
 
     func performEdit(
@@ -149,9 +171,10 @@ final class ParticleDocument: Document {
         let before = snapshot
         var after = before
         edit(&after)
+        after = Self.normalized(after)
         guard before != after else { return }
 
-        snapshot = after
+        replace(with: after)
         guard let undoManager else { return }
         registerUndo(
             restoring: before,
@@ -186,7 +209,7 @@ final class ParticleDocument: Document {
         undoManager: UndoManager
     ) {
         undoManager.registerUndo(withTarget: self) { document in
-            document.snapshot = snapshot
+            document.replace(with: snapshot)
             document.registerUndo(
                 restoring: inverse,
                 inverse: snapshot,

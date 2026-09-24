@@ -55,7 +55,10 @@ struct LatestValueChannelTests {
         func exercise() {
             let channel = LatestValueChannel<Payload>()
             for _ in 0..<1_000 { channel.publish(Payload(counter)) }
+            #expect(counter.count.load(ordering: .relaxed) == 999)
             _ = channel.take()
+            #expect(counter.count.load(ordering: .relaxed) == 1_000)
+            withExtendedLifetime(channel) {}
         }
         exercise()
         #expect(counter.count.load(ordering: .relaxed) == 1_000)

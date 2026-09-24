@@ -15,24 +15,11 @@ struct ContentView: View {
     @SceneStorage("editor.settings") private var settings = EditorSettings()
     @SceneStorage("editor.panels") private var customization: PanelCustomization<PanelKind> = .init()
 
-    @State private var system: System
+    private var simulation: ParticleSimulation { document.simulation }
+    private var system: System { simulation.system }
     @State private var playback = PlaybackState()
     @State private var metrics = RenderMetrics()
     @State private var topInspector: String?
-
-    init(document: ParticleDocument) {
-        self.document = document
-
-        let snapshot = document.snapshot
-        _system = .init(
-            initialValue: .init(
-                seed: UInt64(snapshot.seed),
-                emitter: Self.emitter(from: snapshot),
-                duration: .seconds(snapshot.duration),
-                storesRewindState: false
-            )
-        )
-    }
 
     var body: some View {
         NavigationStack {
@@ -65,11 +52,7 @@ struct ContentView: View {
 
                 PanelView(customization: $customization) {
                     Panel(id: .properties) {
-                        PropertiesInspector(
-                            document: document,
-                            system: $system,
-                            playback: $playback
-                        )
+                        PropertiesInspector(document: document)
                     }
                     .defaultPlacement(.trailing)
                     .width(300)
@@ -162,6 +145,9 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: simulation.revision) {
+            playback.fraction = 0
+        }
     }
 
     private var pointLOD: PointLOD {
@@ -211,9 +197,4 @@ struct ContentView: View {
         playback.isPaused.toggle()
     }
 
-    private static func emitter(
-        from snapshot: ParticleDocument.Snapshot
-    ) -> Emitter {
-        EmitterPreset.debris.emitter().applying(snapshot)
-    }
 }
