@@ -5,6 +5,7 @@ final class DeviceRenderer {
 
     private let platform: any Platform
     private let buffers: FrameBuffers
+    private let visibilityCounts: VisibilityCountPass
     private let culling: CullingPass
     private let lod: LODPass
     private let points: PointPass
@@ -22,6 +23,7 @@ final class DeviceRenderer {
         self.platform = platform
         self.pointLOD = pointLOD
         buffers = FrameBuffers(platform: platform, frameCount: Self.frameCount)
+        visibilityCounts = try VisibilityCountPass(platform: platform)
         culling = try CullingPass(platform: platform)
         lod = try LODPass(platform: platform)
         points = try PointPass(platform: platform)
@@ -51,56 +53,71 @@ final class DeviceRenderer {
             count: count,
             buffers: particleBuffers,
             lod: renderer.mode == .point ? pointLOD : nil,
-            viewport: camera.viewportSize
+            viewport: camera.viewportSize,
+            capturesDiagnostics: capturesDiagnostics
         )
         visibleCount = capturesDiagnostics
-            ? resources.culling.capturedVisibleCount
+            ? (resources.culling?.capturedVisibleCount ?? resources.counts?.capturedCount)
             : nil
         guard let commandBuffer = platform.makeCommandBuffer() else {
             throw RenderError.commandBuffer
         }
         commandBuffer.label = "Pixl Particles Frame"
-        try culling.encode(
-            count: count,
-            interpolation: interpolation,
-            viewProjection: cullingViewProjection,
-            renderer: renderer,
-            values: values,
-            viewport: camera.viewportSize,
-            cullingBounds: cullingBounds,
-            displacements: resources.displacements,
-            displacementScale: particleBuffers.displacementScale,
-            currentPositions: resources.currentPositions,
-            buffers: resources.culling,
-            into: commandBuffer
-        )
-
-        if let ids = resources.ids, let lodBuffers = resources.lod {
-            try lod.encode(
-                settings: pointLOD,
-                viewport: camera.viewportSize,
+        if let cullingBuffers = resources.culling {
+            try culling.encode(
+                count: count,
                 interpolation: interpolation,
                 viewProjection: cullingViewProjection,
+                renderer: renderer,
+                values: values,
+                viewport: camera.viewportSize,
+                cullingBounds: cullingBounds,
                 displacements: resources.displacements,
                 displacementScale: particleBuffers.displacementScale,
                 currentPositions: resources.currentPositions,
-                ids: ids,
-                culling: resources.culling,
-                lod: lodBuffers,
+                buffers: cullingBuffers,
                 into: commandBuffer
             )
-        }
 
-        if capturesDiagnostics {
-            try culling.encodeVisibleCountCapture(
-                arguments: resources.lod?.drawArguments
-                    ?? resources.culling.indirectArguments,
-                destination: resources.culling.diagnosticCount,
-                mode: renderer.mode,
-                into: commandBuffer
-            )
-            if let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
+            if let ids = resources.ids, let lodBuffers = resources.lod {
+                try lod.encode(
+                    settings: pointLOD,
+                    viewport: camera.viewportSize,
+                    interpolation: interpolation,
+                    viewProjection: cullingViewProjection,
+                    displacements: resources.displacements,
+                    displacementScale: particleBuffers.displacementScale,
+                    currentPositions: resources.currentPositions,
+                    ids: ids,
+                    culling: cullingBuffers,
+                    lod: lodBuffers,
+                    into: commandBuffer
+                )
+            }
+
+            if capturesDiagnostics {
+                try culling.encodeVisibleCountCapture(
+                    arguments: resources.lod?.drawArguments
+                        ?? cullingBuffers.indirectArguments,
+                    destination: cullingBuffers.diagnosticCount,
+                    mode: renderer.mode,
+                    into: commandBuffer
+                )
+            }
         }
+        let visibility = DirectVisibility(
+            viewProjection: cullingViewProjection, renderer: renderer,
+            values: values, viewport: camera.viewportSize, cullingBounds: cullingBounds
+        )
+        if let counts = resources.counts {
+            try visibilityCounts.encode(
+                count: count, visibility: visibility, interpolation: interpolation,
+                displacementScale: particleBuffers.displacementScale,
+                displacements: resources.displacements, currentPositions: resources.currentPositions,
+                counts: counts, into: commandBuffer
+            )
+        }
+        if capturesDiagnostics, let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
 
         try composition.prepare()
         let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
@@ -122,8 +139,10 @@ final class DeviceRenderer {
                 currentPositions: resources.currentPositions,
                 colorIndices: resources.colorIndices,
                 colorPalette: resources.colorPalette,
-                visibleIndices: resources.culling.visibleIndices,
-                indirectArguments: resources.culling.indirectArguments,
+                visibleIndices: resources.culling?.visibleIndices,
+                indirectArguments: resources.culling?.indirectArguments,
+                count: count,
+                visibility: visibility,
                 lod: resources.lod,
                 interpolation: interpolation,
                 viewProjection: camera.viewProjection,
@@ -136,8 +155,10 @@ final class DeviceRenderer {
                 currentPositions: resources.currentPositions,
                 colorIndices: resources.colorIndices,
                 colorPalette: resources.colorPalette,
-                visibleIndices: resources.culling.visibleIndices,
-                indirectArguments: resources.culling.indirectArguments,
+                visibleIndices: resources.culling?.visibleIndices,
+                indirectArguments: resources.culling?.indirectArguments,
+                count: count,
+                visibility: visibility,
                 renderer: renderer.billboard,
                 values: values,
                 interpolation: interpolation,
@@ -150,6 +171,8 @@ final class DeviceRenderer {
 
         commandBuffer.present(target)
         submitted = true
+        resources.counts?.didSubmit(count: count)
+        buffers.didSubmit()
         platform.submit(commandBuffer)
         if let renderStart, let drawableWaitStart, let drawableWaitEnd {
             let beforeDrawable = Self.seconds(

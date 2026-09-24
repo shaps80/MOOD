@@ -2,6 +2,7 @@ import Metal
 import PixlRenderer
 
 final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
+    private let reusableDraw: ReusableDraw
     let value: any MTLCommandBuffer
 
     var label: String? {
@@ -9,7 +10,10 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
         set { value.label = newValue }
     }
 
-    init(_ value: any MTLCommandBuffer) { self.value = value }
+    init(_ value: any MTLCommandBuffer, reusableDraw: ReusableDraw) {
+        self.value = value
+        self.reusableDraw = reusableDraw
+    }
 
     func makeComputeEncoder() -> (any PixlRenderer.ComputeEncoder)? {
         value.makeComputeCommandEncoder().map(MetalComputeEncoder.init)
@@ -22,7 +26,7 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
             preconditionFailure("Render target belongs to another platform")
         }
         return value.makeRenderCommandEncoder(descriptor: target.descriptor)
-            .map(MetalRenderEncoder.init)
+            .map { MetalRenderEncoder($0, reusableDraw: reusableDraw) }
     }
 
     func present(_ target: any PixlRenderer.RenderTarget) {

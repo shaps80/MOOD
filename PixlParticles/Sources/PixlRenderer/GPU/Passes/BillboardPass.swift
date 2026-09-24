@@ -1,11 +1,21 @@
 import Swift
 
 final class BillboardPass {
+    private let directPipeline: any RenderPipeline
     private let pipeline: any RenderPipeline
     private let depth: any DepthState
 
     init(platform: any Platform) throws {
-        guard let pipeline = platform.makeRenderPipeline(
+        guard let directPipeline = platform.makeRenderPipeline(
+            .init(
+                vertexFunction: "billboardDirectVertex",
+                fragmentFunction: "billboardFragment",
+                colorFormat: .rgba16Float,
+                depthFormat: .depth32Float,
+                blendMode: .premultiplied,
+                supportsReusableCommands: true
+            )
+        ), let pipeline = platform.makeRenderPipeline(
             .init(
                 vertexFunction: "billboardVertex",
                 fragmentFunction: "billboardFragment",
@@ -19,6 +29,7 @@ final class BillboardPass {
         ) else {
             throw RenderError.pipeline
         }
+        self.directPipeline = directPipeline
         self.pipeline = pipeline
         self.depth = depth
     }
@@ -29,8 +40,10 @@ final class BillboardPass {
         currentPositions: any Buffer,
         colorIndices: any Buffer,
         colorPalette: any Buffer,
-        visibleIndices: any Buffer,
-        indirectArguments: any Buffer,
+        visibleIndices: (any Buffer)?,
+        indirectArguments: (any Buffer)?,
+        count: Int,
+        visibility: DirectVisibility,
         renderer: BillboardRenderer,
         values: ParticleRenderValues,
         interpolation: Float,
@@ -41,10 +54,14 @@ final class BillboardPass {
             values: [values.size.x, values.size.y, values.rotation, 0],
             modes: [renderer.sizeSpace.gpuValue, renderer.facing.gpuValue, 0, 0]
         )
-        encoder.setPipeline(pipeline)
+        encoder.setPipeline(visibleIndices == nil ? directPipeline : pipeline)
         encoder.setDepthState(depth)
         encoder.setVertexBuffer(displacements, index: 0)
-        encoder.setVertexBuffer(visibleIndices, index: 1)
+        if let visibleIndices {
+            encoder.setVertexBuffer(visibleIndices, index: 1)
+        } else {
+            encoder.setVertexValue(visibility, index: 10)
+        }
         encoder.setVertexValue(camera, index: 2)
         encoder.setVertexValue(interpolation, index: 3)
         encoder.setVertexValue(configuration, index: 4)
@@ -52,10 +69,11 @@ final class BillboardPass {
         encoder.setVertexBuffer(currentPositions, index: 7)
         encoder.setVertexValue(displacementScale, index: 8)
         encoder.setVertexBuffer(colorPalette, index: 9)
-        encoder.drawPrimitives(
-            .triangleStrip,
-            indirectBuffer: indirectArguments
-        )
+        if let indirectArguments {
+            encoder.drawPrimitives(.triangleStrip, indirectBuffer: indirectArguments)
+        } else {
+            encoder.drawReusablePrimitives(.triangleStrip, vertexCount: 4, instanceCount: count)
+        }
     }
 }
 

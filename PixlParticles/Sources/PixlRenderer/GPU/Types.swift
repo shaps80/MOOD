@@ -41,6 +41,7 @@ public struct RenderPipelineDescriptor: Sendable {
     public let fragmentFunction: String
     public let colorFormat: PixelFormat
     public let depthFormat: PixelFormat
+    public let supportsReusableCommands: Bool
     public let blendMode: BlendMode
 
     public init(
@@ -48,12 +49,14 @@ public struct RenderPipelineDescriptor: Sendable {
         fragmentFunction: String,
         colorFormat: PixelFormat,
         depthFormat: PixelFormat,
-        blendMode: BlendMode
+        blendMode: BlendMode,
+        supportsReusableCommands: Bool = false
     ) {
         self.vertexFunction = vertexFunction
         self.fragmentFunction = fragmentFunction
         self.colorFormat = colorFormat
         self.depthFormat = depthFormat
         self.blendMode = blendMode
+        self.supportsReusableCommands = supportsReusableCommands
     }
 }

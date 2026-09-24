@@ -195,6 +195,74 @@ static bool screenBillboardIntersectsFrustum(
         && clip.z <= clip.w;
 }
 
+static bool particleVisible(float3 position, float4x4 viewProjection,
+                            float2 cullingBounds, uint hasCullingBounds,
+                            float billboardRadius, uint cullingMode,
+                            uint2 viewport, constant FrustumPlanes &frustum) {
+    float halfExtent = cullingBounds.x;
+    float baseHeight = cullingBounds.y;
+    bool insideBounds = !hasCullingBounds || (
+        abs(position.x) <= halfExtent
+        && abs(position.z) <= halfExtent
+        && position.y >= baseHeight
+        && position.y <= baseHeight + halfExtent * 2.0f
+    );
+    bool insideFrustum;
+    if (cullingMode == 0) {
+        insideFrustum = pointInsideFrustum(position, viewProjection);
+    } else if (cullingMode == 1) {
+        insideFrustum = sphereIntersectsFrustum(
+            position,
+            billboardRadius,
+            frustum
+        );
+    } else {
+        insideFrustum = screenBillboardIntersectsFrustum(
+            position,
+            billboardRadius,
+            viewProjection,
+            viewport
+        );
+    }
+    return insideBounds && insideFrustum;
+}
+
+struct DirectVisibility {
+    float4x4 viewProjection;
+    FrustumPlanes frustum;
+    float4 bounds;
+    uint4 modes;
+};
+
+static bool directVisible(float3 position, constant DirectVisibility &visibility) {
+    return particleVisible(position, visibility.viewProjection, visibility.bounds.xy,
+                           visibility.modes.y, visibility.bounds.z, visibility.modes.x,
+                           visibility.modes.zw, visibility.frustum);
+}
+
+kernel void countDirectVisibility(
+    const device uint *displacements [[buffer(0)]],
+    const device PositionBatch *positions [[buffer(1)]],
+    device uint *counts [[buffer(2)]],
+    constant DirectVisibility &visibility [[buffer(3)]],
+    constant float &interpolation [[buffer(4)]],
+    constant float &displacementScale [[buffer(5)]],
+    constant uint &count [[buffer(6)]],
+    uint index [[thread_position_in_grid]],
+    uint lane [[thread_index_in_threadgroup]],
+    uint block [[threadgroup_position_in_grid]]
+) {
+    threadgroup uint sums[256];
+    sums[lane] = index < count && directVisible(
+        interpolatedPosition(positions, displacements, displacementScale, index, interpolation), visibility);
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint stride = 128; stride > 0; stride >>= 1) {
+        if (lane < stride) sums[lane] += sums[lane + stride];
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+    if (lane == 0) counts[block] = sums[0];
+}
+
 kernel void classifyAndScanVisibility(
     const device uint *displacements [[buffer(0)]],
     device uint *localOffsets [[buffer(1)]],
@@ -220,32 +288,9 @@ kernel void classifyAndScanVisibility(
 
     if (index < particleCount) {
         float3 position = interpolatedPosition(currentPositions, displacements, displacementScale, index, interpolation);
-        float halfExtent = cullingBounds.x;
-        float baseHeight = cullingBounds.y;
-        bool insideBounds = !hasCullingBounds || (
-            abs(position.x) <= halfExtent
-            && abs(position.z) <= halfExtent
-            && position.y >= baseHeight
-            && position.y <= baseHeight + halfExtent * 2.0f
-        );
-        bool insideFrustum;
-        if (cullingMode == 0) {
-            insideFrustum = pointInsideFrustum(position, viewProjection);
-        } else if (cullingMode == 1) {
-            insideFrustum = sphereIntersectsFrustum(
-                position,
-                billboardRadius,
-                frustum
-            );
-        } else {
-            insideFrustum = screenBillboardIntersectsFrustum(
-                position,
-                billboardRadius,
-                viewProjection,
-                viewport
-            );
-        }
-        visible = insideBounds && insideFrustum;
+        visible = particleVisible(position, viewProjection, cullingBounds,
+                                  hasCullingBounds, billboardRadius, cullingMode,
+                                  viewport, frustum);
     }
 
     scan[lane] = visible;
@@ -549,6 +594,27 @@ vertex PointVertex pointVertex(
     return output;
 }
 
+vertex PointVertex pointDirectVertex(
+    uint vertexID [[vertex_id]],
+    const device uint *displacements [[buffer(0)]],
+    constant float4x4 &viewProjection [[buffer(2)]],
+    constant float &interpolation [[buffer(3)]],
+    const device ushort *colorIndices [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]],
+    constant float &displacementScale [[buffer(8)]],
+    const device float4 *colorPalette [[buffer(9)]],
+    constant DirectVisibility &visibility [[buffer(10)]]
+) {
+    uint particleIndex = vertexID;
+    PointVertex output;
+    float3 position = interpolatedPosition(currentPositions, displacements, displacementScale, particleIndex, interpolation);
+    output.position = directVisible(position, visibility)
+        ? viewProjection * float4(position, 1) : float4(2, 2, 2, 1);
+    output.pointSize = 1;
+    output.color = half4(particleColor(colorIndices, colorPalette, particleIndex));
+    return output;
+}
+
 vertex PointVertex pointLODVertex(
     uint vertexID [[vertex_id]],
     const device uint *displacements [[buffer(0)]],
@@ -648,6 +714,57 @@ vertex BillboardVertex billboardVertex(
         output.position = camera.viewProjection
             * float4(center + right * local.x + up * local.y, 1);
     }
+    output.color = half4(particleColor(colorIndices, colorPalette, particleIndex));
+    return output;
+}
+
+vertex BillboardVertex billboardDirectVertex(
+    uint vertexID [[vertex_id]],
+    uint instanceID [[instance_id]],
+    const device uint *displacements [[buffer(0)]],
+    constant CameraFrame &camera [[buffer(2)]],
+    constant float &interpolation [[buffer(3)]],
+    constant BillboardConfiguration &configuration [[buffer(4)]],
+    const device ushort *colorIndices [[buffer(6)]],
+    const device PositionBatch *currentPositions [[buffer(7)]],
+    constant float &displacementScale [[buffer(8)]],
+    const device float4 *colorPalette [[buffer(9)]],
+    constant DirectVisibility &visibility [[buffer(10)]]
+) {
+    uint particleIndex = instanceID;
+    float3 center = interpolatedPosition(currentPositions, displacements, displacementScale, particleIndex, interpolation);
+    float2 corner = float2(
+        (vertexID & 1) == 0 ? -0.5f : 0.5f,
+        (vertexID & 2) == 0 ? -0.5f : 0.5f
+    );
+    float sine = sin(configuration.values.z);
+    float cosine = cos(configuration.values.z);
+    float2 local = corner * configuration.values.xy;
+    local = float2(
+        local.x * cosine - local.y * sine,
+        local.x * sine + local.y * cosine
+    );
+
+    BillboardVertex output;
+    if (configuration.modes.x == 1) {
+        output.position = camera.viewProjection * float4(center, 1);
+        output.position.xy += local
+            * float2(camera.viewport.z * 2, camera.viewport.w * 2)
+            * output.position.w;
+    } else {
+        float3 right;
+        float3 up;
+        billboardBasis(
+            center,
+            camera,
+            configuration.modes.y,
+            right,
+            up
+        );
+        output.position = camera.viewProjection
+            * float4(center + right * local.x + up * local.y, 1);
+    }
+    if (!directVisible(center, visibility)) output.position = float4(2, 2, 2, 1);
     output.color = half4(particleColor(colorIndices, colorPalette, particleIndex));
     return output;
 }

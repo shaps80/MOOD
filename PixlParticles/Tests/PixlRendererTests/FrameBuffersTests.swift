@@ -3,6 +3,14 @@ import Testing
 
 @Suite("Frame buffers")
 struct FrameBuffersTests {
+    @Test("Direct visibility constants match the Metal layout")
+    func visibilityLayout() {
+        #expect(MemoryLayout<DirectVisibility>.stride == 192)
+        #expect(MemoryLayout<DirectVisibility>.offset(of: \.frustum) == 64)
+        #expect(MemoryLayout<DirectVisibility>.offset(of: \.bounds) == 160)
+        #expect(MemoryLayout<DirectVisibility>.offset(of: \.modes) == 176)
+    }
+
     @Test("Shares particle storage and caps LOD output storage")
     func lodStorage() throws {
         let platform = RecordingPlatform()
@@ -79,6 +87,28 @@ struct FrameBuffersTests {
 
         #expect(resources.ids == nil)
         #expect(resources.lod == nil)
+        #expect(resources.culling == nil)
+        #expect(resources.counts == nil)
+        #expect(platform.allocations.isEmpty)
+
+        let diagnostic = try buffers.prepare(
+            count: 600, buffers: source, lod: nil,
+            viewport: .init(width: 100, height: 100), capturesDiagnostics: true
+        )
+        #expect(diagnostic.culling == nil)
+        #expect(platform.allocations.count == 2)
+        #expect(platform.allocations.allSatisfy { $0.length == 3 * 4 })
+        let pending = try buffers.prepare(
+            count: 600, buffers: source, lod: nil,
+            viewport: .init(width: 100, height: 100), capturesDiagnostics: true
+        )
+        #expect(pending.counts === diagnostic.counts)
+        buffers.didSubmit()
+        let next = try buffers.prepare(
+            count: 600, buffers: source, lod: nil,
+            viewport: .init(width: 100, height: 100), capturesDiagnostics: true
+        )
+        #expect(next.counts !== diagnostic.counts)
     }
 
     @Test("Retains small capacity reductions but releases a substantially oversized arena")
@@ -99,12 +129,12 @@ struct FrameBuffersTests {
         }
         let large = source(1_000)
         let viewport = ViewportSize(width: 100, height: 100)
-        let peak = try buffers.prepare(count: 1_000, buffers: large, lod: nil, viewport: viewport)
-        _ = try buffers.prepare(count: 1_000, buffers: large, lod: nil, viewport: viewport)
-        let retained = try buffers.prepare(count: 251, buffers: source(251), lod: nil, viewport: viewport)
-        let recovered = try buffers.prepare(count: 250, buffers: source(250), lod: nil, viewport: viewport)
-        #expect(retained.culling.localOffsets === peak.culling.localOffsets)
-        #expect(recovered.culling.localOffsets !== peak.culling.localOffsets)
+        let peak = try buffers.prepare(count: 1_000, buffers: large, lod: .init(activationCount: 1, maximumVisibleCount: 100), viewport: viewport)
+        _ = try buffers.prepare(count: 1_000, buffers: large, lod: .init(activationCount: 1, maximumVisibleCount: 100), viewport: viewport)
+        let retained = try buffers.prepare(count: 251, buffers: source(251), lod: .init(activationCount: 1, maximumVisibleCount: 100), viewport: viewport)
+        let recovered = try buffers.prepare(count: 250, buffers: source(250), lod: .init(activationCount: 1, maximumVisibleCount: 100), viewport: viewport)
+        #expect(try #require(retained.culling).localOffsets === #require(peak.culling).localOffsets)
+        #expect(try #require(recovered.culling).localOffsets !== #require(peak.culling).localOffsets)
     }
 
 }

@@ -5,6 +5,8 @@ final class FrameBuffers {
     private let frameCount: Int
     private var culling: [CullingBuffers] = []
     private var lod: [LODBuffers] = []
+    private var counts: [VisibilityCounts] = []
+    private var countCapacity = 0
     private var shared: SharedParticleBuffers?
     private var capacity = 0
     private var lodCapacity = 0
@@ -21,15 +23,18 @@ final class FrameBuffers {
         count: Int,
         buffers: ParticleBuffers,
         lod settings: PointLOD?,
-        viewport: ViewportSize
+        viewport: ViewportSize,
+        capturesDiagnostics: Bool = false
     ) throws -> FrameResources {
-        try ensureCapacity(max(buffers.capacity, 1))
         try ensureSharedBuffers(buffers)
 
         let usesLOD = settings.map {
             $0.isEnabled && count > 0 && count >= $0.activationCount
         } ?? false
         if usesLOD, let settings {
+            try ensureCapacity(max(buffers.capacity, 1))
+            counts = []
+            countCapacity = 0
             try ensureLODCapacity(
                 particleCount: max(buffers.capacity, 1),
                 visibleCount: settings.maximumVisibleCount,
@@ -37,6 +42,14 @@ final class FrameBuffers {
             )
         } else {
             releaseLOD()
+            culling = []
+            capacity = 0
+            if capturesDiagnostics {
+                try ensureCountCapacity(max(buffers.capacity, 1))
+            } else {
+                counts = []
+                countCapacity = 0
+            }
         }
 
         guard let shared else { throw RenderError.buffer }
@@ -45,12 +58,30 @@ final class FrameBuffers {
             currentPositions: shared.currentPositions,
             colorIndices: shared.colorIndices,
             colorPalette: shared.colorPalette,
-            culling: culling[frameIndex],
+            culling: usesLOD ? culling[frameIndex] : nil,
+            counts: counts.isEmpty ? nil : counts[frameIndex],
             ids: usesLOD ? shared.ids : nil,
             lod: usesLOD ? lod[frameIndex] : nil
         )
-        frameIndex = (frameIndex + 1) % frameCount
         return resources
+    }
+
+    /// Advance only for submitted work, so dropped drawables cannot desynchronize
+    /// the CPU readback slot from the platform's in-flight frame limit.
+    func didSubmit() {
+        frameIndex = (frameIndex + 1) % frameCount
+    }
+
+    private func ensureCountCapacity(_ required: Int) throws {
+        guard required > countCapacity || required <= countCapacity / 4 else { return }
+        var replacement: [VisibilityCounts] = []
+        for _ in 0..<frameCount {
+            guard let counts = VisibilityCounts(platform: platform, capacity: required)
+            else { throw RenderError.buffer }
+            replacement.append(counts)
+        }
+        counts = replacement
+        countCapacity = required
     }
 
     private func ensureSharedBuffers(_ source: ParticleBuffers) throws {
@@ -169,7 +200,8 @@ struct FrameResources {
     let currentPositions: any Buffer
     let colorIndices: any Buffer
     let colorPalette: any Buffer
-    let culling: CullingBuffers
+    let culling: CullingBuffers?
+    let counts: VisibilityCounts?
     let ids: (any Buffer)?
     let lod: LODBuffers?
 }

@@ -7,6 +7,7 @@ public final class Platform: PixlRenderer.Platform {
     private static let drawableCount = 3
     private static let inFlightFrameCount = 2
 
+    private let reusableDraw: ReusableDraw
     private let device: any MTLDevice
     private let queue: any MTLCommandQueue
     private let library: any MTLLibrary
@@ -29,6 +30,7 @@ public final class Platform: PixlRenderer.Platform {
             throw RenderError.shaderLibrary
         }
         queue.label = "Pixl Metal"
+        reusableDraw = ReusableDraw(device: device)
         self.device = device
         self.queue = queue
         self.library = library
@@ -112,6 +114,7 @@ public final class Platform: PixlRenderer.Platform {
               let fragment = library.makeFunction(name: source.fragmentFunction)
         else { return nil }
         let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.supportIndirectCommandBuffers = source.supportsReusableCommands && reusableDraw.isSupported
         descriptor.vertexFunction = vertex
         descriptor.fragmentFunction = fragment
         descriptor.colorAttachments[0].pixelFormat = source.colorFormat.metal
@@ -141,7 +144,7 @@ public final class Platform: PixlRenderer.Platform {
     }
 
     public func makeCommandBuffer() -> (any PixlRenderer.CommandBuffer)? {
-        queue.makeCommandBuffer().map(MetalCommandBuffer.init)
+        queue.makeCommandBuffer().map { MetalCommandBuffer($0, reusableDraw: reusableDraw) }
     }
 
     public func currentRenderTarget() -> (any PixlRenderer.RenderTarget)? {

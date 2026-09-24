@@ -35,6 +35,8 @@ public protocol RenderEncoder: AnyObject {
         vertexCount: Int,
         instanceCount: Int
     )
+    /// Repeated draw with inherited bindings; adapters may cache encoded commands.
+    func drawReusablePrimitives(_ primitive: Primitive, vertexCount: Int, instanceCount: Int)
     func endEncoding()
 }
 
@@ -46,6 +48,10 @@ public extension ComputeEncoder {
 }
 
 public extension RenderEncoder {
+    func drawReusablePrimitives(_ primitive: Primitive, vertexCount: Int, instanceCount: Int) {
+        drawPrimitives(primitive, vertexStart: 0, vertexCount: vertexCount, instanceCount: instanceCount)
+    }
+
     func setVertexValue<Value: BitwiseCopyable>(
         _ value: Value,
         index: Int

@@ -131,21 +131,26 @@
   typed property. Typed descriptors declare semantic validation, storage
   requirements, and required passes. Emitter compilation generically aggregates
   those effects; it contains no property-specific lowering methods.
-- Billboard rendering expands four procedural vertices per compacted visible
-  particle and submits one indirect triangle-strip draw. It adds no geometry or
-  index buffer. Size is a two-component value, rotation is one radian scalar,
-  and world or physical-pixel size spaces are selected per renderer. Camera,
-  camera-plane, and camera-position/world-up facing modes are GPU evaluated from
-  one compact camera frame supplied per draw.
-- Metal visibility uses stable GPU compaction: block-local scans, deterministic
-  block offsets, stable index scatter, and indirect drawing. Culling never
-  mutates authoritative simulation or changes particle order.
-- Point and billboard rendering share one visibility kernel and compacted-index
-  arena. Point visibility tests particle centres. World-space billboards use a
-  conservative half-diagonal bounding sphere; screen-space billboards expand
-  clip tests by their physical-pixel radius. Authored cubic bounds deliberately
-  remain centre-based. Point LOD is bypassed for billboards without allocating
-  or retaining LOD resources.
+- Without active point LOD, points and billboards draw directly from the shared
+  simulation buffers using vertex/instance IDs. No per-particle visibility index
+  or scan-offset buffers are allocated. Billboard rendering expands four
+  procedural vertices per particle, with no geometry buffer. Size, rotation,
+  size space, and facing remain per-draw values.
+- Direct vertex rejection and optional diagnostic counting share the same
+  visibility predicate as LOD compaction: point centres, conservative billboard
+  bounds, and authored centre-based cubic bounds. Diagnostics retain one UInt32
+  per 256-particle block per in-flight frame; readback slots advance only after
+  submission. Culling never changes simulation state or particle order.
+- Active point LOD retains stable GPU compaction: block-local scans, block
+  offsets, stable index scatter, and indirect draws. Leaving that path releases
+  its per-particle scratch and index buffers.
+- The Metal adapter caches one immutable indirect draw command, inheriting the
+  current pipeline and buffer bindings. Unchanged primitive/counts reuse it;
+  changed counts replace it while in-flight submissions retain earlier commands.
+  Resources inherited by ICB execution are explicitly declared. Unsupported
+  devices or failed ICB allocation use ordinary direct drawing. There is no
+  runtime configuration switch. Portable renderers express reusable draw intent
+  with an ordinary-draw default implementation.
 - The GPU culling arena grows to the exact required capacity and retains small
   reductions. At 25% utilisation or less it rebuilds at the current size,
   releasing substantially oversized visibility storage after a particle-count

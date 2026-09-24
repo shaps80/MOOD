@@ -27,6 +27,11 @@ validated.
 
 ## 2. Colour Authoring and Diagnostics — Active
 
+- [x] Draw non-LOD particles directly from shared simulation storage; remove
+  per-particle renderer compaction buffers on that path, preserve bounds and
+  visible-count diagnostics, and reuse immutable Metal indirect draw commands.
+  macOS compilation only; runtime and memory validation remain with the user.
+
 - [x] Move editor simulation ownership into a lazy document-owned object; keep
   ContentView.system non-optional, deduplicate simulation configuration changes,
   and clear consumed/discarded mailbox references. macOS and iOS Release builds
