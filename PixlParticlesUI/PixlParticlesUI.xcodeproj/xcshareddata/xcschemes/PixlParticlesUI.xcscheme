@@ -57,12 +57,12 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "PIXL_SIMULATION_CORES"
-            value = "performance"
+            value = "one"
             isEnabled = "YES">
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "PIXL_SIMULATION_BATCHES"
-            value = "1"
+            value = "4"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

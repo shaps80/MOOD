@@ -7,6 +7,16 @@ nonisolated struct SimulationWorkers {
         case all
         // Sizes the pool to P-core count; macOS still owns thread placement.
         case performance
+
+        init?(rawValue: String) {
+            switch rawValue {
+            // Both names select the original serial path, without a job pool.
+            case "one", "serial": self = .serial
+            case "all": self = .all
+            case "performance": self = .performance
+            default: return nil
+            }
+        }
     }
 
     let mode: Mode
