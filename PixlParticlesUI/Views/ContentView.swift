@@ -64,7 +64,7 @@ struct ContentView: View {
                 }
                 .scenePadding()
 
-                if profiler.isVisible {
+                if settings.visibility.isProfilerVisible {
                     ProfilerView(snapshot: profiler.controller.snapshot)
                         .frame(maxWidth: 1200)
                         .padding(.horizontal)
@@ -121,7 +121,7 @@ struct ContentView: View {
                         }
 
                         Section("Debugging") {
-                            Toggle("Profiler", isOn: $profiler.isVisible)
+                            Toggle("Profiler", isOn: $settings.visibility.isProfilerVisible)
                             Toggle(
                                 "Culling Bounds",
                                 isOn: $settings.visibility.isCullingVisible
@@ -150,7 +150,7 @@ struct ContentView: View {
             }
         }
         .onAppear { updateProfiler() }
-        .onChange(of: profiler.isVisible) { updateProfiler() }
+        .onChange(of: settings.visibility.isProfilerVisible) { updateProfiler() }
         .onChange(of: playback.isPaused) { updateProfiler() }
         .onChange(of: playback.isScrubbing) { updateProfiler() }
         .onDisappear { profiler.controller.freeze() }
@@ -160,7 +160,8 @@ struct ContentView: View {
     }
 
     private func updateProfiler() {
-        profiler.update(isPaused: playback.isPaused || playback.isScrubbing)
+        profiler.update(isVisible: settings.visibility.isProfilerVisible,
+                        isPaused: playback.isPaused || playback.isScrubbing)
     }
 
     private var pointLOD: PointLOD {

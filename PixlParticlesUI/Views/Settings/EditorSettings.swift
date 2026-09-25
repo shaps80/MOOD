@@ -20,6 +20,7 @@ struct EditorSettings: Equatable, RawRepresentable {
         var isCullingVisible = false
         var isFrustumVisible = false
         var isDataVisible = false
+        var isProfilerVisible = false
     }
 
     struct Inspector: Codable, Equatable {
