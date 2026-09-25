@@ -58,7 +58,7 @@ final class CullingPass {
             + values.size.y * values.size.y).squareRoot()
 
         if particleCount > 0 {
-            guard let encoder = commandBuffer.makeComputeEncoder() else {
+            guard let encoder = commandBuffer.makeComputeEncoder(timing: .cullClassify) else {
                 throw RenderError.encoder
             }
             encoder.label = "Culling Classify and Local Scan"
@@ -104,7 +104,7 @@ final class CullingPass {
         )
 
         if particleCount > 0 {
-            guard let encoder = commandBuffer.makeComputeEncoder() else {
+            guard let encoder = commandBuffer.makeComputeEncoder(timing: .cullScatter) else {
                 throw RenderError.encoder
             }
             encoder.label = "Culling Scatter"
@@ -189,7 +189,7 @@ final class CullingPass {
             )
         }
 
-        guard let encoder = commandBuffer.makeComputeEncoder() else {
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: .cullFinish) else {
             throw RenderError.encoder
         }
         encoder.label = "Culling Finish Scan"
@@ -208,7 +208,7 @@ final class CullingPass {
         count: Int,
         into commandBuffer: any CommandBuffer
     ) throws {
-        guard let encoder = commandBuffer.makeComputeEncoder() else {
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: .cullScan) else {
             throw RenderError.encoder
         }
         encoder.label = "Culling Parallel Scan"
@@ -231,7 +231,7 @@ final class CullingPass {
         into commandBuffer: any CommandBuffer
     ) throws {
         guard count > 0 else { return }
-        guard let encoder = commandBuffer.makeComputeEncoder() else {
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: .cullOffsets) else {
             throw RenderError.encoder
         }
         encoder.label = "Culling Add Scan Offsets"

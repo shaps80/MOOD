@@ -50,7 +50,7 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
     func execute(_ job: SimulationJob) {
         guard job.count > 0 else { return }
         guard workerCount > 1 else { job.run(0..<job.count); return }
-        let token = recorder?.begin(JobProfileDefinitions.dispatch, correlation: frameID)
+        let token = recorder?.begin(JobProfileDefinitions.dispatch(for: job.kind), correlation: frameID)
         defer { if let token { recorder?.end(token) } }
         setSuspended(false)
         state.frameID = frameID
@@ -117,7 +117,7 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
                 let job = job!
                 let start = job.count * index / batchCount
                 let end = job.count * (index + 1) / batchCount
-                let token = recorder?.begin(JobProfileDefinitions.batch, correlation: frameID, detail: UInt32(index))
+                let token = recorder?.begin(JobProfileDefinitions.batch(for: job.kind), correlation: frameID, detail: UInt32(index))
                 job.run(start..<end)
                 if let token { recorder?.end(token) }
             }

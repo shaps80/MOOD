@@ -456,7 +456,15 @@ Metal resources synchronized.
 - The existing ⋯ toolbar menu’s Profiler toggle enables capture and the timeline overlay. Closing it
   freezes but retains the capture. Tracks cover render/simulation,
   job dispatch, per-worker batches/spinning, mailbox waits and actual GPU intervals.
-  CPU encode/resource/drawable waits currently share one accurately labelled span.
+  CPU render submission has nested resource waits, buffer preparation, command
+  buffer setup, compute encoding, scene preparation, drawable wait, draw encoding
+  and submission. Simulation sample spans expose clock scheduling, fixed updates,
+  integration, recycling, generation, retirement, slot allocation and commits in
+  serial and parallel modes; dispatches/batches identify integration versus spawning.
+  Generic synchronous CPU interval callbacks carry fixed-size IDs/timestamps into
+  the existing recorder. Callbacks are installed once; nil capture IDs disable them.
+  GPU preparation intervals retain aggregate metrics but identify individual raster,
+  depth/refinement, culling and LOD compute passes using existing counter samples.
   CPU spans are not presentation intervals or OS CPU-utilization measurements.
 - Generic `GPUTraceInterval` exports calibrated host-uptime start/end timestamps
   with opaque frame/capture IDs. A nil backend capture ID disables tracing;
@@ -469,3 +477,4 @@ Metal resources synchronized.
   viewport width, regardless of refresh rate. It has no zoom/pan controls or
   horizontal timeline scrolling. The editor does not record a main-thread track.
   Hiding the metrics inspector no longer displays a fallback metrics overlay.
+  All track depths are shown without a height cap; the visible history is 20 frames.

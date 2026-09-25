@@ -23,6 +23,7 @@ final class DeviceRenderer {
     var onGPUTimings: (@Sendable (GPUFrameTimings) -> Void)?
     var traceFrameID: UInt64 = 0
     var traceCaptureID: UInt64?
+    var onCPUTrace: (@Sendable (CPUTraceInterval) -> Void)?
     var onGPUTrace: (@Sendable (GPUTraceInterval) -> Void)?
     var onGPUTime: (@Sendable (Double?) -> Void)?
     var onPresented: (@Sendable (Double) -> Void)?
@@ -51,7 +52,17 @@ final class DeviceRenderer {
     ) throws {
         precondition(interpolation >= 0 && interpolation <= 1)
 
+        let traceID = traceCaptureID
+        var stageStart = traceID != nil && onCPUTrace != nil ? ContinuousClock.now : nil
+        func finishStage(_ phase: CPUTraceInterval.Phase) {
+            guard let start = stageStart, let traceID else { return }
+            let end = ContinuousClock.now
+            onCPUTrace?(.init(phase: phase, start: start, end: end,
+                              frameID: traceFrameID, captureID: traceID))
+            stageStart = end
+        }
         platform.acquireFrame()
+        finishStage(.frameWait)
         let renderStart = capturesDiagnostics ? ContinuousClock.now : nil
         var submitted = false
         defer {
@@ -81,6 +92,7 @@ final class DeviceRenderer {
             $0.duration(to: .now) >= .milliseconds(200)
         } ?? true)
         let sampledCounts = captureVisibility ? resources.counts : nil
+        finishStage(.buffers)
         guard let commandBuffer = platform.makeCommandBuffer() else {
             throw RenderError.commandBuffer
         }
@@ -91,6 +103,7 @@ final class DeviceRenderer {
         if let traceCaptureID, let onGPUTrace {
             commandBuffer.addTraceHandler(frameID: traceFrameID, captureID: traceCaptureID, onGPUTrace)
         }
+        finishStage(.commandBuffer)
         if let cullingBuffers = resources.culling {
             try culling.encode(
                 count: count,
@@ -156,9 +169,15 @@ final class DeviceRenderer {
                 displacements: resources.displacements, currentPositions: resources.currentPositions,
                 counts: counts, into: commandBuffer)
         }
+        finishStage(.computeEncoding)
         try composition.prepare()
+        finishStage(.composition)
         let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
-        guard let target = platform.currentRenderTarget() else { return }
+        guard let target = platform.currentRenderTarget() else {
+            finishStage(.drawableWait)
+            return
+        }
+        finishStage(.drawableWait)
         let drawableWaitEnd = capturesDiagnostics ? ContinuousClock.now : nil
         if capturesDiagnostics, let onPresented {
             target.addPresentedHandler(onPresented)
@@ -213,6 +232,7 @@ final class DeviceRenderer {
         }
         composition.encodeOverlay(into: encoder)
         encoder.endEncoding()
+        finishStage(.drawEncoding)
 
         commandBuffer.present(target)
         submitted = true
@@ -223,6 +243,7 @@ final class DeviceRenderer {
         }
         buffers.didSubmit()
         platform.submit(commandBuffer)
+        finishStage(.submission)
         if let renderStart, let drawableWaitStart, let drawableWaitEnd {
             let beforeDrawable = Self.seconds(
                 renderStart.duration(to: drawableWaitStart)

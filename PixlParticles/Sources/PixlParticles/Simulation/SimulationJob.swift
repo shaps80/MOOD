@@ -3,12 +3,15 @@ import Swift
 /// A synchronous, borrowed range job. The context stays alive until execute returns.
 /// Each range must have exclusive output storage; inputs may be shared read-only.
 public struct SimulationJob: @unchecked Sendable {
+    public enum Kind: Sendable { case unspecified, integration, spawning }
+    public let kind: Kind
     public let count: Int
     private let context: UnsafeRawPointer
     private let body: @Sendable (UnsafeRawPointer, Range<Int>) -> Void
 
-    public init(count: Int, context: UnsafeRawPointer,
+    public init(count: Int, kind: Kind = .unspecified, context: UnsafeRawPointer,
                 body: @escaping @Sendable (UnsafeRawPointer, Range<Int>) -> Void) {
+        self.kind = kind
         self.count = count
         self.context = context
         self.body = body

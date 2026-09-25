@@ -85,7 +85,7 @@ public struct ProfilerView: View {
                     }
                 }
             }
-            .frame(minHeight: 110, maxHeight: 240)
+            .frame(minHeight: 110)
 
             ZStack(alignment: .leadingFirstTextBaseline) {
                 Text("00").hidden()
@@ -138,7 +138,7 @@ public struct ProfilerView: View {
                     context.fill(
                         Path(roundedRect: rect, cornerRadius: height / 2), with: .style(
                             value.correlation == selected
-                            ? AnyShapeStyle(.tint)
+                            ? AnyShapeStyle(.yellow)
                             : AnyShapeStyle(.separator)
                         )
                     )

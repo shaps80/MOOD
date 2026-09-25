@@ -17,6 +17,7 @@ public final class EmitterInstance {
     private var metadata: Metadata
     private var birthCohorts: BirthCohorts
     private var spawnJobs: SpawnJobs?
+    var trace = SimulationTrace()
 
     init(
         compiled: CompiledEmitter,
@@ -85,8 +86,11 @@ public final class EmitterInstance {
             advanceParallel(by: delta, executor: executor)
             return
         }
+        trace.begin()
         var spawnCount = scheduledSpawnCount()
+        trace.finish(.scheduling)
         slice.storage.advance(by: delta)
+        trace.finish(.integration)
 
         while let slot = birthCohorts.popExpired(at: UInt32(truncatingIfNeeded: tick)) {
             let index = metadata.indexForKnownLiveSlot(slot)
@@ -98,16 +102,21 @@ public final class EmitterInstance {
             }
         }
 
+        trace.finish(.recycling)
         while spawnCount > 0 {
             appendSpawn(advancedBy: delta)
             spawnCount -= 1
         }
+        trace.finish(.generation)
         tick &+= 1
     }
 
     private func advanceParallel(by delta: Float, executor: any SimulationExecutor) {
+        trace.begin()
         var spawnCount = scheduledSpawnCount()
+        trace.finish(.scheduling)
         slice.storage.advance(by: delta, executor: executor)
+        trace.finish(.integration)
         if spawnJobs == nil {
             spawnJobs = SpawnJobs(capacity: Int(compiled.constants.spawnRate.whole)
                 + (compiled.constants.spawnRate.remainder > 0 ? 1 : 0))
@@ -123,7 +132,9 @@ public final class EmitterInstance {
             count += 1
             spawnCount -= 1
         }
+        trace.finish(.recycling)
         generate(count: count, jobs: jobs, delta: delta, executor: executor)
+        trace.finish(.generation)
         for i in 0..<count {
             let request = jobs.requests[i]
             if compiled.storage.velocities == nil {
@@ -132,17 +143,21 @@ public final class EmitterInstance {
                 slice.storage.replaceMoving(at: request.index, with: jobs.particles[i], slot: request.slot)
             }
         }
+        trace.finish(.commit)
         // Finish replacements before compaction can move their storage.
         while let slot = birthCohorts.popExpired(at: UInt32(truncatingIfNeeded: tick)) {
             remove(slot: slot, at: metadata.indexForKnownLiveSlot(slot))
         }
+        trace.finish(.retirement)
         for i in 0..<spawnCount {
             let index = slice.storage.count + i
             let allocated = metadata.allocateAvailable(at: index)
             jobs.requests[i] = .init(index: index, slot: allocated.slot, id: allocated.id)
             scheduleDeath(for: allocated.slot)
         }
+        trace.finish(.allocation)
         generate(count: spawnCount, jobs: jobs, delta: delta, executor: executor)
+        trace.finish(.generation)
         for i in 0..<spawnCount {
             if compiled.storage.velocities == nil {
                 slice.storage.appendStationary(jobs.particles[i], slot: jobs.requests[i].slot)
@@ -150,6 +165,7 @@ public final class EmitterInstance {
                 slice.storage.appendMoving(jobs.particles[i], slot: jobs.requests[i].slot)
             }
         }
+        trace.finish(.commit)
         tick &+= 1
     }
 
@@ -159,7 +175,7 @@ public final class EmitterInstance {
         var context = SpawnJob(requests: jobs.requests, particles: jobs.particles,
                                random: random, constants: compiled.constants, delta: delta)
         withUnsafePointer(to: &context) { pointer in
-            executor.execute(SimulationJob(count: count, context: pointer) { pointer, range in
+            executor.execute(SimulationJob(count: count, kind: .spawning, context: pointer) { pointer, range in
                 let job = pointer.assumingMemoryBound(to: SpawnJob.self).pointee
                 for i in range {
                     var particle = Self.spawn(id: job.requests[i].id, random: job.random,

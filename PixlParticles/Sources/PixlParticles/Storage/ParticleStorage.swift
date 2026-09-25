@@ -138,7 +138,7 @@ final class ParticleStorage {
         )
         if let executor {
             withUnsafePointer(to: &context) { pointer in
-                executor.execute(SimulationJob(count: liveBatchCount, context: pointer) {
+                executor.execute(SimulationJob(count: liveBatchCount, kind: .integration, context: pointer) {
                     pointer, range in
                     pointer.assumingMemoryBound(to: IntegrationJob.self).pointee.run(range)
                 })

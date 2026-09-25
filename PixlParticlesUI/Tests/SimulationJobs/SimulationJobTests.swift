@@ -1,6 +1,7 @@
 import Foundation
 import PixlProfiler
 import Testing
+import Synchronization
 @testable import PixlParticles
 @testable import SimulationJobs
 
@@ -140,6 +141,46 @@ struct SimulationJobTests {
             serial.advance(by: 1.0 / 60)
             parallel.advance(by: 1.0 / 60, executor: pool)
             #expect(serial.particles().map(\.position) == parallel.particles().map(\.position))
+        }
+    }
+
+    @Test func simulationTraceCoversSampleAndPreservesResults() {
+        for parallel in [false, true] {
+            let pool = SpinningJobPool(workerCount: 4)
+            defer { pool.setSuspended(true) }
+            let traced = System(seed: 4, spawnRate: 600, lifetime: 1,
+                                spawnRegion: .sphere(radius: 10), duration: .seconds(10))
+            let reference = System(seed: 4, spawnRate: 600, lifetime: 1,
+                                   spawnRegion: .sphere(radius: 10), duration: .seconds(10))
+            if parallel { traced.executor = pool }
+            let events = Mutex<[SimulationTraceInterval]>([])
+            traced.onTrace = { value in events.withLock { $0.append(value) } }
+            traced.traceCaptureID = 42
+            traced.traceFrameID = 7
+            let start = ContinuousClock.now
+            _ = traced.sample(at: start)
+            _ = reference.sample(at: start)
+            events.withLock { $0.removeAll() }
+            _ = traced.sample(at: start.advanced(by: .milliseconds(40)))
+            _ = reference.sample(at: start.advanced(by: .milliseconds(40)))
+            equal(traced, reference)
+            let values = events.withLock { $0 }
+            #expect(values.first?.phase == .clockScheduling)
+            #expect(values.last?.phase == .sampleResult)
+            #expect(values.allSatisfy { $0.captureID == 42 && $0.frameID == 7 && $0.end >= $0.start })
+            let update = values.first { $0.phase == .fixedUpdate }
+            #expect(update != nil)
+            for phase in [SimulationTraceInterval.Phase.integration, .generation] {
+                let child = values.first { $0.phase == phase }
+                #expect(child != nil)
+                if let child, let update {
+                    #expect(child.start >= update.start && child.end <= update.end)
+                }
+            }
+            traced.traceCaptureID = nil
+            events.withLock { $0.removeAll() }
+            _ = traced.sample(at: start.advanced(by: .milliseconds(80)))
+            #expect(events.withLock { $0.isEmpty })
         }
     }
 

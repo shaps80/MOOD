@@ -16,6 +16,8 @@ import Synchronization
         backend.capturesDiagnostics = true
         let collector = GPUTimingCollector()
         let intervals = Mutex<[GPUTraceInterval]>([])
+        let cpuIntervals = Mutex<[CPUTraceInterval]>([])
+        backend.onCPUTrace = { value in cpuIntervals.withLock { $0.append(value) } }
         backend.onGPUTrace = { value in intervals.withLock { $0.append(value) } }
         backend.onGPUTimings = { collector.record($0) }
         backend.traceCaptureID = 42
@@ -39,6 +41,21 @@ import Synchronization
             let values = intervals.withLock { values in
                 let result = values; values.removeAll(keepingCapacity: true); return result
             }
+            let cpu = cpuIntervals.withLock { values in
+                let result = values; values.removeAll(keepingCapacity: true); return result
+            }
+            precondition(cpu.map(\.phase) == [.frameWait, .buffers, .commandBuffer, .computeEncoding,
+                                                .composition, .drawableWait, .drawEncoding, .submission])
+            precondition(cpu.allSatisfy { $0.frameID == UInt64(id) && $0.captureID == 42 && $0.end >= $0.start })
+            for pair in zip(cpu, cpu.dropFirst()) { precondition(pair.0.end == pair.1.start) }
+            precondition(values.contains { $0.computePhase == .rasterClear })
+            precondition(values.contains { $0.computePhase == .rasterCoverage })
+            if id % 2 == 0 {
+                precondition(values.contains { $0.computePhase == .depthSeed })
+                precondition(values.contains { $0.computePhase == .depthHierarchy })
+                precondition(values.contains { $0.computePhase == .compactSurvivors })
+                precondition(values.contains { $0.computePhase == .refineCoverage })
+            }
             precondition(!values.isEmpty)
             precondition(values.allSatisfy { $0.frameID == UInt64(id) && $0.captureID == 42 })
             precondition(values.allSatisfy { $0.start.isFinite && $0.end.isFinite && $0.end >= $0.start
@@ -58,6 +75,7 @@ import Synchronization
                             cullingViewProjection: matrix, camera: camera)
         _ = try collector.take()
         precondition(intervals.withLock { $0.isEmpty })
+        precondition(cpuIntervals.withLock { $0.isEmpty })
         print("GPU trace validation passed, including disabled capture")
     }
 }

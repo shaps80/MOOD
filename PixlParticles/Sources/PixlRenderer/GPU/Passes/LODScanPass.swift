@@ -82,7 +82,7 @@ final class LODScanPass {
             )
         }
 
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Finish Scan")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Finish Scan", timing: .lodFinish)
         encoder.setPipeline(finish)
         encoder.setBuffer(culling.scan.sums.last!, index: 0)
         encoder.setBuffer(lod.drawArguments, index: 1)
@@ -102,7 +102,7 @@ final class LODScanPass {
         lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Parallel Scan")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Parallel Scan", timing: .lodScan)
         encoder.setPipeline(scan)
         encoder.setBuffer(input, index: 0)
         encoder.setBuffer(offsets, index: 1)
@@ -128,7 +128,7 @@ final class LODScanPass {
     ) throws {
         let encoder = try makeEncoder(
             commandBuffer,
-            label: "Point LOD Add Scan Offsets"
+            label: "Point LOD Add Scan Offsets", timing: .lodOffsets
         )
         encoder.setPipeline(addOffsets)
         encoder.setBuffer(offsets, index: 0)
@@ -145,9 +145,9 @@ final class LODScanPass {
 
     private func makeEncoder(
         _ commandBuffer: any CommandBuffer,
-        label: String
+        label: String, timing: GPUComputePhase
     ) throws -> any ComputeEncoder {
-        guard let encoder = commandBuffer.makeComputeEncoder() else {
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: timing) else {
             throw RenderError.encoder
         }
         encoder.label = label

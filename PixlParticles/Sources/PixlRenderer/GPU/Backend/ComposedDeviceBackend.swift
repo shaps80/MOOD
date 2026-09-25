@@ -28,6 +28,10 @@ public final class ComposedDeviceBackend<Composition: RenderComposition>: Backen
         get { renderer.traceCaptureID }
         set { renderer.traceCaptureID = newValue }
     }
+    public var onCPUTrace: (@Sendable (CPUTraceInterval) -> Void)? {
+        get { renderer.onCPUTrace }
+        set { renderer.onCPUTrace = newValue }
+    }
     public var onGPUTrace: (@Sendable (GPUTraceInterval) -> Void)? {
         get { renderer.onGPUTrace }
         set { renderer.onGPUTrace = newValue }

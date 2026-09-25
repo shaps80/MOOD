@@ -97,7 +97,7 @@ final class LODPass {
         _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Prepare")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Prepare", timing: .lodPrepare)
         encoder.setPipeline(prepare)
         encoder.setBuffer(culling.indirectArguments, index: 0)
         encoder.setBuffer(lod.drawArguments, index: 1)
@@ -114,7 +114,7 @@ final class LODPass {
         _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Clear Tiles")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Clear Tiles", timing: .lodClear)
         encoder.setPipeline(clear)
         encoder.setBuffer(lod.tileCounts, index: 0)
         encoder.setValue(configuration.tileCount, index: 1)
@@ -136,7 +136,7 @@ final class LODPass {
         _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Count Tiles")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Count Tiles", timing: .lodCount)
         encoder.setPipeline(count)
         encoder.setBuffer(displacements, index: 0)
         encoder.setBuffer(culling.visibleIndices, index: 1)
@@ -161,7 +161,7 @@ final class LODPass {
         _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Thresholds")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Thresholds", timing: .lodThresholds)
         encoder.setPipeline(thresholds)
         encoder.setBuffer(lod.tileCounts, index: 0)
         encoder.setBuffer(lod.tileThresholds, index: 1)
@@ -180,7 +180,7 @@ final class LODPass {
         _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Classify")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Classify", timing: .lodClassify)
         encoder.setPipeline(classify)
         encoder.setBuffer(ids, index: 0)
         encoder.setBuffer(culling.visibleIndices, index: 1)
@@ -202,7 +202,7 @@ final class LODPass {
         _ lod: LODBuffers,
         into commandBuffer: any CommandBuffer
     ) throws {
-        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Scatter")
+        let encoder = try makeEncoder(commandBuffer, label: "Point LOD Scatter", timing: .lodScatter)
         encoder.setPipeline(scatter)
         encoder.setBuffer(culling.localOffsets, index: 0)
         encoder.setBuffer(culling.blockOffsets, index: 1)
@@ -219,9 +219,9 @@ final class LODPass {
 
     private func makeEncoder(
         _ commandBuffer: any CommandBuffer,
-        label: String
+        label: String, timing: GPUComputePhase
     ) throws -> any ComputeEncoder {
-        guard let encoder = commandBuffer.makeComputeEncoder() else {
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: timing) else {
             throw RenderError.encoder
         }
         encoder.label = label

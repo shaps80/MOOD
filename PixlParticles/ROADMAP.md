@@ -212,5 +212,7 @@ call the removed `System(particleCount:)` initializer; unchanged by this work.
   scope; not promoted to accepted device performance baselines.
 - [ ] iPad validation: capture/inspection, screenshot readability, end-to-end
   profiling overhead and serial/performance-core workload comparison.
-- [ ] Add deeper serial simulation-phase scopes and separate CPU resource/drawable
-  waits if these first traces show that more detail is needed.
+- [x] Add serial/parallel simulation stages, typed integration/spawn jobs, CPU
+  renderer stages and named GPU compute passes. Show all lanes without a height cap.
+  Validate simulation equivalence and nesting with Thread Sanitizer, and GPU pass
+  identity / aggregate timing plus contiguous CPU intervals with real Metal.

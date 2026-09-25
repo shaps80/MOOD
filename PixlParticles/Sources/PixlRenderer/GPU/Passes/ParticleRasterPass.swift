@@ -110,7 +110,7 @@ final class ParticleRasterPass {
             refinementDispatch = nil
         }
         guard let winners, let fallbackArguments else { throw RenderError.buffer }
-        guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+        guard let encoder = command.makeComputeEncoder(timing: .rasterClear) else { throw RenderError.encoder }
         encoder.label = "Clear Particle Raster"
         encoder.setPipeline(clear)
         encoder.setBuffer(winners, index: 0)
@@ -123,7 +123,7 @@ final class ParticleRasterPass {
         // Indirect dispatch leaves the ordinary-size path with no extra particle work.
         for phase: UInt32 in 0..<(refinesBillboards ? 4 : 1) {
             if phase != 0, let refinementDispatch {
-                guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+                guard let encoder = command.makeComputeEncoder(timing: .refinementDispatch) else { throw RenderError.encoder }
                 encoder.label = "Prepare Refinement Dispatch"
                 encoder.setPipeline(dispatchPipeline)
                 encoder.setBuffer(fallbackArguments, index: 0)
@@ -133,7 +133,14 @@ final class ParticleRasterPass {
                 encoder.dispatchThreads(.init(width: 1), threads: .init(width: 1))
                 encoder.endEncoding()
             }
-            guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+            let timingPhase: GPUComputePhase
+            switch phase {
+            case 0: timingPhase = .rasterCoverage
+            case 1: timingPhase = .depthSeed
+            case 2: timingPhase = .compactSurvivors
+            default: timingPhase = .refineCoverage
+            }
+            guard let encoder = command.makeComputeEncoder(timing: timingPhase) else { throw RenderError.encoder }
             switch phase {
             case 0: encoder.label = "Particle Coverage"
             case 1: encoder.label = "Seed Particle Depth"
@@ -163,7 +170,7 @@ final class ParticleRasterPass {
             }
             encoder.endEncoding()
             if phase == 1, let hierarchy {
-                guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+                guard let encoder = command.makeComputeEncoder(timing: .depthHierarchy) else { throw RenderError.encoder }
                 encoder.label = "Particle Depth Hierarchy"
                 encoder.setPipeline(hierarchyPipeline)
                 encoder.setBuffer(winners, index: 0)

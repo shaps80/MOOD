@@ -10,6 +10,18 @@ public final class System {
     public var particleCount: Int { emitter.aliveCount }
 
     /// Set only while this system is idle. Nil uses the original serial path.
+    public var onTrace: (@Sendable (SimulationTraceInterval) -> Void)? {
+        get { emitter.trace.handler }
+        set { emitter.trace.handler = newValue }
+    }
+    public var traceCaptureID: UInt64? {
+        get { emitter.trace.captureID }
+        set { emitter.trace.captureID = newValue }
+    }
+    public var traceFrameID: UInt64 {
+        get { emitter.trace.frameID }
+        set { emitter.trace.frameID = newValue }
+    }
     public var executor: (any SimulationExecutor)?
 
     public private(set) var emitter: EmitterInstance
@@ -91,6 +103,8 @@ public final class System {
         at instant: ContinuousClock.Instant,
         isPaused: Bool = false
     ) -> Sample {
+        var trace = emitter.trace
+        trace.begin()
         let isComplete = tick >= durationInTicks
         let schedule = loop.advance(
             to: instant,
@@ -104,8 +118,10 @@ public final class System {
             remainingUpdates
         )
 
+        trace.finish(.clockScheduling)
         for _ in 0..<updateCount {
             update(by: delta)
+            trace.finish(.fixedUpdate)
         }
 
         let isNowComplete = tick >= durationInTicks
@@ -116,6 +132,7 @@ public final class System {
             ? duration
             : Duration.seconds(Double(tick) * schedule.fixedDeltaSeconds)
 
+        trace.finish(.sampleResult)
         return .init(
             interpolation: interpolation,
             tick: tick,
@@ -128,6 +145,8 @@ public final class System {
         at instant: ContinuousClock.Instant,
         isPaused: Bool = false
     ) -> (sample: Sample, fixedUpdateTime: Double?) {
+        var trace = emitter.trace
+        trace.begin()
         let isComplete = tick >= durationInTicks
         let schedule = loop.advance(
             to: instant,
@@ -142,8 +161,10 @@ public final class System {
         )
         let start = updateCount > 0 ? ContinuousClock.now : nil
 
+        trace.finish(.clockScheduling)
         for _ in 0..<updateCount {
             update(by: delta)
+            trace.finish(.fixedUpdate)
         }
 
         let fixedUpdateTime = start.map {
@@ -157,6 +178,7 @@ public final class System {
             ? duration
             : Duration.seconds(Double(tick) * schedule.fixedDeltaSeconds)
 
+        trace.finish(.sampleResult)
         return (
             .init(
                 interpolation: interpolation,

@@ -33,6 +33,10 @@ public final class DeviceBackend: Backend {
         get { renderer.traceCaptureID }
         set { renderer.traceCaptureID = newValue }
     }
+    public var onCPUTrace: (@Sendable (CPUTraceInterval) -> Void)? {
+        get { renderer.onCPUTrace }
+        set { renderer.onCPUTrace = newValue }
+    }
     public var onGPUTrace: (@Sendable (GPUTraceInterval) -> Void)? {
         get { renderer.onGPUTrace }
         set { renderer.onGPUTrace = newValue }

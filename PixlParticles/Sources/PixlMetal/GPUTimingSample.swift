@@ -77,18 +77,18 @@ final class GPUTimingSample: @unchecked Sendable {
                 guard let a = timestamp(start), let b = timestamp(end), b >= a else { return nil }
                 return Double(b - a) * secondsPerTick
             }
-            func emit(_ phase: GPUTraceInterval.Phase, _ start: Int, _ end: Int) {
+            func emit(_ phase: GPUTraceInterval.Phase, _ start: Int, _ end: Int, computePhase: GPUComputePhase? = nil) {
                 guard let trace, let a = timestamp(start), let b = timestamp(end), b >= a else { return }
                 func hostSeconds(_ value: UInt64) -> Double {
                     let delta = value >= gpuStart ? Double(value - gpuStart) : -Double(gpuStart - value)
                     return Double(cpuStart) / 1e9 + delta * secondsPerTick
                 }
                 trace(.init(phase: phase, start: hostSeconds(a), end: hostSeconds(b),
-                            frameID: frameID, captureID: captureID))
+                            frameID: frameID, captureID: captureID, computePhase: computePhase))
             }
             if trace != nil {
                 for (phase, index) in compute {
-                    emit(phase == .preparation ? .preparation : .diagnostics, index, index + 1)
+                    emit(phase.isDiagnostics ? .diagnostics : .preparation, index, index + 1, computePhase: phase)
                 }
                 for index in render {
                     emit(.vertex, index, index + 1)
@@ -97,7 +97,7 @@ final class GPUTimingSample: @unchecked Sendable {
             }
             func sum(_ phase: GPUComputePhase) -> Double? {
                 var result = 0.0
-                for (kind, index) in compute where kind == phase {
+                for (kind, index) in compute where kind.isDiagnostics == phase.isDiagnostics {
                     guard let duration = interval(index, index + 1) else { return nil }
                     result += duration
                 }

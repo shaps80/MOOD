@@ -89,6 +89,7 @@ private nonisolated final class Worker: @unchecked Sendable {
             backend.onGPUTimings = { [capture] duration in
                 capture.gpuTimes.record(duration)
             }
+            backend.onCPUTrace = { [recording] interval in recording.recordCPU(interval) }
             backend.onGPUTrace = { [recording] interval in recording.recordGPU(interval) }
             backend.onPresented = { [capture] time in
                 capture.presentations.record(time)
@@ -117,8 +118,10 @@ private nonisolated final class Worker: @unchecked Sendable {
                 try autoreleasepool {
                     if let replacement = work.system {
                         replacement.executor = jobs
+                        replacement.onTrace = { [recording] interval in recording.recordSimulation(interval) }
                         system = replacement
                     }
+                    system?.traceCaptureID = nil
                     if let duration = work.duration { system?.setDuration(duration) }
                     if let seekTime = work.seekTime {
                         let token = recording.render.begin(EditorProfileDefinitions.seek)
@@ -132,6 +135,8 @@ private nonisolated final class Worker: @unchecked Sendable {
                     backend.traceFrameID = frameID
                     let captureID = recording.gpu.generation
                     backend.traceCaptureID = captureID & 1 == 1 ? captureID : nil
+                    system.traceCaptureID = backend.traceCaptureID
+                    system.traceFrameID = frameID
                     let frameToken = recording.render.begin(
                         EditorProfileDefinitions.frame, correlation: frameID
                     )
