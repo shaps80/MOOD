@@ -5,6 +5,9 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
     private let timingPool: GPUTimingPool
     private var timingSample: GPUTimingSample?
     private var timingHandler: (@Sendable (GPUFrameTimings) -> Void)?
+    private var traceHandler: (@Sendable (GPUTraceInterval) -> Void)?
+    private var traceFrameID: UInt64 = 0
+    private var traceCaptureID: UInt64 = 0
     private let reusableDraw: ReusableDraw
     let value: any MTLCommandBuffer
 
@@ -46,19 +49,33 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
     func addTimingsHandler(_ handler: @escaping @Sendable (GPUFrameTimings) -> Void) {
         precondition(timingHandler == nil)
         timingHandler = handler
-        timingSample = timingPool.acquire()
+        if timingSample == nil { timingSample = timingPool.acquire() }
+    }
+
+    func addTraceHandler(frameID: UInt64, captureID: UInt64,
+                         _ handler: @escaping @Sendable (GPUTraceInterval) -> Void) {
+        traceHandler = handler; traceFrameID = frameID; traceCaptureID = captureID
+        if timingSample == nil { timingSample = timingPool.acquire() }
     }
 
     func prepareForSubmission() {
-        guard let handler = timingHandler else { return }
+        let handler = timingHandler
+        let trace = traceHandler
+        let frameID = traceFrameID, captureID = traceCaptureID
+        guard handler != nil || trace != nil else { return }
         let sample = timingSample
         timingSample = nil
         value.addCompletedHandler { [timingPool] commandBuffer in
             defer { if let sample { timingPool.release(sample) } }
-            guard commandBuffer.status == .completed else { handler(.init()); return }
+            guard commandBuffer.status == .completed else { handler?(.init()); return }
             let elapsed = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
             let total = elapsed > 0 ? elapsed : nil
-            handler(sample?.resolve(total: total) ?? .init(total: total))
+            if total != nil {
+                trace?(.init(phase: .frame, start: commandBuffer.gpuStartTime,
+                             end: commandBuffer.gpuEndTime, frameID: frameID, captureID: captureID))
+            }
+            let timings = sample?.resolve(total: total, trace: trace, frameID: frameID, captureID: captureID) ?? .init(total: total)
+            handler?(timings)
         }
     }
 

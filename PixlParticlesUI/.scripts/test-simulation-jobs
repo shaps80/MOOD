@@ -4,6 +4,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 build=$(mktemp -d /private/tmp/pixl-job-tests.XXXXXX)
 trap 'rm -rf "$build"' EXIT
 mkdir -p "$build/Sources/SimulationJobs" "$build/Tests/SimulationJobTests"
+cp -R "$root/../PixlProfiler/Sources/PixlProfiler" "$build/Sources/"
 cp -R "$root/../PixlParticles/Sources/PixlRenderer" "$build/Sources/"
 cp -R "$root/../PixlParticles/Sources/PixlParticles" "$build/Sources/"
 cp "$root/Views/Rendering/Jobs/"*.swift "$build/Sources/SimulationJobs/"
@@ -12,9 +13,10 @@ cat > "$build/Package.swift" <<'PACKAGE'
 // swift-tools-version: 6.3
 import PackageDescription
 let package = Package(name: "ParticleJobs", platforms: [.macOS(.v15)], targets: [
+    .target(name: "PixlProfiler"),
     .target(name: "PixlRenderer"),
     .target(name: "PixlParticles", dependencies: ["PixlRenderer"]),
-    .target(name: "SimulationJobs", dependencies: ["PixlParticles"]),
+    .target(name: "SimulationJobs", dependencies: ["PixlParticles", "PixlProfiler"]),
     .testTarget(name: "SimulationJobTests", dependencies: ["PixlParticles", "SimulationJobs"])
 ], swiftLanguageModes: [.v6])
 PACKAGE

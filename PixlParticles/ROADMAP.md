@@ -196,3 +196,21 @@ call the removed `System(particleCount:)` initializer; unchanged by this work.
   resume and document closure. Local idle probes are not accepted device baselines.
 - [ ] Design deferred per-thread timeline capture over the editor to investigate
   the user's negligible serial-versus-performance-core-count improvement.
+
+## Timeline Profiler — 2026-09-25
+
+- [x] Add reusable `PixlProfiler` / `PixlProfilerUI` products with static metadata,
+  preallocated recording, bounded histories and deferred processing.
+- [x] Integrate editor CPU/thread and GPU timeline hooks, frame selection,
+  automatic tick-duration scaling, expandable tracks and inclusive timing statistics.
+- [x] Freeze on pause; retain late GPU submissions and reject stale generations.
+  Preserve paused sleeping and cancel repeating profiler work while frozen.
+- [x] Validate concurrency and worker integration with Thread Sanitizer, inspect
+  the rendered viewer, and verify actual Metal intervals against stage counters.
+- [x] Add a release recording allocation probe with a positive control. Local
+  runs observed zero recording allocations and roughly 70–80 ns per completed
+  scope; not promoted to accepted device performance baselines.
+- [ ] iPad validation: capture/inspection, screenshot readability, end-to-end
+  profiling overhead and serial/performance-core workload comparison.
+- [ ] Add deeper serial simulation-phase scopes and separate CPU resource/drawable
+  waits if these first traces show that more detail is needed.

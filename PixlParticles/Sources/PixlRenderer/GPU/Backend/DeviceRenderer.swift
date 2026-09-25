@@ -21,6 +21,9 @@ final class DeviceRenderer {
     private(set) var visibleCount: Int?
     private(set) var cpuRenderTime: Double?
     var onGPUTimings: (@Sendable (GPUFrameTimings) -> Void)?
+    var traceFrameID: UInt64 = 0
+    var traceCaptureID: UInt64?
+    var onGPUTrace: (@Sendable (GPUTraceInterval) -> Void)?
     var onGPUTime: (@Sendable (Double?) -> Void)?
     var onPresented: (@Sendable (Double) -> Void)?
 
@@ -84,6 +87,9 @@ final class DeviceRenderer {
         commandBuffer.label = "Pixl Particles Frame"
         if capturesDiagnostics, let onGPUTimings {
             commandBuffer.addTimingsHandler(onGPUTimings)
+        }
+        if let traceCaptureID, let onGPUTrace {
+            commandBuffer.addTraceHandler(frameID: traceFrameID, captureID: traceCaptureID, onGPUTrace)
         }
         if let cullingBuffers = resources.culling {
             try culling.encode(

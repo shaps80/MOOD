@@ -9,6 +9,11 @@ import QuartzCore
 @MainActor
 struct MetalRenderBenchmarks {
     static func main() throws {
+        if CommandLine.arguments.contains("validate-trace") {
+            if #available(macOS 15, *) { try GPUTraceValidation.run() }
+            else { fatalError("Trace validation requires macOS 15") }
+            return
+        }
         if CommandLine.arguments.contains("validate-visibility") { try VisibilityValidation.run(); return }
         if CommandLine.arguments.contains("validate-boundaries") { try RasterBoundaryValidation.run(); return }
         if CommandLine.arguments.contains("validate") { try RasterValidation.run(); return }

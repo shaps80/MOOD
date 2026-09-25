@@ -1,6 +1,7 @@
 import PixlEditorSupport
 import PixlParticles
 import PixlRenderer
+import PixlProfilerUI
 import Panels
 import SwiftUI
 
@@ -19,12 +20,15 @@ struct ContentView: View {
     private var system: System { simulation.system }
     @State private var playback = PlaybackState()
     @State private var metrics = RenderMetrics()
+    // StateObject defers construction: view reconstruction must not reallocate trace buffers.
+    @StateObject private var profiler = EditorProfiler()
     @State private var topInspector: String?
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 ParticleViewport(
+                    recording: profiler.recording,
                     system: system,
                     playback: playback,
                     duration: .seconds(document.snapshot.duration),
@@ -41,14 +45,6 @@ struct ContentView: View {
                     onPlaybackComplete: completePlayback
                 )
                 .ignoresSafeArea()
-                .overlay(alignment: .bottomLeading) {
-                    if customization[visibility: .metrics] == .hidden {
-                        MetricsOverlay(metrics: metrics)
-                            .frame(maxWidth: 200, alignment: .bottomLeading)
-                            .transition(.panel(anchor: .bottom))
-                            .scenePadding()
-                    }
-                }
 
                 PanelView(customization: $customization) {
                     Panel(id: .properties) {
@@ -67,6 +63,13 @@ struct ContentView: View {
                     .width(250)
                 }
                 .scenePadding()
+
+                if profiler.isVisible {
+                    ProfilerView(snapshot: profiler.controller.snapshot)
+                        .frame(maxWidth: 1200)
+                        .padding(.horizontal)
+                        .padding(.bottom, 90)
+                }
 
                 ParticleTimeline(
                     playback: playback,
@@ -118,6 +121,7 @@ struct ContentView: View {
                         }
 
                         Section("Debugging") {
+                            Toggle("Profiler", isOn: $profiler.isVisible)
                             Toggle(
                                 "Culling Bounds",
                                 isOn: $settings.visibility.isCullingVisible
@@ -145,9 +149,18 @@ struct ContentView: View {
                 }
             }
         }
+        .onAppear { updateProfiler() }
+        .onChange(of: profiler.isVisible) { updateProfiler() }
+        .onChange(of: playback.isPaused) { updateProfiler() }
+        .onChange(of: playback.isScrubbing) { updateProfiler() }
+        .onDisappear { profiler.controller.freeze() }
         .onChange(of: simulation.revision) {
             playback.fraction = 0
         }
+    }
+
+    private func updateProfiler() {
+        profiler.update(isPaused: playback.isPaused || playback.isScrubbing)
     }
 
     private var pointLOD: PointLOD {

@@ -1,4 +1,5 @@
 import Foundation
+import PixlProfiler
 import Testing
 @testable import PixlParticles
 @testable import SimulationJobs
@@ -39,6 +40,35 @@ struct SimulationJobTests {
             }
             #expect((0..<103).allSatisfy { storage[$0] == 200 })
             pool.setSuspended(true)
+        }
+    }
+
+    @Test func tracedJobsRemainCoherentAcrossPauseAndResume() {
+        let session = ProfileSession(scopes: [JobProfileDefinitions.dispatch,
+                                             JobProfileDefinitions.batch, JobProfileDefinitions.spin])
+        let owner = session.prepare(ProfileTrack(0, "Owner"))
+        let workers = (1..<4).map { session.prepare(ProfileTrack(1, "Worker"), instance: $0) }
+        let pool = SpinningJobPool(workerCount: 4, recorder: owner, workerRecorders: workers)
+        let storage = UnsafeMutablePointer<Int>.allocate(capacity: 10_003)
+        storage.initialize(repeating: 0, count: 10_003)
+        defer { storage.deinitialize(count: 10_003); storage.deallocate() }
+        for round in 0..<3 {
+            session.resume()
+            for index in 1...50 {
+                pool.frameID = UInt64(index)
+                pool.execute(SimulationJob(count: 10_003, context: storage) { pointer, range in
+                    let values = UnsafeMutableRawPointer(mutating: pointer).assumingMemoryBound(to: Int.self)
+                    for i in range { values[i] += 1 }
+                })
+            }
+            pool.setSuspended(true)
+            session.freeze()
+            let snapshot = session.snapshot()
+            let batches = snapshot.segments.filter { $0.scope == JobProfileDefinitions.batch.id }
+            #expect(batches.count == 50 * 16)
+            #expect(batches.allSatisfy { (1...50).contains($0.correlation) && $0.detail < 16 })
+            #expect(snapshot.dropped == 0)
+            #expect((0..<10_003).allSatisfy { storage[$0] == (round + 1) * 50 })
         }
     }
 

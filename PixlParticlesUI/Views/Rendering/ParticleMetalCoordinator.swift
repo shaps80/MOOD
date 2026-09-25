@@ -15,6 +15,7 @@ private typealias PlatformGestureState = UIGestureRecognizer.State
 final class Coordinator: NSObject, MTKViewDelegate {
     private weak var view: MTKView?
     private var renderThread: RenderThread?
+    private let recording: EditorRecording
     private var system: System
     private var systemID: ObjectIdentifier
     private var isPaused: Bool
@@ -33,6 +34,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
     private var onFrame: (RenderDiagnostics) -> Void
 
     init(
+        recording: EditorRecording,
         system: System,
         isPaused: Bool,
         duration: Duration,
@@ -54,6 +56,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
         onTimeChange: @escaping (Duration) -> Void,
         onFrame: @escaping (RenderDiagnostics) -> Void
     ) {
+        self.recording = recording
         self.system = system
         systemID = ObjectIdentifier(system)
         self.isPaused = isPaused
@@ -82,7 +85,7 @@ final class Coordinator: NSObject, MTKViewDelegate {
     func configure(_ view: ParticleMTKView) {
         self.view = view
         let layer = PixlMetal.Platform.configure(view)
-        renderThread = RenderThread(layer: layer, system: system)
+        renderThread = RenderThread(layer: layer, system: system, recording: recording)
         view.delegate = self
         view.isPaused = isPaused
         view.enableSetNeedsDisplay = true

@@ -36,6 +36,10 @@ private final class BenchmarkCommandBuffer: CommandBuffer {
     func makeComputeEncoder(timing: GPUComputePhase) -> (any ComputeEncoder)? { base.makeComputeEncoder(timing: timing) }
     func makeRenderEncoder(target: any RenderTarget) -> (any RenderEncoder)? { base.makeRenderEncoder(target: target) }
     func addTimingsHandler(_ handler: @escaping @Sendable (GPUFrameTimings) -> Void) { base.addTimingsHandler(handler) }
+    func addTraceHandler(frameID: UInt64, captureID: UInt64,
+                         _ handler: @escaping @Sendable (GPUTraceInterval) -> Void) {
+        base.addTraceHandler(frameID: frameID, captureID: captureID, handler)
+    }
     func addCompletedHandler(_ handler: @escaping @Sendable (Double?) -> Void) { base.addCompletedHandler(handler) }
     func present(_ target: any RenderTarget) {}
 }

@@ -11,6 +11,7 @@ private typealias PlatformViewRepresentable = UIViewRepresentable
 #endif
 
 struct ParticleMetalView: PlatformViewRepresentable {
+    let recording: EditorRecording
     let system: System
     let isPaused: Bool
     let duration: Duration
@@ -34,6 +35,7 @@ struct ParticleMetalView: PlatformViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
+            recording: recording,
             system: system,
             isPaused: isPaused,
             duration: duration,

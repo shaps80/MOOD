@@ -9,6 +9,8 @@ public protocol CommandBuffer: AnyObject {
     ) -> (any RenderEncoder)?
     /// Register before encoding to enable optional GPU stage counters.
     func addTimingsHandler(_ handler: @escaping @Sendable (GPUFrameTimings) -> Void)
+    func addTraceHandler(frameID: UInt64, captureID: UInt64,
+                         _ handler: @escaping @Sendable (GPUTraceInterval) -> Void)
     func present(_ target: any RenderTarget)
     func addCompletedHandler(
         _ handler: @escaping @Sendable (_ gpuDuration: Double?) -> Void
@@ -16,6 +18,10 @@ public protocol CommandBuffer: AnyObject {
 }
 
 public extension CommandBuffer {
+    /// Unsupported adapters expose no invented timing intervals.
+    func addTraceHandler(frameID: UInt64, captureID: UInt64,
+                         _ handler: @escaping @Sendable (GPUTraceInterval) -> Void) {}
+
     func makeComputeEncoder(timing: GPUComputePhase) -> (any ComputeEncoder)? {
         makeComputeEncoder()
     }

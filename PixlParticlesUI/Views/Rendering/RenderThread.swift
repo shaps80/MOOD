@@ -1,4 +1,5 @@
 import Foundation
+import PixlProfiler
 import PixlEditorSupport
 import PixlEditorSupportMetal
 import PixlMetal
@@ -12,12 +13,14 @@ final class RenderThread {
     private let worker: Worker
     private let thread: Thread
     private let profiling: ProfileConsumer
+    private let recording: EditorRecording
 
-    init(layer: CAMetalLayer, system: System) {
+    init(layer: CAMetalLayer, system: System, recording: EditorRecording) {
+        self.recording = recording
         let mailbox = Mailbox(system: system)
         let capture = ProfileCapture()
         profiling = ProfileConsumer(capture: capture)
-        let worker = Worker(layer: layer, mailbox: mailbox, capture: capture)
+        let worker = Worker(layer: layer, mailbox: mailbox, capture: capture, recording: recording)
         self.mailbox = mailbox
         self.worker = worker
         thread = Thread { worker.run() }
@@ -57,8 +60,10 @@ private nonisolated final class Worker: @unchecked Sendable {
     private let mailbox: Mailbox
 
     private let capture: ProfileCapture
+    private let recording: EditorRecording
 
-    init(layer: CAMetalLayer, mailbox: Mailbox, capture: ProfileCapture) {
+    init(layer: CAMetalLayer, mailbox: Mailbox, capture: ProfileCapture, recording: EditorRecording) {
+        self.recording = recording
         self.layer = layer
         self.mailbox = mailbox
         self.capture = capture
@@ -84,22 +89,27 @@ private nonisolated final class Worker: @unchecked Sendable {
             backend.onGPUTimings = { [capture] duration in
                 capture.gpuTimes.record(duration)
             }
+            backend.onGPUTrace = { [recording] interval in recording.recordGPU(interval) }
             backend.onPresented = { [capture] time in
                 capture.presentations.record(time)
             }
             let renderer = PixlParticles.Renderer(backend: backend)
-            let configuration = SimulationWorkers.environment
+            let configuration = recording.configuration
             let jobs = configuration.mode == .serial ? nil : SpinningJobPool(
                 workerCount: configuration.count,
-                batchesPerWorker: configuration.batchesPerWorker
+                batchesPerWorker: configuration.batchesPerWorker,
+                recorder: recording.render, workerRecorders: recording.workers
             )
             // Systems may retain the executor after this worker exits.
             defer { jobs?.setSuspended(true) }
             var system: System?
             var isPaused = true
+            var frameID: UInt64 = 0
 
             while true {
+                let waitToken = recording.render.begin(EditorProfileDefinitions.mailbox)
                 let work = mailbox.next(waitWhenEmpty: isPaused)
+                recording.render.end(waitToken)
                 if work.shouldStop { return }
                 if let frame = work.frame { isPaused = frame.isPaused }
                 // Drain temporary Objective-C/Metal objects after each iteration
@@ -110,13 +120,27 @@ private nonisolated final class Worker: @unchecked Sendable {
                         system = replacement
                     }
                     if let duration = work.duration { system?.setDuration(duration) }
-                    if let seekTime = work.seekTime { system?.seek(to: seekTime) }
+                    if let seekTime = work.seekTime {
+                        let token = recording.render.begin(EditorProfileDefinitions.seek)
+                        system?.seek(to: seekTime)
+                        recording.render.end(token)
+                    }
                     guard let frame = work.frame, let system else { return }
 
+                    frameID &+= 1
+                    jobs?.frameID = frameID
+                    backend.traceFrameID = frameID
+                    let captureID = recording.gpu.generation
+                    backend.traceCaptureID = captureID & 1 == 1 ? captureID : nil
+                    let frameToken = recording.render.begin(
+                        EditorProfileDefinitions.frame, correlation: frameID
+                    )
+                    defer { recording.render.end(frameToken) }
                     backend.pointLOD = frame.pointLOD
                     backend.cullingBounds = frame.cullingBounds
                     backend.capturesDiagnostics = frame.capturesDiagnostics
                     editor.frame = frame.editor
+                    let simulationToken = recording.render.begin(EditorProfileDefinitions.simulation, correlation: frameID)
                     let simulationStart = frame.capturesDiagnostics
                         ? ContinuousClock.now
                         : nil
@@ -129,6 +153,9 @@ private nonisolated final class Worker: @unchecked Sendable {
                     let sample = diagnosticSample?.sample
                         ?? system.sample(at: .now, isPaused: frame.isPaused)
                     let simulationDuration = simulationStart?.duration(to: .now)
+                    recording.render.end(simulationToken)
+                    let renderToken = recording.render.begin(EditorProfileDefinitions.renderFrame, correlation: frameID)
+                    defer { recording.render.end(renderToken) }
                     try renderer.render(
                         system,
                         renderer: frame.renderer,

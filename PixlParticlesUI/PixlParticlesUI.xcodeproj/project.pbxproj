@@ -12,6 +12,8 @@
 		5494801A3030BB2100BCB679 /* PixlEditorSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 549480193030BB2100BCB679 /* PixlEditorSupport */; };
 		5494801C3030BB2100BCB679 /* PixlEditorSupportMetal in Frameworks */ = {isa = PBXBuildFile; productRef = 5494801B3030BB2100BCB679 /* PixlEditorSupportMetal */; };
 		54CACE92303A067B00CB643C /* Panels in Frameworks */ = {isa = PBXBuildFile; productRef = 54CACE91303A067B00CB643C /* Panels */; };
+		AB0000000000000000000001 /* PixlProfiler in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000000000000000000003 /* PixlProfiler */; };
+		AB0000000000000000000002 /* PixlProfilerUI in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000000000000000000004 /* PixlProfilerUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +35,8 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				AB0000000000000000000001 /* PixlProfiler in Frameworks */,
+				AB0000000000000000000002 /* PixlProfilerUI in Frameworks */,
 				54CACE92303A067B00CB643C /* Panels in Frameworks */,
 				549480163030BB2100BCB679 /* PixlParticles in Frameworks */,
 				549480183030BB2100BCB679 /* PixlMetal in Frameworks */,
@@ -88,6 +92,8 @@
 			);
 			name = PixlParticlesUI;
 			packageProductDependencies = (
+				AB0000000000000000000003 /* PixlProfiler */,
+				AB0000000000000000000004 /* PixlProfilerUI */,
 				549480153030BB2100BCB679 /* PixlParticles */,
 				549480173030BB2100BCB679 /* PixlMetal */,
 				549480193030BB2100BCB679 /* PixlEditorSupport */,
@@ -123,6 +129,7 @@
 			mainGroup = 000000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				AB0000000000000000000005 /* PixlProfiler */,
 				549480133030BB1A00BCB679 /* XCLocalSwiftPackageReference "../PixlParticles" */,
 			);
 			preferredProjectObjectVersion = 90;
@@ -424,6 +431,7 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../PixlParticles;
 		};
+		AB0000000000000000000005 /* PixlProfiler */ = {isa = XCLocalSwiftPackageReference; relativePath = ../PixlProfiler; };
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -451,6 +459,8 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Panels;
 		};
+		AB0000000000000000000003 /* PixlProfiler */ = {isa = XCSwiftPackageProductDependency; package = AB0000000000000000000005; productName = PixlProfiler; };
+		AB0000000000000000000004 /* PixlProfilerUI */ = {isa = XCSwiftPackageProductDependency; package = AB0000000000000000000005; productName = PixlProfilerUI; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 000000000000000000000000 /* Project object */;

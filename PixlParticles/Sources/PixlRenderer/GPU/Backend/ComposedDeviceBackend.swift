@@ -20,6 +20,18 @@ public final class ComposedDeviceBackend<Composition: RenderComposition>: Backen
         get { renderer.onGPUTimings }
         set { renderer.onGPUTimings = newValue }
     }
+    public var traceFrameID: UInt64 {
+        get { renderer.traceFrameID }
+        set { renderer.traceFrameID = newValue }
+    }
+    public var traceCaptureID: UInt64? {
+        get { renderer.traceCaptureID }
+        set { renderer.traceCaptureID = newValue }
+    }
+    public var onGPUTrace: (@Sendable (GPUTraceInterval) -> Void)? {
+        get { renderer.onGPUTrace }
+        set { renderer.onGPUTrace = newValue }
+    }
     public var onGPUTime: (@Sendable (Double?) -> Void)? {
         get { renderer.onGPUTime }
         set { renderer.onGPUTime = newValue }

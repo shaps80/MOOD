@@ -4,6 +4,7 @@ import PixlRenderer
 import SwiftUI
 
 struct ParticleViewport: View {
+    let recording: EditorRecording
     let system: System
     let playback: PlaybackState
     let duration: Duration
@@ -21,6 +22,7 @@ struct ParticleViewport: View {
 
     var body: some View {
         ParticleMetalView(
+            recording: recording,
             system: system,
             isPaused: playback.isPaused || playback.isScrubbing,
             duration: duration,

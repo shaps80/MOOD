@@ -1,4 +1,5 @@
 import Foundation
+import PixlProfiler
 import Synchronization
 #if canImport(PixlParticles)
 import PixlParticles
@@ -10,15 +11,20 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
     let workerCount: Int
     let batchesPerWorker: Int
     private let state: State
+    private let recorder: ProfileRecorder?
+    var frameID: UInt64 = 0
 
-    init(workerCount: Int, batchesPerWorker: Int = 4) {
+    init(workerCount: Int, batchesPerWorker: Int = 4,
+         recorder: ProfileRecorder? = nil, workerRecorders: [ProfileRecorder] = []) {
+        self.recorder = recorder
         precondition(workerCount > 0 && batchesPerWorker > 0)
         self.workerCount = workerCount
         self.batchesPerWorker = batchesPerWorker
         let state = State()
         self.state = state
         for index in 1..<workerCount {
-            let thread = Thread { state.work() }
+            let workerRecorder = workerRecorders.indices.contains(index - 1) ? workerRecorders[index - 1] : nil
+            let thread = Thread { state.work(recorder: workerRecorder) }
             thread.name = "Pixl Simulation \(index)"
             thread.qualityOfService = .userInteractive
             thread.start()
@@ -44,7 +50,10 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
     func execute(_ job: SimulationJob) {
         guard job.count > 0 else { return }
         guard workerCount > 1 else { job.run(0..<job.count); return }
+        let token = recorder?.begin(JobProfileDefinitions.dispatch, correlation: frameID)
+        defer { if let token { recorder?.end(token) } }
         setSuspended(false)
+        state.frameID = frameID
         let batchCount = min(job.count, workerCount * batchesPerWorker, 65_535)
         state.job = job
         state.remaining.store(batchCount, ordering: .relaxed)
@@ -52,8 +61,9 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
         state.epoch &+= 1
         let ticket = UInt64(state.epoch) << 32 | UInt64(batchCount) << 16
         state.ticket.store(ticket, ordering: .releasing)
+        var callerIdle: ProfileToken?
         while state.remaining.load(ordering: .acquiring) != 0 {
-            state.claimAndRun()
+            state.claimAndRun(recorder: recorder, idle: &callerIdle, recordsIdle: false)
         }
         state.job = nil
     }
@@ -67,42 +77,52 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
         let stopped = Atomic<Bool>(false)
         let suspended = Atomic<Bool>(true)
         let parking = NSCondition()
+        var frameID: UInt64 = 0 // Published with job ticket.
         var epoch: UInt32 = 0 // Owner only.
         // Read only after successfully claiming a batch. Immutable until all jobs complete.
         var job: SimulationJob?
 
-        func work() {
+        func work(recorder: ProfileRecorder?) {
+            var idle = recorder?.begin(JobProfileDefinitions.spin)
             ready.wrappingAdd(1, ordering: .releasing)
             while !stopped.load(ordering: .acquiring) {
                 if suspended.load(ordering: .acquiring) {
+                    if let idle { recorder?.end(idle) }
+                    idle = nil
                     parking.lock()
                     while suspended.load(ordering: .acquiring)
                         && !stopped.load(ordering: .acquiring) {
                         parking.wait()
                     }
                     parking.unlock()
+                    idle = recorder?.begin(JobProfileDefinitions.spin)
                 } else {
-                    claimAndRun()
+                    claimAndRun(recorder: recorder, idle: &idle, recordsIdle: true)
                 }
             }
             exited.wrappingAdd(1, ordering: .acquiringAndReleasing)
         }
 
         @inline(__always)
-        func claimAndRun() {
+        func claimAndRun(recorder: ProfileRecorder?, idle: inout ProfileToken?, recordsIdle: Bool) {
             let value = ticket.load(ordering: .acquiring)
             let index = Int(value & 0xffff)
             let batchCount = Int((value >> 16) & 0xffff)
             guard index < batchCount else { return }
             guard ticket.compareExchange(expected: value, desired: value + 1,
                                          ordering: .acquiringAndReleasing).exchanged else { return }
+            if let idle { recorder?.end(idle) }
+            idle = nil
             do {
                 let job = job!
                 let start = job.count * index / batchCount
                 let end = job.count * (index + 1) / batchCount
+                let token = recorder?.begin(JobProfileDefinitions.batch, correlation: frameID, detail: UInt32(index))
                 job.run(start..<end)
+                if let token { recorder?.end(token) }
             }
             // Release every write and acquire earlier completions before publishing ours.
+            if recordsIdle { idle = recorder?.begin(JobProfileDefinitions.spin) }
             remaining.wrappingSubtract(1, ordering: .acquiringAndReleasing)
         }
     }

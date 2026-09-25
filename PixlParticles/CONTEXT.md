@@ -439,3 +439,33 @@ median improvement; no new buffers or simulation/draw changes were introduced.
 See `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-compute.md`. Benchmark invocations
 clean native outputs to keep cross-module optimized Swift dispatch code and
 Metal resources synchronized.
+
+## Reusable Timeline Profiler — 2026-09-25
+
+- `PixlProfiler` is a sibling package with a portable core and optional
+  `PixlProfilerUI` product. Static scope/track definitions are resolved and all
+  recording storage initialized before workers start. Producer handles record
+  fixed-size timestamp/ID values into per-track bounded buffers. CPU tracks have
+  one writer; GPU callbacks use a one-attempt atomic producer claim and drop on
+  contention. No recording-path heap allocation, locks, formatting or retries.
+- A separate serial utility consumer builds bounded three-second histories,
+  nests intervals and calculates inclusive mean/p95/max. SwiftUI receives
+  snapshots around once per second. Pausing freezes CPU capture; generation-tagged
+  GPU results may arrive later and trigger coalesced snapshot updates without
+  a paused polling timer. Resume starts a fresh generation.
+- The existing ⋯ toolbar menu’s Profiler toggle enables capture and the timeline overlay. Closing it
+  freezes but retains the capture. Tracks cover render/simulation,
+  job dispatch, per-worker batches/spinning, mailbox waits and actual GPU intervals.
+  CPU encode/resource/drawable waits currently share one accurately labelled span.
+  CPU spans are not presentation intervals or OS CPU-utilization measurements.
+- Generic `GPUTraceInterval` exports calibrated host-uptime start/end timestamps
+  with opaque frame/capture IDs. A nil backend capture ID disables tracing;
+  renderer code does not know profiler generation semantics or import PixlProfiler.
+  Metal uses the existing counter sample lease and completion callback. The editor
+  bridges uptime to the profiler's monotonic clock; compute/vertex/fragment
+  overlap is preserved. Unsupported counters remain absent.
+
+- The profiler timeline fits the selected tick's actual CPU/GPU span to the full
+  viewport width, regardless of refresh rate. It has no zoom/pan controls or
+  horizontal timeline scrolling. The editor does not record a main-thread track.
+  Hiding the metrics inspector no longer displays a fallback metrics overlay.
