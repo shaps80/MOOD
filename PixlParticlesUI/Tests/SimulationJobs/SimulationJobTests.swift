@@ -1,9 +1,47 @@
+import Foundation
 import Testing
 @testable import PixlParticles
 @testable import SimulationJobs
 
 @Suite(.serialized)
 struct SimulationJobTests {
+    @Test func suspendedPoolDoesNotBurnCPU() {
+        let pool = SpinningJobPool(workerCount: 4)
+        withUnsafePointer(to: 0) { pointer in
+            pool.execute(SimulationJob(count: 100, context: pointer) { _, _ in })
+        }
+        pool.setSuspended(true)
+        Thread.sleep(forTimeInterval: 0.02)
+        var before = rusage(), after = rusage()
+        getrusage(RUSAGE_SELF, &before)
+        Thread.sleep(forTimeInterval: 0.3)
+        getrusage(RUSAGE_SELF, &after)
+        let cpu = Double(after.ru_utime.tv_sec + after.ru_stime.tv_sec
+            - before.ru_utime.tv_sec - before.ru_stime.tv_sec)
+            + Double(after.ru_utime.tv_usec + after.ru_stime.tv_usec
+                - before.ru_utime.tv_usec - before.ru_stime.tv_usec) / 1e6
+        #expect(cpu < 0.15, "Idle workers consumed \(cpu) CPU seconds in 0.3s")
+        withExtendedLifetime(pool) {}
+    }
+
+    @Test func suspendedPoolResumesForJobsAndShutsDown() {
+        for workers in [1, 2, 4] {
+            let pool = SpinningJobPool(workerCount: workers)
+            let storage = UnsafeMutablePointer<Int>.allocate(capacity: 103)
+            storage.initialize(repeating: 0, count: 103)
+            defer { storage.deinitialize(count: 103); storage.deallocate() }
+            for _ in 0..<200 {
+                pool.setSuspended(true)
+                pool.execute(SimulationJob(count: 103, context: storage) { pointer, range in
+                    let values = UnsafeMutableRawPointer(mutating: pointer).assumingMemoryBound(to: Int.self)
+                    for i in range { values[i] += 1 }
+                })
+            }
+            #expect((0..<103).allSatisfy { storage[$0] == 200 })
+            pool.setSuspended(true)
+        }
+    }
+
     @Test func exactCoverageAndRepeatedDispatch() {
         for workers in [1, 2, 4] {
             let pool = SpinningJobPool(workerCount: workers, batchesPerWorker: 4)

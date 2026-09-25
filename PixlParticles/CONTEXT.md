@@ -395,18 +395,35 @@ This preserves current compositing semantics; it is not order-independent
 transparency. Unsupported devices, pipeline creation failure and the existing
 LOD path retain the previous hardware rendering implementation.
 
-Compute work is bounded to 256 bounding-box pixels per particle. A larger
-visible footprint triggers a GPU-written indirect geometry draw for the whole
-batch and suppresses compute resolve. This avoids truncating large or near-plane
-billboards, without CPU readback. The geometry shader shares projection logic
-with compute coverage.
+The first coverage pass is bounded to 256 bounding-box pixels per particle.
+Larger opaque billboards trigger GPU-only refinement: cooperatively rasterize
+one particle in sixteen as depth seeds, summarize the farthest seeded depth in
+each 8×8 pixel tile, conservatively reject fully occluded footprints, compact the
+remaining original indices, then cooperatively rasterize their coverage. One
+32-lane group processes each seeded or surviving footprint. Equal-depth ties
+still use original particle indices; compaction order has no visual effect.
+Empty seed pixels never occlude. Ordinary coverage and refinement share the same
+projection, pixel coverage and winner storage. GPU indirect dispatch avoids
+extra particle processing when ordinary coverage succeeds.
 
-Scratch is one GPU-only 8-byte value per viewport pixel plus a 16-byte indirect
-argument buffer. It is reused across ordered submissions, resized when either
-dimension changes and released when compute coverage is inactive. No extra
-per-particle streams or fragment lists are retained. Fixed-function subpixel
+Footprints above 4096 bounding-box pixels still select the whole-batch ordered
+geometry fallback and suppress compute resolve. This preserves extreme-size and
+near-plane coverage, but those cases can still encounter hardware memory/time
+cliffs. Transparent compositing remains unchanged.
+
+Scratch is one GPU-only 8-byte winner per viewport pixel and a 32-byte argument
+buffer. Opaque billboard refinement additionally reserves one 4-byte original
+index per particle, one 4-byte depth per 8×8 pixel tile, and 12-byte dispatch
+arguments. Storage is reused; refinement storage is released for points, and all
+compute storage is released when compute is inactive. Fixed-function subpixel
 rounding can differ from compute coverage; GPU image checks bound that difference
 and require exact translucent, sparse, ordering and transition test images.
+
+Visibility telemetry is sampled at most every 200 ms. Compute coverage counts
+visible particles during its existing first pass; other paths use a 128-thread
+SIMD reduction only on sampled frames. Counts refer to visibility before opaque
+occlusion, not the compacted raster workload. Generation-tagged readback prevents
+an older frame slot from replacing a newer count. GPU timestamps remain per frame.
 
 Provisional measurements and validation are recorded in
 `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-billboards.md`. Opaque billboards

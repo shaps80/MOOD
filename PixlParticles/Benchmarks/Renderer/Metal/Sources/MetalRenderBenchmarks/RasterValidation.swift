@@ -37,6 +37,7 @@ enum RasterValidation {
                 ("rotated plane", .init(mode: .billboard, billboard: .init(facing: .cameraPlane)), .init(size: [3, 2], rotation: 0.43)),
                 ("upright", .init(mode: .billboard, billboard: .init(facing: .cameraPosition)), .init(size: [3, 1], rotation: -0.31)),
                 ("screen", .init(mode: .billboard, billboard: .init(sizeSpace: .screen)), .init(size: [7, 13], rotation: 0.7)),
+                ("dense overlap", .init(mode: .billboard, billboard: .init(sizeSpace: .screen)), .init(size: [24, 24], rotation: 0.43)),
                 ("oversized", .init(mode: .billboard, billboard: .init(sizeSpace: .screen)), .init(size: [120, 180], rotation: 0.3)),
                 ("zero area", .init(mode: .billboard), .init(size: [0, 2]))
             ] {
@@ -77,6 +78,7 @@ enum RasterValidation {
         }
         try RasterOrderValidation.run()
         try RasterBoundaryValidation.run()
+        try VisibilityValidation.run()
         print("Image failures: \(failures)"); fflush(nil)
         precondition(failures.isEmpty)
     }

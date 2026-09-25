@@ -16,6 +16,7 @@ enum RasterOrderValidation {
         for (name, count, colors) in [
             ("ordered alpha", 67, [SIMD4<Float>(0.4, 0, 0, 0.4), SIMD4<Float>(0, 0.7, 0, 0.7)]),
             ("zero alpha depth", 67, [SIMD4<Float>(repeating: 0), SIMD4<Float>(0, 0, 1, 1)]),
+            ("opaque refinement ties", 65_537, [SIMD4<Float>(1, 0, 0, 1), SIMD4<Float>(0, 0, 1, 1), SIMD4<Float>(0, 1, 0, 1)]),
             ("opaque depth ties", 65_537, [SIMD4<Float>(1, 0, 0, 1), SIMD4<Float>(0, 0, 1, 1), SIMD4<Float>(0, 1, 0, 1)])
         ] {
             let buffers = fixture(count: count, colors: colors, zeroFirst: name == "zero alpha depth")
@@ -30,7 +31,7 @@ enum RasterOrderValidation {
                     backend.onGPUTimings = { collector.record($0) }
                     try backend.renderParticles(count: count, buffers: buffers,
                         renderer: .init(mode: mode, billboard: .init(facing: .cameraPlane)),
-                        values: .init(size: [0.125, 0.125]), interpolation: 1,
+                        values: .init(size: name == "opaque refinement ties" ? [0.75, 0.75] : [0.125, 0.125]), interpolation: 1,
                         cullingViewProjection: matrix, camera: camera)
                     _ = try collector.take()
                     let path = NSTemporaryDirectory() + UUID().uuidString + ".rgba16f"

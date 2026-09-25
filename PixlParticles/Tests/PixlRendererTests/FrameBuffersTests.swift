@@ -97,7 +97,8 @@ struct FrameBuffersTests {
         )
         #expect(diagnostic.culling == nil)
         #expect(platform.allocations.count == 2)
-        #expect(platform.allocations.allSatisfy { $0.length == 3 * 4 })
+        // 600 particles require five 128-thread diagnostic groups.
+        #expect(platform.allocations.allSatisfy { $0.length == 5 * 4 })
         let pending = try buffers.prepare(
             count: 600, buffers: source, lod: nil,
             viewport: .init(width: 100, height: 100), capturesDiagnostics: true

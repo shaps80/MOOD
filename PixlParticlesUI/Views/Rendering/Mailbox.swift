@@ -1,3 +1,4 @@
+import Dispatch
 import Synchronization
 import PixlEditorSupport
 import PixlParticles
@@ -47,6 +48,8 @@ nonisolated final class Mailbox: @unchecked Sendable {
     private let input = LatestValueChannel<Input>()
     private let output = LatestValueChannel<Output>()
     private let stopped = Atomic<Bool>(false)
+    private let wake = DispatchSemaphore(value: 0)
+    private let wakePending = Atomic<Bool>(false)
 
     // UI-owned state; no render-thread access.
     private var pending = Input()
@@ -61,37 +64,48 @@ nonisolated final class Mailbox: @unchecked Sendable {
         pending.system = system
         pending.systemRevision = 1
         input.publish(pending)
+        signal()
     }
 
     func submit(_ frame: Frame) {
         pending.frame = frame
         pending.frameRevision &+= 1
         input.publish(pending)
+        signal()
     }
 
     func replaceSystem(_ system: System) {
         pending.system = system
         pending.systemRevision &+= 1
         input.publish(pending)
+        signal()
     }
 
     func seek(to time: Duration) {
         pending.seekTime = time
         pending.seekRevision &+= 1
         input.publish(pending)
+        signal()
     }
 
     func setDuration(_ duration: Duration) {
         pending.duration = duration
         pending.durationRevision &+= 1
         input.publish(pending)
+        signal()
     }
 
-    /// Render worker only. Spin on atomic publication until work or shutdown;
-    /// the UI never waits for the worker. No sleeping or OS synchronization.
-    func next() -> Work {
+    /// Render worker only. Paused workers park; active playback retains polling.
+    /// Publications coalesce into at most one wake token; the UI never waits.
+    func next(waitWhenEmpty: Bool = true) -> Work {
         while !stopped.load(ordering: .acquiring) {
-            guard let latest = input.take() else { continue }
+            guard let latest = input.take() else {
+                if waitWhenEmpty {
+                    wake.wait()
+                    wakePending.store(false, ordering: .releasing)
+                }
+                continue
+            }
             let work = Work(
                 frame: latest.frameRevision != consumed.frameRevision
                     ? latest.frame : nil,
@@ -133,5 +147,12 @@ nonisolated final class Mailbox: @unchecked Sendable {
 
     func stop() {
         stopped.store(true, ordering: .releasing)
+        signal()
+    }
+
+    private func signal() {
+        if !wakePending.exchange(true, ordering: .acquiringAndReleasing) {
+            wake.signal()
+        }
     }
 }

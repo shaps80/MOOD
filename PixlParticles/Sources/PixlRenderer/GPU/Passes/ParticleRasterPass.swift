@@ -8,6 +8,12 @@ final class ParticleRasterPass {
     private let platform: any Platform
     private let clear: any ComputePipeline
     private let raster: any ComputePipeline
+    private let dispatchPipeline: any ComputePipeline
+    private var refinementDispatch: (any Buffer)?
+    private let hierarchyPipeline: any ComputePipeline
+    private var survivors: (any Buffer)?
+    private var survivorCapacity = 0
+    private var hierarchy: (any Buffer)?
     private let pipeline: any RenderPipeline
     private let geometry: any RenderPipeline
     private let depth: any DepthState
@@ -23,6 +29,8 @@ final class ParticleRasterPass {
         self.platform = platform
         guard let clear = platform.makeComputePipeline(function: "clearParticleRaster"),
               let raster = platform.makeComputePipeline(function: "rasterParticles"),
+              let dispatchPipeline = platform.makeComputePipeline(function: "prepareParticleRefinement"),
+              let hierarchyPipeline = platform.makeComputePipeline(function: "buildParticleDepthHierarchy"),
               let pipeline = platform.makeRenderPipeline(.init(vertexFunction: "particleRasterVertex",
                   fragmentFunction: "particleRasterFragment", colorFormat: .rgba16Float,
                   depthFormat: .depth32Float, blendMode: .premultiplied)),
@@ -33,6 +41,8 @@ final class ParticleRasterPass {
         else { throw RenderError.pipeline }
         self.clear = clear
         self.raster = raster
+        self.hierarchyPipeline = hierarchyPipeline
+        self.dispatchPipeline = dispatchPipeline
         self.pipeline = pipeline
         self.geometry = geometry
         self.depth = depth
@@ -53,6 +63,10 @@ final class ParticleRasterPass {
 
     func releaseStorage() {
         winners = nil
+        hierarchy = nil
+        survivors = nil
+        refinementDispatch = nil
+        survivorCapacity = 0
         fallbackArguments = nil
         dimensions = .zero
     }
@@ -66,17 +80,35 @@ final class ParticleRasterPass {
     func prepare(count: Int, visibility: DirectVisibility, camera: CameraFrame,
                  interpolation: Float, displacementScale: Float,
                  displacements: any Buffer, positions: any Buffer,
-                 renderer: ParticleRenderer, values: ParticleRenderValues,
-                 into command: any CommandBuffer) throws {
+                 renderer: ParticleRenderer, values: ParticleRenderValues, counts: VisibilityCounts?,
+                 into command: any CommandBuffer) throws -> Bool {
         self.count = count
         let size = SIMD2(Int(camera.viewportSize.width), Int(camera.viewportSize.height))
         usesCompute = isOpaque && count >= max(65_536, size.x * size.y / 8)
-        guard usesCompute else { releaseStorage(); return }
+        guard usesCompute else { releaseStorage(); return false }
         if size != dimensions || winners == nil {
             winners = platform.makeBuffer(length: size.x * size.y * 8, memory: .gpuOnly)
+            hierarchy = nil
             dimensions = size
         }
-        if fallbackArguments == nil { fallbackArguments = platform.makeBuffer(length: 16, memory: .gpuOnly) }
+        if fallbackArguments == nil { fallbackArguments = platform.makeBuffer(length: 32, memory: .gpuOnly) }
+        let refinesBillboards = renderer.mode == .billboard
+        if refinesBillboards {
+            if hierarchy == nil {
+                hierarchy = platform.makeBuffer(length: ((size.x + 7) / 8) * ((size.y + 7) / 8) * 4, memory: .gpuOnly)
+            }
+            if survivorCapacity < count {
+                survivors = platform.makeBuffer(length: count * 4, memory: .gpuOnly)
+                survivorCapacity = count
+            }
+            if refinementDispatch == nil { refinementDispatch = platform.makeBuffer(length: 12, memory: .gpuOnly) }
+            guard hierarchy != nil, survivors != nil, refinementDispatch != nil else { throw RenderError.buffer }
+        } else {
+            hierarchy = nil
+            survivors = nil
+            survivorCapacity = 0
+            refinementDispatch = nil
+        }
         guard let winners, let fallbackArguments else { throw RenderError.buffer }
         guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
         encoder.label = "Clear Particle Raster"
@@ -87,21 +119,62 @@ final class ParticleRasterPass {
         encoder.setValue(UInt32(renderer.mode == .point ? count : 4), index: 3)
         encoder.dispatchThreads(.init(width: size.x * size.y), threads: .init(width: 256))
         encoder.endEncoding()
-        guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
-        encoder.label = "Particle Coverage"
-        encoder.setPipeline(raster)
-        encoder.setBuffer(displacements, index: 0)
-        encoder.setBuffer(positions, index: 1)
-        encoder.setBuffer(winners, index: 2)
-        encoder.setValue(visibility, index: 3)
-        encoder.setValue(interpolation, index: 4)
-        encoder.setValue(displacementScale, index: 5)
-        encoder.setValue(UInt32(count), index: 6)
-        encoder.setValue(camera, index: 7)
-        encoder.setValue(configuration(renderer, values), index: 8)
-        encoder.setBuffer(fallbackArguments, index: 9)
-        encoder.dispatchThreads(.init(width: count), threads: .init(width: 128))
-        encoder.endEncoding()
+        // Refine only when the GPU encounters a footprint beyond the cheap pass.
+        // Indirect dispatch leaves the ordinary-size path with no extra particle work.
+        for phase: UInt32 in 0..<(refinesBillboards ? 4 : 1) {
+            if phase != 0, let refinementDispatch {
+                guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+                encoder.label = "Prepare Refinement Dispatch"
+                encoder.setPipeline(dispatchPipeline)
+                encoder.setBuffer(fallbackArguments, index: 0)
+                encoder.setBuffer(refinementDispatch, index: 1)
+                encoder.setValue(UInt32(count), index: 2)
+                encoder.setValue(phase, index: 3)
+                encoder.dispatchThreads(.init(width: 1), threads: .init(width: 1))
+                encoder.endEncoding()
+            }
+            guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+            switch phase {
+            case 0: encoder.label = "Particle Coverage"
+            case 1: encoder.label = "Seed Particle Depth"
+            case 2: encoder.label = "Compact Unoccluded Particles"
+            default: encoder.label = "Refine Particle Coverage"
+            }
+            encoder.setPipeline(raster)
+            encoder.setBuffer(displacements, index: 0)
+            encoder.setBuffer(positions, index: 1)
+            encoder.setBuffer(winners, index: 2)
+            encoder.setValue(visibility, index: 3)
+            encoder.setValue(interpolation, index: 4)
+            encoder.setValue(displacementScale, index: 5)
+            encoder.setValue(UInt32(count), index: 6)
+            encoder.setValue(camera, index: 7)
+            encoder.setValue(configuration(renderer, values), index: 8)
+            encoder.setBuffer(fallbackArguments, index: 9)
+            encoder.setBuffer(counts?.buffer ?? fallbackArguments, index: 10)
+            encoder.setValue(UInt32(counts == nil || phase != 0 ? 0 : 1), index: 11)
+            encoder.setBuffer(hierarchy ?? winners, index: 12)
+            encoder.setValue(phase, index: 13)
+            encoder.setBuffer(survivors ?? winners, index: 14)
+            if phase != 0, let refinementDispatch {
+                encoder.dispatchThreadgroups(indirectBuffer: refinementDispatch, threads: .init(width: VisibilityCounts.threadCount))
+            } else {
+                encoder.dispatchThreads(.init(width: count), threads: .init(width: VisibilityCounts.threadCount))
+            }
+            encoder.endEncoding()
+            if phase == 1, let hierarchy {
+                guard let encoder = command.makeComputeEncoder() else { throw RenderError.encoder }
+                encoder.label = "Particle Depth Hierarchy"
+                encoder.setPipeline(hierarchyPipeline)
+                encoder.setBuffer(winners, index: 0)
+                encoder.setBuffer(hierarchy, index: 1)
+                encoder.setBuffer(fallbackArguments, index: 2)
+                encoder.setValue(SIMD2<UInt32>(UInt32(size.x), UInt32(size.y)), index: 3)
+                encoder.dispatchThreads(.init(width: ((size.x + 7) / 8) * ((size.y + 7) / 8)), threads: .init(width: 128))
+                encoder.endEncoding()
+            }
+        }
+        return true
     }
 
     func encode(indices: any Buffer, palette: any Buffer, displacements: any Buffer,

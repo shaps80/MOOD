@@ -10,8 +10,8 @@ enum RasterBoundaryValidation {
         let opaque = RasterOrderValidation.fixture(count: 65_537, colors: [[1, 0, 0, 1], [0, 0, 1, 1]])
         let alpha = RasterOrderValidation.fixture(count: 65_537, colors: [[0.4, 0, 0, 0.4], [0, 0, 0.7, 0.7]])
         let near = RasterOrderValidation.fixture(count: 65_537, colors: [[1, 0, 0, 1], [0, 0, 1, 1]], nearLast: true)
-        let sizes = [(64, 64), (128, 32), (64, 64), (64, 64), (64, 64), (64, 64)]
-        let sources = [opaque, opaque, near, opaque, alpha, opaque]
+        let sizes = [(64, 64), (128, 32), (64, 64), (64, 64), (64, 64), (64, 64), (64, 64), (64, 64), (64, 64)]
+        let sources = [opaque, opaque, near, opaque, alpha, opaque, opaque, opaque, opaque]
         var images: [[Data]] = []
         for automatic in [false, true] {
             let layer = BenchmarkLayer(device: device, width: 64, height: 64)
@@ -30,8 +30,8 @@ enum RasterBoundaryValidation {
                 let camera = CameraFrame(viewProjection: matrix, position: [0, 0, 10],
                     right: [1, 0, 0], up: [0, 1, 0], viewport: .init(width: UInt32(width), height: UInt32(height)))
                 try backend.renderParticles(count: 65_537, buffers: sources[step],
-                    renderer: .init(mode: .billboard, billboard: .init(facing: step == 2 ? .camera : .cameraPlane)),
-                    values: .init(size: step == 2 ? [4, 4] : [0.125, 0.125]), interpolation: 1,
+                    renderer: .init(mode: step == 7 ? .point : .billboard, billboard: .init(facing: step == 2 ? .camera : .cameraPlane)),
+                    values: .init(size: step == 2 ? [4, 4] : (step == 6 ? [0.75, 0.75] : [0.125, 0.125])), interpolation: 1,
                     cullingViewProjection: matrix, camera: camera)
                 _ = try collector.take()
                 let path = NSTemporaryDirectory() + UUID().uuidString + ".rgba16f"

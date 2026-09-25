@@ -93,11 +93,15 @@ private nonisolated final class Worker: @unchecked Sendable {
                 workerCount: configuration.count,
                 batchesPerWorker: configuration.batchesPerWorker
             )
+            // Systems may retain the executor after this worker exits.
+            defer { jobs?.setSuspended(true) }
             var system: System?
+            var isPaused = true
 
             while true {
-                let work = mailbox.next()
+                let work = mailbox.next(waitWhenEmpty: isPaused)
                 if work.shouldStop { return }
+                if let frame = work.frame { isPaused = frame.isPaused }
                 // Drain temporary Objective-C/Metal objects after each iteration
                 // of this long-lived thread, including skipped frames and errors.
                 try autoreleasepool {
@@ -145,6 +149,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                     }
                     mailbox.complete(at: sample.time)
                 }
+                jobs?.setSuspended(isPaused)
             }
         } catch {
             mailbox.fail(String(describing: error))

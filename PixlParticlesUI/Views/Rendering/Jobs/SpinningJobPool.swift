@@ -4,7 +4,7 @@ import Synchronization
 import PixlParticles
 #endif
 
-/// One submitting thread also executes jobs. Background workers spin between generations.
+/// One submitting thread also executes jobs. Background workers spin while active and park while suspended.
 /// execute is synchronous, non-reentrant, and must only be called by its owner.
 nonisolated final class SpinningJobPool: SimulationExecutor {
     let workerCount: Int
@@ -28,12 +28,23 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
 
     deinit {
         state.stopped.store(true, ordering: .releasing)
+        setSuspended(false)
         while state.exited.load(ordering: .acquiring) != workerCount - 1 {}
+    }
+
+    /// Owner only, between synchronous dispatches. A job automatically wakes the pool.
+    func setSuspended(_ suspended: Bool) {
+        guard state.suspended.load(ordering: .acquiring) != suspended else { return }
+        state.parking.lock()
+        state.suspended.store(suspended, ordering: .releasing)
+        if !suspended { state.parking.broadcast() }
+        state.parking.unlock()
     }
 
     func execute(_ job: SimulationJob) {
         guard job.count > 0 else { return }
         guard workerCount > 1 else { job.run(0..<job.count); return }
+        setSuspended(false)
         let batchCount = min(job.count, workerCount * batchesPerWorker, 65_535)
         state.job = job
         state.remaining.store(batchCount, ordering: .relaxed)
@@ -54,6 +65,8 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
         let ready = Atomic<Int>(0)
         let exited = Atomic<Int>(0)
         let stopped = Atomic<Bool>(false)
+        let suspended = Atomic<Bool>(true)
+        let parking = NSCondition()
         var epoch: UInt32 = 0 // Owner only.
         // Read only after successfully claiming a batch. Immutable until all jobs complete.
         var job: SimulationJob?
@@ -61,7 +74,16 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
         func work() {
             ready.wrappingAdd(1, ordering: .releasing)
             while !stopped.load(ordering: .acquiring) {
-                claimAndRun()
+                if suspended.load(ordering: .acquiring) {
+                    parking.lock()
+                    while suspended.load(ordering: .acquiring)
+                        && !stopped.load(ordering: .acquiring) {
+                        parking.wait()
+                    }
+                    parking.unlock()
+                } else {
+                    claimAndRun()
+                }
             }
             exited.wrappingAdd(1, ordering: .acquiringAndReleasing)
         }

@@ -9,10 +9,15 @@ import QuartzCore
 @MainActor
 struct MetalRenderBenchmarks {
     static func main() throws {
+        if CommandLine.arguments.contains("validate-visibility") { try VisibilityValidation.run(); return }
         if CommandLine.arguments.contains("validate-boundaries") { try RasterBoundaryValidation.run(); return }
         if CommandLine.arguments.contains("validate") { try RasterValidation.run(); return }
         let args = CommandLine.arguments.dropFirst().prefix(3).compactMap(Int.init)
-        let capturePrefix = CommandLine.arguments.count > 4 && !["translucent", "quick"].contains(CommandLine.arguments[4]) ? CommandLine.arguments[4] : nil
+        let options = Array(CommandLine.arguments.dropFirst(4))
+        let capturePrefix = options.first { !["translucent", "quick", "automatic-only"].contains($0) && !$0.hasPrefix("zoom=") && !$0.hasPrefix("size=") }
+        let zoom = options.first { $0.hasPrefix("zoom=") }.flatMap { Float($0.dropFirst(5)) } ?? 1
+        let size = options.first { $0.hasPrefix("size=") }.flatMap { Float($0.dropFirst(5)) } ?? 1
+        precondition(zoom.isFinite && zoom > 0 && size.isFinite && size > 0)
         let translucent = CommandLine.arguments.contains("translucent")
         let quick = CommandLine.arguments.contains("quick")
         let warmup = capturePrefix == nil && !quick ? 30 : 2
@@ -22,7 +27,7 @@ struct MetalRenderBenchmarks {
         let height = args.count > 2 ? args[2] : 1080
         precondition(count > 0 && width > 0 && height > 0)
         guard let device = MTLCreateSystemDefaultDevice() else { fatalError("Metal unavailable") }
-        for optimized in [false, true] {
+        for optimized in (options.contains("automatic-only") ? [true] : [false, true]) {
             let layer = BenchmarkLayer(device: device, width: width, height: height)
             let platform = BenchmarkPlatform(base: try PixlMetal.Platform(device: device, layer: layer), usesCompute: optimized)
             print("Path: \(optimized ? "automatic" : "hardware reference")")
@@ -37,13 +42,13 @@ struct MetalRenderBenchmarks {
                                 duration: .zero, storesRewindState: false)
             system.seek(to: .seconds(1))
             let aspect = Float(width) / Float(height)
-            let matrix = Matrix4x4(x: [1 / (200 * aspect), 0, 0, 0],
-                                  y: [0, 1 / 200, 0, 0], z: [0, 0, -1 / 1000, 0],
+            let matrix = Matrix4x4(x: [zoom / (200 * aspect), 0, 0, 0],
+                                  y: [0, zoom / 200, 0, 0], z: [0, 0, -1 / 1000, 0],
                                   w: [0, 0, 0.5, 1])
             let camera = CameraFrame(viewProjection: matrix, position: [0, 0, 600],
                                      right: [1, 0, 0], up: [0, 1, 0],
                                      viewport: .init(width: UInt32(width), height: UInt32(height)))
-            print("Device: \(device.name); particles: \(system.particleCount); drawable: \(width)x\(height)")
+            print("Device: \(device.name); particles: \(system.particleCount); drawable: \(width)x\(height); zoom: \(zoom); size: \(size)")
             print("Production renderer; paused seeded sphere; \(warmup) warmup + \(measured) measured frames per mode.")
             print("Draw excludes editor guides. Stages may overlap; do not sum stage times.")
             for mode: ParticleRenderer.Mode in [.point, .billboard] {
@@ -51,7 +56,7 @@ struct MetalRenderBenchmarks {
                 samples.reserveCapacity(measured)
                 for frame in 0..<(warmup + measured) {
                     let sample = try autoreleasepool {
-                        try renderer.render(system, renderer: .init(mode: mode), values: .init(),
+                        try renderer.render(system, renderer: .init(mode: mode), values: .init(size: [size, size]),
                                             interpolation: 0.5, cullingViewProjection: matrix, camera: camera)
                         return try collector.take()
                     }
@@ -59,6 +64,16 @@ struct MetalRenderBenchmarks {
                 }
                 print("Mode: \(mode)")
                 GPUTimingReport(samples: samples).printRows()
+                var memory = task_vm_info_data_t()
+                var memoryCount = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+                let status = withUnsafeMutablePointer(to: &memory) { pointer in
+                    pointer.withMemoryRebound(to: integer_t.self, capacity: Int(memoryCount)) {
+                        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &memoryCount)
+                    }
+                }
+                if status == KERN_SUCCESS { print("Process footprint MB: \(Double(memory.phys_footprint) / 1_000_000)") }
+                print("Metal allocated MB: \(Double(device.currentAllocatedSize) / 1_000_000)")
+                fflush(nil)
                 if let capturePrefix {
                     try capture(texture: layer.offscreen.texture, device: device, path: "\(capturePrefix)-\(optimized ? "automatic" : "reference")-\(mode).rgba16f")
                 }

@@ -58,3 +58,27 @@ billboards share the production raster pass.
 Append `translucent` to count/width/height for the alpha-0.4 benchmark, retaining
 30 warmup frames and 180 measured samples. Append `quick` for a two-warmup,
 one-sample smoke check only; its timings are not performance evidence.
+
+
+## Zoom, footprint and memory checks
+
+Append `automatic-only` to omit the hardware reference, `zoom=1.25` to scale the
+orthographic projection, and `size=4` to set billboard width/height. Defaults are
+1 for zoom and size. For example:
+
+```sh
+.scripts/benchmark-rendering run 10000000 2852 1916 automatic-only zoom=1.25 size=4
+```
+
+After each mode the harness reports process physical footprint and Metal's
+`currentAllocatedSize`, in decimal MB. These are end-of-workload snapshots, not
+peak allocation traces or a complete accounting of driver memory. The process
+includes renderer, simulation and harness resources; Metal's figure covers its
+reported resource allocations. No application controls are introduced.
+
+`validate` now includes enlarged overlapping billboards, refinement depth ties,
+and refinement/point/ordinary-size transitions (57 image comparisons), followed
+by 76 visibility checks. `validate-visibility` runs only the latter: partial SIMD
+groups, opaque/transparent paths, oversized coverage and newest-slot readback.
+Visibility is sampled at most five times per second; timestamp sampling remains
+per frame. A fused Diagnostics value of zero means no separate count pass ran.

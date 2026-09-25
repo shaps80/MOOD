@@ -598,3 +598,13 @@ capture does not record drawable dimensions or renderer settings; it is an
 observed frame, not a timing distribution or a matched benchmark comparison.
 Subsequent compute-tuning results remain provisional in
 `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-compute.md`.
+
+
+## User-Confirmed Diagnostics Result — 2026-09-25
+
+After visibility counting was sampled and fused into compute coverage, the user
+confirmed Diagnostics was essentially free at ten million particles. The 11:28
+and 11:31 editor captures both show Diagnostics at 0.00 ms. This is an observed
+stage result, not a total-rendering performance claim; those captures still show
+the separate enlarged-billboard regression. Refinement results remain provisional
+in `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-zoom.md`.

@@ -1,4 +1,5 @@
 import Dispatch
+import Foundation
 import PixlParticles
 import PixlRenderer
 import Testing
@@ -60,7 +61,7 @@ struct MailboxTests {
         #expect(mailbox.result().failure == "test failure")
     }
 
-    @Test func spinningWorkerReceivesControlAndShutdown() {
+    @Test func parkedWorkerReceivesControlAndShutdown() {
         let mailbox = Mailbox(system: system())
         _ = mailbox.next()
         let ready = DispatchGroup()
@@ -85,6 +86,51 @@ struct MailboxTests {
             if mailbox.result().time == .seconds(3) { received = true; break }
         }
         #expect(received)
+        mailbox.stop()
+        #expect(finished.wait(timeout: .now() + 5) == .success)
+    }
+
+    @Test func idleWorkerDoesNotBurnCPU() {
+        let mailbox = Mailbox(system: system())
+        _ = mailbox.next()
+        let finished = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            var before = timespec(), after = timespec()
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &before)
+            #expect(mailbox.next().shouldStop)
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &after)
+            let cpu = Double(after.tv_sec - before.tv_sec)
+                + Double(after.tv_nsec - before.tv_nsec) / 1e9
+            #expect(cpu < 0.05, "Empty mailbox consumed \(cpu) CPU seconds")
+            finished.signal()
+        }
+        Thread.sleep(forTimeInterval: 0.3)
+        mailbox.stop()
+        #expect(finished.wait(timeout: .now() + 5) == .success)
+    }
+
+    @Test func repeatedParkAndPublishDoesNotLoseWakeups() {
+        let mailbox = Mailbox(system: system())
+        _ = mailbox.next()
+        let received = DispatchSemaphore(value: 0)
+        let finished = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            for value in 1...1000 {
+                let work = mailbox.next()
+                #expect(work.seekTime == .seconds(value))
+                received.signal()
+            }
+            #expect(mailbox.next().shouldStop)
+            finished.signal()
+        }
+        for value in 1...1000 {
+            mailbox.seek(to: .seconds(value))
+            guard received.wait(timeout: .now() + 5) == .success else {
+                Issue.record("Lost mailbox wakeup")
+                mailbox.stop()
+                return
+            }
+        }
         mailbox.stop()
         #expect(finished.wait(timeout: .now() + 5) == .success)
     }

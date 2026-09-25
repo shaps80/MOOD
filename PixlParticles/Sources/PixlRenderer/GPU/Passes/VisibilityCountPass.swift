@@ -25,7 +25,8 @@ final class VisibilityCountPass {
         encoder.setValue(interpolation, index: 4)
         encoder.setValue(displacementScale, index: 5)
         encoder.setValue(UInt32(count), index: 6)
-        encoder.dispatchThreadgroups(.init(width: (count + 255) / 256), threads: .init(width: 256))
+        encoder.dispatchThreadgroups(.init(width: (count + VisibilityCounts.threadCount - 1) / VisibilityCounts.threadCount),
+                                    threads: .init(width: VisibilityCounts.threadCount))
         encoder.endEncoding()
     }
 }

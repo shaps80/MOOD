@@ -166,3 +166,19 @@ call the removed `System(particleCount:)` initializer; unchanged by this work.
 - [ ] User validation of this small tuning change; standalone results remain
   provisional in `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-compute.md`.
 - [ ] Finer shader profiling before further algorithm or scratch-storage changes.
+
+
+## Dense Billboard Zoom and Diagnostics — 2026-09-25
+
+- [x] Fuse sampled visibility counts into existing coverage; user confirms the
+  separate Diagnostics stage is essentially free. Keep GPU timestamps per frame.
+- [x] Reproduce the enlarged-billboard whole-batch geometry memory/time cliff.
+- [x] Add seeded depth rejection, index compaction and cooperative refinement
+  within the shared raster pass, without an application switch.
+- [x] Preserve normal-size performance and pass 57 image / 76 visibility checks,
+  seven renderer unit tests, and the macOS Release build.
+- [x] Extend the renderer harness with size/zoom controls and process/Metal memory.
+- [ ] User editor validation of refinement; matched harness results are provisional
+  in `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-zoom.md`.
+- [ ] Extreme footprints above 4096 pixels still use ordered geometry; transparent
+  batches retain their existing compositing costs.

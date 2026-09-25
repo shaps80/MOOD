@@ -240,27 +240,31 @@ static bool directVisible(float3 position, constant DirectVisibility &visibility
                            visibility.modes.zw, visibility.frustum);
 }
 
+// A SIMD reduction followed by one cross-SIMD barrier replaces the serial
+// eight-barrier workgroup reduction. Also used by the normal coverage pass.
+static void storeVisibilityCount(bool visible, device uint *counts, threadgroup uint *sums,
+    uint lane, uint block, uint simdLane, uint simdGroup, uint simdWidth, uint groupSize) {
+    uint subtotal = simd_sum(uint(visible));
+    if (simdLane == 0) sums[simdGroup] = subtotal;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    uint groups = (groupSize + simdWidth - 1) / simdWidth;
+    uint total = simd_sum(lane < groups ? sums[lane] : 0u);
+    if (lane == 0) counts[block] = total;
+}
+
 kernel void countDirectVisibility(
     const device uint *displacements [[buffer(0)]],
     const device PositionBatch *positions [[buffer(1)]],
-    device uint *counts [[buffer(2)]],
-    constant DirectVisibility &visibility [[buffer(3)]],
-    constant float &interpolation [[buffer(4)]],
-    constant float &displacementScale [[buffer(5)]],
-    constant uint &count [[buffer(6)]],
-    uint index [[thread_position_in_grid]],
-    uint lane [[thread_index_in_threadgroup]],
-    uint block [[threadgroup_position_in_grid]]
-) {
-    threadgroup uint sums[256];
-    sums[lane] = index < count && directVisible(
+    device uint *counts [[buffer(2)]], constant DirectVisibility &visibility [[buffer(3)]],
+    constant float &interpolation [[buffer(4)]], constant float &displacementScale [[buffer(5)]],
+    constant uint &count [[buffer(6)]], uint index [[thread_position_in_grid]],
+    uint lane [[thread_index_in_threadgroup]], uint block [[threadgroup_position_in_grid]],
+    uint simdLane [[thread_index_in_simdgroup]], uint simdGroup [[simdgroup_index_in_threadgroup]],
+    uint simdWidth [[threads_per_simdgroup]], uint groupSize [[threads_per_threadgroup]]) {
+    threadgroup uint sums[128];
+    bool visible = index < count && directVisible(
         interpolatedPosition(positions, displacements, displacementScale, index, interpolation), visibility);
-    threadgroup_barrier(mem_flags::mem_threadgroup);
-    for (uint stride = 128; stride > 0; stride >>= 1) {
-        if (lane < stride) sums[lane] += sums[lane + stride];
-        threadgroup_barrier(mem_flags::mem_threadgroup);
-    }
-    if (lane == 0) counts[block] = sums[0];
+    storeVisibilityCount(visible, counts, sums, lane, block, simdLane, simdGroup, simdWidth, groupSize);
 }
 
 kernel void classifyAndScanVisibility(
@@ -885,11 +889,76 @@ static float particleCoverage(ParticleFootprint footprint, uint2 pixel,
     return depth >= 0 && depth < 1 ? max(depth, 0.0f) : -1;
 }
 
+static void storeParticleCoverage(ParticleFootprint footprint, uint2 pixel,
+    constant CameraFrame &camera, constant RasterConfiguration &configuration,
+    device atomic_ulong *winners, uint index) {
+    float depth = particleCoverage(footprint, pixel, camera, configuration);
+    if (depth < 0) return;
+    ulong key = (ulong(as_type<uint>(depth)) << 32) | ulong(index);
+    atomic_min_explicit(winners + pixel.y * uint(camera.viewport.x) + pixel.x, key, memory_order_relaxed);
+}
+
 kernel void clearParticleRaster(device ulong *winners [[buffer(0)]],
     constant uint &count [[buffer(1)]], device uint4 *arguments [[buffer(2)]],
     constant uint &vertices [[buffer(3)]], uint index [[thread_position_in_grid]]) {
-    if (index == 0) *arguments = uint4(vertices, 0, 0, 0);
+    if (index == 0) { arguments[0] = uint4(vertices, 0, 0, 0); arguments[1] = uint4(0); }
     if (index < count) winners[index] = ULONG_MAX;
+}
+
+// A tile is an occluder only when every pixel has a seeded winner. Empty pixels
+// keep UINT_MAX, preventing rejection across holes or silhouette boundaries.
+kernel void buildParticleDepthHierarchy(const device ulong *winners [[buffer(0)]],
+    device uint *hierarchy [[buffer(1)]], device atomic_uint *arguments [[buffer(2)]],
+    constant uint2 &viewport [[buffer(3)]], uint index [[thread_position_in_grid]]) {
+    if (atomic_load_explicit(arguments + 4, memory_order_relaxed) == 0
+        || atomic_load_explicit(arguments + 5, memory_order_relaxed) != 0) return;
+    if (index == 0) atomic_store_explicit(arguments + 1, 0u, memory_order_relaxed);
+    uint columns = (viewport.x + 7) / 8;
+    uint2 start = uint2(index % columns, index / columns) * 8;
+    uint2 end = min(start + 8, viewport);
+    uint farthest = 0;
+    for (uint y = start.y; y < end.y; ++y) {
+        for (uint x = start.x; x < end.x; ++x) {
+            farthest = max(farthest, uint(winners[y * viewport.x + x] >> 32));
+        }
+    }
+    hierarchy[index] = farthest;
+}
+
+static bool particleOccluded(ParticleFootprint footprint, const device uint *hierarchy, uint width) {
+    float2 low = float2(footprint.bounds.xy) + 0.5f;
+    float2 high = float2(footprint.bounds.zw) - 0.5f;
+    float2 corner = select(low, high, footprint.depth.xy < 0);
+    // Conservative margin protects depth-plane rounding; equality stays visible.
+    float nearest = dot(footprint.depth, float3(corner, 1)) - 1e-5f;
+    if (!isfinite(nearest) || nearest <= 0) return false;
+    uint bound = as_type<uint>(nearest);
+    uint columns = (width + 7) / 8;
+    uint2 first = footprint.bounds.xy / 8;
+    uint2 last = (footprint.bounds.zw - 1) / 8;
+    for (uint y = first.y; y <= last.y; ++y) {
+        for (uint x = first.x; x <= last.x; ++x) {
+            if (hierarchy[y * columns + x] >= bound) return false;
+        }
+    }
+    return true;
+}
+
+// One 32-lane group cooperates on each seeded or surviving footprint. The
+// classification pass uses one lane per particle; all dispatches stay on GPU.
+kernel void prepareParticleRefinement(const device uint *arguments [[buffer(0)]],
+    device uint *dispatch [[buffer(1)]], constant uint &count [[buffer(2)]],
+    constant uint &phase [[buffer(3)]]) {
+    uint groups = 0;
+    if (arguments[4] != 0 && arguments[5] == 0) {
+        if (phase == 1) groups = (count - 1) / 64 + 1;
+        else if (phase == 2) groups = (count - 1) / 128 + 1;
+        else groups = arguments[6] / 4 + uint(arguments[6] % 4 != 0);
+    }
+    // A single early-exit group keeps Metal encoder timestamps valid.
+    dispatch[0] = max(groups, 1u);
+    dispatch[1] = 1;
+    dispatch[2] = 1;
 }
 
 // Match ParticleRasterPass's dispatch limit so compilation targets the actual
@@ -901,27 +970,52 @@ kernel void rasterParticles(
     constant float &interpolation [[buffer(4)]], constant float &scale [[buffer(5)]],
     constant uint &count [[buffer(6)]], constant CameraFrame &camera [[buffer(7)]],
     constant RasterConfiguration &configuration [[buffer(8)]], device atomic_uint *arguments [[buffer(9)]],
-    uint index [[thread_position_in_grid]]) {
-    if (index >= count || atomic_load_explicit(arguments + 1, memory_order_relaxed) != 0) return;
-    float3 position = interpolatedPosition(positions, displacements, scale, index, interpolation);
-    if (!directVisible(position, visibility)) return;
+    device uint *counts [[buffer(10)]], constant uint &capturesCounts [[buffer(11)]],
+    const device uint *hierarchy [[buffer(12)]], constant uint &phase [[buffer(13)]], device uint *survivors [[buffer(14)]],
+    uint threadIndex [[thread_position_in_grid]], uint lane [[thread_index_in_threadgroup]],
+    uint block [[threadgroup_position_in_grid]], uint simdLane [[thread_index_in_simdgroup]],
+    uint simdGroup [[simdgroup_index_in_threadgroup]], uint simdWidth [[threads_per_simdgroup]],
+    uint groupSize [[threads_per_threadgroup]]) {
+    threadgroup uint sums[128];
+    if (phase != 0 && (atomic_load_explicit(arguments + 4, memory_order_relaxed) == 0
+        || atomic_load_explicit(arguments + 5, memory_order_relaxed) != 0)) return;
+    uint survivorIndex = block * 4 + lane / 32;
+    if (phase == 3 && survivorIndex >= atomic_load_explicit(arguments + 6, memory_order_relaxed)) return;
+    uint index = phase == 3 ? survivors[survivorIndex] : (phase == 1 ? survivorIndex * 16 : threadIndex);
+    if (!capturesCounts && (index >= count || (phase == 0 && atomic_load_explicit(arguments + 1, memory_order_relaxed) != 0))) return;
+    float3 position = index < count ? interpolatedPosition(positions, displacements, scale, index, interpolation) : float3(0);
+    bool visible = index < count && directVisible(position, visibility);
+    // Complete telemetry before any early return, including a geometry fallback.
+    if (capturesCounts) storeVisibilityCount(visible, counts, sums, lane, block, simdLane, simdGroup, simdWidth, groupSize);
+    if (!visible || (phase == 0 && atomic_load_explicit(arguments + 1, memory_order_relaxed) != 0)) return;
     ParticleFootprint footprint = projectParticle(position, camera, configuration);
     if (any(footprint.bounds.xy >= footprint.bounds.zw)) return;
     uint2 extent = footprint.bounds.zw - footprint.bounds.xy;
-    if (extent.x * extent.y > configuration.modes.w) {
-        // Bound compute work for large/near-plane footprints. A GPU-only flag
-        // selects the same ordered geometry compositor for the complete draw.
+    if (extent.x * extent.y > (phase == 0 ? configuration.modes.w : 4096u)) {
+        // The cheap pass requests refinement. Extreme/near-plane footprints
+        // still select ordered geometry; no coverage is truncated.
         atomic_store_explicit(arguments + 1, configuration.modes.z == 0 ? 1u : count, memory_order_relaxed);
+        atomic_store_explicit(arguments + (phase == 0 ? 4 : 5), 1u, memory_order_relaxed);
         return;
     }
-    for (uint y = footprint.bounds.y; y < footprint.bounds.w; ++y) {
-        for (uint x = footprint.bounds.x; x < footprint.bounds.z; ++x) {
-            float depth = particleCoverage(footprint, uint2(x, y), camera, configuration);
-            if (depth < 0) continue;
-            uint address = y * uint(camera.viewport.x) + x;
-            uint bits = as_type<uint>(depth);
-            ulong key = (ulong(bits) << 32) | ulong(index);
-            atomic_min_explicit(winners + address, key, memory_order_relaxed);
+    if (phase == 2) {
+        if (particleOccluded(footprint, hierarchy, uint(camera.viewport.x))) return;
+        // Retain original indices: compaction order cannot change depth ties.
+        uint slot = atomic_fetch_add_explicit(arguments + 6, 1u, memory_order_relaxed);
+        survivors[slot] = index;
+        return;
+    }
+    if (phase == 0) {
+        // Keep the ordinary footprint traversal unchanged.
+        for (uint y = footprint.bounds.y; y < footprint.bounds.w; ++y) {
+            for (uint x = footprint.bounds.x; x < footprint.bounds.z; ++x) {
+                storeParticleCoverage(footprint, uint2(x, y), camera, configuration, winners, index);
+            }
+        }
+    } else {
+        for (uint pixelIndex = lane % 32; pixelIndex < extent.x * extent.y; pixelIndex += 32) {
+            uint2 pixel = footprint.bounds.xy + uint2(pixelIndex % extent.x, pixelIndex / extent.x);
+            storeParticleCoverage(footprint, pixel, camera, configuration, winners, index);
         }
     }
 }

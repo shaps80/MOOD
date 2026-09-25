@@ -15,6 +15,9 @@ final class DeviceRenderer {
     var pointLOD: PointLOD
     var cullingBounds = CullingBounds()
     var capturesDiagnostics = false
+    private var visibilityGeneration: UInt64 = 0
+    private var displayedVisibilityGeneration: UInt64 = 0
+    private var lastVisibilityCapture: ContinuousClock.Instant?
     private(set) var visibleCount: Int?
     private(set) var cpuRenderTime: Double?
     var onGPUTimings: (@Sendable (GPUFrameTimings) -> Void)?
@@ -59,9 +62,22 @@ final class DeviceRenderer {
             viewport: camera.viewportSize,
             capturesDiagnostics: capturesDiagnostics
         )
-        visibleCount = capturesDiagnostics
-            ? (resources.culling?.capturedVisibleCount ?? resources.counts?.capturedCount)
-            : nil
+        if !capturesDiagnostics {
+            visibleCount = nil
+            lastVisibilityCapture = nil
+        } else if let culling = resources.culling {
+            visibleCount = culling.capturedVisibleCount
+        } else if let counts = resources.counts, counts.generation > displayedVisibilityGeneration {
+            visibleCount = counts.capturedCount
+            displayedVisibilityGeneration = counts.generation
+        }
+        if count == 0 { visibleCount = capturesDiagnostics ? 0 : nil }
+        else if let previous = visibleCount { visibleCount = min(previous, count) }
+        // UI telemetry is sampled independently of per-frame GPU timestamps.
+        let captureVisibility = capturesDiagnostics && (lastVisibilityCapture.map {
+            $0.duration(to: .now) >= .milliseconds(200)
+        } ?? true)
+        let sampledCounts = captureVisibility ? resources.counts : nil
         guard let commandBuffer = platform.makeCommandBuffer() else {
             throw RenderError.commandBuffer
         }
@@ -115,26 +131,25 @@ final class DeviceRenderer {
             viewProjection: cullingViewProjection, renderer: renderer,
             values: values, viewport: camera.viewportSize, cullingBounds: cullingBounds
         )
-        if let counts = resources.counts {
-            try visibilityCounts.encode(
-                count: count, visibility: visibility, interpolation: interpolation,
-                displacementScale: particleBuffers.displacementScale,
-                displacements: resources.displacements, currentPositions: resources.currentPositions,
-                counts: counts, into: commandBuffer
-            )
-        }
         if capturesDiagnostics, let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
 
         let usesRaster = resources.culling == nil
             && raster?.isEligible(count: count, viewport: camera.viewportSize,
                                   palette: particleBuffers.colorPalette) == true
+        var countsPrepared = false
         if usesRaster {
-            try raster?.prepare(count: count, visibility: visibility, camera: camera,
+            countsPrepared = try raster?.prepare(count: count, visibility: visibility, camera: camera,
                 interpolation: interpolation, displacementScale: particleBuffers.displacementScale,
                 displacements: resources.displacements, positions: resources.currentPositions,
-                renderer: renderer, values: values, into: commandBuffer)
+                renderer: renderer, values: values, counts: sampledCounts, into: commandBuffer) ?? false
         }
         if !usesRaster { raster?.releaseStorage() }
+        if let counts = sampledCounts, !countsPrepared {
+            try visibilityCounts.encode(count: count, visibility: visibility,
+                interpolation: interpolation, displacementScale: particleBuffers.displacementScale,
+                displacements: resources.displacements, currentPositions: resources.currentPositions,
+                counts: counts, into: commandBuffer)
+        }
         try composition.prepare()
         let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
         guard let target = platform.currentRenderTarget() else { return }
@@ -195,7 +210,11 @@ final class DeviceRenderer {
 
         commandBuffer.present(target)
         submitted = true
-        resources.counts?.didSubmit(count: count)
+        if let counts = sampledCounts {
+            visibilityGeneration += 1
+            counts.didSubmit(count: count, generation: visibilityGeneration)
+            lastVisibilityCapture = .now
+        }
         buffers.didSubmit()
         platform.submit(commandBuffer)
         if let renderStart, let drawableWaitStart, let drawableWaitEnd {
