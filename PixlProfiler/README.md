@@ -120,3 +120,15 @@ The timeline fills the available viewer width with the selected tick's actual
 span, from CPU frame start through its last CPU/GPU completion. Fast and slow
 ticks both fill the width; the ruler shows their measured duration. There are
 no zoom/pan controls or horizontal timeline scrolling.
+
+Paused viewers start with root scopes. Tapping a parent reveals its immediate
+children below it and fits its interval to the viewport. Ancestors remain collapse
+targets. Live snapshots show exactly two fixed-height CPU/GPU total lanes, with no history,
+navigation or footer. Pending results retain empty lanes rather than changing height. Hierarchy is built
+by the deferred consumer; static `parentScope` metadata expresses cross-thread
+ownership and distinguishes overlapping siblings. Without it, same-thread
+containment supplies the default hierarchy. Missing or ambiguous explicit parents
+remain unresolved and their children stay hidden at the top level. GPU frame
+ownership uses the declared parent, frame correlation and track; calibrated stage
+timestamps need not fit exactly inside command-buffer timestamps. `ProfileController.suspend()` stops hidden consumer work, including
+late-completion refreshes; application producers must also bypass their hooks.

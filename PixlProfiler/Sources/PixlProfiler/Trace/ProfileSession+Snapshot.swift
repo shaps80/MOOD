@@ -47,6 +47,7 @@ extension ProfileSession {
             }
             durations[event.scope, default: []].append(b - a)
         }
+        result.buildHierarchy()
         result.statistics = durations.map { id, values in
             let sorted = values.sorted()
             return .init(id: id, count: values.count,

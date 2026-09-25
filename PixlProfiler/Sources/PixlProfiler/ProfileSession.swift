@@ -23,7 +23,7 @@ public final class ProfileSession: @unchecked Sendable {
     public init(scopes: [ProfileScope], retention: Double = 3, maximumEvents: Int = 100_000) {
         precondition(retention > 0 && maximumEvents > 0)
         precondition(Set(scopes.map(\.id)).count == scopes.count, "Duplicate scope ID")
-        self.scopes = scopes.map { .init(id: $0.id, name: String(describing: $0.name), kind: $0.kind) }
+        self.scopes = scopes.map { .init(id: $0.id, name: String(describing: $0.name), kind: $0.kind, parentScope: $0.parentScope) }
         self.retention = retention; self.maximumEvents = maximumEvents
         history.reserveCapacity(maximumEvents)
     }

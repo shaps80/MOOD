@@ -3,11 +3,17 @@ import PixlProfilerUI
 import PixlRenderer
 import PixlParticles
 import QuartzCore
+import Synchronization
 
 /// Construct once on the main thread; workers only use prebound recorders.
 nonisolated final class EditorRecording: Sendable {
     @MainActor let controller: ProfileController
     let didCompleteGPU: @Sendable () -> Void
+    private let visibility = Atomic<Bool>(false)
+    var isVisible: Bool {
+        get { visibility.load(ordering: .acquiring) }
+        set { visibility.store(newValue, ordering: .releasing) }
+    }
     let session: ProfileSession
     let render: ProfileRecorder
     let workers: [ProfileRecorder]
@@ -27,6 +33,7 @@ nonisolated final class EditorRecording: Sendable {
         didCompleteGPU = controller.externalCompletionHandler()
     }
     func recordSimulation(_ interval: SimulationTraceInterval) {
+        guard isVisible else { return }
         let scope: ProfileScope
         switch interval.phase {
         case .clockScheduling: scope = EditorProfileDefinitions.simClockScheduling
@@ -44,6 +51,7 @@ nonisolated final class EditorRecording: Sendable {
                       generation: interval.captureID, correlation: interval.frameID)
     }
     func recordCPU(_ interval: CPUTraceInterval) {
+        guard isVisible else { return }
         let scope: ProfileScope
         switch interval.phase {
         case .frameWait: scope = EditorProfileDefinitions.cpuFrameWait
@@ -59,6 +67,7 @@ nonisolated final class EditorRecording: Sendable {
                       generation: interval.captureID, correlation: interval.frameID)
     }
     func recordGPU(_ interval: GPUTraceInterval) {
+        guard isVisible else { return }
         let scope: ProfileScope
         switch interval.phase {
         case .frame: scope = EditorProfileDefinitions.gpuFrame

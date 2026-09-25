@@ -4,7 +4,8 @@ public struct ProfileScope: Sendable {
     public let id: UInt32
     public let name: StaticString
     public let kind: Kind
-    public init(_ id: UInt32, _ name: StaticString, kind: Kind = .work) {
-        self.id = id; self.name = name; self.kind = kind
+    public let parentScope: UInt32?
+    public init(_ id: UInt32, _ name: StaticString, kind: Kind = .work, parentScope: UInt32? = nil) {
+        self.id = id; self.name = name; self.kind = kind; self.parentScope = parentScope
     }
 }

@@ -108,9 +108,11 @@ private nonisolated final class Worker: @unchecked Sendable {
             var frameID: UInt64 = 0
 
             while true {
-                let waitToken = recording.render.begin(EditorProfileDefinitions.mailbox)
+                let waitRecorder = recording.isVisible ? recording.render : nil
+                let waitToken = waitRecorder?.begin(EditorProfileDefinitions.mailbox)
                 let work = mailbox.next(waitWhenEmpty: isPaused)
-                recording.render.end(waitToken)
+                if let waitToken { waitRecorder?.end(waitToken) }
+                let traceRecorder = recording.isVisible ? recording.render : nil
                 if work.shouldStop { return }
                 if let frame = work.frame { isPaused = frame.isPaused }
                 // Drain temporary Objective-C/Metal objects after each iteration
@@ -124,28 +126,29 @@ private nonisolated final class Worker: @unchecked Sendable {
                     system?.traceCaptureID = nil
                     if let duration = work.duration { system?.setDuration(duration) }
                     if let seekTime = work.seekTime {
-                        let token = recording.render.begin(EditorProfileDefinitions.seek)
+                        let token = traceRecorder?.begin(EditorProfileDefinitions.seek)
                         system?.seek(to: seekTime)
-                        recording.render.end(token)
+                        if let token { traceRecorder?.end(token) }
                     }
                     guard let frame = work.frame, let system else { return }
 
                     frameID &+= 1
                     jobs?.frameID = frameID
+                    jobs?.isProfiling = traceRecorder != nil
                     backend.traceFrameID = frameID
-                    let captureID = recording.gpu.generation
+                    let captureID = traceRecorder?.generation ?? 0
                     backend.traceCaptureID = captureID & 1 == 1 ? captureID : nil
                     system.traceCaptureID = backend.traceCaptureID
                     system.traceFrameID = frameID
-                    let frameToken = recording.render.begin(
+                    let frameToken = traceRecorder?.begin(
                         EditorProfileDefinitions.frame, correlation: frameID
                     )
-                    defer { recording.render.end(frameToken) }
+                    defer { if let frameToken { traceRecorder?.end(frameToken) } }
                     backend.pointLOD = frame.pointLOD
                     backend.cullingBounds = frame.cullingBounds
                     backend.capturesDiagnostics = frame.capturesDiagnostics
                     editor.frame = frame.editor
-                    let simulationToken = recording.render.begin(EditorProfileDefinitions.simulation, correlation: frameID)
+                    let simulationToken = traceRecorder?.begin(EditorProfileDefinitions.simulation, correlation: frameID)
                     let simulationStart = frame.capturesDiagnostics
                         ? ContinuousClock.now
                         : nil
@@ -158,9 +161,9 @@ private nonisolated final class Worker: @unchecked Sendable {
                     let sample = diagnosticSample?.sample
                         ?? system.sample(at: .now, isPaused: frame.isPaused)
                     let simulationDuration = simulationStart?.duration(to: .now)
-                    recording.render.end(simulationToken)
-                    let renderToken = recording.render.begin(EditorProfileDefinitions.renderFrame, correlation: frameID)
-                    defer { recording.render.end(renderToken) }
+                    if let simulationToken { traceRecorder?.end(simulationToken) }
+                    let renderToken = traceRecorder?.begin(EditorProfileDefinitions.renderFrame, correlation: frameID)
+                    defer { if let renderToken { traceRecorder?.end(renderToken) } }
                     try renderer.render(
                         system,
                         renderer: frame.renderer,

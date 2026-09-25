@@ -13,6 +13,7 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
     private let state: State
     private let recorder: ProfileRecorder?
     var frameID: UInt64 = 0
+    var isProfiling = true
 
     init(workerCount: Int, batchesPerWorker: Int = 4,
          recorder: ProfileRecorder? = nil, workerRecorders: [ProfileRecorder] = []) {
@@ -50,10 +51,12 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
     func execute(_ job: SimulationJob) {
         guard job.count > 0 else { return }
         guard workerCount > 1 else { job.run(0..<job.count); return }
+        let recorder = isProfiling ? self.recorder : nil
         let token = recorder?.begin(JobProfileDefinitions.dispatch(for: job.kind), correlation: frameID)
         defer { if let token { recorder?.end(token) } }
         setSuspended(false)
         state.frameID = frameID
+        state.recordsJob = isProfiling
         let batchCount = min(job.count, workerCount * batchesPerWorker, 65_535)
         state.job = job
         state.remaining.store(batchCount, ordering: .relaxed)
@@ -80,10 +83,11 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
         var frameID: UInt64 = 0 // Published with job ticket.
         var epoch: UInt32 = 0 // Owner only.
         // Read only after successfully claiming a batch. Immutable until all jobs complete.
+        var recordsJob = false // Published with the job ticket.
         var job: SimulationJob?
 
         func work(recorder: ProfileRecorder?) {
-            var idle = recorder?.begin(JobProfileDefinitions.spin)
+            var idle: ProfileToken?
             ready.wrappingAdd(1, ordering: .releasing)
             while !stopped.load(ordering: .acquiring) {
                 if suspended.load(ordering: .acquiring) {
@@ -95,7 +99,7 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
                         parking.wait()
                     }
                     parking.unlock()
-                    idle = recorder?.begin(JobProfileDefinitions.spin)
+                    idle = nil
                 } else {
                     claimAndRun(recorder: recorder, idle: &idle, recordsIdle: true)
                 }
@@ -113,6 +117,7 @@ nonisolated final class SpinningJobPool: SimulationExecutor {
                                          ordering: .acquiringAndReleasing).exchanged else { return }
             if let idle { recorder?.end(idle) }
             idle = nil
+            let recorder = recordsJob ? recorder : nil
             do {
                 let job = job!
                 let start = job.count * index / batchCount

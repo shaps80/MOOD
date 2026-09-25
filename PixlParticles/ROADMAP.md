@@ -216,3 +216,10 @@ call the removed `System(particleCount:)` initializer; unchanged by this work.
   renderer stages and named GPU compute passes. Show all lanes without a height cap.
   Validate simulation equivalence and nesting with Thread Sanitizer, and GPU pass
   identity / aggregate timing plus contiguous CPU intervals with real Metal.
+
+- [x] Paused-only hierarchical drill-down: parent-first child rows, animated interval
+  fitting, ancestor collapse targets and live reset. Static cross-thread scope
+  ownership, hidden recording/consumer bypass and focused regression coverage.
+
+- [x] Simplify playback profiler to two fixed-height CPU/GPU total rows; show
+  history, navigation and footer only while paused. Parents precede children.

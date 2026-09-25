@@ -184,6 +184,25 @@ struct SimulationJobTests {
         }
     }
 
+    @Test func hiddenProfilerBypassesJobRecording() {
+        let session = ProfileSession(scopes: [JobProfileDefinitions.dispatch,
+                                             JobProfileDefinitions.batch, JobProfileDefinitions.spin])
+        let owner = session.prepare(ProfileTrack(0, "Owner"))
+        let workers = (1..<4).map { session.prepare(ProfileTrack(1, "Worker"), instance: $0) }
+        let pool = SpinningJobPool(workerCount: 4, recorder: owner, workerRecorders: workers)
+        defer { pool.setSuspended(true) }
+        session.resume() // Even an enabled recording session must see no hidden job events.
+        pool.isProfiling = false
+        withUnsafePointer(to: 0) { pointer in
+            for _ in 0..<100 {
+                pool.execute(SimulationJob(count: 100, context: pointer) { _, _ in })
+            }
+        }
+        pool.setSuspended(true)
+        session.freeze()
+        #expect(session.snapshot().segments.isEmpty)
+    }
+
     private func equal(_ a: System, _ b: System) {
         let a = a.particleSnapshot, b = b.particleSnapshot
         #expect(a.count == b.count)

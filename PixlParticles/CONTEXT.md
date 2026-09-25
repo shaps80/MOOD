@@ -477,4 +477,22 @@ Metal resources synchronized.
   viewport width, regardless of refresh rate. It has no zoom/pan controls or
   horizontal timeline scrolling. The editor does not record a main-thread track.
   Hiding the metrics inspector no longer displays a fallback metrics overlay.
-  All track depths are shown without a height cap; the visible history is 20 frames.
+  The visible history is 20 frames. Live view is non-interactive with exactly two fixed-height total rows (CPU/GPU),
+  including placeholders before results arrive. History, navigation and footer are hidden.
+  Paused scope expansion inserts children below their parent and fits the selected
+  parent interval to the viewport. Ancestors remain tappable collapse targets;
+  resume clears navigation. The outer panel animates layout and interval changes.
+  Deferred snapshots contain parent/child indexes and stable interval identities.
+  Static parent-scope metadata distinguishes cross-thread dispatch ownership and
+  overlapping GPU siblings; ambiguous/missing explicit parents stay unresolved and their children are hidden
+  at the top level. GPU stages attach by declared parent/frame ID/track, allowing
+  calibrated timestamps to slightly overhang the GPU frame interval.
+  Hiding the profiler bypasses app recording hooks and disables worker tracing,
+  GPU trace submission, snapshot timers and late-completion processing. Existing
+  metrics diagnostics remain independent. Disabled checks still have a small cost;
+  hiding does not retroactively cancel GPU counter work already submitted.
+
+- The timeline hides unparented idle waits (mailbox polling and worker spinning),
+  while retaining their captured data and showing waits nested inside frame work.
+  Segment hit regions move with their bars. CPU Frame focus uses only that CPU
+  interval; idle intervals and later GPU completion cannot widen its focused scale.

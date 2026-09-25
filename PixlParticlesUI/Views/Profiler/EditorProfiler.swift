@@ -7,7 +7,9 @@ final class EditorProfiler: ObservableObject {
     var controller: ProfileController { recording.controller }
 
     func update(isVisible: Bool, isPaused: Bool) {
-        if isPaused || !isVisible { controller.freeze() }
+        recording.isVisible = isVisible
+        if !isVisible { controller.suspend() }
+        else if isPaused { controller.freeze() }
         else { controller.resume() }
     }
 }

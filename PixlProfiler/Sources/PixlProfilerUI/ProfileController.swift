@@ -19,7 +19,9 @@ public final class ProfileController {
         let processor = processor
         return { processor.externalCompletion() }
     }
-    deinit { processor.freeze() }
+    deinit { processor.suspend() }
+    /// Hidden viewers retain history without draining, processing or completion refreshes.
+    public func suspend() { processor.suspend() }
     public func resume() { processor.resume() }
     public func freeze() { processor.freeze() }
 }

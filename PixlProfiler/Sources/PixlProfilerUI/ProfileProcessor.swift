@@ -10,22 +10,24 @@ final class ProfileProcessor: @unchecked Sendable {
     let queue = DispatchQueue(label: "Pixl Profiler Consumer", qos: .utility)
     var deliver: (@Sendable (ProfileSnapshot) -> Void)? // Set once before resume.
     private var timer: DispatchSourceTimer?
+    private let hidden = Atomic<Bool>(false)
     private let frozen = Atomic<Bool>(true)
     private let completions: DispatchSourceUserDataAdd
     init(session: ProfileSession) {
         self.session = session
         completions = DispatchSource.makeUserDataAddSource(queue: queue)
         completions.setEventHandler { [weak self] in
-            guard let self, timer == nil else { return }
+            guard let self, timer == nil, !hidden.load(ordering: .acquiring) else { return }
             deliver?(session.snapshot())
         }
         completions.resume()
     }
     deinit { timer?.cancel(); completions.cancel() }
     func externalCompletion() {
-        if frozen.load(ordering: .acquiring) { completions.add(data: 1) }
+        if !hidden.load(ordering: .acquiring), frozen.load(ordering: .acquiring) { completions.add(data: 1) }
     }
     func resume() {
+        hidden.store(false, ordering: .releasing)
         queue.async { [self] in
             guard timer == nil else { return }
             frozen.store(false, ordering: .releasing)
@@ -34,13 +36,22 @@ final class ProfileProcessor: @unchecked Sendable {
             let source = DispatchSource.makeTimerSource(queue: queue)
             source.schedule(deadline: .now() + 1, repeating: 1, leeway: .milliseconds(50))
             source.setEventHandler { [weak self] in
-                guard let self else { return }
+                guard let self, !hidden.load(ordering: .acquiring) else { return }
                 deliver?(session.snapshot())
             }
             timer = source; source.resume()
         }
     }
+    func suspend() {
+        hidden.store(true, ordering: .releasing)
+        queue.async { [self] in
+            timer?.cancel(); timer = nil
+            frozen.store(true, ordering: .releasing)
+            session.freeze()
+        }
+    }
     func freeze() {
+        hidden.store(false, ordering: .releasing)
         queue.async { [self] in
             timer?.cancel(); timer = nil
             // Set before freezing/draining so a racing completion either appears

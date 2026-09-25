@@ -153,7 +153,7 @@ struct ContentView: View {
         .onChange(of: settings.visibility.isProfilerVisible) { updateProfiler() }
         .onChange(of: playback.isPaused) { updateProfiler() }
         .onChange(of: playback.isScrubbing) { updateProfiler() }
-        .onDisappear { profiler.controller.freeze() }
+        .onDisappear { profiler.update(isVisible: false, isPaused: true) }
         .onChange(of: simulation.revision) {
             playback.fraction = 0
         }

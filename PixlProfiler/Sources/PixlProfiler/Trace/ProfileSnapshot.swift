@@ -10,6 +10,7 @@ public struct ProfileSnapshot: Sendable {
         public let id: UInt32
         public let name: String
         public let kind: ProfileScope.Kind
+        public var parentScope: UInt32? = nil
     }
     public struct Segment: Sendable, Identifiable {
         public let id: UInt64
@@ -20,6 +21,17 @@ public struct ProfileSnapshot: Sendable {
         public let correlation: UInt64
         public let detail: UInt32
         public let depth: Int
+        public struct Identity: Hashable, Sendable {
+            public let track: Int
+            public let scope: UInt32
+            public let start: Double
+            public let end: Double
+            public let correlation: UInt64
+            public let detail: UInt32
+        }
+        public var identity: Identity {
+            .init(track: track, scope: scope, start: start, end: end, correlation: correlation, detail: detail)
+        }
         public var duration: Double { end - start }
     }
     public struct Statistics: Sendable, Identifiable {
@@ -37,6 +49,11 @@ public struct ProfileSnapshot: Sendable {
     public var frames: [Segment] = []
     public var gpuFrameIDs: Set<UInt64> = []
     public var correlationEnds: [UInt64: Double] = [:]
+    /// Deferred ownership tree. Cross-thread ownership uses explicit scope metadata.
+    public var segmentIDsByIdentity: [Segment.Identity: UInt64] = [:]
+    public var parents: [UInt64: UInt64] = [:]
+    public var children: [UInt64: [UInt64]] = [:]
+    public var segmentsByID: [UInt64: Segment] = [:]
     public var statistics: [Statistics] = []
     public var dropped: UInt64 = 0
     public var retainedOut: Int = 0

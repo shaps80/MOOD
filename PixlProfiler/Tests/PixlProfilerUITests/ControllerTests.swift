@@ -40,6 +40,26 @@ import PixlProfilerUI
         controller = nil
         try await until { recorder.generation & 1 == 0 }
     }
+    @Test func hiddenControllerDoesNotProcessLateCompletions() async throws {
+        let session = ProfileSession(scopes: [Self.frame, Self.gpu])
+        let recorder = session.prepare(Self.track)
+        let controller = ProfileController(session: session)
+        let completed = controller.externalCompletionHandler()
+        controller.resume()
+        try await until { controller.snapshot.isRecording }
+        let generation = recorder.generation
+        controller.suspend()
+        try await until { recorder.generation & 1 == 0 }
+        let count = controller.snapshot.segments.count
+        let start = ContinuousClock.now
+        recorder.record(Self.gpu, start: start, end: .now, generation: generation, correlation: 1)
+        completed()
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(controller.snapshot.segments.count == count)
+        // Reopening paused explicitly drains retained results.
+        controller.freeze()
+        try await until { controller.snapshot.segments.count == count + 1 }
+    }
     private func until(_ predicate: () -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !predicate(), ContinuousClock.now < deadline {
