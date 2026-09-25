@@ -3,7 +3,8 @@ set -eu
 project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 profiling_package=$(mktemp -d /private/tmp/pixl-profiling-tests.XXXXXX)
 trap 'rm -rf "$profiling_package"' EXIT
-mkdir -p "$profiling_package/Sources/ParticleProfiling" "$profiling_package/Tests/ParticleProfilingTests"
+mkdir -p "$profiling_package/Sources/PixlRenderer" "$profiling_package/Sources/ParticleProfiling" "$profiling_package/Tests/ParticleProfilingTests"
+cp "$project_root/../PixlParticles/Sources/PixlRenderer/GPU/Commands/GPUFrameTimings.swift" "$profiling_package/Sources/PixlRenderer/"
 cp "$project_root"/Views/Rendering/Profiling/*.swift "$profiling_package/Sources/ParticleProfiling/"
 cp "$project_root"/Tests/Profiling/*.swift "$profiling_package/Tests/ParticleProfilingTests/"
 cat > "$profiling_package/Package.swift" <<'PACKAGE'
@@ -13,7 +14,8 @@ let package = Package(
     name: "ParticleProfiling",
     platforms: [.macOS(.v15)],
     targets: [
-        .target(name: "ParticleProfiling", swiftSettings: [.defaultIsolation(MainActor.self)]),
+        .target(name: "PixlRenderer"),
+        .target(name: "ParticleProfiling", dependencies: ["PixlRenderer"], swiftSettings: [.defaultIsolation(MainActor.self)]),
         .testTarget(name: "ParticleProfilingTests", dependencies: ["ParticleProfiling"])
     ],
     swiftLanguageModes: [.v5]

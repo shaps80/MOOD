@@ -81,7 +81,7 @@ private nonisolated final class Worker: @unchecked Sendable {
                 platform: platform,
                 composition: editor
             )
-            backend.onGPUTime = { [capture] duration in
+            backend.onGPUTimings = { [capture] duration in
                 capture.gpuTimes.record(duration)
             }
             backend.onPresented = { [capture] time in
@@ -98,49 +98,53 @@ private nonisolated final class Worker: @unchecked Sendable {
             while true {
                 let work = mailbox.next()
                 if work.shouldStop { return }
-                if let replacement = work.system {
-                    replacement.executor = jobs
-                    system = replacement
-                }
-                if let duration = work.duration { system?.setDuration(duration) }
-                if let seekTime = work.seekTime { system?.seek(to: seekTime) }
-                guard let frame = work.frame, let system else { continue }
+                // Drain temporary Objective-C/Metal objects after each iteration
+                // of this long-lived thread, including skipped frames and errors.
+                try autoreleasepool {
+                    if let replacement = work.system {
+                        replacement.executor = jobs
+                        system = replacement
+                    }
+                    if let duration = work.duration { system?.setDuration(duration) }
+                    if let seekTime = work.seekTime { system?.seek(to: seekTime) }
+                    guard let frame = work.frame, let system else { return }
 
-                backend.pointLOD = frame.pointLOD
-                backend.cullingBounds = frame.cullingBounds
-                backend.capturesDiagnostics = frame.capturesDiagnostics
-                editor.frame = frame.editor
-                let simulationStart = frame.capturesDiagnostics
-                    ? ContinuousClock.now
-                    : nil
-                let diagnosticSample = frame.capturesDiagnostics
-                    ? system.diagnosticSample(
-                        at: .now,
-                        isPaused: frame.isPaused
+                    backend.pointLOD = frame.pointLOD
+                    backend.cullingBounds = frame.cullingBounds
+                    backend.capturesDiagnostics = frame.capturesDiagnostics
+                    editor.frame = frame.editor
+                    let simulationStart = frame.capturesDiagnostics
+                        ? ContinuousClock.now
+                        : nil
+                    let diagnosticSample = frame.capturesDiagnostics
+                        ? system.diagnosticSample(
+                            at: .now,
+                            isPaused: frame.isPaused
+                        )
+                        : nil
+                    let sample = diagnosticSample?.sample
+                        ?? system.sample(at: .now, isPaused: frame.isPaused)
+                    let simulationDuration = simulationStart?.duration(to: .now)
+                    try renderer.render(
+                        system,
+                        renderer: frame.renderer,
+                        values: frame.renderValues,
+                        interpolation: sample.interpolation,
+                        cullingViewProjection: frame.cullingViewProjection,
+                        camera: frame.camera
                     )
-                    : nil
-                let sample = diagnosticSample?.sample
-                    ?? system.sample(at: .now, isPaused: frame.isPaused)
-                let simulationDuration = simulationStart?.duration(to: .now)
-                try renderer.render(
-                    system,
-                    renderer: frame.renderer,
-                    values: frame.renderValues,
-                    interpolation: sample.interpolation,
-                    cullingViewProjection: frame.cullingViewProjection,
-                    camera: frame.camera
-                )
-                if let simulationDuration {
-                    capture.frames.record(FrameProfile(
-                        simulatedCount: system.particleCount,
-                        visibleCount: backend.visibleCount,
-                        simulationDuration: simulationDuration,
-                        fixedUpdateTime: diagnosticSample?.fixedUpdateTime,
-                        cpuRenderTime: backend.cpuRenderTime,
-                        frameBudget: frame.frameBudget
-                    ))
+                    if let simulationDuration {
+                        capture.frames.record(FrameProfile(
+                            simulatedCount: system.particleCount,
+                            visibleCount: backend.visibleCount,
+                            simulationDuration: simulationDuration,
+                            fixedUpdateTime: diagnosticSample?.fixedUpdateTime,
+                            cpuRenderTime: backend.cpuRenderTime,
+                            frameBudget: frame.frameBudget
+                        ))
+                    }
+                    mailbox.complete(at: sample.time)
                 }
-                mailbox.complete(at: sample.time)
             }
         } catch {
             mailbox.fail(String(describing: error))

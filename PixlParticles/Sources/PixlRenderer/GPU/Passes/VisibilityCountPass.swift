@@ -14,7 +14,7 @@ final class VisibilityCountPass {
                 currentPositions: any Buffer, counts: VisibilityCounts,
                 into commandBuffer: any CommandBuffer) throws {
         guard count > 0 else { return }
-        guard let encoder = commandBuffer.makeComputeEncoder()
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: .diagnostics)
         else { throw RenderError.encoder }
         encoder.label = "Count Direct Visibility"
         encoder.setPipeline(pipeline)

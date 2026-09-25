@@ -27,6 +27,11 @@ validated.
 
 ## 2. Colour Authoring and Diagnostics — Active
 
+- [x] Expose GPU total, preparation, diagnostics, draw, vertex, and fragment
+  timings in the editor and a production-Metal benchmark package. Sample GPU
+  stage counters with bounded reusable storage and retain unavailable values.
+  macOS compile checks only; runtime measurements remain pending.
+
 - [x] Draw non-LOD particles directly from shared simulation storage; remove
   per-particle renderer compaction buffers on that path, preserve bounds and
   visible-count diagnostics, and reuse immutable Metal indirect draw commands.

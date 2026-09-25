@@ -1,3 +1,5 @@
+import PixlRenderer
+
 /// All presentation-window scanning, conversion, and diagnostic assembly is
 /// deferred to the UI consumer, outside render execution and Metal callbacks.
 @MainActor
@@ -7,7 +9,7 @@ final class ProfileConsumer {
     private let capture: ProfileCapture
     private var frameSequence: UInt64?
     private var gpuSequence: UInt64?
-    private var gpuTime: Double?
+    private var gpuTimings = GPUFrameTimings()
     private var presentationTimes = [Double](
         repeating: 0, count: presentationCapacity
     )
@@ -22,7 +24,7 @@ final class ProfileConsumer {
         capture.gpuTimes.drain { sequence, duration in
             guard gpuSequence.map({ sequence > $0 }) ?? true else { return }
             gpuSequence = sequence
-            gpuTime = duration
+            gpuTimings = duration
         }
         // Slot traversal is unordered. Sort here, never on callback threads,
         // so the bounded history retains the newest presentation timestamps.
@@ -47,7 +49,7 @@ final class ProfileConsumer {
             cpuSimulationTime: simulationTime,
             fixedUpdateTime: latest.fixedUpdateTime,
             cpuRenderTime: latest.cpuRenderTime,
-            gpuTime: gpuTime,
+            gpuTimings: gpuTimings,
             frameBudget: latest.frameBudget,
             presentationFrameCount: presentation.frameCount,
             presentationDuration: presentation.duration

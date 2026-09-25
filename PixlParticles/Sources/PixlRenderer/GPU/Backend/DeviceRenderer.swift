@@ -16,6 +16,7 @@ final class DeviceRenderer {
     var capturesDiagnostics = false
     private(set) var visibleCount: Int?
     private(set) var cpuRenderTime: Double?
+    var onGPUTimings: (@Sendable (GPUFrameTimings) -> Void)?
     var onGPUTime: (@Sendable (Double?) -> Void)?
     var onPresented: (@Sendable (Double) -> Void)?
 
@@ -63,6 +64,9 @@ final class DeviceRenderer {
             throw RenderError.commandBuffer
         }
         commandBuffer.label = "Pixl Particles Frame"
+        if capturesDiagnostics, let onGPUTimings {
+            commandBuffer.addTimingsHandler(onGPUTimings)
+        }
         if let cullingBuffers = resources.culling {
             try culling.encode(
                 count: count,

@@ -217,6 +217,19 @@
   UI-owned. The matched standalone harness compiles these exact pool sources.
   Focused correctness tests: `PixlParticlesUI/.scripts/test-simulation-jobs
   --sanitize thread`.
+- GPU profiling keeps the existing command-buffer total and uses Metal stage
+  timestamp attachments for preparation compute, diagnostic compute, draw-pass
+  elapsed time, vertex time, and fragment time. The draw pass includes editor
+  guides/overlays; vertex and fragment intervals may overlap and are not additive.
+  GPU ticks are calibrated with Metal CPU/GPU reference timestamps. A bounded
+  four-lease pool reuses 128-entry sample buffers only after completion/resolution;
+  unsupported counters and invalid samples remain unavailable, never zero.
+  Registering the timing callback before encoding enables counters only when
+  diagnostics are captured. No extra pass boundaries or synchronous GPU waits.
+  The panel averages valid samples independently for each row.
+  `PixlParticles/.scripts/benchmark-rendering` builds/runs the standalone macOS
+  production-Metal benchmark with the same timing fields (median/p95). Its paused
+  fixture and serial submissions isolate GPU work; it excludes editor guides.
 - Editor profiling is separate from the control mailbox. Render samples, GPU
   durations, and presentation timestamps use preallocated bounded atomic buffers
   supporting concurrent producers and one UI consumer. Recording makes one slot

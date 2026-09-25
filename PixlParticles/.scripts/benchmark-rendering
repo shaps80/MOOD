@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+package="$root/Benchmarks/Renderer/Metal"
+build="${PIXL_RENDER_BENCHMARK_BUILD:-/private/tmp/pixl-metal-render-benchmark}"
+mode="${1:-run}"
+if [[ "$mode" != build && "$mode" != run ]]; then
+    echo "Usage: $0 [build|run] [particle-count width height]" >&2
+    exit 2
+fi
+if [[ $# -gt 0 ]]; then shift; fi
+swift build --package-path "$package" --scratch-path "$build" --build-system native -c release
+bin="$(swift build --package-path "$package" --scratch-path "$build" --build-system native -c release --show-bin-path)"
+# Native SwiftPM copies Metal resources; compile the exact production shaders.
+# New Xcode versions mount the separately installed Metal toolchain here;
+# xcrun can still resolve its nonfunctional placeholder in XcodeDefault.
+metal_tool=""
+metallib_tool=""
+for toolchain in /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-*/Metal.xctoolchain; do
+    if [[ -x "$toolchain/usr/bin/metal" && -x "$toolchain/usr/bin/metallib" ]]; then
+        metal_tool="$toolchain/usr/bin/metal"
+        metallib_tool="$toolchain/usr/bin/metallib"
+        break
+    fi
+done
+if [[ -z "$metal_tool" ]]; then
+    metal_tool="$(xcrun -sdk macosx --find metal)"
+    metallib_tool="$(xcrun -sdk macosx --find metallib)"
+fi
+"$metal_tool" -isysroot "$(xcrun -sdk macosx --show-sdk-path)" -c "$root/Sources/PixlMetal/Shaders/Points.metal" -o "$build/Points.air"
+mkdir -p "$bin/PixlParticles_PixlMetal.bundle"
+"$metallib_tool" "$build/Points.air" -o "$bin/PixlParticles_PixlMetal.bundle/default.metallib"
+if [[ "$mode" == run ]]; then "$bin/MetalRenderBenchmarks" "$@"; fi

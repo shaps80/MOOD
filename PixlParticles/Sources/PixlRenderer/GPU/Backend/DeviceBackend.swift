@@ -21,6 +21,10 @@ public final class DeviceBackend: Backend {
     }
     public var visibleCount: Int? { renderer.visibleCount }
     public var cpuRenderTime: Double? { renderer.cpuRenderTime }
+    public var onGPUTimings: (@Sendable (GPUFrameTimings) -> Void)? {
+        get { renderer.onGPUTimings }
+        set { renderer.onGPUTimings = newValue }
+    }
     public var onGPUTime: (@Sendable (Double?) -> Void)? {
         get { renderer.onGPUTime }
         set { renderer.onGPUTime = newValue }

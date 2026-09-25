@@ -2,6 +2,9 @@ import Metal
 import PixlRenderer
 
 final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
+    private let timingPool: GPUTimingPool
+    private var timingSample: GPUTimingSample?
+    private var timingHandler: (@Sendable (GPUFrameTimings) -> Void)?
     private let reusableDraw: ReusableDraw
     let value: any MTLCommandBuffer
 
@@ -10,13 +13,23 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
         set { value.label = newValue }
     }
 
-    init(_ value: any MTLCommandBuffer, reusableDraw: ReusableDraw) {
+    init(_ value: any MTLCommandBuffer, reusableDraw: ReusableDraw, timingPool: GPUTimingPool) {
+        self.timingPool = timingPool
         self.value = value
         self.reusableDraw = reusableDraw
     }
 
     func makeComputeEncoder() -> (any PixlRenderer.ComputeEncoder)? {
-        value.makeComputeCommandEncoder().map(MetalComputeEncoder.init)
+        makeComputeEncoder(timing: .preparation)
+    }
+
+    func makeComputeEncoder(timing: GPUComputePhase) -> (any PixlRenderer.ComputeEncoder)? {
+        guard let timingSample else {
+            return value.makeComputeCommandEncoder().map(MetalComputeEncoder.init)
+        }
+        let descriptor = MTLComputePassDescriptor()
+        timingSample.attach(to: descriptor, phase: timing)
+        return value.makeComputeCommandEncoder(descriptor: descriptor).map(MetalComputeEncoder.init)
     }
 
     func makeRenderEncoder(
@@ -25,8 +38,32 @@ final class MetalCommandBuffer: PixlRenderer.CommandBuffer {
         guard let target = target as? MetalRenderTarget else {
             preconditionFailure("Render target belongs to another platform")
         }
+        timingSample?.attach(to: target.descriptor)
         return value.makeRenderCommandEncoder(descriptor: target.descriptor)
             .map { MetalRenderEncoder($0, reusableDraw: reusableDraw) }
+    }
+
+    func addTimingsHandler(_ handler: @escaping @Sendable (GPUFrameTimings) -> Void) {
+        precondition(timingHandler == nil)
+        timingHandler = handler
+        timingSample = timingPool.acquire()
+    }
+
+    func prepareForSubmission() {
+        guard let handler = timingHandler else { return }
+        let sample = timingSample
+        timingSample = nil
+        value.addCompletedHandler { [timingPool] commandBuffer in
+            defer { if let sample { timingPool.release(sample) } }
+            guard commandBuffer.status == .completed else { handler(.init()); return }
+            let elapsed = commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
+            let total = elapsed > 0 ? elapsed : nil
+            handler(sample?.resolve(total: total) ?? .init(total: total))
+        }
+    }
+
+    deinit {
+        if let timingSample { timingPool.release(timingSample) }
     }
 
     func present(_ target: any PixlRenderer.RenderTarget) {

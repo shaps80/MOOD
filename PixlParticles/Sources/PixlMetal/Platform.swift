@@ -7,6 +7,7 @@ public final class Platform: PixlRenderer.Platform {
     private static let drawableCount = 3
     private static let inFlightFrameCount = 2
 
+    private let timingPool: GPUTimingPool
     private let reusableDraw: ReusableDraw
     private let device: any MTLDevice
     private let queue: any MTLCommandQueue
@@ -30,6 +31,7 @@ public final class Platform: PixlRenderer.Platform {
             throw RenderError.shaderLibrary
         }
         queue.label = "Pixl Metal"
+        timingPool = GPUTimingPool(device: device)
         reusableDraw = ReusableDraw(device: device)
         self.device = device
         self.queue = queue
@@ -61,6 +63,7 @@ public final class Platform: PixlRenderer.Platform {
         commandBuffer.value.addCompletedHandler { [available] _ in
             available.signal()
         }
+        commandBuffer.prepareForSubmission()
         commandBuffer.value.commit()
     }
 
@@ -144,7 +147,7 @@ public final class Platform: PixlRenderer.Platform {
     }
 
     public func makeCommandBuffer() -> (any PixlRenderer.CommandBuffer)? {
-        queue.makeCommandBuffer().map { MetalCommandBuffer($0, reusableDraw: reusableDraw) }
+        queue.makeCommandBuffer().map { MetalCommandBuffer($0, reusableDraw: reusableDraw, timingPool: timingPool) }
     }
 
     public func currentRenderTarget() -> (any PixlRenderer.RenderTarget)? {

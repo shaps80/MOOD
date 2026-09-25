@@ -127,7 +127,7 @@ final class CullingPass {
         mode: ParticleRenderer.Mode,
         into commandBuffer: any CommandBuffer
     ) throws {
-        guard let encoder = commandBuffer.makeComputeEncoder() else {
+        guard let encoder = commandBuffer.makeComputeEncoder(timing: .diagnostics) else {
             throw RenderError.encoder
         }
         encoder.label = "Capture Visible Count"

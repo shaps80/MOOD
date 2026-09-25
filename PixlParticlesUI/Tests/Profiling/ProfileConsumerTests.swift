@@ -1,3 +1,4 @@
+import PixlRenderer
 import Testing
 @testable import ParticleProfiling
 
@@ -17,7 +18,7 @@ struct ProfileConsumerTests {
         #expect(consumer.consume() == nil)
         capture.frames.record(frame(100))
         capture.frames.record(frame(200))
-        capture.gpuTimes.record(0.009)
+        capture.gpuTimes.record(.init(total: 0.009, diagnostics: 0.001, draw: 0.008, vertex: 0.005, fragment: 0.006))
         for time in [10.0, 8.0, 9.0, 6.0] { capture.presentations.record(time) }
         let result = consumer.consume()
         #expect(result?.simulatedCount == 200)
@@ -25,6 +26,9 @@ struct ProfileConsumerTests {
         #expect(result?.cpuSimulationTime == 0.002)
         #expect(result?.fixedUpdateTime == 0.001)
         #expect(result?.gpuTime == 0.009)
+        #expect(result?.gpuTimings.diagnostics == 0.001)
+        #expect(result?.gpuTimings.vertex == 0.005)
+        #expect(result?.gpuTimings.fragment == 0.006)
         #expect(result?.presentationFrameCount == 2)
         #expect(result?.presentationDuration == 2)
         #expect(consumer.consume() == nil)
@@ -33,10 +37,10 @@ struct ProfileConsumerTests {
     @Test func callbacksWithoutFrameAndNilGPUTime() {
         let capture = ProfileCapture()
         let consumer = ProfileConsumer(capture: capture)
-        capture.gpuTimes.record(0.01)
+        capture.gpuTimes.record(.init(total: 0.01))
         capture.presentations.record(10)
         #expect(consumer.consume() == nil)
-        capture.gpuTimes.record(nil)
+        capture.gpuTimes.record(.init())
         capture.presentations.record(11)
         capture.frames.record(frame(10))
         let result = consumer.consume()
