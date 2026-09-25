@@ -190,8 +190,9 @@
   pending system replacement, seek/reset, and duration changes without replaying
   consumed commands. The reverse channel carries completed playback time and
   persistent failures. Shutdown is a separate atomic flag. The render worker
-  spins for publication whenever the mailbox is empty, including while paused;
-  the UI never spins or waits for it. No concurrency dependency is introduced
+  spins for publication during active playback, but parks on a coalesced semaphore
+  wake when paused or before the first frame. Controls, frames, and shutdown wake
+  it without making the UI wait; paused edits still render on demand. No concurrency dependency is introduced
   into `PixlRenderer`. Focused tests run with
   `PixlParticlesUI/.scripts/test-mailbox --sanitize thread`.
 - Simulation accepts an optional synchronous `SimulationExecutor`; nil retains
@@ -204,8 +205,11 @@
 - The Apple UI owns a persistent `SpinningJobPool`, reused across ticks and
   system replacements. The calling render thread participates; total worker
   count includes that caller. Workers claim ranges with an atomic epoch/count/
-  index ticket and publish completion atomically. Idle workers spin; there are
-  no condition variables or mutexes in job dispatch. Completion waits for jobs,
+  index ticket and publish completion atomically. Workers start suspended and
+  park on a condition while playback is paused, including after paused seeks.
+  Dispatch wakes a suspended pool; active dispatch retains atomic claiming and
+  spinning between generations. Worker exit also suspends any executor retained
+  by a document system. Completion waits for jobs,
   not acknowledgement from idle workers. Shutdown waits for worker exit before
   releasing shared state. No PixlConcurrency dependency is introduced.
 - The default is all physical cores with four batches per worker. Launch

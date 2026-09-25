@@ -182,3 +182,17 @@ call the removed `System(particleCount:)` initializer; unchanged by this work.
   in `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-zoom.md`.
 - [ ] Extreme footprints above 4096 pixels still use ordered geometry; transparent
   batches retain their existing compositing costs.
+
+## Paused Editor CPU — 2026-09-25
+
+- [x] Reproduce empty-mailbox and idle-simulation-pool CPU spinning independently.
+- [x] Park the render worker while paused and park simulation workers between
+  paused operations; preserve active playback polling and atomic job dispatch.
+- [x] Wake for control changes, rendering, seeking, resume and shutdown, with
+  coalesced mailbox notifications and no per-frame wake-token accumulation.
+- [x] Pass focused mailbox and simulation tests, including idle CPU regression,
+  repeated wake/suspend cycles and deterministic simulation; iOS Release builds.
+- [ ] User iPad validation: paused CPU/power, edits and camera navigation, seek,
+  resume and document closure. Local idle probes are not accepted device baselines.
+- [ ] Design deferred per-thread timeline capture over the editor to investigate
+  the user's negligible serial-versus-performance-core-count improvement.

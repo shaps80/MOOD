@@ -57,7 +57,7 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "PIXL_SIMULATION_CORES"
-            value = "performance"
+            value = "one"
             isEnabled = "YES">
          </EnvironmentVariable>
          <EnvironmentVariable
