@@ -90,7 +90,7 @@ public struct ProfilerView: View {
             ZStack(alignment: .leadingFirstTextBaseline) {
                 Text("00").hidden()
                 if let segment = selectedSegment {
-                    Text("\(name(segment.scope)) · \(format(segment.duration)) · frame/job \(segment.correlation) · range \(segment.detail)")
+                    Text("\(name(segment.scope)) · \(format(segment.duration)) · range \(segment.detail)")
                 }
             }
             .font(.caption.monospaced()).textSelection(.enabled)
@@ -169,7 +169,7 @@ public struct ProfilerView: View {
                     var line = Path()
                     let x = Double(index) / 4 * size.width
                     line.move(to: CGPoint(x: x, y: 0)); line.addLine(to: CGPoint(x: x, y: size.height))
-                    context.stroke(line, with: .color(.secondary.opacity(0.25)), lineWidth: 1)
+                    context.stroke(line, with: .style(.separator), lineWidth: 1)
                 }
                 for segment in segments {
                     let x = max(0, (segment.start - bounds.lowerBound) / span * size.width)
@@ -183,8 +183,9 @@ public struct ProfilerView: View {
                     }
                 }
             }
-            .background(.fill.quinary)
-            .contentShape(Rectangle())
+            .background(.thinMaterial)
+            .clipShape(.rect(cornerRadius: 4))
+            .contentShape(.rect)
             .gesture(DragGesture(minimumDistance: 0).onChanged { value in
                 let time = bounds.lowerBound + value.location.x / max(1, geometry.size.width) * (bounds.upperBound - bounds.lowerBound)
                 let depth = Int(value.location.y / 20)
