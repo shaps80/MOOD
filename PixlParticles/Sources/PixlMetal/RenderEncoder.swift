@@ -23,6 +23,10 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         value.setDepthStencilState((state as! MetalDepthState).value)
     }
 
+    func setFragmentBytes(_ bytes: UnsafeRawBufferPointer, index: Int) {
+        value.setFragmentBytes(bytes.baseAddress!, length: bytes.count, index: index)
+    }
+
     func setFragmentBuffer(_ buffer: any PixlRenderer.Buffer, index: Int) {
         value.setFragmentBuffer((buffer as! MetalBuffer).value, offset: 0, index: index)
     }

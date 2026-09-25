@@ -31,9 +31,16 @@ with the device, drawable size, workload and timing configuration.
 
 Run `.scripts/benchmark-rendering run validate` for GPU image comparisons of
 dense, sparse, odd-size, perspective and transparent workloads. Alternating HDR
-palette colours test nearest-particle selection. Fallback paths must be exact;
-compute rasterization permits at most 0.01% differing pixels to account for
-subpixel viewport rounding. This is a regression limit, not proof of bit identity.
+palette colours test nearest-particle selection. Both points and billboards are
+covered, including rotation, all facing modes, screen sizing, oversized and
+zero-area shapes. Translucent, sparse and zero-area cases must be exact;
+compute coverage permits at most 0.1% differing pixels for subpixel rounding.
+Oversized opaque geometry permits max(4, pixel count / 100000) differing pixels.
+These are regression limits, not proof of bit identity.
+
+The suite also requires exact images for ordered alpha, zero-alpha depth writes,
+equal-depth ties, same-area viewport resizing, near-plane clipping and opacity
+transitions. Run `run validate-boundaries` for just the six transition checks.
 
 Pass a fourth argument after count/width/height to capture raw RGBA16Float images:
 `.scripts/benchmark-rendering run 2000000 2852 1916 /tmp/particles`.
@@ -42,4 +49,9 @@ timings as performance evidence. Filenames identify reference/automatic and mode
 
 The reference comparison is confined to this harness; the application has no
 optimization switch. Its selection is automatic based on GPU capabilities,
-opaque palette entries, point mode and particle density.
+opaque palette entries, particle density and projected footprint. Points and
+billboards share the production raster pass.
+
+Append `translucent` to count/width/height for the alpha-0.4 benchmark, retaining
+30 warmup frames and 180 measured samples. Append `quick` for a two-warmup,
+one-sample smoke check only; its timings are not performance evidence.

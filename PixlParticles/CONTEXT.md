@@ -131,11 +131,11 @@
   typed property. Typed descriptors declare semantic validation, storage
   requirements, and required passes. Emitter compilation generically aggregates
   those effects; it contains no property-specific lowering methods.
-- Without active point LOD, points and billboards draw directly from the shared
-  simulation buffers using vertex/instance IDs. No per-particle visibility index
-  or scan-offset buffers are allocated. Billboard rendering expands four
-  procedural vertices per particle, with no geometry buffer. Size, rotation,
-  size space, and facing remain per-draw values.
+- Without active point LOD, points and billboards read shared simulation buffers
+  directly. No per-particle visibility index or scan-offset buffers are allocated.
+  Dense opaque draws use shared compute coverage as described below; ordered
+  geometry expands billboards into four procedural vertices without a geometry
+  buffer. Size, rotation, size space and facing remain per-draw values.
 - Direct vertex rejection and optional diagnostic counting share the same
   visibility predicate as LOD compaction: point centres, conservative billboard
   bounds, and authored centre-based cubic bounds. Diagnostics retain one UInt32
@@ -376,24 +376,38 @@
   The complete model is Codable document data and currently has no runtime,
   storage, simulation-loop, or GPU integration.
 
-## Dense Opaque Point Rendering
+## Shared Point and Billboard Rasterization
 
-Dense one-pixel point draws use a compute raster path on adapters advertising
-64-bit atomic minimum. The Metal adapter enables it for Apple GPU family 9 or
-newer. Every particle is projected from the existing shared simulation buffers.
-Each pixel keeps a 64-bit key (Float32 depth, then particle index); minimum depth
-wins and equal depths retain the earliest particle. A fullscreen triangle reads
-the winning palette colour and writes its depth into the normal scene pass.
+`ParticleRasterPass` owns point and billboard rendering on adapters advertising
+64-bit atomic minimum (Metal: Apple GPU family 9 or newer). Both shapes use one
+projection helper and the existing shared simulation buffers. Dense opaque
+coverage resolves a 64-bit key per pixel (Float32 depth, then particle index),
+then a fullscreen triangle writes the winning palette colour and scene depth.
+Equal depths retain the earliest particle. Billboard coverage respects rotation,
+world/screen sizing and all three facing modes.
 
-Only wholly opaque palettes qualify. Transparent particles, sparse point draws,
-unsupported devices, pipeline creation failure, billboards and the existing LOD
-path retain hardware rendering. The density gate is at least 65,536 particles
-and at least one particle per eight viewport pixels. The palette is immutable,
-so opacity checks are cached by buffer identity.
+Only wholly opaque palettes use compute coverage. The density gate is at least
+65,536 particles and at least one particle per eight viewport pixels. Immutable
+palette opacity is cached by buffer identity. Sparse and translucent batches use
+the same pass's ordered geometry shader, retaining hardware premultiplied alpha
+blending, strict less-than depth testing and depth writes, including zero alpha.
+This preserves current compositing semantics; it is not order-independent
+transparency. Unsupported devices, pipeline creation failure and the existing
+LOD path retain the previous hardware rendering implementation.
 
-Scratch storage is one GPU-only 8-byte value per viewport pixel, reused across
-ordered submissions, resized when either dimension changes, and released when
-this path is inactive. It does not duplicate particle streams. Pixel-boundary
-rounding can differ slightly from fixed-function rasterization; this path is not
-bit-identical at every subpixel boundary. GPU image regression checks cover that
-bounded difference and require exact fallback images.
+Compute work is bounded to 256 bounding-box pixels per particle. A larger
+visible footprint triggers a GPU-written indirect geometry draw for the whole
+batch and suppresses compute resolve. This avoids truncating large or near-plane
+billboards, without CPU readback. The geometry shader shares projection logic
+with compute coverage.
+
+Scratch is one GPU-only 8-byte value per viewport pixel plus a 16-byte indirect
+argument buffer. It is reused across ordered submissions, resized when either
+dimension changes and released when compute coverage is inactive. No extra
+per-particle streams or fragment lists are retained. Fixed-function subpixel
+rounding can differ from compute coverage; GPU image checks bound that difference
+and require exact translucent, sparse, ordering and transition test images.
+
+Provisional measurements and validation are recorded in
+`Benchmarks/Renderer/Metal/RESULTS-2026-09-25-billboards.md`. Opaque billboards
+improve substantially; no reliable translucent speedup was measured.

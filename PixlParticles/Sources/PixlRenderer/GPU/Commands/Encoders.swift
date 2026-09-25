@@ -18,6 +18,7 @@ public protocol RenderEncoder: AnyObject {
     var label: String? { get set }
     func setPipeline(_ pipeline: any RenderPipeline)
     func setDepthState(_ state: any DepthState)
+    func setFragmentBytes(_ bytes: UnsafeRawBufferPointer, index: Int)
     func setFragmentBuffer(_ buffer: any Buffer, index: Int)
     func setVertexBuffer(_ buffer: any Buffer, index: Int)
     func setVertexBytes(_ bytes: UnsafeRawBufferPointer, index: Int)
@@ -49,6 +50,11 @@ public extension ComputeEncoder {
 }
 
 public extension RenderEncoder {
+    func setFragmentValue<Value: BitwiseCopyable>(_ value: Value, index: Int) {
+        var value = value
+        withUnsafeBytes(of: &value) { setFragmentBytes($0, index: index) }
+    }
+
     func drawReusablePrimitives(_ primitive: Primitive, vertexCount: Int, instanceCount: Int) {
         drawPrimitives(primitive, vertexStart: 0, vertexCount: vertexCount, instanceCount: instanceCount)
     }

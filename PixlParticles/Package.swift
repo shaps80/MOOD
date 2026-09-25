@@ -85,7 +85,8 @@ let package = Package(
             swiftSettings: optimizedSettings()
         )
     ],
-    swiftLanguageModes: [.v6]
+    swiftLanguageModes: [.v6],
+    cxxLanguageStandard: .cxx17
 )
 
 private func optimizedSettings() -> [SwiftSetting] {

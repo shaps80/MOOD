@@ -4,11 +4,12 @@ import PixlMetal
 @_spi(EditorDiagnostics) import PixlParticles
 import PixlRenderer
 
-/// Image comparison exercises both production paths without an application toggle.
+/// Compares the shared renderer with the original hardware reference.
 @MainActor
-enum PointValidation {
+enum RasterValidation {
     static func run() throws {
         let device = MTLCreateSystemDefaultDevice()!
+        var failures: [String] = []
         for (name, count, width, height, alpha, perspective) in [
             ("dense", 2_000_000, 2852, 1916, Float(1), false),
             ("odd dimensions", 300_003, 801, 603, 1, false),
@@ -30,6 +31,15 @@ enum PointValidation {
             let camera = CameraFrame(viewProjection: matrix, position: [0, 0, 600],
                 right: [1, 0, 0], up: [0, 1, 0],
                 viewport: .init(width: UInt32(width), height: UInt32(height)))
+            for (shape, settings, values) in [
+                ("point", ParticleRenderer(mode: .point), ParticleRenderValues()),
+                ("billboard", .init(mode: .billboard), .init()),
+                ("rotated plane", .init(mode: .billboard, billboard: .init(facing: .cameraPlane)), .init(size: [3, 2], rotation: 0.43)),
+                ("upright", .init(mode: .billboard, billboard: .init(facing: .cameraPosition)), .init(size: [3, 1], rotation: -0.31)),
+                ("screen", .init(mode: .billboard, billboard: .init(sizeSpace: .screen)), .init(size: [7, 13], rotation: 0.7)),
+                ("oversized", .init(mode: .billboard, billboard: .init(sizeSpace: .screen)), .init(size: [120, 180], rotation: 0.3)),
+                ("zero area", .init(mode: .billboard), .init(size: [0, 2]))
+            ] {
             var images: [Data] = []
             for optimized in [false, true] {
                 let layer = BenchmarkLayer(device: device, width: width, height: height)
@@ -40,7 +50,7 @@ enum PointValidation {
                 backend.onGPUTimings = { collector.record($0) }
                 let renderer = PixlParticles.Renderer(backend: PaletteValidationBackend(base: backend, count: system.particleCount, alpha: alpha))
                 for _ in 0..<3 {
-                    try renderer.render(system, renderer: .init(mode: .point), values: .init(),
+                    try renderer.render(system, renderer: settings, values: values,
                         interpolation: 0.5, cullingViewProjection: matrix, camera: camera)
                     _ = try collector.take()
                 }
@@ -54,10 +64,20 @@ enum PointValidation {
                     zip(a.bindMemory(to: UInt64.self), b.bindMemory(to: UInt64.self)).filter { $0 != $1 }.count
                 }
             }
-            print("\(name): \(differences) differing pixels / \(width * height)")
+            print("\(name) \(shape): \(differences) differing pixels / \(width * height)")
             // Compute and fixed-function viewport rounding can disagree at a
             // subpixel boundary. Fallbacks must be bit-identical.
-            precondition(differences <= (alpha < 1 || count < 65_536 ? 0 : width * height / 10000))
+            fflush(nil)
+            let tolerance = alpha < 1 || count < 65_536 || shape == "zero area"
+                ? 0 : (shape == "oversized" ? max(4, width * height / 100000) : width * height / 1000)
+            if differences > tolerance {
+                failures.append("\(name) \(shape): \(differences)")
+            }
+            }
         }
+        try RasterOrderValidation.run()
+        try RasterBoundaryValidation.run()
+        print("Image failures: \(failures)"); fflush(nil)
+        precondition(failures.isEmpty)
     }
 }

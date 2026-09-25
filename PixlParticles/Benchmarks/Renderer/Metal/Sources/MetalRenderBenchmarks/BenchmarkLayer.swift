@@ -3,7 +3,7 @@ import QuartzCore
 
 /// A real private render target, independent of display visibility or sleep.
 final class BenchmarkLayer: CAMetalLayer {
-    let offscreen: BenchmarkDrawable
+    var offscreen: BenchmarkDrawable
     init(device: any MTLDevice, width: Int, height: Int) {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
             width: width, height: height, mipmapped: false)
@@ -12,6 +12,13 @@ final class BenchmarkLayer: CAMetalLayer {
         offscreen = BenchmarkDrawable(texture: device.makeTexture(descriptor: descriptor)!)
         super.init()
         self.device = device
+    }
+    func resize(width: Int, height: Int) {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
+            width: width, height: height, mipmapped: false)
+        descriptor.storageMode = .private
+        descriptor.usage = .renderTarget
+        offscreen = BenchmarkDrawable(texture: device!.makeTexture(descriptor: descriptor)!)
     }
     override init(layer: Any) { fatalError("Not a display layer") }
     required init?(coder: NSCoder) { fatalError("Not archived") }

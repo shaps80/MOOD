@@ -97,6 +97,7 @@ private final class RecordingRenderPipeline: RenderPipeline {}
 private final class RecordingDepthState: DepthState {}
 
 private final class RecordingRenderEncoder: RenderEncoder {
+    func setFragmentBytes(_ bytes: UnsafeRawBufferPointer, index: Int) {}
     func setFragmentBuffer(_ buffer: any Buffer, index: Int) {}
     struct Draw {
         let vertexCount: Int

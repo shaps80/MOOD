@@ -137,3 +137,19 @@ validated.
 
 Full package tests currently fail to compile because legacy particle tests still
 call the removed `System(particleCount:)` initializer; unchanged by this work.
+
+## Shared Billboard GPU Optimization — Implemented, Editor Validation Pending
+
+- [x] Replace the point-only compute pass with shared point/billboard projection,
+  coverage and ordered geometry submission; no application switch.
+- [x] Preserve translucent blending and depth-write semantics, including zero
+  alpha and equal-depth ordering. Translucent speed is effectively unchanged.
+- [x] Bound large-footprint compute work using GPU indirect geometry fallback.
+- [x] Pass 47 GPU image comparisons, seven isolated renderer tests and the macOS
+  Release build. Cover resize, near-plane, opacity transitions and all billboard
+  sizing/facing modes.
+- [x] Measure both shapes and opaque/translucent workloads sequentially. Reject
+  slower tile-list, mesh and oversized-triangle experiments.
+- [ ] User editor validation. Provisional timings live in
+  `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-billboards.md`; accepted `PERF.md`
+  baselines remain unchanged.

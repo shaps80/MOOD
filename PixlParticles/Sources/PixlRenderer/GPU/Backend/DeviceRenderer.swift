@@ -8,7 +8,7 @@ final class DeviceRenderer {
     private let visibilityCounts: VisibilityCountPass
     private let culling: CullingPass
     private let lod: LODPass
-    private let opaquePoints: OpaquePointPass?
+    private let raster: ParticleRasterPass?
     private let points: PointPass
     private let billboards: BillboardPass
 
@@ -28,7 +28,7 @@ final class DeviceRenderer {
         visibilityCounts = try VisibilityCountPass(platform: platform)
         culling = try CullingPass(platform: platform)
         lod = try LODPass(platform: platform)
-        opaquePoints = platform.supportsAtomicUInt64Min ? try? OpaquePointPass(platform: platform) : nil
+        raster = platform.supportsAtomicUInt64Min ? try? ParticleRasterPass(platform: platform) : nil
         points = try PointPass(platform: platform)
         billboards = try BillboardPass(platform: platform)
     }
@@ -125,16 +125,16 @@ final class DeviceRenderer {
         }
         if capturesDiagnostics, let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
 
-        let usesOpaquePoints = renderer.mode == .point && resources.culling == nil
-            && opaquePoints?.isEligible(count: count, viewport: camera.viewportSize,
-                                       palette: particleBuffers.colorPalette) == true
-        if usesOpaquePoints {
-            try opaquePoints?.prepare(count: count, visibility: visibility, camera: camera,
+        let usesRaster = resources.culling == nil
+            && raster?.isEligible(count: count, viewport: camera.viewportSize,
+                                  palette: particleBuffers.colorPalette) == true
+        if usesRaster {
+            try raster?.prepare(count: count, visibility: visibility, camera: camera,
                 interpolation: interpolation, displacementScale: particleBuffers.displacementScale,
                 displacements: resources.displacements, positions: resources.currentPositions,
-                into: commandBuffer)
+                renderer: renderer, values: values, into: commandBuffer)
         }
-        if !usesOpaquePoints { opaquePoints?.releaseStorage() }
+        if !usesRaster { raster?.releaseStorage() }
         try composition.prepare()
         let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
         guard let target = platform.currentRenderTarget() else { return }
@@ -147,11 +147,15 @@ final class DeviceRenderer {
         }
         encoder.label = "Scene Draw"
         composition.encodeBackground(into: encoder)
-        switch renderer.mode {
-        case .point:
-            if usesOpaquePoints {
-                opaquePoints?.encode(indices: resources.colorIndices, palette: resources.colorPalette, into: encoder)
-            } else {
+        if usesRaster {
+            raster?.encode(indices: resources.colorIndices, palette: resources.colorPalette,
+                displacements: resources.displacements, positions: resources.currentPositions,
+                visibility: visibility, camera: camera, interpolation: interpolation,
+                displacementScale: particleBuffers.displacementScale, renderer: renderer,
+                values: values, into: encoder)
+        } else {
+            switch renderer.mode {
+            case .point:
                 points.encode(
                     displacements: resources.displacements,
                     displacementScale: particleBuffers.displacementScale,
@@ -167,24 +171,24 @@ final class DeviceRenderer {
                     viewProjection: camera.viewProjection,
                     into: encoder
                 )
+            case .billboard:
+                billboards.encode(
+                    displacements: resources.displacements,
+                    displacementScale: particleBuffers.displacementScale,
+                    currentPositions: resources.currentPositions,
+                    colorIndices: resources.colorIndices,
+                    colorPalette: resources.colorPalette,
+                    visibleIndices: resources.culling?.visibleIndices,
+                    indirectArguments: resources.culling?.indirectArguments,
+                    count: count,
+                    visibility: visibility,
+                    renderer: renderer.billboard,
+                    values: values,
+                    interpolation: interpolation,
+                    camera: camera,
+                    into: encoder
+                )
             }
-        case .billboard:
-            billboards.encode(
-                displacements: resources.displacements,
-                displacementScale: particleBuffers.displacementScale,
-                currentPositions: resources.currentPositions,
-                colorIndices: resources.colorIndices,
-                colorPalette: resources.colorPalette,
-                visibleIndices: resources.culling?.visibleIndices,
-                indirectArguments: resources.culling?.indirectArguments,
-                count: count,
-                visibility: visibility,
-                renderer: renderer.billboard,
-                values: values,
-                interpolation: interpolation,
-                camera: camera,
-                into: encoder
-            )
         }
         composition.encodeOverlay(into: encoder)
         encoder.endEncoding()

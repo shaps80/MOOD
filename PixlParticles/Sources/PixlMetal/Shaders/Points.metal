@@ -777,59 +777,185 @@ fragment half4 billboardFragment(BillboardVertex input [[stage_in]]) {
     return input.color;
 }
 
-struct OpaquePointVertex { float4 position [[position]]; };
-struct OpaquePointOutput { half4 color [[color(0)]]; float depth [[depth(any)]]; };
+// Shared point/quad coverage. Shape only changes the projected footprint;
+// colour/depth ownership and translucent ordering are shared.
+struct RasterConfiguration { float4 values; uint4 modes; };
+struct ParticleFootprint {
+    float4 center; float4 right; float4 up; uint4 bounds;
+    float3 u; float3 v; float3 q; float3 depth;
+};
+static float3 screenPlane(float3 row, float2 inverseViewport) {
+    return float3(row.xy * inverseViewport * float2(2, -2), row.z - row.x + row.y);
+}
 
-kernel void clearPointWinners(device ulong *winners [[buffer(0)]],
-                             constant uint &count [[buffer(1)]], uint index [[thread_position_in_grid]]) {
+template <bool VertexOnly = false>
+static ParticleFootprint projectParticle(float3 position, constant CameraFrame &camera,
+                                        constant RasterConfiguration &configuration, float2 corner = float2(0)) {
+    ParticleFootprint result;
+    result.center = camera.viewProjection * float4(position, 1);
+    result.right = 0;
+    result.up = 0;
+    result.bounds = 0;
+    uint2 viewport = uint2(camera.viewport.xy);
+    if (!all(isfinite(result.center))) return result;
+    if (configuration.modes.z == 0) {
+        if (VertexOnly) return result;
+        if (result.center.w <= 0 || result.center.z < 0 || result.center.z >= result.center.w) return result;
+        float2 screen = fma(result.center.xy / result.center.w,
+            float2(viewport) * float2(0.5f, -0.5f), float2(viewport) * 0.5f - 1.0f / 512.0f);
+        if (any(screen < 0) || any(screen >= float2(viewport))) return result;
+        uint2 pixel = uint2(floor(screen));
+        result.bounds = uint4(pixel, pixel + 1);
+        return result;
+    }
+    if (any(configuration.values.xy <= 0)) return result;
+    float sine = sin(configuration.values.z), cosine = cos(configuration.values.z);
+    float2 localRight = configuration.values.x * float2(cosine, sine);
+    float2 localUp = configuration.values.y * float2(-sine, cosine);
+    if (configuration.modes.x == 1) {
+        if (VertexOnly) {
+            float2 local = corner * configuration.values.xy;
+            local = float2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+            result.center.xy += local * float2(camera.viewport.z * 2, camera.viewport.w * 2) * result.center.w;
+            return result;
+        }
+        result.right = float4(localRight * camera.viewport.zw * 2 * result.center.w, 0, 0);
+        result.up = float4(localUp * camera.viewport.zw * 2 * result.center.w, 0, 0);
+    } else {
+        float3 right, up;
+        billboardBasis(position, camera, configuration.modes.y, right, up);
+        if (VertexOnly) {
+            float2 local = corner * configuration.values.xy;
+            local = float2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
+            result.center = camera.viewProjection * float4(position + right * local.x + up * local.y, 1);
+            return result;
+        }
+        result.right = camera.viewProjection * float4(right * localRight.x + up * localRight.y, 0);
+        result.up = camera.viewProjection * float4(right * localUp.x + up * localUp.y, 0);
+    }
+    float3 a = float3(result.right.xy, result.right.w);
+    float3 b = float3(result.up.xy, result.up.w);
+    float3 c = float3(result.center.xy, result.center.w);
+    float determinant = dot(a, cross(b, c));
+    if (abs(determinant) < 1e-20f) return result;
+    float3 u = cross(b, c) / determinant;
+    float3 v = cross(c, a) / determinant;
+    float3 q = cross(a, b) / determinant;
+    result.u = screenPlane(u, camera.viewport.zw);
+    result.v = screenPlane(v, camera.viewport.zw);
+    result.q = screenPlane(q, camera.viewport.zw);
+    result.depth = screenPlane(result.right.z * u + result.up.z * v + result.center.z * q, camera.viewport.zw);
+    float2 minimum = float2(INFINITY), maximum = float2(-INFINITY);
+    bool crossesEye = false;
+    for (uint corner = 0; corner < 4; ++corner) {
+        float4 clip = result.center + result.right * ((corner & 1) ? 0.5f : -0.5f)
+                                   + result.up * ((corner & 2) ? 0.5f : -0.5f);
+        if (clip.w <= 0) { crossesEye = true; continue; }
+        float2 screen = fma(clip.xy / clip.w, float2(viewport) * float2(0.5f, -0.5f), float2(viewport) * 0.5f);
+        minimum = min(minimum, screen);
+        maximum = max(maximum, screen);
+    }
+    // Near/eye-plane crossings are evaluated homogeneously during coverage.
+    // A full viewport bound is conservative and cannot drop a clipped corner.
+    if (crossesEye) { result.bounds = uint4(0, 0, viewport); return result; }
+    minimum = clamp(floor(minimum), float2(0), float2(viewport));
+    maximum = clamp(ceil(maximum), float2(0), float2(viewport));
+    result.bounds = uint4(uint2(minimum), uint2(maximum));
+    return result;
+}
+
+static bool insideParticleEdge(float value, float3 equation) {
+    // For an inward edge normal in screen coordinates, equality belongs to
+    // top/left edges only. This prevents a pixel-centre edge from being doubled.
+    return value > 0 || (value == 0 && (equation.x > 0 || (equation.x == 0 && equation.y > 0)));
+}
+
+static float particleCoverage(ParticleFootprint footprint, uint2 pixel,
+                              constant CameraFrame &camera, constant RasterConfiguration &configuration) {
+    if (any(pixel < footprint.bounds.xy) || any(pixel >= footprint.bounds.zw)) return -1;
+    if (configuration.modes.z == 0) return max(footprint.center.z / footprint.center.w, 0.0f);
+    float3 sample = float3(float2(pixel) + 0.5f, 1);
+    float u = dot(footprint.u, sample), v = dot(footprint.v, sample), q = dot(footprint.q, sample);
+    if (q <= 0
+        || !insideParticleEdge(0.5f * q + u, 0.5f * footprint.q + footprint.u)
+        || !insideParticleEdge(0.5f * q - u, 0.5f * footprint.q - footprint.u)
+        || !insideParticleEdge(0.5f * q + v, 0.5f * footprint.q + footprint.v)
+        || !insideParticleEdge(0.5f * q - v, 0.5f * footprint.q - footprint.v)) return -1;
+    float depth = dot(footprint.depth, sample);
+    return depth >= 0 && depth < 1 ? max(depth, 0.0f) : -1;
+}
+
+kernel void clearParticleRaster(device ulong *winners [[buffer(0)]],
+    constant uint &count [[buffer(1)]], device uint4 *arguments [[buffer(2)]],
+    constant uint &vertices [[buffer(3)]], uint index [[thread_position_in_grid]]) {
+    if (index == 0) *arguments = uint4(vertices, 0, 0, 0);
     if (index < count) winners[index] = ULONG_MAX;
 }
 
-kernel void rasterOpaquePoints(
-    const device uint *displacements [[buffer(0)]],
-    const device PositionBatch *positions [[buffer(1)]],
-    device atomic_ulong *winners [[buffer(2)]],
-    constant DirectVisibility &visibility [[buffer(3)]],
-    constant float &interpolation [[buffer(4)]],
-    constant float &displacementScale [[buffer(5)]],
-    constant uint &count [[buffer(6)]],
-    constant float4x4 &viewProjection [[buffer(7)]],
-    uint index [[thread_position_in_grid]]
-) {
-    if (index >= count) return;
-    float3 position = interpolatedPosition(positions, displacements, displacementScale, index, interpolation);
+kernel void rasterParticles(
+    const device uint *displacements [[buffer(0)]], const device PositionBatch *positions [[buffer(1)]],
+    device atomic_ulong *winners [[buffer(2)]], constant DirectVisibility &visibility [[buffer(3)]],
+    constant float &interpolation [[buffer(4)]], constant float &scale [[buffer(5)]],
+    constant uint &count [[buffer(6)]], constant CameraFrame &camera [[buffer(7)]],
+    constant RasterConfiguration &configuration [[buffer(8)]], device atomic_uint *arguments [[buffer(9)]],
+    uint index [[thread_position_in_grid]]) {
+    if (index >= count || atomic_load_explicit(arguments + 1, memory_order_relaxed) != 0) return;
+    float3 position = interpolatedPosition(positions, displacements, scale, index, interpolation);
     if (!directVisible(position, visibility)) return;
-    float4 clip = viewProjection * float4(position, 1);
-    if (!all(isfinite(clip)) || clip.w <= 0 || clip.z < 0 || clip.z >= clip.w) return;
-    float3 ndc = clip.xyz / clip.w;
-    uint2 viewport = visibility.modes.zw;
-    float2 screen = fma(ndc.xy, float2(viewport) * float2(0.5f, -0.5f), float2(viewport) * 0.5f - 1.0f / 512.0f);
-    // Apple rasterizers snap to 8 fractional bits with a top-left boundary.
-    // The fused viewport transform avoids an additional rounding of NDC.
-    if (any(screen < 0) || any(screen >= float2(viewport))) return;
-    int2 pixel = int2(floor(screen));
-    if (any(pixel < 0) || any(uint2(pixel) >= viewport)) return;
-    ulong key = (ulong(as_type<uint>(max(ndc.z, 0.0f))) << 32) | ulong(index);
-    atomic_min_explicit(winners + uint(pixel.y) * viewport.x + uint(pixel.x), key, memory_order_relaxed);
+    ParticleFootprint footprint = projectParticle(position, camera, configuration);
+    if (any(footprint.bounds.xy >= footprint.bounds.zw)) return;
+    uint2 extent = footprint.bounds.zw - footprint.bounds.xy;
+    if (extent.x * extent.y > configuration.modes.w) {
+        // Bound compute work for large/near-plane footprints. A GPU-only flag
+        // selects the same ordered geometry compositor for the complete draw.
+        atomic_store_explicit(arguments + 1, configuration.modes.z == 0 ? 1u : count, memory_order_relaxed);
+        return;
+    }
+    for (uint y = footprint.bounds.y; y < footprint.bounds.w; ++y) {
+        for (uint x = footprint.bounds.x; x < footprint.bounds.z; ++x) {
+            float depth = particleCoverage(footprint, uint2(x, y), camera, configuration);
+            if (depth < 0) continue;
+            uint address = y * uint(camera.viewport.x) + x;
+            uint bits = as_type<uint>(depth);
+            ulong key = (ulong(bits) << 32) | ulong(index);
+            atomic_min_explicit(winners + address, key, memory_order_relaxed);
+        }
+    }
 }
 
-vertex OpaquePointVertex opaquePointVertex(uint index [[vertex_id]]) {
-    OpaquePointVertex output;
-    output.position = float4(index == 2 ? 3 : -1, index == 1 ? 3 : -1, 0, 1);
-    return output;
+struct ParticleRasterVertex { float4 position [[position]]; };
+struct ParticleRasterOutput { half4 color [[color(0)]]; float depth [[depth(any)]]; };
+vertex ParticleRasterVertex particleRasterVertex(uint index [[vertex_id]]) {
+    return { float4(index == 2 ? 3 : -1, index == 1 ? 3 : -1, 0, 1) };
 }
 
-fragment OpaquePointOutput opaquePointFragment(
-    OpaquePointVertex input [[stage_in]],
-    const device ulong *winners [[buffer(0)]],
-    const device ushort *indices [[buffer(1)]],
-    const device float4 *palette [[buffer(2)]],
-    constant uint &width [[buffer(3)]]
-) {
-    ulong key = winners[uint(input.position.y) * width + uint(input.position.x)];
+fragment ParticleRasterOutput particleRasterFragment(
+    ParticleRasterVertex input [[stage_in]], const device ulong *winners [[buffer(0)]],
+    const device ushort *indices [[buffer(1)]], const device float4 *palette [[buffer(2)]],
+    constant uint &width [[buffer(3)]], const device uint4 &arguments [[buffer(4)]]) {
+    if (arguments.y != 0) discard_fragment();
+    uint2 pixel = uint2(input.position.xy);
+    ulong key = winners[pixel.y * width + pixel.x];
     if (key == ULONG_MAX) discard_fragment();
-    OpaquePointOutput output;
-    output.depth = as_type<float>(uint(key >> 32));
-    output.color = half4(palette[indices[uint(key)]]);
-    return output;
+    return { half4(palette[indices[uint(key)]]), as_type<float>(uint(key >> 32)) };
+}
+
+// One ordered shader serves both primitive shapes. Its vertex specialization
+// skips pixel coverage construction, which the hardware rasterizer owns.
+vertex PointVertex particleGeometryVertex(
+    uint vertexID [[vertex_id]], uint instanceID [[instance_id]],
+    const device uint *displacements [[buffer(0)]], const device PositionBatch *positions [[buffer(1)]],
+    constant CameraFrame &camera [[buffer(2)]], constant float &interpolation [[buffer(3)]],
+    constant RasterConfiguration &configuration [[buffer(4)]], constant float &scale [[buffer(5)]],
+    const device ushort *indices [[buffer(7)]], const device float4 *palette [[buffer(8)]],
+    constant DirectVisibility &visibility [[buffer(9)]]) {
+    uint index = configuration.modes.z == 0 ? vertexID : instanceID;
+    float3 position = interpolatedPosition(positions, displacements, scale, index, interpolation);
+    float2 corner = float2((vertexID & 1) ? 0.5f : -0.5f, (vertexID & 2) ? 0.5f : -0.5f);
+    ParticleFootprint footprint = projectParticle<true>(position, camera, configuration, corner);
+    PointVertex result;
+    result.position = directVisible(position, visibility) ? footprint.center : float4(2, 2, 2, 1);
+    result.pointSize = 1;
+    result.color = half4(palette[indices[index]]);
+    return result;
 }

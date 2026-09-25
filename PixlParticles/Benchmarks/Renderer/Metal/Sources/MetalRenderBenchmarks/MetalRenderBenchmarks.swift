@@ -9,11 +9,14 @@ import QuartzCore
 @MainActor
 struct MetalRenderBenchmarks {
     static func main() throws {
-        if CommandLine.arguments.contains("validate") { try PointValidation.run(); return }
+        if CommandLine.arguments.contains("validate-boundaries") { try RasterBoundaryValidation.run(); return }
+        if CommandLine.arguments.contains("validate") { try RasterValidation.run(); return }
         let args = CommandLine.arguments.dropFirst().prefix(3).compactMap(Int.init)
-        let capturePrefix = CommandLine.arguments.count > 4 ? CommandLine.arguments[4] : nil
-        let warmup = capturePrefix == nil ? 30 : 2
-        let measured = capturePrefix == nil ? 180 : 1
+        let capturePrefix = CommandLine.arguments.count > 4 && !["translucent", "quick"].contains(CommandLine.arguments[4]) ? CommandLine.arguments[4] : nil
+        let translucent = CommandLine.arguments.contains("translucent")
+        let quick = CommandLine.arguments.contains("quick")
+        let warmup = capturePrefix == nil && !quick ? 30 : 2
+        let measured = capturePrefix == nil && !quick ? 180 : 1
         let count = args.first ?? 2_000_000
         let width = args.count > 1 ? args[1] : 1920
         let height = args.count > 2 ? args[2] : 1080
@@ -30,6 +33,7 @@ struct MetalRenderBenchmarks {
             let renderer = PixlParticles.Renderer(backend: backend)
             let system = System(seed: 0, spawnRate: Float(count), lifetime: 1,
                                 spawnRegion: .sphere(radius: 150, domain: .surface),
+                                color: .init(red: 1, green: 1, blue: 1, alpha: translucent ? 0.4 : 1),
                                 duration: .zero, storesRewindState: false)
             system.seek(to: .seconds(1))
             let aspect = Float(width) / Float(height)
