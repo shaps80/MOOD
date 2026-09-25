@@ -9,6 +9,9 @@ if [[ "$mode" != build && "$mode" != run ]]; then
     exit 2
 fi
 if [[ $# -gt 0 ]]; then shift; fi
+# Cross-module optimization can embed dependency implementations in callers.
+# Clean native outputs so Swift dispatch changes and Metal resources stay paired.
+swift package --package-path "$package" --scratch-path "$build" clean
 swift build --package-path "$package" --scratch-path "$build" --build-system native -c release
 bin="$(swift build --package-path "$package" --scratch-path "$build" --build-system native -c release --show-bin-path)"
 # Native SwiftPM copies Metal resources; compile the exact production shaders.

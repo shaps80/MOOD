@@ -411,3 +411,10 @@ and require exact translucent, sparse, ordering and transition test images.
 Provisional measurements and validation are recorded in
 `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-billboards.md`. Opaque billboards
 improve substantially; no reliable translucent speedup was measured.
+
+The coverage kernel declares its existing 128-thread dispatch limit to the Metal
+compiler. Local paired eight-million-particle measurements showed a modest
+median improvement; no new buffers or simulation/draw changes were introduced.
+See `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-compute.md`. Benchmark invocations
+clean native outputs to keep cross-module optimized Swift dispatch code and
+Metal resources synchronized.

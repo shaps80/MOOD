@@ -153,3 +153,16 @@ call the removed `System(particleCount:)` initializer; unchanged by this work.
 - [ ] User editor validation. Provisional timings live in
   `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-billboards.md`; accepted `PERF.md`
   baselines remain unchanged.
+
+## Compute Preparation Tuning — 2026-09-25
+
+- [x] Record user-confirmed eight-million-particle editor results in PERF.md.
+- [x] Benchmark compute-only alternatives with image validation and clean builds.
+- [x] Retain only the existing 128-thread limit declaration; paired total GPU
+  medians improve about 5%, without demonstrated p95 improvement.
+- [x] Remove slower or inconclusive coverage-lane, depth-phase, loop-flattening,
+  smaller-group and unrolling experiments.
+- [x] Prevent stale optimized Swift callers in the benchmark build workflow.
+- [ ] User validation of this small tuning change; standalone results remain
+  provisional in `Benchmarks/Renderer/Metal/RESULTS-2026-09-25-compute.md`.
+- [ ] Finer shader profiling before further algorithm or scratch-storage changes.

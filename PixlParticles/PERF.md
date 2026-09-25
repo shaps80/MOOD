@@ -583,3 +583,18 @@ uses spinning atomic handoffs. Simulation is still serial at this baseline.
 
 These are app-overlay values, separate from the standalone full-tick harness.
 The screenshot does not establish a latency distribution or its power state.
+
+## User-Confirmed Shared Raster Editor Result — 2026-09-25
+
+User screenshot at 10:36:34 and accompanying report on the current M4 Pro Mac:
+8,000,000 simulated and visible particles, 57.8 FPS, 17.29 ms frame interval,
+1.45 ms simulation and 0.11 ms CPU render. GPU total 10.97 ms, preparation
+10.58 ms, diagnostics 0.86 ms and draw 0.34 ms (vertex 0.03 ms, fragment 0.30 ms).
+GPU stages overlap; do not sum them. User reports process memory below 750 MB
+and approximately 1000% aggregate CPU usage across ten cores.
+
+This validates the preceding shared raster work in the editor. The cropped
+capture does not record drawable dimensions or renderer settings; it is an
+observed frame, not a timing distribution or a matched benchmark comparison.
+Subsequent compute-tuning results remain provisional in
+`Benchmarks/Renderer/Metal/RESULTS-2026-09-25-compute.md`.

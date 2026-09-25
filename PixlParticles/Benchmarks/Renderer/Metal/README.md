@@ -5,7 +5,10 @@ Run: `.scripts/benchmark-rendering run 2000000 1920 1080`.
 
 The standalone package depends on the production PixlParticles and PixlMetal
 packages. The script compiles the production Metal shaders into the SwiftPM
-resource bundle. No copied rendering implementation or benchmark-only API.
+resource bundle. Each invocation cleans native build outputs before compiling:
+cross-module optimization otherwise can retain stale dependency implementations
+and mismatch Swift dispatch dimensions with newly compiled shaders. No copied
+rendering implementation or benchmark-only API.
 
 Runs the hardware reference and automatic production path sequentially, each
 with point and billboard workloads, with a fixed seeded sphere,

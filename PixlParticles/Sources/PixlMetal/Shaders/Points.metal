@@ -892,6 +892,9 @@ kernel void clearParticleRaster(device ulong *winners [[buffer(0)]],
     if (index < count) winners[index] = ULONG_MAX;
 }
 
+// Match ParticleRasterPass's dispatch limit so compilation targets the actual
+// threadgroup size instead of reserving for larger groups.
+[[max_total_threads_per_threadgroup(128)]]
 kernel void rasterParticles(
     const device uint *displacements [[buffer(0)]], const device PositionBatch *positions [[buffer(1)]],
     device atomic_ulong *winners [[buffer(2)]], constant DirectVisibility &visibility [[buffer(3)]],
