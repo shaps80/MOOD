@@ -174,7 +174,12 @@ public struct ProfilerView: View {
                 for segment in segments {
                     let x = max(0, (segment.start - bounds.lowerBound) / span * size.width)
                     let right = min(size.width, (segment.end - bounds.lowerBound) / span * size.width)
-                    let rect = CGRect(x: x, y: Double(segment.depth) * 20, width: max(1, right - x), height: 18)
+                    // Inset each edge by 1pt: touching intervals have a 2pt visual gap.
+                    // Preserve tiny events as 1pt marks without shifting the time scale.
+                    let width = max(1, right - x)
+                    let inset = min(1, (width - 1) / 2)
+                    let rect = CGRect(x: x + inset, y: Double(segment.depth) * 20,
+                                      width: width - inset * 2, height: 18)
                     context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .style(color(segment.scope)))
 
                     if rect.width > 55 {
