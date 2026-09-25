@@ -18,6 +18,7 @@ public protocol RenderEncoder: AnyObject {
     var label: String? { get set }
     func setPipeline(_ pipeline: any RenderPipeline)
     func setDepthState(_ state: any DepthState)
+    func setFragmentBuffer(_ buffer: any Buffer, index: Int)
     func setVertexBuffer(_ buffer: any Buffer, index: Int)
     func setVertexBytes(_ bytes: UnsafeRawBufferPointer, index: Int)
     func drawPrimitives(

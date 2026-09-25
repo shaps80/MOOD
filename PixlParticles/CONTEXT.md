@@ -375,3 +375,25 @@
   total emitter age, and normalized emitter-loop inputs are authored explicitly.
   The complete model is Codable document data and currently has no runtime,
   storage, simulation-loop, or GPU integration.
+
+## Dense Opaque Point Rendering
+
+Dense one-pixel point draws use a compute raster path on adapters advertising
+64-bit atomic minimum. The Metal adapter enables it for Apple GPU family 9 or
+newer. Every particle is projected from the existing shared simulation buffers.
+Each pixel keeps a 64-bit key (Float32 depth, then particle index); minimum depth
+wins and equal depths retain the earliest particle. A fullscreen triangle reads
+the winning palette colour and writes its depth into the normal scene pass.
+
+Only wholly opaque palettes qualify. Transparent particles, sparse point draws,
+unsupported devices, pipeline creation failure, billboards and the existing LOD
+path retain hardware rendering. The density gate is at least 65,536 particles
+and at least one particle per eight viewport pixels. The palette is immutable,
+so opacity checks are cached by buffer identity.
+
+Scratch storage is one GPU-only 8-byte value per viewport pixel, reused across
+ordered submissions, resized when either dimension changes, and released when
+this path is inactive. It does not duplicate particle streams. Pixel-boundary
+rounding can differ slightly from fixed-function rasterization; this path is not
+bit-identical at every subpixel boundary. GPU image regression checks cover that
+bounded difference and require exact fallback images.

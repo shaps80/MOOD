@@ -8,6 +8,7 @@ final class DeviceRenderer {
     private let visibilityCounts: VisibilityCountPass
     private let culling: CullingPass
     private let lod: LODPass
+    private let opaquePoints: OpaquePointPass?
     private let points: PointPass
     private let billboards: BillboardPass
 
@@ -27,6 +28,7 @@ final class DeviceRenderer {
         visibilityCounts = try VisibilityCountPass(platform: platform)
         culling = try CullingPass(platform: platform)
         lod = try LODPass(platform: platform)
+        opaquePoints = platform.supportsAtomicUInt64Min ? try? OpaquePointPass(platform: platform) : nil
         points = try PointPass(platform: platform)
         billboards = try BillboardPass(platform: platform)
     }
@@ -123,6 +125,16 @@ final class DeviceRenderer {
         }
         if capturesDiagnostics, let onGPUTime { commandBuffer.addCompletedHandler(onGPUTime) }
 
+        let usesOpaquePoints = renderer.mode == .point && resources.culling == nil
+            && opaquePoints?.isEligible(count: count, viewport: camera.viewportSize,
+                                       palette: particleBuffers.colorPalette) == true
+        if usesOpaquePoints {
+            try opaquePoints?.prepare(count: count, visibility: visibility, camera: camera,
+                interpolation: interpolation, displacementScale: particleBuffers.displacementScale,
+                displacements: resources.displacements, positions: resources.currentPositions,
+                into: commandBuffer)
+        }
+        if !usesOpaquePoints { opaquePoints?.releaseStorage() }
         try composition.prepare()
         let drawableWaitStart = capturesDiagnostics ? ContinuousClock.now : nil
         guard let target = platform.currentRenderTarget() else { return }
@@ -137,21 +149,25 @@ final class DeviceRenderer {
         composition.encodeBackground(into: encoder)
         switch renderer.mode {
         case .point:
-            points.encode(
-                displacements: resources.displacements,
-                displacementScale: particleBuffers.displacementScale,
-                currentPositions: resources.currentPositions,
-                colorIndices: resources.colorIndices,
-                colorPalette: resources.colorPalette,
-                visibleIndices: resources.culling?.visibleIndices,
-                indirectArguments: resources.culling?.indirectArguments,
-                count: count,
-                visibility: visibility,
-                lod: resources.lod,
-                interpolation: interpolation,
-                viewProjection: camera.viewProjection,
-                into: encoder
-            )
+            if usesOpaquePoints {
+                opaquePoints?.encode(indices: resources.colorIndices, palette: resources.colorPalette, into: encoder)
+            } else {
+                points.encode(
+                    displacements: resources.displacements,
+                    displacementScale: particleBuffers.displacementScale,
+                    currentPositions: resources.currentPositions,
+                    colorIndices: resources.colorIndices,
+                    colorPalette: resources.colorPalette,
+                    visibleIndices: resources.culling?.visibleIndices,
+                    indirectArguments: resources.culling?.indirectArguments,
+                    count: count,
+                    visibility: visibility,
+                    lod: resources.lod,
+                    interpolation: interpolation,
+                    viewProjection: camera.viewProjection,
+                    into: encoder
+                )
+            }
         case .billboard:
             billboards.encode(
                 displacements: resources.displacements,

@@ -4,6 +4,7 @@ import PixlRenderer
 import QuartzCore
 
 public final class Platform: PixlRenderer.Platform {
+    public var supportsAtomicUInt64Min: Bool { device.supportsFamily(.apple9) }
     private static let drawableCount = 3
     private static let inFlightFrameCount = 2
 

@@ -30,7 +30,7 @@ validated.
 - [x] Expose GPU total, preparation, diagnostics, draw, vertex, and fragment
   timings in the editor and a production-Metal benchmark package. Sample GPU
   stage counters with bounded reusable storage and retain unavailable values.
-  macOS compile checks only; runtime measurements remain pending.
+  macOS benchmark measurements and GPU image comparisons now run offscreen.
 
 - [x] Draw non-LOD particles directly from shared simulation storage; remove
   per-particle renderer compaction buffers on that path, preserve bounds and
@@ -123,3 +123,17 @@ validated.
 - Distance/projected-coverage billboard LOD after the baseline is measured.
 - Finder thumbnails and Quick Look playback.
 - Disk-backed editor checkpoints if workloads justify them.
+
+## Dense Point GPU Optimization — Implemented, Editor Validation Pending
+
+- [x] Measure hardware reference and automatic production path sequentially.
+- [x] Add compute rasterization for dense opaque points with automatic capability
+  and transparency fallback; no application switch.
+- [x] Verify multi-colour, perspective, odd-size, sparse and transparent output.
+- [x] Compile the macOS editor and run the isolated renderer regression tests.
+- [ ] User measurement and visual confirmation in the editor. Provisional local
+  results live in `Benchmarks/Renderer/Metal/RESULTS-2026-09-25.md`; do not promote
+  them to accepted `PERF.md` results yet.
+
+Full package tests currently fail to compile because legacy particle tests still
+call the removed `System(particleCount:)` initializer; unchanged by this work.

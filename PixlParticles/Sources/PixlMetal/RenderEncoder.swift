@@ -23,6 +23,10 @@ final class MetalRenderEncoder: PixlRenderer.RenderEncoder {
         value.setDepthStencilState((state as! MetalDepthState).value)
     }
 
+    func setFragmentBuffer(_ buffer: any PixlRenderer.Buffer, index: Int) {
+        value.setFragmentBuffer((buffer as! MetalBuffer).value, offset: 0, index: index)
+    }
+
     func setVertexBuffer(_ buffer: any PixlRenderer.Buffer, index: Int) {
         let metal = (buffer as! MetalBuffer).value
         // ICBs inherit these bindings. Declare their resource usage explicitly.

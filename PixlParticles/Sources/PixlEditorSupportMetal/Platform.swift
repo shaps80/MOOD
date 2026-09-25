@@ -3,6 +3,7 @@ import PixlMetal
 import PixlRenderer
 
 public final class Platform: PixlRenderer.Platform {
+    public var supportsAtomicUInt64Min: Bool { base.supportsAtomicUInt64Min }
     private let base: PixlMetal.Platform
     private let library: any MTLLibrary
 

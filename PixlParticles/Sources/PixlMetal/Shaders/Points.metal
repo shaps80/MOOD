@@ -776,3 +776,60 @@ fragment half4 pointFragment(PointVertex input [[stage_in]]) {
 fragment half4 billboardFragment(BillboardVertex input [[stage_in]]) {
     return input.color;
 }
+
+struct OpaquePointVertex { float4 position [[position]]; };
+struct OpaquePointOutput { half4 color [[color(0)]]; float depth [[depth(any)]]; };
+
+kernel void clearPointWinners(device ulong *winners [[buffer(0)]],
+                             constant uint &count [[buffer(1)]], uint index [[thread_position_in_grid]]) {
+    if (index < count) winners[index] = ULONG_MAX;
+}
+
+kernel void rasterOpaquePoints(
+    const device uint *displacements [[buffer(0)]],
+    const device PositionBatch *positions [[buffer(1)]],
+    device atomic_ulong *winners [[buffer(2)]],
+    constant DirectVisibility &visibility [[buffer(3)]],
+    constant float &interpolation [[buffer(4)]],
+    constant float &displacementScale [[buffer(5)]],
+    constant uint &count [[buffer(6)]],
+    constant float4x4 &viewProjection [[buffer(7)]],
+    uint index [[thread_position_in_grid]]
+) {
+    if (index >= count) return;
+    float3 position = interpolatedPosition(positions, displacements, displacementScale, index, interpolation);
+    if (!directVisible(position, visibility)) return;
+    float4 clip = viewProjection * float4(position, 1);
+    if (!all(isfinite(clip)) || clip.w <= 0 || clip.z < 0 || clip.z >= clip.w) return;
+    float3 ndc = clip.xyz / clip.w;
+    uint2 viewport = visibility.modes.zw;
+    float2 screen = fma(ndc.xy, float2(viewport) * float2(0.5f, -0.5f), float2(viewport) * 0.5f - 1.0f / 512.0f);
+    // Apple rasterizers snap to 8 fractional bits with a top-left boundary.
+    // The fused viewport transform avoids an additional rounding of NDC.
+    if (any(screen < 0) || any(screen >= float2(viewport))) return;
+    int2 pixel = int2(floor(screen));
+    if (any(pixel < 0) || any(uint2(pixel) >= viewport)) return;
+    ulong key = (ulong(as_type<uint>(max(ndc.z, 0.0f))) << 32) | ulong(index);
+    atomic_min_explicit(winners + uint(pixel.y) * viewport.x + uint(pixel.x), key, memory_order_relaxed);
+}
+
+vertex OpaquePointVertex opaquePointVertex(uint index [[vertex_id]]) {
+    OpaquePointVertex output;
+    output.position = float4(index == 2 ? 3 : -1, index == 1 ? 3 : -1, 0, 1);
+    return output;
+}
+
+fragment OpaquePointOutput opaquePointFragment(
+    OpaquePointVertex input [[stage_in]],
+    const device ulong *winners [[buffer(0)]],
+    const device ushort *indices [[buffer(1)]],
+    const device float4 *palette [[buffer(2)]],
+    constant uint &width [[buffer(3)]]
+) {
+    ulong key = winners[uint(input.position.y) * width + uint(input.position.x)];
+    if (key == ULONG_MAX) discard_fragment();
+    OpaquePointOutput output;
+    output.depth = as_type<float>(uint(key >> 32));
+    output.color = half4(palette[indices[uint(key)]]);
+    return output;
+}

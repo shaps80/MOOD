@@ -1,6 +1,8 @@
 import Swift
 
 public protocol Platform: AnyObject {
+    /// 64-bit atomic minimum in compute buffers and fragment-buffer reads.
+    var supportsAtomicUInt64Min: Bool { get }
     func acquireFrame()
     func releaseFrame()
     func submit(_ commandBuffer: any CommandBuffer)
@@ -23,4 +25,8 @@ public protocol Platform: AnyObject {
     ) -> (any DepthState)?
     func makeCommandBuffer() -> (any CommandBuffer)?
     func currentRenderTarget() -> (any RenderTarget)?
+}
+
+public extension Platform {
+    var supportsAtomicUInt64Min: Bool { false }
 }
