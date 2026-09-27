@@ -2,7 +2,7 @@ import PixlProfiler
 
 nonisolated enum EditorProfileDefinitions {
     static let render = ProfileTrack(1, "CPU")
-    static let worker = ProfileTrack(2, "Simulation worker")
+    static let worker = ProfileTrack(2, "Worker")
     static let gpu = ProfileTrack(3, "GPU")
     static let frame = ProfileScope(0, "Frame", kind: .frame)
     static let simulation = ProfileScope(2, "Simulation", parentScope: 0)

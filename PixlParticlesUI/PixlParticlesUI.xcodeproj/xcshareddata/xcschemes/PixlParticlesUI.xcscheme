@@ -62,7 +62,7 @@
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "PIXL_SIMULATION_BATCHES"
-            value = "4"
+            value = "8"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
